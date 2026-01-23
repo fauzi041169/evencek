@@ -1,0 +1,296 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\District;
+use App\Models\Profile;
+use App\Models\Province;
+use App\Models\Regency;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Inertia\Inertia;
+
+class UserController extends Controller
+{
+    public function dashboard()
+    {
+        // Alihkan ke dashboard baru yang terpusat
+        return redirect()->route('dashboard.index');
+    }
+
+    public function edit($id)
+    {
+        // Load user with all necessary relationships
+        $user = User::with(['profile.province', 'profile.regency', 'profile.district'])->findOrFail($id);
+
+        // Load all provinces
+        $provinces = Province::orderBy('name')->get();
+
+        // Initialize empty collections for regencies and districts
+        $regencies = collect();
+        $districts = collect();
+
+        // Load regencies if user has a province selected
+        if ($user->profile && $user->profile->province_id) {
+            $regencies = Regency::where('province_id', $user->profile->province_id)
+                ->orderBy('name')
+                ->get();
+        }
+
+        // Load districts if user has a regency selected
+        if ($user->profile && $user->profile->regency_id) {
+            $districts = District::where('regency_id', $user->profile->regency_id)
+                ->orderBy('name')
+                ->get();
+        }
+
+        return Inertia::render('Users/Edit', [
+            'user' => $user,
+            'provinces' => $provinces,
+            'regencies' => $regencies,
+            'districts' => $districts,
+            'activity_id' => request('activity_id'),
+        ]);
+    }
+
+    public function update(Request $request, User $user)
+    {
+        Log::info('Update User Request Data:', $request->all());
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,'.$user->id,
+            'no_hp' => 'nullable|string|max:20',
+            'pekerjaan' => 'nullable|string|max:100',
+            'instansi' => 'nullable|string|max:100',
+            'jabatan' => 'nullable|string|max:100',
+            'province_id' => 'required|exists:provinces,id',
+            'regency_id' => 'required|exists:regencies,id',
+            'district_id' => 'required|exists:districts,id',
+            'alamat' => 'required|string',
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+            'foto_file' => 'nullable|image|mimes:jpeg,png,jpg|max:20480',
+            'foto_data' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            Log::error('Validation failed:', $validator->errors()->toArray());
+
+            // Return JSON response for AJAX requests
+            if ($request->ajax() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Update user data
+            $user->update([
+                'name' => $request->name,
+                'email' => $request->email,
+            ]);
+
+            Log::info('User data updated:', $user->toArray());
+
+            // Handle photo upload
+            $fotoPath = null;
+            if ($request->hasFile('foto_file')) {
+                // Delete old photo if exists
+                if ($user->profile && $user->profile->foto) {
+                    $oldPhotoPath = public_path('assets/images/profilefoto/'.$user->profile->foto);
+                    if (file_exists($oldPhotoPath)) {
+                        unlink($oldPhotoPath);
+                    }
+                }
+
+                // Store new photo in public/assets/images/profilefoto directory
+                $foto = $request->file('foto_file');
+                $filename = time().'_'.$foto->getClientOriginalName();
+                $uploadPath = public_path('assets/images/profilefoto');
+
+                // Create directory if it doesn't exist
+                if (! file_exists($uploadPath)) {
+                    mkdir($uploadPath, 0777, true);
+                }
+
+                $foto->move($uploadPath, $filename);
+                $fotoPath = $filename;
+            }
+            // Handle base64 image from camera
+            elseif ($request->filled('foto_data') && $request->foto_data != 'delete') {
+                $image_data = $request->foto_data;
+                $image_array_1 = explode(';', $image_data);
+                $image_array_2 = explode(',', $image_array_1[1]);
+                $image_data = base64_decode($image_array_2[1]);
+
+                // Validate Base64 image content
+                $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                $mimeType = $finfo->buffer($image_data);
+                
+                if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/jpg'])) {
+                    if ($request->ajax() || $request->expectsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Format gambar dari kamera tidak valid.',
+                        ], 422);
+                    }
+                    return redirect()->back()
+                        ->withErrors(['foto_file' => 'Format gambar dari kamera tidak valid.'])
+                        ->withInput();
+                }
+
+                $filename = time().'.jpg';
+                $uploadPath = public_path('assets/images/profilefoto');
+
+                if (! file_exists($uploadPath)) {
+                    mkdir($uploadPath, 0777, true);
+                }
+
+                file_put_contents($uploadPath.'/'.$filename, $image_data);
+                $fotoPath = $filename;
+            }
+            // Handle photo deletion
+            elseif ($request->filled('foto_data') && $request->foto_data === 'delete') {
+                if ($user->profile && $user->profile->foto) {
+                    $oldPhotoPath = public_path('assets/images/profilefoto/'.$user->profile->foto);
+                    if (file_exists($oldPhotoPath)) {
+                        unlink($oldPhotoPath);
+                    }
+                }
+                $fotoPath = null;
+            }
+
+            // Normalisasi jenis kelamin
+            $jk = strtolower($request->jenis_kelamin);
+            if (in_array($jk, ['l', 'laki-laki', 'laki laki', 'laki', 'laki-laki', 'laki-laki'])) {
+                $jenis_kelamin = 'Laki-laki';
+            } elseif (in_array($jk, ['p', 'perempuan', 'wanita'])) {
+                $jenis_kelamin = 'Perempuan';
+            } else {
+                $jenis_kelamin = null;
+            }
+
+            // Update or create profile
+            $profileData = [
+                'no_hp' => $request->no_hp,
+                'pekerjaan' => $request->pekerjaan,
+                'instansi' => $request->instansi,
+                'jabatan' => $request->jabatan,
+                'province_id' => $request->province_id,
+                'regency_id' => $request->regency_id,
+                'district_id' => $request->district_id,
+                'alamat' => $request->alamat,
+                'jenis_kelamin' => $jenis_kelamin,
+                'foto' => $fotoPath ?? ($user->profile->foto ?? null),
+            ];
+
+            if ($user->profile) {
+                $user->profile->update($profileData);
+            } else {
+                $user->profile()->create($profileData);
+            }
+
+            DB::commit();
+
+            // Return JSON response for AJAX requests (from modal)
+            if ($request->ajax() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Profil berhasil diperbarui',
+                ]);
+            }
+
+            // Redirect ke halaman detail aktivitas jika activity_id ada, jika tidak ke halaman edit user
+            if ($request->filled('activity_id')) {
+                $activityId = $request->activity_id;
+
+                return redirect()->route('activity.detail', ['activity' => $activityId])
+                    ->with('success', 'Profil berhasil diperbarui');
+            } else {
+                return redirect()->route('users.edit', $user->id)
+                    ->with('success', 'Profil berhasil diperbarui');
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating user profile: '.$e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Return JSON response for AJAX requests on error
+            if ($request->ajax() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terjadi kesalahan: '.$e->getMessage(),
+                ], 422);
+            }
+
+            return redirect()->back()
+                ->withErrors(['error' => 'Terjadi kesalahan: '.$e->getMessage()])
+                ->withInput();
+        }
+    }
+
+    public function index()
+    {
+        if (auth()->user()->isAdmin() || auth()->user()->isSuperAdmin()) {
+            return redirect()->action([UserManagementController::class, 'index']);
+        }
+        abort(403);
+    }
+
+    public function create()
+    {
+        return Inertia::render('Users/Create');
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users',
+            'password' => 'required|string|min:8',
+        ]);
+        
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => bcrypt($data['password']),
+            'role' => 'user',
+        ]);
+        
+        return redirect()->route('users.index')->with('success', 'User created successfully.');
+    }
+
+    public function show(User $user)
+    {
+        return Inertia::render('Users/Show', compact('user'));
+    }
+
+    public function destroy(User $user)
+    {
+        if (auth()->user()->id === $user->id) {
+            return back()->with('error', 'Cannot delete yourself.');
+        }
+        $user->delete();
+        return back()->with('success', 'User deleted successfully.');
+    }
+
+    public function export(Request $request)
+    {
+        return redirect()->back()->with('success', 'Export functionality is not fully implemented yet.');
+    }
+
+
+}

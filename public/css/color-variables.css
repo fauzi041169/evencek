@@ -1,0 +1,21 @@
+:root {
+    --color-danger: #ef4444;
+    --color-navbar-link-hover-bg: #bcf5cd;
+    --color-info: #06b6d4;
+    --color-navbar-link-active-border: #ffcf66;
+    --color-navbar-opacity: 0.54;
+    --color-success: #10b981;
+    --color-navbar-link-active-card: #fa9200;
+    --color-card-blue: #f0f7ff;
+    --color-hero-end: #3b82f6;
+    --color-secondary: #6b7280;
+    --color-primary: #3b82f6;
+    --color-card-pink: #fef3f2;
+    --color-navbar-link-text: #fffafa;
+    --color-card-green: #f0fdf4;
+    --color-hero-start: #7c3aed;
+    --color-warning: #f59e0b;
+    --color-navbar-end: #660368;
+    --color-navbar-start: #2718f7;
+    --color-navbar-brand-text: #f0f0f0;
+}

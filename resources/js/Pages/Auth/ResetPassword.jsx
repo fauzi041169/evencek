@@ -1,0 +1,95 @@
+import { Head, useForm } from '@inertiajs/react';
+
+export default function ResetPassword({ token, email }) {
+    const { data, setData, post, processing, errors } = useForm({
+        token: token,
+        email: email,
+        password: '',
+        password_confirmation: '',
+    });
+
+    const submit = (e) => {
+        e.preventDefault();
+        post(route('password.update'));
+    };
+
+    return (
+        <div className="min-h-screen flex justify-center items-center p-5 bg-gradient-to-br from-primary to-secondary font-sans">
+            <Head title="Reset Password - IVEN-HUB" />
+            
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-10 w-full max-w-[420px] shadow-2xl">
+                <div className="text-center mb-8">
+                     <img 
+                        src="/assets/images/logo.png" 
+                        alt="IVEN-HUB Logo" 
+                        className="w-[120px] h-auto mx-auto mb-4"
+                        onError={(e) => {
+                            e.target.onerror = null; 
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                        }}
+                    />
+                    <div className="hidden w-20 h-20 bg-gray-100 rounded-full mx-auto flex items-center justify-center">
+                        <i className="fas fa-shield-alt text-3xl text-gray-400"></i>
+                    </div>
+                </div>
+
+                <h1 className="text-[#333] text-2xl font-bold text-center mb-5">Reset Password</h1>
+
+                <form onSubmit={submit}>
+                    <input type="hidden" name="token" value={data.token} />
+
+                    <div className="mb-6">
+                        <label htmlFor="email" className="block mb-2 text-[#333] font-medium text-sm">Email</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            value={data.email}
+                            onChange={(e) => setData('email', e.target.value)}
+                            required 
+                            className="w-full px-4 py-3 border-2 border-[#e1e1e1] rounded-xl text-[15px] transition-all duration-300 focus:outline-none focus:border-[#2575fc] focus:ring-4 focus:ring-[#2575fc]/10"
+                        />
+                        {errors.email && (
+                            <div className="text-red-500 text-sm mt-1">{errors.email}</div>
+                        )}
+                    </div>
+
+                    <div className="mb-6 relative">
+                        <label htmlFor="password" className="block mb-2 text-[#333] font-medium text-sm">Password Baru</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            value={data.password}
+                            onChange={(e) => setData('password', e.target.value)}
+                            required 
+                            className="w-full px-4 py-3 border-2 border-[#e1e1e1] rounded-xl text-[15px] transition-all duration-300 focus:outline-none focus:border-[#2575fc] focus:ring-4 focus:ring-[#2575fc]/10"
+                        />
+                        {errors.password && (
+                            <div className="text-red-500 text-sm mt-1">{errors.password}</div>
+                        )}
+                    </div>
+
+                    <div className="mb-6 relative">
+                        <label htmlFor="password_confirmation" className="block mb-2 text-[#333] font-medium text-sm">Konfirmasi Password</label>
+                        <input 
+                            type="password" 
+                            id="password_confirmation" 
+                            value={data.password_confirmation}
+                            onChange={(e) => setData('password_confirmation', e.target.value)}
+                            required 
+                            className="w-full px-4 py-3 border-2 border-[#e1e1e1] rounded-xl text-[15px] transition-all duration-300 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                        />
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        disabled={processing}
+                        className="w-full py-3.5 bg-gradient-to-br from-primary to-secondary border-none rounded-xl text-white text-base font-semibold cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-70"
+                    >
+                        {processing ? 'Memproses...' : 'Reset Password'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+}

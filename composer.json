@@ -1,0 +1,93 @@
+{
+    "name": "laravel/laravel",
+    "type": "project",
+    "description": "The Laravel Framework.",
+    "keywords": ["framework", "laravel"],
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^11.0",
+        "barryvdh/laravel-dompdf": "^3.0",
+        "chillerlan/php-qrcode": "^5.0",
+        "dompdf/dompdf": "^3.0",
+        "guzzlehttp/guzzle": "^7.8",
+        "inertiajs/inertia-laravel": "*",
+        "laravel/sanctum": "^4.0",
+        "laravel/socialite": "^5.21",
+        "laravel/tinker": "^2.9",
+        "maatwebsite/excel": "^3.1",
+        "maennchen/zipstream-php": "^2.3",
+        "mews/captcha": "^3.3",
+        "mews/purifier": "^3.4",
+        "midtrans/midtrans-php": "^2.6",
+        "nesbot/carbon": "^3.0",
+        "phpoffice/phpspreadsheet": "^1.30.0",
+        "simplesoftwareio/simple-qrcode": "^4.2",
+        "tightenco/ziggy": "*",
+        "yajra/laravel-datatables-oracle": "^11.0"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.24",
+        "laravel/pint": "^1.0",
+        "laravel/sail": "^1.18",
+        "mockery/mockery": "^1.4.4",
+        "nunomaduro/collision": "^8.1",
+        "phpunit/phpunit": "^11.0",
+        "spatie/laravel-ignition": "^2.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Seeders\\": "database/seeders/"
+        },
+        "files": [
+            "app/Helpers/CategoryHelper.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/",
+            "Database\\Factories\\": "database/factories/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-update-cmd": [
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi"
+        ],
+        "pre-deploy": [
+            "@php -r \"@unlink('bootstrap/cache/services.php'); @unlink('bootstrap/cache/packages.php');\" || true"
+        ],
+        "post-deploy": [
+            "@php artisan optimize:clear",
+            "@php artisan config:cache",
+            "@php artisan route:cache",
+            "@php artisan view:cache"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
