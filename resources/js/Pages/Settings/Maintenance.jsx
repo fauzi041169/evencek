@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
@@ -286,6 +286,7 @@ export default function Maintenance({ setting, apkList = [] }) {
                     <div className="bg-white rounded-xl shadow p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">System Tools</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <button onClick={() => runArtisan(route('maintenance.update-app'))} className="px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded hover:bg-emerald-100 font-medium col-span-2 md:col-span-1">Update App (Git Pull)</button>
                             <button onClick={() => runArtisan(route('maintenance.artisan.migrate'))} className="px-3 py-2 bg-gray-100 rounded">Migrate</button>
                             <button onClick={() => runArtisan(route('maintenance.artisan.seed'))} className="px-3 py-2 bg-gray-100 rounded">Seed</button>
                             <button onClick={() => runArtisan(route('maintenance.artisan.optimize-clear'))} className="px-3 py-2 bg-gray-100 rounded">Optimize Clear</button>

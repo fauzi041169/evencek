@@ -94,60 +94,66 @@ export default function LoginDropdown() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl py-4 px-4 ring-1 ring-black ring-opacity-5 z-50">
+                <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-2xl p-6 ring-1 ring-black ring-opacity-5 z-50 transform origin-top-right transition-all duration-200 ease-out">
                     
-                    {/* Google Login Button - Visible in both modes */}
-                    <div className="mb-4">
+                    {/* Header */}
+                    <div className="text-center mb-6">
+                        <h3 className="text-xl font-bold text-gray-800">
+                            {mode === 'login' ? 'Selamat Datang Kembali!' : 'Buat Akun Baru'}
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                            {mode === 'login' ? 'Masuk untuk mengakses akun Anda' : 'Daftar untuk mulai menjelajah'}
+                        </p>
+                    </div>
+
+                    {/* Google Login Button */}
+                    <div className="mb-5">
                         <a 
                             href={route('auth.google.login')} 
-                            className="flex items-center justify-center w-full py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-all text-gray-700 font-medium text-sm"
+                            className="flex items-center justify-center w-full py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm hover:bg-gray-50 hover:shadow-md hover:scale-[1.01] transition-all duration-200 text-gray-700 font-medium text-sm group"
                         >
-                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-5 w-5 mr-2" alt="Google" onError={(e) => {e.target.style.display='none'}} />
+                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-5 w-5 mr-3 group-hover:scale-110 transition-transform" alt="Google" onError={(e) => {e.target.style.display='none'}} />
                             {mode === 'login' ? 'Masuk dengan Google' : 'Daftar dengan Google'}
                         </a>
                     </div>
 
-                    <div className="relative flex py-2 items-center mb-4">
-                        <div className="flex-grow border-t border-gray-300"></div>
-                        <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">ATAU</span>
-                        <div className="flex-grow border-t border-gray-300"></div>
+                    <div className="relative flex py-2 items-center mb-5">
+                        <div className="flex-grow border-t border-gray-200"></div>
+                        <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-medium uppercase tracking-wider">ATAU</span>
+                        <div className="flex-grow border-t border-gray-200"></div>
                     </div>
 
                     {mode === 'login' ? (
-                        <form onSubmit={submitLogin}>
-                            <div className="mb-4">
-                                <label htmlFor="login_email" className="block mb-1 text-gray-700 font-medium text-sm">Email</label>
-                                <input 
-                                    type="email" 
-                                    id="login_email" 
+                        <form onSubmit={submitLogin} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Email</label>
+                                <input
+                                    type="text"
                                     value={loginData.login}
                                     onChange={(e) => setLoginData('login', e.target.value)}
-                                    required 
-                                    placeholder="Email Anda"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                    className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors outline-none text-sm"
+                                    placeholder="nama@email.com"
+                                    required
                                 />
-                                {errorsLogin.login && (
-                                    <div className="text-red-600 text-xs mt-1">
-                                        {errorsLogin.login}
-                                    </div>
-                                )}
+                                {errorsLogin.login && <div className="text-red-500 text-xs mt-1 ml-1">{errorsLogin.login}</div>}
                             </div>
-
-                            <div className="mb-4">
-                                <label htmlFor="login_password" className="block mb-1 text-gray-700 font-medium text-sm">Password</label>
+                            
+                            <div>
+                                <div className="flex justify-between items-center mb-1 ml-1">
+                                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                                </div>
                                 <div className="relative">
-                                    <input 
-                                        type={showPassword ? "text" : "password"} 
-                                        id="login_password" 
+                                    <input
+                                        type={showPassword ? "text" : "password"}
                                         value={loginData.password}
                                         onChange={(e) => setLoginData('password', e.target.value)}
-                                        required 
-                                        placeholder="Password"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary pr-10"
+                                        className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors outline-none text-sm pr-10"
+                                        placeholder="••••••••"
+                                        required
                                     />
                                     <button
                                         type="button"
-                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-primary focus:outline-none"
+                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-blue-600 focus:outline-none transition-colors"
                                         onClick={() => setShowPassword(!showPassword)}
                                     >
                                         {showPassword ? (
@@ -162,102 +168,84 @@ export default function LoginDropdown() {
                                         )}
                                     </button>
                                 </div>
-                                {errorsLogin.password && (
-                                    <div className="text-red-600 text-xs mt-1">
-                                        {errorsLogin.password}
-                                    </div>
-                                )}
+                                {errorsLogin.password && <div className="text-red-500 text-xs mt-1 ml-1">{errorsLogin.password}</div>}
                             </div>
 
-                            <div className="flex items-center justify-between mb-4">
-                                <label className="flex items-center text-sm text-gray-600">
+                            <div className="flex items-center justify-between">
+                                <label className="flex items-center text-sm text-gray-600 cursor-pointer">
                                     <input 
                                         type="checkbox" 
                                         checked={loginData.remember}
                                         onChange={(e) => setLoginData('remember', e.target.checked)}
-                                        className="rounded border-gray-300 text-primary shadow-sm focus:ring-primary mr-2"
+                                        className="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500 mr-2"
                                     />
                                     Ingat Saya
                                 </label>
-                                <Link href="/auth/forgot-password" className="text-sm text-primary hover:text-primary/80">
+                                <Link href="/auth/forgot-password" className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline">
                                     Lupa Password?
                                 </Link>
                             </div>
 
-                            <button 
-                                type="submit" 
-                                disabled={processingLogin}
-                                className="w-full py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg font-semibold shadow-md hover:from-primary hover:to-secondary transition-all disabled:opacity-70"
-                            >
-                                {processingLogin ? 'Memproses...' : 'Masuk'}
-                            </button>
-
-                            <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-                                <p className="text-sm text-gray-600">
-                                    Belum punya akun?{' '}
-                                    <button 
-                                        type="button"
-                                        onClick={() => setMode('register')}
-                                        className="text-primary font-medium hover:text-primary/80 focus:outline-none"
-                                    >
-                                        Daftar
-                                    </button>
-                                </p>
+                            <div className="pt-2">
+                                <button
+                                    type="submit"
+                                    disabled={processingLogin}
+                                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 active:scale-[0.98] transition-all duration-200 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {processingLogin ? (
+                                        <>
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Memproses...
+                                        </>
+                                    ) : 'Masuk Sekarang'}
+                                </button>
                             </div>
                         </form>
                     ) : (
-                        <form onSubmit={submitRegister}>
-                            <div className="mb-3">
-                                <label htmlFor="reg_name" className="block mb-1 text-gray-700 font-medium text-sm">Nama Lengkap</label>
-                                <input 
-                                    type="text" 
-                                    id="reg_name" 
+                        <form onSubmit={submitRegister} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Nama Lengkap</label>
+                                <input
+                                    type="text"
                                     value={registerData.name}
                                     onChange={(e) => setRegisterData('name', e.target.value)}
-                                    required 
-                                    placeholder="Nama Lengkap"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                    className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors outline-none text-sm"
+                                    placeholder="Nama Anda"
+                                    required
                                 />
-                                {errorsRegister.name && (
-                                    <div className="text-red-600 text-xs mt-1">
-                                        {errorsRegister.name}
-                                    </div>
-                                )}
+                                {errorsRegister.name && <div className="text-red-500 text-xs mt-1 ml-1">{errorsRegister.name}</div>}
                             </div>
 
-                            <div className="mb-3">
-                                <label htmlFor="reg_email" className="block mb-1 text-gray-700 font-medium text-sm">Email</label>
-                                <input 
-                                    type="email" 
-                                    id="reg_email" 
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Email</label>
+                                <input
+                                    type="email"
                                     value={registerData.email}
                                     onChange={(e) => setRegisterData('email', e.target.value)}
-                                    required 
-                                    placeholder="Email Anda"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                                    className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors outline-none text-sm"
+                                    placeholder="nama@email.com"
+                                    required
                                 />
-                                {errorsRegister.email && (
-                                    <div className="text-red-600 text-xs mt-1">
-                                        {errorsRegister.email}
-                                    </div>
-                                )}
+                                {errorsRegister.email && <div className="text-red-500 text-xs mt-1 ml-1">{errorsRegister.email}</div>}
                             </div>
 
-                            <div className="mb-3">
-                                <label htmlFor="reg_password" className="block mb-1 text-gray-700 font-medium text-sm">Password</label>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Password</label>
                                 <div className="relative">
-                                    <input 
-                                        type={showRegisterPassword ? "text" : "password"} 
-                                        id="reg_password" 
+                                    <input
+                                        type={showRegisterPassword ? "text" : "password"}
                                         value={registerData.password}
                                         onChange={(e) => setRegisterData('password', e.target.value)}
-                                        required 
-                                        placeholder="Password"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 pr-10"
+                                        className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors outline-none text-sm pr-10"
+                                        placeholder="Minimal 8 karakter"
+                                        required
                                     />
                                     <button
                                         type="button"
-                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-blue-600 focus:outline-none transition-colors"
                                         onClick={() => setShowRegisterPassword(!showRegisterPassword)}
                                     >
                                         {showRegisterPassword ? (
@@ -272,28 +260,23 @@ export default function LoginDropdown() {
                                         )}
                                     </button>
                                 </div>
-                                {errorsRegister.password && (
-                                    <div className="text-red-600 text-xs mt-1">
-                                        {errorsRegister.password}
-                                    </div>
-                                )}
+                                {registerErrors.password && <div className="text-red-500 text-xs mt-1 ml-1">{registerErrors.password}</div>}
                             </div>
 
-                            <div className="mb-4">
-                                <label htmlFor="reg_password_confirmation" className="block mb-1 text-gray-700 font-medium text-sm">Konfirmasi Password</label>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Konfirmasi Password</label>
                                 <div className="relative">
-                                    <input 
-                                        type={showRegisterConfirmPassword ? "text" : "password"} 
-                                        id="reg_password_confirmation" 
+                                    <input
+                                        type={showRegisterConfirmPassword ? "text" : "password"}
                                         value={registerData.password_confirmation}
                                         onChange={(e) => setRegisterData('password_confirmation', e.target.value)}
-                                        required 
-                                        placeholder="Ulangi Password"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 pr-10"
+                                        className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors outline-none text-sm pr-10"
+                                        placeholder="Ulangi password"
+                                        required
                                     />
                                     <button
                                         type="button"
-                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-blue-600 focus:outline-none transition-colors"
                                         onClick={() => setShowRegisterConfirmPassword(!showRegisterConfirmPassword)}
                                     >
                                         {showRegisterConfirmPassword ? (
@@ -310,28 +293,38 @@ export default function LoginDropdown() {
                                 </div>
                             </div>
 
-                            <button 
-                                type="submit" 
-                                disabled={processingRegister}
-                                className="w-full py-2 bg-gradient-to-r from-primary to-secondary text-white rounded-lg font-semibold shadow-md hover:from-primary hover:to-secondary transition-all disabled:opacity-70"
-                            >
-                                {processingRegister ? 'Mendaftar...' : 'Daftar Sekarang'}
-                            </button>
-
-                            <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-                                <p className="text-sm text-gray-600">
-                                    Sudah punya akun?{' '}
-                                    <button 
-                                        type="button"
-                                        onClick={() => setMode('login')}
-                                        className="text-indigo-600 font-medium hover:text-indigo-800 focus:outline-none"
-                                    >
-                                        Masuk
-                                    </button>
-                                </p>
+                            <div className="pt-2">
+                                <button
+                                    type="submit"
+                                    disabled={processingRegister}
+                                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2.5 rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 active:scale-[0.98] transition-all duration-200 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {processingRegister ? (
+                                        <>
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Mendaftar...
+                                        </>
+                                    ) : 'Daftar Sekarang'}
+                                </button>
                             </div>
                         </form>
                     )}
+
+                    {/* Switch Mode */}
+                    <div className="mt-6 text-center border-t border-gray-100 pt-4">
+                        <p className="text-sm text-gray-600">
+                            {mode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'}
+                            <button
+                                onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                                className="ml-1 text-blue-600 font-semibold hover:text-blue-800 hover:underline focus:outline-none transition-colors"
+                            >
+                                {mode === 'login' ? 'Daftar disini' : 'Masuk disini'}
+                            </button>
+                        </p>
+                    </div>
                 </div>
             )}
         </div>

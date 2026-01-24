@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Head, usePage, Link } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
-import PageHero from '@/Components/PageHero';
+import MobileLikeHero from '@/Components/MobileLikeHero';
 
 export default function About({ heroAnim = 'circles' }) {
     const { flash, errors } = usePage().props;
@@ -27,10 +27,9 @@ export default function About({ heroAnim = 'circles' }) {
             <div className="min-h-screen bg-white">
                 <Head title="Tentang Kami" />
 
-                <PageHero 
+                <MobileLikeHero 
                     title="Tentang Kami" 
                     description="Perusahaan Pengembangan Teknologi dan Aplikasi Sistem Manajemen Iven"
-                    heroAnim={heroAnim}
                 />
 
                 {/* Section: Profil Perusahaan */}

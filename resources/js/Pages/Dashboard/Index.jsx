@@ -337,9 +337,12 @@ export default function DashboardIndex(props) {
                                     {(topDailyActiveUsers || []).map((u, i) => (
                                         <li key={i} className="flex items-center justify-between text-sm">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
-                                                    {u.name.charAt(0).toUpperCase()}
-                                                </div>
+                                                <img 
+                                                    src={u.photo ? `/assets/images/profilefoto/${u.photo}` : '/assets/images/profilefoto/default-profile.png'} 
+                                                    alt={u.name}
+                                                    className="w-6 h-6 rounded-full object-cover"
+                                                    onError={(e) => {e.target.src = '/assets/images/profilefoto/default-profile.png'}}
+                                                />
                                                 <span className="text-gray-700 truncate max-w-[120px]">{u.name}</span>
                                             </div>
                                             <span className="font-semibold text-gray-900">{u.total}</span>

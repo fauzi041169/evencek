@@ -65,6 +65,8 @@ Route::get('/login', function() {
 });
 Route::get('/about', [AboutController::class, 'index'])->name('about');
 Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance');
+    Route::post('/maintenance/update-app', [MaintenanceController::class, 'updateApp'])->name('maintenance.update-app');
+    Route::post('/maintenance/npm-run-build', [MaintenanceController::class, 'npmRunBuild'])->name('maintenance.npm-run-build');
 
 // Subscription Routes
 Route::prefix('subscriptions')->name('subscriptions.')->controller(SubscriptionController::class)->group(function () {

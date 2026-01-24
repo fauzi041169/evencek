@@ -80,10 +80,10 @@ class SecurityHeaders
             // Note: CSP doesn't support IPv6 bracket notation [::1], so we use broader rules
             $csp = "default-src 'self'; "
                  ."img-src 'self' data: blob: https: http:; "
-                 ."style-src 'self' 'unsafe-inline' https: http: localhost:* 127.0.0.1:*; "
-                 ."script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http: localhost:* 127.0.0.1:*; "
+                 ."style-src 'self' 'unsafe-inline' https: http: localhost:* 127.0.0.1:* 10.10.115.108:*; "
+                 ."script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http: localhost:* 127.0.0.1:* 10.10.115.108:*; "
                  ."font-src 'self' data: https: http:; "
-                 ."connect-src 'self' https: http: ws: wss: localhost:* 127.0.0.1:*; "
+                 ."connect-src 'self' https: http: ws: wss: localhost:* 127.0.0.1:* 10.10.115.108:*; "
                  ."frame-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://view.officeapps.live.com; "
                  ."child-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://view.officeapps.live.com; "
                  ."frame-ancestors 'self';";

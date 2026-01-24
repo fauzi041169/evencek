@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
-import PageHero from '@/Components/PageHero';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
@@ -111,140 +110,218 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
 
             <div className="bg-gray-50 min-h-screen pb-12">
                 {/* Hero Section */}
-                <PageHero 
-                    title="Jelajahi Aktivitas" 
-                    description="Temukan berbagai kegiatan menarik dan seru untuk diikuti bersama kami."
-                >
-                    {sliderActivities && sliderActivities.length > 0 && (
-                        <div className="mt-8 relative w-full text-left max-w-6xl mx-auto">
-                            <div className="relative min-h-[500px] lg:min-h-[400px]">
-                                {sliderActivities.map((activity, index) => {
-                                    const isOngoing = new Date(activity.date) <= new Date() && new Date(activity.date) >= new Date(new Date().setDate(new Date().getDate() - 7));
-                                    const isUpcoming = new Date(activity.date) > new Date();
-                                    
-                                    return (
-                                        <div 
-                                            key={activity.id} 
-                                            className={`absolute inset-0 transition-all duration-700 ease-in-out ${index === currentSlide ? 'opacity-100 translate-y-0 z-10' : 'opacity-0 translate-y-4 z-0 pointer-events-none'}`}
-                                        >
-                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center w-full h-full">
-                                                <div className="text-white space-y-6 py-4">
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {isOngoing && (
-                                                            <span className="bg-success/90 text-white px-4 py-1.5 rounded-full text-xs md:text-sm font-bold shadow-sm backdrop-blur-sm flex items-center gap-2">
-                                                                <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                                                                SEDANG BERLANGSUNG
-                                                            </span>
-                                                        )}
-                                                        {isUpcoming && (
-                                                            <span className="bg-info/90 text-white px-4 py-1.5 rounded-full text-xs md:text-sm font-bold shadow-sm backdrop-blur-sm flex items-center gap-2">
-                                                                <i className="fas fa-calendar-alt"></i>
-                                                                AKAN DATANG
-                                                            </span>
-                                                        )}
-                                                        {activity.category && (
-                                                            <span className="bg-white/20 text-white px-4 py-1.5 rounded-full text-xs md:text-sm font-bold backdrop-blur-sm border border-white/30">
-                                                                {activity.category.name}
-                                                            </span>
-                                                        )}
-                                                    </div>
+                <div className="relative bg-slate-900 overflow-hidden min-h-[600px] flex items-center">
+                    {/* Background Elements */}
+                    <div className="absolute inset-0">
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 via-slate-900/95 to-slate-900 z-10"></div>
+                        <img 
+                            src="/assets/images/begron/bg-pattern.png" 
+                            alt="Background Pattern" 
+                            className="w-full h-full object-cover opacity-20 mix-blend-overlay"
+                            onError={(e) => e.target.style.display = 'none'}
+                        />
+                        {/* Animated Blobs */}
+                        <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+                        <div className="absolute top-0 -right-4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+                        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+                    </div>
 
-                                                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight drop-shadow-md line-clamp-2">
-                                                        {activity.name}
-                                                    </h2>
-
-                                                    <div className="text-base md:text-lg text-white/90 line-clamp-3 leading-relaxed max-w-xl">
-                                                        {activity.description ? activity.description.replace(/<[^>]*>/g, '') : ''}
-                                                    </div>
-
-                                                    <div className="flex flex-wrap gap-4 text-sm font-medium text-white/90">
-                                                        {activity.date && (
-                                                            <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg">
-                                                                <i className="far fa-calendar-alt"></i>
-                                                                <span>{format(new Date(activity.date), 'd MMM yyyy', { locale: id })}</span>
-                                                            </div>
-                                                        )}
-                                                        {activity.location && (
-                                                            <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg">
-                                                                <i className="fas fa-map-marker-alt"></i>
-                                                                <span>{activity.location}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="flex items-center gap-4 pt-2">
-                                                        <Link 
-                                                            href={getActivityLink(activity)}
-                                                            className="bg-white text-gray-900 px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:bg-gray-100 hover:scale-105 transition-all duration-300 flex items-center gap-2"
-                                                        >
-                                                            <i className="fas fa-info-circle"></i>
-                                                            LIHAT DETAIL
-                                                        </Link>
-                                                        
-                                                        <div className="text-xl font-bold">
-                                                            {activity.price > 0 ? (
-                                                                activity.show_price !== false ? (
-                                                                    <span className="text-warning drop-shadow-md">
-                                                                        Rp {Number(activity.price).toLocaleString('id-ID')}
+                    <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                        {sliderActivities && sliderActivities.length > 0 ? (
+                            <div className="relative">
+                                {/* Slider Content */}
+                                <div className="relative min-h-[450px]">
+                                    {sliderActivities.map((activity, index) => {
+                                        const isOngoing = new Date(activity.date) <= new Date() && new Date(activity.date) >= new Date(new Date().setDate(new Date().getDate() - 7));
+                                        const isUpcoming = new Date(activity.date) > new Date();
+                                        
+                                        return (
+                                            <div 
+                                                key={activity.id} 
+                                                className={`absolute inset-0 transition-all duration-700 ease-out ${
+                                                    index === currentSlide 
+                                                        ? 'opacity-100 translate-x-0 z-20' 
+                                                        : 'opacity-0 -translate-x-8 z-10 pointer-events-none'
+                                                }`}
+                                            >
+                                                <div className="grid lg:grid-cols-12 gap-8 items-center h-full">
+                                                    {/* Text Content */}
+                                                    <div className="lg:col-span-7 space-y-6">
+                                                        <div className="flex flex-wrap gap-3">
+                                                            {isOngoing && (
+                                                                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm font-semibold backdrop-blur-sm">
+                                                                    <span className="relative flex h-2 w-2">
+                                                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                                                     </span>
-                                                                ) : null
-                                                            ) : (
-                                                                <span className="text-success drop-shadow-md">GRATIS</span>
+                                                                    SEDANG BERLANGSUNG
+                                                                </span>
                                                             )}
+                                                            {isUpcoming && (
+                                                                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-sm font-semibold backdrop-blur-sm">
+                                                                    <i className="fas fa-calendar-alt"></i>
+                                                                    AKAN DATANG
+                                                                </span>
+                                                            )}
+                                                            {activity.category && (
+                                                                <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/20 text-slate-200 text-sm font-medium backdrop-blur-sm">
+                                                                    {activity.category.name}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
+                                                            {activity.name}
+                                                        </h1>
+
+                                                        <div className="text-lg text-slate-300 line-clamp-3 leading-relaxed max-w-2xl">
+                                                            {activity.description ? activity.description.replace(/<[^>]*>/g, '') : ''}
+                                                        </div>
+
+                                                        <div className="flex flex-wrap gap-6 text-slate-300 font-medium">
+                                                            {activity.date && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                                                                        <i className="far fa-calendar-alt text-indigo-400"></i>
+                                                                    </div>
+                                                                    <span>{format(new Date(activity.date), 'd MMM yyyy', { locale: id })}</span>
+                                                                </div>
+                                                            )}
+                                                            {activity.location && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                                                                        <i className="fas fa-map-marker-alt text-pink-400"></i>
+                                                                    </div>
+                                                                    <span>{activity.location}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="flex flex-wrap items-center gap-4 pt-4">
+                                                            <Link 
+                                                                href={getActivityLink(activity)}
+                                                                className="group relative inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-xl font-bold shadow-xl hover:shadow-2xl hover:bg-indigo-50 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                                                            >
+                                                                <span className="relative z-10">Lihat Detail</span>
+                                                                <i className="fas fa-arrow-right relative z-10 transition-transform group-hover:translate-x-1"></i>
+                                                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-100 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                                            </Link>
+                                                            
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm text-slate-400 font-medium">Harga Tiket</span>
+                                                                <div className="text-2xl font-bold">
+                                                                    {activity.price > 0 ? (
+                                                                        activity.show_price !== false ? (
+                                                                            <span className="text-amber-400">
+                                                                                Rp {Number(activity.price).toLocaleString('id-ID')}
+                                                                            </span>
+                                                                        ) : <span className="text-slate-500 text-lg">Hubungi Panitia</span>
+                                                                    ) : (
+                                                                        <span className="text-emerald-400">GRATIS</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Image/Visual */}
+                                                    <div className="lg:col-span-5 relative hidden lg:block">
+                                                        <div className="relative group">
+                                                            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
+                                                            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10 bg-slate-800">
+                                                                <img 
+                                                                    src={getImageUrl(activity)} 
+                                                                    alt={activity.name}
+                                                                    className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105"
+                                                                    onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
+                                                                />
+                                                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
+                                                            </div>
+                                                            
+                                                            {/* Floating Card Element */}
+                                                            <div className="absolute -bottom-6 -right-6 bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl shadow-xl hidden xl:block animate-float">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="flex -space-x-3">
+                                                                        {[1,2,3].map(i => (
+                                                                            <div key={i} className="w-8 h-8 rounded-full bg-slate-300 border-2 border-slate-800 flex items-center justify-center text-[10px] text-slate-600 font-bold">
+                                                                                <i className="fas fa-user"></i>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                    <div className="text-xs text-white font-medium">
+                                                                        <span className="block font-bold text-lg leading-none">{Math.floor(Math.random() * 50) + 10}+</span>
+                                                                        Pendaftar
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                <div className="hidden lg:block h-full relative group">
-                                                    <div className="absolute inset-0 bg-white/10 rounded-2xl transform rotate-3 scale-105 transition-transform group-hover:rotate-6"></div>
-                                                    <img 
-                                                        src={getImageUrl(activity)} 
-                                                        alt={activity.name}
-                                                        className="relative rounded-2xl shadow-2xl w-full h-[350px] object-cover transform transition-transform group-hover:scale-[1.02]"
-                                                        onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
-                                                    />
-                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
 
-                            {/* Slider Controls */}
-                            {sliderActivities.length > 1 && (
-                                <div className="absolute top-1/2 -translate-y-1/2 -left-4 -right-4 flex justify-between pointer-events-none">
+                                {/* Slider Navigation */}
+                                {sliderActivities.length > 1 && (
+                                    <div className="absolute bottom-0 left-0 right-0 flex justify-between items-center z-30 pointer-events-none">
+                                        <div className="flex gap-2 pointer-events-auto">
+                                            {sliderActivities.map((_, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => goToSlide(idx)}
+                                                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                                                        idx === currentSlide 
+                                                            ? 'bg-white w-8' 
+                                                            : 'bg-white/30 w-4 hover:bg-white/50'
+                                                    }`}
+                                                    aria-label={`Go to slide ${idx + 1}`}
+                                                ></button>
+                                            ))}
+                                        </div>
+                                        
+                                        <div className="flex gap-3 pointer-events-auto">
+                                            <button 
+                                                onClick={() => changeSlide(-1)}
+                                                className="w-12 h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group"
+                                            >
+                                                <i className="fas fa-arrow-left transition-transform group-hover:-translate-x-1"></i>
+                                            </button>
+                                            <button 
+                                                onClick={() => changeSlide(1)}
+                                                className="w-12 h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group"
+                                            >
+                                                <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            // Fallback State when no activities
+                            <div className="text-center max-w-3xl mx-auto py-16">
+                                <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
+                                    Jelajahi Aktivitas
+                                </h1>
+                                <p className="text-xl text-slate-300 mb-8 leading-relaxed">
+                                    Temukan berbagai kegiatan menarik dan seru untuk diikuti bersama kami.
+                                    Bergabunglah dengan ribuan peserta lainnya.
+                                </p>
+                                <div className="inline-flex gap-4">
                                     <button 
-                                        onClick={() => changeSlide(-1)}
-                                        className="pointer-events-auto w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center transition-colors border border-white/50 backdrop-blur-sm"
+                                        onClick={() => document.getElementById('latest-activities').scrollIntoView({ behavior: 'smooth' })}
+                                        className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-all"
                                     >
-                                        <i className="fas fa-chevron-left"></i>
-                                    </button>
-                                    <button 
-                                        onClick={() => changeSlide(1)}
-                                        className="pointer-events-auto w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center transition-colors border border-white/50 backdrop-blur-sm"
-                                    >
-                                        <i className="fas fa-chevron-right"></i>
+                                        Lihat Kegiatan
                                     </button>
                                 </div>
-                            )}
-                            
-                            {sliderActivities.length > 1 && (
-                                <div className="flex justify-center gap-2 mt-4">
-                                    {sliderActivities.map((_, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => goToSlide(idx)}
-                                            className={`h-2 rounded-full transition-all duration-300 ${idx === currentSlide ? 'bg-white w-8' : 'bg-white/40 w-2 hover:bg-white/60'}`}
-                                        ></button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </PageHero>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Latest Activities Section */}
-                <section className="py-12 container mx-auto px-4">
+                <section id="latest-activities" className="py-12 container mx-auto px-4">
                     <h2 className="text-center text-3xl font-bold text-gray-900 mb-8">Kegiatan Terbaru</h2>
                     
                     {latestActivities && latestActivities.data && latestActivities.data.length > 0 ? (
@@ -282,7 +359,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                         </div>
                                     )}
                                     <Link href={getActivityLink(activity)} className="flex flex-col h-full">
-                                    <div className="relative h-48 overflow-hidden bg-gray-200">
+                                    <div className="relative h-64 md:h-48 overflow-hidden bg-gray-200">
                                         <img 
                                             src={getImageUrl(activity)} 
                                             alt={activity.name}
@@ -292,9 +369,25 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
                                             {activity.category ? activity.category.name : 'Event'}
                                         </div>
+                                        {/* Mobile Title Overlay */}
+                                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
+                                            <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
+                                                {activity.name}
+                                            </h3>
+                                            <div className="flex items-center justify-between text-white/90 text-xs">
+                                                <span>{activity.date ? format(new Date(activity.date), 'd MMM yyyy') : '-'}</span>
+                                                <span className="font-bold">
+                                                    {activity.price > 0 ? (
+                                                        activity.show_price !== false ? (
+                                                            `Rp ${Number(activity.price).toLocaleString('id-ID')}`
+                                                        ) : ''
+                                                    ) : 'GRATIS'}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                     
-                                    <div className="p-6 flex-grow flex flex-col">
+                                    <div className="p-6 flex-grow hidden md:flex flex-col">
                                         <div className="flex items-center text-xs text-gray-500 mb-3 gap-3">
                                             <span className="flex items-center gap-1">
                                                 <i className="far fa-calendar-alt text-primary"></i>
@@ -415,7 +508,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                             </div>
                                         )}
                                         <Link href={getActivityLink(activity)} className="flex flex-col h-full">
-                                        <div className="relative h-48 overflow-hidden bg-gray-200">
+                                        <div className="relative h-64 md:h-48 overflow-hidden bg-gray-200">
                                             <img 
                                                 src={getImageUrl(activity)} 
                                                 alt={activity.name}
@@ -425,9 +518,25 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                             <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
                                                 {activity.category ? activity.category.name : 'Event'}
                                             </div>
+                                            {/* Mobile Title Overlay */}
+                                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
+                                                <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
+                                                    {activity.name}
+                                                </h3>
+                                                <div className="flex items-center justify-between text-white/90 text-xs">
+                                                    <span>{activity.date ? format(new Date(activity.date), 'd MMM yyyy') : '-'}</span>
+                                                    <span className="font-bold">
+                                                        {activity.price > 0 ? (
+                                                            activity.show_price !== false ? (
+                                                                `Rp ${Number(activity.price).toLocaleString('id-ID')}`
+                                                            ) : ''
+                                                        ) : 'GRATIS'}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                         
-                                        <div className="p-6 flex-grow flex flex-col">
+                                        <div className="p-6 flex-grow hidden md:flex flex-col">
                                             <div className="flex items-center text-xs text-gray-500 mb-3 gap-3">
                                                 <span className="flex items-center gap-1">
                                                     <i className="far fa-calendar-alt text-primary"></i>

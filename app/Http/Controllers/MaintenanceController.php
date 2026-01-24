@@ -185,6 +185,105 @@ class MaintenanceController extends Controller
         ], 404);
     }
 
+    /**
+     * Update Application from GitHub
+     */
+    public function updateApp()
+    {
+        try {
+            $basePath = base_path();
+            
+            // 1. Git Pull
+            $gitCommand = "cd {$basePath} && git pull origin main 2>&1";
+            $gitOutput = [];
+            $gitReturn = 0;
+            exec($gitCommand, $gitOutput, $gitReturn);
+            
+            $output = "Git Pull Output:\n" . implode("\n", $gitOutput) . "\n\n";
+
+            if ($gitReturn !== 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal melakukan git pull.',
+                    'output' => $output
+                ], 500);
+            }
+
+            // 2. Migrate
+            $migrateCommand = "cd {$basePath} && php artisan migrate --force 2>&1";
+            $migrateOutput = [];
+            $migrateReturn = 0;
+            exec($migrateCommand, $migrateOutput, $migrateReturn);
+            
+            $output .= "Migrate Output:\n" . implode("\n", $migrateOutput) . "\n\n";
+            
+            // 3. NPM Build (Optional - might timeout)
+            // $npmCommand = "cd {$basePath} && npm run build 2>&1";
+            // exec($npmCommand, $npmOutput, $npmReturn);
+            // $output .= "NPM Build Output:\n" . implode("\n", $npmOutput);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Aplikasi berhasil diupdate (Git Pull & Migrate).',
+                'output' => $output
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Run NPM Build
+     */
+    public function npmRunBuild()
+    {
+        try {
+            // Increase time limit for build process
+            set_time_limit(300); // 5 minutes
+
+            $basePath = base_path();
+            
+            // Check if npm is available
+            $npmVersion = shell_exec('npm -v');
+            if (empty($npmVersion)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'NPM tidak ditemukan di server.',
+                ], 500);
+            }
+
+            $command = "cd {$basePath} && npm run build 2>&1";
+            $output = [];
+            $returnVar = 0;
+            
+            exec($command, $output, $returnVar);
+            
+            $outputString = implode("\n", $output);
+
+            if ($returnVar !== 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menjalankan npm run build.',
+                    'output' => $outputString
+                ], 500);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Build berhasil selesai.',
+                'output' => $outputString
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     private function handleApkUpload($file)
     {
         $apkDir = public_path('assets/apk');
@@ -640,32 +739,8 @@ class MaintenanceController extends Controller
         }
     }
 
-    public function npmRunBuild()
-    {
-        try {
-            $npm = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' ? 'npm.cmd' : 'npm';
-            
-            $process = new \Symfony\Component\Process\Process([$npm, 'run', 'build']);
-            $process->setWorkingDirectory(base_path());
-            $process->setTimeout(600); // 10 minutes
-            $process->run();
+    // Duplicate npmRunBuild removed
 
-            if (!$process->isSuccessful()) {
-                 throw new \Exception($process->getErrorOutput());
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'NPM Build berhasil',
-                'output' => $process->getOutput(),
-            ]);
-        } catch (\Throwable $e) {
-             return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-    }
 
     private function runArtisan(string $command, array $params = [])
     {

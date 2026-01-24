@@ -177,6 +177,7 @@ class MigrateLegacyData extends Command
         foreach (DB::connection('temp_migration')->table($sourceTable)->cursor() as $row) {
             $data = [];
             foreach ($columns as $col) $data[$col] = $row->$col;
+            $this->cleanData($data);
 
             $oldId = $row->id;
             $email = $row->email;
@@ -253,6 +254,7 @@ class MigrateLegacyData extends Command
 
             // Remap User IDs
             $this->remapRow($data);
+            $this->cleanData($data);
 
             // Insert or Update
             if (isset($data['id'])) {
@@ -296,5 +298,13 @@ class MigrateLegacyData extends Command
             $id = strtoupper(Str::random(6));
         } while (DB::table($table)->where('id', $id)->exists());
         return $id;
+    }
+
+    protected function cleanData(&$data) {
+        foreach ($data as $key => $value) {
+            if ($value === '0000-00-00 00:00:00' || $value === '0000-00-00') {
+                $data[$key] = null;
+            }
+        }
     }
 }

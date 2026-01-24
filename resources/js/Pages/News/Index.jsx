@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
-import PageHero from '@/Components/PageHero';
+import MobileLikeHero from '@/Components/MobileLikeHero';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
@@ -140,7 +140,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
             <div className="relative" style={{fontFamily: "'Inter','Poppins','Montserrat',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'"}}>
                 
                 {/* Hero Section */}
-                <PageHero 
+                <MobileLikeHero 
                     title="Berita & Artikel" 
                     description="Informasi terbaru seputar kegiatan dan event terkini untuk Anda."
                 >
@@ -159,7 +159,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                             </button>
                         </form>
                     </Reveal>
-                </PageHero>
+                </MobileLikeHero>
 
                 {/* Stats Section */}
                 <section className="py-10 bg-white relative z-10 -mt-8 mx-4 sm:mx-8 rounded-3xl shadow-xl border border-gray-100 max-w-5xl lg:mx-auto">
@@ -205,7 +205,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                 {featuredNews.map((news, index) => (
                                     <div key={news.id} className={`group bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 ${index === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}>
-                                        <div className={`relative ${index === 0 ? 'h-64 md:h-96' : 'h-48'}`}>
+                                        <div className={`relative ${index === 0 ? 'h-64 md:h-96' : 'h-64 md:h-48'}`}>
                                             <img 
                                                 src={getImageUrl(news.image)} 
                                                 alt={news.title}
@@ -214,8 +214,18 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                             <div className="absolute top-0 right-0 bg-secondary text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
                                                 {news.category?.name || 'Umum'}
                                             </div>
+                                            {/* Mobile Title Overlay */}
+                                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
+                                                <h3 className={`font-bold text-white mb-1 ${index === 0 ? 'text-xl' : 'text-lg'} line-clamp-2`}>
+                                                    {news.title}
+                                                </h3>
+                                                <div className="text-white/80 text-xs flex items-center">
+                                                    <i className="far fa-calendar-alt mr-2"></i>
+                                                    {formatDate(news.published_at || news.created_at)}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="p-6">
+                                        <div className="p-6 hidden md:block">
                                             <div className="flex items-center text-sm text-gray-500 mb-2">
                                                 <i className="far fa-calendar-alt mr-2"></i>
                                                 {formatDate(news.published_at || news.created_at)}
@@ -277,19 +287,29 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                 </button>
                                             </div>
                                         )}
-                                        <div className="relative h-48">
+                                        <div className="relative h-64 md:h-48">
                                             <img 
                                                 src={getImageUrl(news.image)} 
                                                 alt={news.title}
                                                 className="w-full h-full object-cover"
                                             />
-                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                                                <span className="text-white text-xs bg-primary px-2 py-1 rounded">
+                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4">
+                                                <span className="text-white text-xs bg-primary px-2 py-1 rounded inline-block mb-2 md:mb-0">
                                                     {news.category?.name || 'Umum'}
                                                 </span>
+                                                {/* Mobile Title Overlay */}
+                                                <div className="md:hidden">
+                                                    <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
+                                                        {news.title}
+                                                    </h3>
+                                                    <div className="text-white/80 text-xs flex items-center">
+                                                        <i className="far fa-clock mr-1"></i>
+                                                        {formatDate(news.published_at || news.created_at)}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="p-5 flex-1 flex flex-col">
+                                        <div className="p-5 flex-1 hidden md:flex flex-col">
                                             <div className="text-xs text-gray-500 mb-2 flex items-center">
                                                 <i className="far fa-clock mr-1"></i>
                                                 {formatDate(news.published_at || news.created_at)}

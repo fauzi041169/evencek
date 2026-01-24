@@ -4,7 +4,10 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
     server: {
-        host: '127.0.0.1',
+        host: '0.0.0.0',
+        hmr: {
+            host: '10.10.115.108',
+        },
     },
     plugins: [
         laravel({
