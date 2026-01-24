@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import Modal from '@/Components/Modal';
 
 export default function Maintenance({ setting, apkList = [] }) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -11,6 +12,12 @@ export default function Maintenance({ setting, apkList = [] }) {
     const [logLevel, setLogLevel] = useState('');
     const [logLines, setLogLines] = useState(200);
     const [artisanOutput, setArtisanOutput] = useState('');
+
+    // Update App States
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [updateStatus, setUpdateStatus] = useState('idle'); // idle, loading, success, error
+    const [updateMessage, setUpdateMessage] = useState('');
+    const [updateOutput, setUpdateOutput] = useState('');
 
     const { data, setData, post, processing } = useForm({
         maintenance_message: setting?.maintenance_message || '',
@@ -161,6 +168,37 @@ export default function Maintenance({ setting, apkList = [] }) {
             showAlert('success', res.message || 'Log dikosongkan');
         } catch (err) {
             showAlert('error', err.message);
+        }
+    };
+
+    const handleUpdateApp = async () => {
+        if (!window.confirm('Apakah Anda yakin ingin melakukan update aplikasi? Pastikan tidak ada perubahan lokal yang belum tersimpan.')) return;
+
+        setShowUpdateModal(true);
+        setUpdateStatus('loading');
+        setUpdateMessage('Sedang melakukan update aplikasi...');
+        setUpdateOutput('');
+
+        try {
+            const res = await requestJson(route('maintenance.update-app'), { method: 'POST' });
+            setUpdateStatus('success');
+            setUpdateMessage(res.message || 'Aplikasi berhasil diupdate.');
+            setUpdateOutput(res.output || '');
+        } catch (err) {
+            setUpdateStatus('error');
+            setUpdateMessage(err.message || 'Gagal melakukan update.');
+            // If the error object has an output field (custom error from backend)
+            // But requestJson throws an Error with just the message usually. 
+            // We might want to adjust requestJson to return full error object or just display message.
+            // For now, let's stick to message.
+        }
+    };
+
+    const closeUpdateModal = () => {
+        if (updateStatus === 'loading') return;
+        setShowUpdateModal(false);
+        if (updateStatus === 'success') {
+            window.location.reload();
         }
     };
 
@@ -345,6 +383,71 @@ export default function Maintenance({ setting, apkList = [] }) {
                     </div>
                 </div>
             </div>
+
+            {/* Update App Modal */}
+            <Modal show={showUpdateModal} onClose={closeUpdateModal} maxWidth="md">
+                <div className="p-6 text-center">
+                    {updateStatus === 'loading' && (
+                        <div className="flex flex-col items-center justify-center py-8">
+                            <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Sedang Mengupdate Aplikasi...</h3>
+                            <p className="text-gray-500 text-sm">Mohon tunggu, proses ini mungkin memakan waktu beberapa saat.</p>
+                            <div className="mt-4 px-4 py-2 bg-gray-50 rounded text-xs text-gray-400 font-mono">
+                                git pull origin main && php artisan migrate
+                            </div>
+                        </div>
+                    )}
+
+                    {updateStatus === 'success' && (
+                        <div className="flex flex-col items-center justify-center py-4">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Update Berhasil!</h3>
+                            <p className="text-gray-600 mb-6">Silahkan akses aplikasi baru Anda.</p>
+                            
+                            {updateOutput && (
+                                <details className="w-full text-left mb-6 border rounded-lg overflow-hidden">
+                                    <summary className="px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 cursor-pointer hover:bg-gray-100">
+                                        Lihat Log Detail
+                                    </summary>
+                                    <pre className="p-4 bg-gray-900 text-gray-100 text-xs overflow-auto max-h-48 whitespace-pre-wrap font-mono">
+                                        {updateOutput}
+                                    </pre>
+                                </details>
+                            )}
+
+                            <button
+                                onClick={closeUpdateModal}
+                                className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg shadow hover:bg-indigo-700 transition-colors w-full"
+                            >
+                                Akses Aplikasi Baru
+                            </button>
+                        </div>
+                    )}
+
+                    {updateStatus === 'error' && (
+                        <div className="flex flex-col items-center justify-center py-4">
+                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Update Gagal</h3>
+                            <p className="text-red-600 mb-6">{updateMessage}</p>
+
+                            <button
+                                onClick={closeUpdateModal}
+                                className="px-6 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </Modal>
         </MainLayout>
     );
 }
