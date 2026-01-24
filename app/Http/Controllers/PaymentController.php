@@ -1668,11 +1668,31 @@ class PaymentController extends Controller
         $validated = $request->validate([
             'notes' => 'nullable|string|max:255',
             'amount' => 'nullable|numeric|min:0',
+            'proof_file' => 'nullable|image|max:10240', // 10MB max
         ]);
 
         try {
             DB::beginTransaction();
 
+            $updateData = [];
+
+            // Handle Proof File
+            if ($request->hasFile('proof_file')) {
+                $file = $request->file('proof_file');
+                $filename = 'proof_' . time() . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('payment-proofs', $filename, 'public');
+                
+                // Delete old file if exists and not imported
+                if ($payment->proof_of_payment && $payment->proof_of_payment !== 'imported') {
+                    if (Storage::disk('public')->exists($payment->proof_of_payment)) {
+                        Storage::disk('public')->delete($payment->proof_of_payment);
+                    }
+                }
+
+                $updateData['proof_of_payment'] = $path;
+            }
+
+            // Handle Notes
             $newNotes = $payment->notes;
             if (array_key_exists('notes', $validated)) {
                 $plainNote = $validated['notes'] === null ? '' : trim($validated['notes']);
@@ -1690,17 +1710,17 @@ class PaymentController extends Controller
                 } else {
                     $newNotes = $plainNote;
                 }
+                $updateData['notes'] = $newNotes;
             }
 
-            $updateData = [
-                'notes' => $newNotes,
-            ];
-
+            // Handle Amount
             if (isset($validated['amount'])) {
                 $updateData['amount'] = $validated['amount'];
             }
 
-            $payment->update($updateData);
+            if (!empty($updateData)) {
+                $payment->update($updateData);
+            }
             
             DB::commit();
 
@@ -1708,7 +1728,8 @@ class PaymentController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Data pembayaran berhasil disimpan',
-                    'payment' => $payment->fresh()
+                    'payment' => $payment->fresh(),
+                    'proof_url' => isset($updateData['proof_of_payment']) ? asset('storage/' . $updateData['proof_of_payment']) : null
                 ]);
             }
 

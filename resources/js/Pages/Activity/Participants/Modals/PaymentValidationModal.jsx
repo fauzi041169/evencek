@@ -1,11 +1,12 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { CheckCircle, XCircle, AlertCircle, FileText, Image, DollarSign, Calendar, User, CreditCard, Users, Upload, Save } from 'lucide-react';
 
 export default function PaymentValidationModal({ show, onClose, payment, participant, activity }) {
+    const { props } = usePage();
     const [processing, setProcessing] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [notes, setNotes] = useState('');
@@ -75,12 +76,18 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
             notes: notes,
             amount: amount,
         }, {
-            onSuccess: () => {
+            onSuccess: (page) => {
                 setProcessing(false);
-                onClose();
+                if (page.props.flash?.error) {
+                    alert(page.props.flash.error);
+                } else {
+                    onClose();
+                }
             },
-            onError: () => {
+            onError: (errors) => {
                 setProcessing(false);
+                console.error('Save failed:', errors);
+                alert('Gagal menyimpan: ' + Object.values(errors).join(', '));
             }
         });
     };
@@ -105,15 +112,21 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
             notes: finalNotes,
             amount: amount,
         }, {
-            onSuccess: () => {
+            onSuccess: (page) => {
                 setProcessing(false);
-                setNotes('');
-                setRejectReason('');
-                setShowRejectInput(false);
-                onClose();
+                if (page.props.flash?.error) {
+                    alert(page.props.flash.error);
+                } else {
+                    setNotes('');
+                    setRejectReason('');
+                    setShowRejectInput(false);
+                    onClose();
+                }
             },
-            onError: () => {
+            onError: (errors) => {
                 setProcessing(false);
+                console.error('Verification failed:', errors);
+                alert('Gagal memproses: ' + Object.values(errors).join(', '));
             }
         });
     };
@@ -204,7 +217,7 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                                                         <input
                                                             type="number"
                                                             value={amount}
-                                                            onChange={(e) => setAmount(e.target.value)}
+                                                            onChange={(e) => { setAmount(e.target.value); setIsDirty(true); }}
                                                             className="w-full pl-10 pr-4 py-2 rounded-lg border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 font-bold text-lg text-slate-900"
                                                         />
                                                     </div>
@@ -366,15 +379,21 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                                                         </button>
                                                     </div>
                                                 ) : (
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                        <button
-                                                            onClick={handleSave}
-                                                            disabled={processing}
-                                                            className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-indigo-100 text-primary rounded-xl hover:bg-indigo-50 hover:border-indigo-200 font-bold transition-colors disabled:opacity-50"
-                                                        >
-                                                            <Save className="w-5 h-5" />
-                                                            Simpan
-                                                        </button>
+                                                    <div className={`grid grid-cols-1 ${isDirty ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3`}>
+                                                        {isDirty && (
+                                                            <button
+                                                                onClick={handleSave}
+                                                                disabled={processing}
+                                                                className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-indigo-100 text-primary rounded-xl hover:bg-indigo-50 hover:border-indigo-200 font-bold transition-colors disabled:opacity-50"
+                                                            >
+                                                                {processing ? (
+                                                                    <span className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                                                                ) : (
+                                                                    <Save className="w-5 h-5" />
+                                                                )}
+                                                                Simpan
+                                                            </button>
+                                                        )}
                                                         <button
                                                             onClick={() => handleVerify('rejected')}
                                                             disabled={processing || payment.status === 'rejected'}

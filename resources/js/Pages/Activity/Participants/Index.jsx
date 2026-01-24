@@ -145,9 +145,9 @@ export default function Index({
         if (selectedPaymentParticipant && participants?.data) {
             const updatedParticipant = participants.data.find(p => p.id === selectedPaymentParticipant.participant.id);
             if (updatedParticipant) {
-                const payments = updatedParticipant.user?.payments || [];
-                // Find the same payment by ID
-                const updatedPayment = payments.find(p => p.id === selectedPaymentParticipant.payment.id);
+                // Try to get payment from direct relationship first, then fallback to user payments
+                const updatedPayment = updatedParticipant.payment || 
+                    (updatedParticipant.user?.payments || []).find(p => p.id === selectedPaymentParticipant.payment.id);
 
                 if (updatedPayment) {
                     // Only update if there are actual changes to avoid loops (though setting same object structure is fine)

@@ -216,6 +216,18 @@ class ProfileController extends Controller
             return $value !== null;
         });
 
+        // Explicitly handle region fields if they are null in the request (clearing the selection)
+        // This overrides the array_filter above for these specific fields
+        if ($request->has('province_id') && is_null($request->province_id)) {
+            $profileData['province_id'] = null;
+        }
+        if ($request->has('regency_id') && is_null($request->regency_id)) {
+            $profileData['regency_id'] = null;
+        }
+        if ($request->has('district_id') && is_null($request->district_id)) {
+            $profileData['district_id'] = null;
+        }
+
         // Handle Custom Fields (Additional Data)
         $standardFields = [
             'name', 'email', 'password', 'password_confirmation',

@@ -7,6 +7,13 @@ import Cropper from 'react-easy-crop';
 export default function ProfileShow({ auth, user, provinces = [] }) {
     const { props } = usePage();
     const flash = props.flash || {};
+    const missingFields = Array.isArray(flash.missing_profile_fields) ? flash.missing_profile_fields : [];
+
+    const isFieldRequired = (key) => {
+        if (['name', 'email'].includes(key)) return true;
+        return missingFields.includes(key);
+    };
+
     const isOwnProfile = auth.user.id === user.id;
     const isSuperAdmin = auth.user.role === 'superadmin' || (auth.user.roles && auth.user.roles.some(r => r.name === 'superadmin'));
     const canEdit = isOwnProfile || isSuperAdmin;
@@ -449,75 +456,93 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Lengkap</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Nama Lengkap {isFieldRequired('name') && <span className="text-red-500">*</span>}
+                                    </label>
                                     <input
                                         type="text"
                                         value={data.name}
                                         onChange={(e) => setData('name', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('name') && !data.name ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                         placeholder="Nama Lengkap Anda"
                                         disabled={!canEdit}
+                                        required={isFieldRequired('name')}
                                     />
                                     {errors.name && <div className="text-red-500 text-xs mt-1">{errors.name}</div>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Email {isFieldRequired('email') && <span className="text-red-500">*</span>}
+                                    </label>
                                     <input
                                         type="email"
                                         value={data.email}
                                         onChange={(e) => setData('email', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('email') && !data.email ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                         placeholder="email@example.com"
                                         disabled={!canEdit}
+                                        required={isFieldRequired('email')}
                                     />
                                     {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">No. HP / WhatsApp</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        No. HP / WhatsApp {isFieldRequired('no_hp') && <span className="text-red-500">*</span>}
+                                    </label>
                                     <input
                                         type="text"
                                         value={data.no_hp}
                                         onChange={(e) => setData('no_hp', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('no_hp') && !data.no_hp ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                         placeholder="08xxxxxxxxxx"
                                         disabled={!canEdit}
+                                        required={isFieldRequired('no_hp')}
                                     />
                                     {errors.no_hp && <div className="text-red-500 text-xs mt-1">{errors.no_hp}</div>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Pekerjaan</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Pekerjaan {isFieldRequired('pekerjaan') && <span className="text-red-500">*</span>}
+                                    </label>
                                     <input
                                         type="text"
                                         value={data.pekerjaan}
                                         onChange={(e) => setData('pekerjaan', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('pekerjaan') && !data.pekerjaan ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                         placeholder="Pekerjaan Anda"
                                         disabled={!canEdit}
+                                        required={isFieldRequired('pekerjaan')}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Jabatan</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Jabatan {isFieldRequired('jabatan') && <span className="text-red-500">*</span>}
+                                    </label>
                                     <input
                                         type="text"
                                         value={data.jabatan}
                                         onChange={(e) => setData('jabatan', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('jabatan') && !data.jabatan ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                         placeholder="Jabatan (Opsional)"
                                         disabled={!canEdit}
+                                        required={isFieldRequired('jabatan')}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Jenis Kelamin</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Jenis Kelamin {isFieldRequired('jenis_kelamin') && <span className="text-red-500">*</span>}
+                                    </label>
                                     <select
                                         value={data.jenis_kelamin}
                                         onChange={(e) => setData('jenis_kelamin', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('jenis_kelamin') && !data.jenis_kelamin ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                         disabled={!canEdit}
+                                        required={isFieldRequired('jenis_kelamin')}
                                     >
                                         <option value="L">Laki-laki</option>
                                         <option value="P">Perempuan</option>
@@ -525,40 +550,49 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Tanggal Lahir</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Tanggal Lahir {isFieldRequired('birth_date') && <span className="text-red-500">*</span>}
+                                    </label>
                                     <input
                                         type="date"
                                         value={data.tanggal_lahir}
                                         onChange={(e) => setData('tanggal_lahir', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('birth_date') && !data.tanggal_lahir ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                         disabled={!canEdit}
+                                        required={isFieldRequired('birth_date')}
                                     />
                                 </div>
 
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Alamat Lengkap</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Alamat Lengkap {isFieldRequired('alamat') && <span className="text-red-500">*</span>}
+                                    </label>
                                     <textarea
                                         value={data.alamat}
                                         onChange={(e) => setData('alamat', e.target.value)}
                                         rows="3"
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('alamat') && !data.alamat ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                         placeholder="Alamat lengkap domisili saat ini..."
                                         disabled={!canEdit}
+                                        required={isFieldRequired('alamat')}
                                     ></textarea>
                                 </div>
 
                                 {/* Region Selects */}
                                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Provinsi</label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Provinsi {isFieldRequired('province_id') && <span className="text-red-500">*</span>}
+                                        </label>
                                         <select
                                             value={data.province_id}
                                             onChange={(e) => {
                                                 setData(d => ({ ...d, province_id: e.target.value, regency_id: '', district_id: '' }));
                                                 fetchRegencies(e.target.value);
                                             }}
-                                            className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('province_id') && !data.province_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             disabled={!canEdit}
+                                            required={isFieldRequired('province_id')}
                                         >
                                             <option value="">Pilih Provinsi</option>
                                             {provinces.map(p => (
@@ -567,15 +601,18 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Kabupaten/Kota</label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Kabupaten/Kota {isFieldRequired('regency_id') && <span className="text-red-500">*</span>}
+                                        </label>
                                         <select
                                             value={data.regency_id}
                                             onChange={(e) => {
                                                 setData(d => ({ ...d, regency_id: e.target.value, district_id: '' }));
                                                 fetchDistricts(e.target.value);
                                             }}
-                                            className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('regency_id') && !data.regency_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             disabled={!canEdit || loadingRegencies || !data.province_id}
+                                            required={isFieldRequired('regency_id')}
                                         >
                                             <option value="">{loadingRegencies ? 'Memuat...' : 'Pilih Kota/Kab'}</option>
                                             {regencies.map(r => (
@@ -584,12 +621,15 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Kecamatan</label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Kecamatan {isFieldRequired('district_id') && <span className="text-red-500">*</span>}
+                                        </label>
                                         <select
                                             value={data.district_id}
                                             onChange={(e) => setData('district_id', e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('district_id') && !data.district_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             disabled={!canEdit || loadingDistricts || !data.regency_id}
+                                            required={isFieldRequired('district_id')}
                                         >
                                             <option value="">{loadingDistricts ? 'Memuat...' : 'Pilih Kecamatan'}</option>
                                             {districts.map(d => (

@@ -528,6 +528,9 @@ class ActivityPreparationController extends Controller
             try {
                 $query->with([
                     'user.profile', 
+                    'user.profile.province',
+                    'user.profile.regency',
+                    'user.profile.district',
                     'batch', 
                     'participantGroup', 
                     'creator', 
