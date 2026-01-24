@@ -190,45 +190,56 @@ class MaintenanceController extends Controller
      */
     public function updateApp()
     {
+        \Log::info('Update App triggered.');
         try {
             set_time_limit(300); // 5 minutes
             $basePath = base_path();
+
+            // Check if git is available
+            $gitVersion = shell_exec('git --version');
+            if (!$gitVersion) {
+                throw new \Exception('Git executable not found or not accessible.');
+            }
             
             // 1. Git Pull
-            $gitCommand = "cd {$basePath} && git pull origin main 2>&1";
+            $gitCommand = "cd \"{$basePath}\" && git pull origin main 2>&1";
             $gitOutput = [];
             $gitReturn = 0;
+            
+            \Log::info("Executing git command: $gitCommand");
             exec($gitCommand, $gitOutput, $gitReturn);
             
             $output = "Git Pull Output:\n" . implode("\n", $gitOutput) . "\n\n";
+            \Log::info("Git Pull Result (Code $gitReturn): " . implode("\n", $gitOutput));
 
             if ($gitReturn !== 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal melakukan git pull.',
+                    'message' => 'Gagal melakukan git pull. Code: ' . $gitReturn,
                     'output' => $output
                 ], 500);
             }
 
             // 2. Migrate
-            $migrateCommand = "cd {$basePath} && php artisan migrate --force 2>&1";
+            $migrateCommand = "cd \"{$basePath}\" && php artisan migrate --force 2>&1";
             $migrateOutput = [];
             $migrateReturn = 0;
+            
+            \Log::info("Executing migrate command: $migrateCommand");
             exec($migrateCommand, $migrateOutput, $migrateReturn);
             
             $output .= "Migrate Output:\n" . implode("\n", $migrateOutput) . "\n\n";
+            \Log::info("Migrate Result (Code $migrateReturn): " . implode("\n", $migrateOutput));
             
-            // 3. NPM Build (Optional - might timeout)
-            // $npmCommand = "cd {$basePath} && npm run build 2>&1";
-            // exec($npmCommand, $npmOutput, $npmReturn);
-            // $output .= "NPM Build Output:\n" . implode("\n", $npmOutput);
-
             return response()->json([
                 'success' => true,
                 'message' => 'Aplikasi berhasil diupdate (Git Pull & Migrate).',
                 'output' => $output
             ]);
         } catch (\Exception $e) {
+            \Log::error("Update App Exception: " . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage(),
