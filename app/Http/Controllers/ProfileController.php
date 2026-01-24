@@ -255,32 +255,17 @@ class ProfileController extends Controller
         // Handle file upload (prioritas lebih tinggi dari base64)
         if ($request->hasFile('foto_file')) {
             $foto = $request->file('foto_file');
-            $fotoName = time().'.'.$foto->getClientOriginalExtension();
+            // Simpan menggunakan Storage facade
+            $path = $foto->store('profile-photos', 'public');
 
-            // Create directory if it doesn't exist
-            $uploadPath = public_path('assets/images/profilefoto');
-            if (! File::isDirectory($uploadPath)) {
-                File::makeDirectory($uploadPath, 0777, true, true);
-            }
-
-            // Hapus foto lama jika ada sebelum upload yang baru
-            if ($profile && $profile->foto && $profile->foto !== 'default-profile.png') {
-                $oldPath = public_path('assets/images/profilefoto/'.$profile->foto);
-                if (File::exists($oldPath)) {
-                    File::delete($oldPath);
-                }
-            }
-
-            // Move the uploaded file
-            $foto->move($uploadPath, $fotoName);
-
-            // Save the filename to database
+            // Save the filename/path to database
             if (! $profile) {
                 // Buat profile baru jika belum ada
                 $profile = new Profile;
                 $profile->user_id = $user->id;
             }
-            $profile->foto = $fotoName;
+            // Model event will handle deleting the old file
+            $profile->foto = $path;
         } elseif ($request->filled('foto_data') && $request->foto_data != 'delete') {
             // Handle base64 image from camera (hanya jika tidak ada file upload)
             $image_data = $request->foto_data;
@@ -298,52 +283,36 @@ class ProfileController extends Controller
                     ->withInput();
             }
 
-            $fotoName = time().'.jpg';
-            $uploadPath = public_path('assets/images/profilefoto');
+            $fotoName = 'profile-photos/'.time().'_'.uniqid().'.jpg';
+            
+            \Illuminate\Support\Facades\Storage::disk('public')->put($fotoName, $image_data);
 
-            if (! File::isDirectory($uploadPath)) {
-                File::makeDirectory($uploadPath, 0777, true, true);
-            }
-
-            file_put_contents($uploadPath.'/'.$fotoName, $image_data);
             if (! $profile) {
                 // Buat profile baru jika belum ada
                 $profile = new Profile;
                 $profile->user_id = $user->id;
             }
+            // Model event will handle deleting the old file
             $profile->foto = $fotoName;
         }
 
         // Handle cover image upload
         if ($request->hasFile('cover_file')) {
             $cover = $request->file('cover_file');
-            $coverName = time().'_cover.'.$cover->getClientOriginalExtension();
-
-            // Create directory if it doesn't exist
-            $uploadPath = public_path('assets/images/profilecover');
-            if (! File::isDirectory($uploadPath)) {
-                File::makeDirectory($uploadPath, 0777, true, true);
-            }
-
-            // Move the uploaded file
-            $cover->move($uploadPath, $coverName);
+            // Simpan menggunakan Storage facade
+            $path = $cover->store('profile-covers', 'public');
 
             if (! $profile) {
                 $profile = new Profile;
                 $profile->user_id = $user->id;
             }
-            $profile->cover_image = $coverName;
+            // Model event will handle deleting the old file
+            $profile->cover_image = $path;
         }
 
         // Handle photo deletion
         if ($request->foto_data === 'delete') {
-            if ($profile && $profile->foto) {
-                $oldPhotoPath = public_path('assets/images/profilefoto/'.$profile->foto);
-                if (File::exists($oldPhotoPath)) {
-                    File::delete($oldPhotoPath);
-                }
-            }
-
+            // Model event will handle deleting the file when we set it to null and save
             if (! $profile) {
                 // Buat profile baru jika belum ada
                 $profile = new Profile;
@@ -396,28 +365,17 @@ class ProfileController extends Controller
         $profile = $user->profile;
 
         $foto = $request->file('foto_file');
-        $fotoName = 'profile_'.time().'_'.uniqid().'.'.$foto->getClientOriginalExtension();
-
-        $uploadPath = public_path('assets/images/profilefoto');
-        if (! File::isDirectory($uploadPath)) {
-            File::makeDirectory($uploadPath, 0777, true, true);
-        }
-
-        $foto->move($uploadPath, $fotoName);
+        
+        // Simpan menggunakan Storage facade
+        $path = $foto->store('profile-photos', 'public');
 
         if (! $profile) {
             $profile = new \App\Models\Profile;
             $profile->user_id = $user->id;
         }
 
-        if ($profile->foto && $profile->foto !== 'default-profile.png') {
-            $oldPath = public_path('assets/images/profilefoto/'.$profile->foto);
-            if (File::exists($oldPath)) {
-                File::delete($oldPath);
-            }
-        }
-
-        $profile->foto = $fotoName;
+        // Model event will handle old file deletion (updating event)
+        $profile->foto = $path;
         $profile->save();
 
         return response()->json([

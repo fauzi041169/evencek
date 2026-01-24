@@ -206,42 +206,26 @@ class SettingController extends Controller
             // Handle favicon upload
             if ($request->hasFile('favicon')) {
                 $favicon = $request->file('favicon');
-                $extension = strtolower($favicon->getClientOriginalExtension());
-
-                // Use 'favicon.ico' if extension is ico, otherwise use timestamp
-                if ($extension === 'ico') {
-                    $faviconName = 'favicon.ico';
-                } else {
-                    $faviconName = 'favicon_'.time().'.'.$extension;
-                }
-
-                $faviconPath = 'assets/images/'.$faviconName;
-
-                // Create directory if not exists
-                $faviconDir = public_path('assets/images');
-                if (! File::exists($faviconDir)) {
-                    File::makeDirectory($faviconDir, 0755, true);
-                }
-
-                // Move uploaded file
-                $favicon->move($faviconDir, $faviconName);
+                $path = $favicon->store('settings', 'public');
+                $faviconPath = 'storage/' . $path;
 
                 // Delete old favicon if exists and different
                 $oldFavicon = Setting::get('app_favicon');
-                if ($oldFavicon && $oldFavicon !== $faviconPath && File::exists(public_path($oldFavicon))) {
-                    File::delete(public_path($oldFavicon));
+                if ($oldFavicon && $oldFavicon !== $faviconPath) {
+                    if (Str::startsWith($oldFavicon, 'storage/')) {
+                        $storagePath = Str::replaceFirst('storage/', '', $oldFavicon);
+                        if (Storage::disk('public')->exists($storagePath)) {
+                            Storage::disk('public')->delete($storagePath);
+                        }
+                    } elseif (File::exists(public_path($oldFavicon))) {
+                        File::delete(public_path($oldFavicon));
+                    }
                 }
 
                 Setting::set('app_favicon', $faviconPath, 'file', 'general', 'Favicon aplikasi');
             }
 
             // Handle hero background uploads (support 3 different images for home slider)
-            // Backward compatibility: if single 'hero_background' is provided, save it as the first image
-            $heroDir = public_path('assets/images/hero');
-            if (! File::exists($heroDir)) {
-                File::makeDirectory($heroDir, 0755, true);
-            }
-
             // Map expected fields
             $heroFields = [
                 'hero_background_1' => 'home_hero_background_1',
@@ -257,15 +241,20 @@ class SettingController extends Controller
             foreach ($heroFields as $inputName => $settingKey) {
                 if ($request->hasFile($inputName)) {
                     $hero = $request->file($inputName);
-                    $heroName = $settingKey.'_'.time().'.'.strtolower($hero->getClientOriginalExtension());
-                    $hero->move($heroDir, $heroName);
-
-                    $heroPath = 'assets/images/hero/'.$heroName;
+                    $path = $hero->store('settings/hero', 'public');
+                    $heroPath = 'storage/' . $path;
 
                     // Delete old file if exists and different
                     $oldHero = Setting::get($settingKey);
-                    if ($oldHero && $oldHero !== $heroPath && File::exists(public_path($oldHero))) {
-                        File::delete(public_path($oldHero));
+                    if ($oldHero && $oldHero !== $heroPath) {
+                        if (Str::startsWith($oldHero, 'storage/')) {
+                            $storagePath = Str::replaceFirst('storage/', '', $oldHero);
+                            if (Storage::disk('public')->exists($storagePath)) {
+                                Storage::disk('public')->delete($storagePath);
+                            }
+                        } elseif (File::exists(public_path($oldHero))) {
+                            File::delete(public_path($oldHero));
+                        }
                     }
 
                     Setting::set($settingKey, $heroPath, 'file', 'general', 'Background hero beranda '.substr($inputName, -1));

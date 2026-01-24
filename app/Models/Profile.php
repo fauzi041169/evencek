@@ -77,16 +77,28 @@ class Profile extends Model
         // Hapus foto lama saat update foto baru
         static::updating(function ($profile) {
             if ($profile->isDirty('foto') && $profile->getOriginal('foto')) {
-                $oldPhotoPath = public_path('assets/images/profilefoto/'.$profile->getOriginal('foto'));
-                if (file_exists($oldPhotoPath)) {
-                    unlink($oldPhotoPath);
+                $originalFoto = $profile->getOriginal('foto');
+                // Check storage first
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($originalFoto)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($originalFoto);
+                } else {
+                    // Fallback to legacy
+                    $oldPhotoPath = public_path('assets/images/profilefoto/'.$originalFoto);
+                    if (file_exists($oldPhotoPath)) {
+                        unlink($oldPhotoPath);
+                    }
                 }
             }
 
             if ($profile->isDirty('cover_image') && $profile->getOriginal('cover_image')) {
-                $oldCoverPath = public_path('assets/images/profilecover/'.$profile->getOriginal('cover_image'));
-                if (file_exists($oldCoverPath)) {
-                    unlink($oldCoverPath);
+                $originalCover = $profile->getOriginal('cover_image');
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($originalCover)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($originalCover);
+                } else {
+                    $oldCoverPath = public_path('assets/images/profilecover/'.$originalCover);
+                    if (file_exists($oldCoverPath)) {
+                        unlink($oldCoverPath);
+                    }
                 }
             }
         });
@@ -94,16 +106,24 @@ class Profile extends Model
         // Hapus foto saat profile dihapus
         static::deleting(function ($profile) {
             if ($profile->foto) {
-                $photoPath = public_path('assets/images/profilefoto/'.$profile->foto);
-                if (file_exists($photoPath)) {
-                    unlink($photoPath);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($profile->foto)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($profile->foto);
+                } else {
+                    $photoPath = public_path('assets/images/profilefoto/'.$profile->foto);
+                    if (file_exists($photoPath)) {
+                        unlink($photoPath);
+                    }
                 }
             }
 
             if ($profile->cover_image) {
-                $coverPath = public_path('assets/images/profilecover/'.$profile->cover_image);
-                if (file_exists($coverPath)) {
-                    unlink($coverPath);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($profile->cover_image)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($profile->cover_image);
+                } else {
+                    $coverPath = public_path('assets/images/profilecover/'.$profile->cover_image);
+                    if (file_exists($coverPath)) {
+                        unlink($coverPath);
+                    }
                 }
             }
         });

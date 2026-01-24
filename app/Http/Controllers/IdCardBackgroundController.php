@@ -56,14 +56,11 @@ class IdCardBackgroundController extends Controller
                 'message' => 'File upload tidak valid',
             ], 400);
         }
-        $filename = 'bg_'.time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-        $relativeDir = 'background/card/'.$activity->id;
-        $targetDir = public_path('assets/images/card/'.$relativeDir);
-        if (! is_dir($targetDir)) {
-            mkdir($targetDir, 0755, true);
-        }
-        $file->move($targetDir, $filename);
-        if (! file_exists($targetDir.'/'.$filename)) {
+        
+        // Use Storage facade
+        $path = $file->store('id-card-backgrounds/'.$activity->id, 'public');
+
+        if (! $path) {
             return response()->json([
                 'success' => false,
                 'message' => 'File gagal disimpan',
@@ -73,16 +70,16 @@ class IdCardBackgroundController extends Controller
         // Simpan ke database
         IdCardBackground::create([
             'activity_id' => $activity->id,
-            'filename' => $relativeDir.'/'.$filename,
+            'filename' => $path,
             'original_name' => basename($file->getClientOriginalName()),
         ]);
 
-        \Log::info('Upload sukses', ['filename' => $filename]);
+        \Log::info('Upload sukses', ['filename' => $path]);
 
         return response()->json([
             'success' => true,
-            'filename' => $relativeDir.'/'.$filename,
-            'url' => asset('assets/images/card/'.$relativeDir.'/'.$filename),
+            'filename' => $path,
+            'url' => \Illuminate\Support\Facades\Storage::url($path),
         ]);
     }
 
@@ -107,8 +104,7 @@ class IdCardBackgroundController extends Controller
         }
 
         $filename = ltrim($request->input('filename'), '/');
-        $path = public_path('assets/images/card/'.$filename);
-
+        
         $bgRecord = DB::table('id_card_backgrounds')->where('filename', $filename)->first();
         if (! $bgRecord) {
             return response()->json([
@@ -129,8 +125,14 @@ class IdCardBackgroundController extends Controller
         DB::table('id_card_backgrounds')->where('id', $bgRecord->id)->delete();
 
         // Delete File
-        if (file_exists($path)) {
-            unlink($path);
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($filename)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($filename);
+        } else {
+            // Legacy fallback
+            $path = public_path('assets/images/card/'.$filename);
+            if (file_exists($path)) {
+                unlink($path);
+            }
         }
 
         return response()->json([
@@ -163,11 +165,19 @@ class IdCardBackgroundController extends Controller
 
         $images = [];
         foreach ($items as $it) {
+            $url = '';
+            // Handle storage vs legacy path
+            if (\Illuminate\Support\Str::startsWith($it->filename, 'id-card-backgrounds/')) {
+                $url = \Illuminate\Support\Facades\Storage::url($it->filename);
+            } else {
+                $url = asset('assets/images/card/'.$it->filename);
+            }
+
             $images[] = [
                 'id' => $it->id,
                 'filename' => $it->filename,
                 'original_name' => $it->original_name,
-                'url' => asset('assets/images/card/'.$it->filename),
+                'url' => $url,
             ];
         }
 

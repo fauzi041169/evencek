@@ -105,14 +105,8 @@ class AttendanceController extends Controller
         ]);
 
         $file = $request->file('background');
-        $filename = 'bg_'.time().'_'.Str::lower(Str::random(8)).'.'.$file->getClientOriginalExtension();
-        $targetDir = public_path('assets/images/begron');
-        if (! is_dir($targetDir)) {
-            @mkdir($targetDir, 0775, true);
-        }
-        $file->move($targetDir, $filename);
-
-        $relativePath = 'assets/images/begron/'.$filename;
+        $path = $file->store('attendance-backgrounds', 'public');
+        $relativePath = 'storage/' . $path;
 
         $existingJson = Setting::get('attendance_scan_backgrounds');
         $list = [];
@@ -159,9 +153,16 @@ class AttendanceController extends Controller
         }));
 
         if (! in_array($path, $defaults)) {
-            $fullPath = public_path($path);
-            if (file_exists($fullPath)) {
-                @unlink($fullPath);
+            if (Str::startsWith($path, 'storage/')) {
+                $storagePath = Str::replaceFirst('storage/', '', $path);
+                if (Storage::disk('public')->exists($storagePath)) {
+                    Storage::disk('public')->delete($storagePath);
+                }
+            } else {
+                $fullPath = public_path($path);
+                if (file_exists($fullPath)) {
+                    @unlink($fullPath);
+                }
             }
         }
 

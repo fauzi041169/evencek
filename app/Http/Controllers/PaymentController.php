@@ -381,21 +381,29 @@ class PaymentController extends Controller
 
                             $proofPath = $existingPayment->proof_of_payment;
                             if ($proofPath) {
-                                $originalFullPath = \Illuminate\Support\Str::startsWith($proofPath, 'assets/')
-                                    ? public_path($proofPath)
-                                    : public_path('storage/'.ltrim($proofPath, '/'));
+                                $ext = pathinfo($proofPath, PATHINFO_EXTENSION);
+                                $uniqueName = 'payment_bulk_'.$activity->id.'_'.$uid.'_'.uniqid().'.'.$ext;
+                                $uniquePathRelative = 'payment-proofs/'.$uniqueName;
 
-                                if (\Illuminate\Support\Facades\File::exists($originalFullPath)) {
-                                    $ext = \Illuminate\Support\Facades\File::extension($originalFullPath);
-                                    $uniqueName = 'payment_bulk_'.$activity->id.'_'.$uid.'_'.uniqid().'.'.$ext;
-                                    $uniquePathRelative = 'payment-proofs/'.$uniqueName;
-                                    $uniqueFullPath = public_path('storage/'.$uniquePathRelative);
-
-                                    if (! \Illuminate\Support\Facades\File::exists(dirname($uniqueFullPath))) {
-                                        \Illuminate\Support\Facades\File::makeDirectory(dirname($uniqueFullPath), 0777, true);
+                                // Handle legacy assets/ path or standard storage path
+                                if (\Illuminate\Support\Str::startsWith($proofPath, 'assets/')) {
+                                    if (file_exists(public_path($proofPath))) {
+                                        Storage::disk('public')->put($uniquePathRelative, file_get_contents(public_path($proofPath)));
+                                    }
+                                } else {
+                                    // Standard storage path
+                                    $storagePath = ltrim($proofPath, '/');
+                                    if (\Illuminate\Support\Str::startsWith($storagePath, 'storage/')) {
+                                        $storagePath = substr($storagePath, 8);
                                     }
 
-                                    \Illuminate\Support\Facades\File::copy($originalFullPath, $uniqueFullPath);
+                                    if (Storage::disk('public')->exists($storagePath)) {
+                                        Storage::disk('public')->copy($storagePath, $uniquePathRelative);
+                                    } elseif (file_exists(public_path('storage/'.$storagePath))) {
+                                        // Fallback for file existing in public/storage but not accessible via Storage facade
+                                        Storage::disk('public')->put($uniquePathRelative, file_get_contents(public_path('storage/'.$storagePath)));
+                                    }
+                                }
 
                                     $userPaymentMatch = [
                                         'user_id' => $uid,
@@ -420,7 +428,6 @@ class PaymentController extends Controller
                                         ]
                                     );
                                 }
-                            }
                         } catch (\Throwable $e) {
                             Log::error("Failed to enroll or distribute bulk payment to user $uid: ".$e->getMessage(), [
                                 'user_id' => $uid,
@@ -966,15 +973,8 @@ class PaymentController extends Controller
                 $file = $request->file('payment_proof');
                 $filename = time().'_'.$file->getClientOriginalName();
 
-                // Store in the payment-proofs directory within the public storage
-                $uploadPath = public_path('storage/payment-proofs');
-                if (! file_exists($uploadPath)) {
-                    mkdir($uploadPath, 0777, true);
-                }
-
-                // Simpan file langsung ke direktori target
-                $file->move($uploadPath, $filename);
-                $path = 'payment-proofs/'.$filename;
+                // Store in the payment-proofs directory using Storage facade
+                $path = $file->storeAs('payment-proofs', $filename, 'public');
 
                 $bulk = session('import_bulk_payment') ?? session('import_bulk_payment_payload');
                 $amount = (int) $activity->price;

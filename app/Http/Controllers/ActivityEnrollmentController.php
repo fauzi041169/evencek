@@ -198,13 +198,9 @@ class ActivityEnrollmentController extends Controller
                 if ($request->hasFile('foto_file') || $request->hasFile('foto')) {
                     $file = $request->file('foto_file') ?? $request->file('foto');
                     if ($file && $file->isValid()) {
-                        $filename = time().'_'.$file->getClientOriginalName();
-                        $uploadPath = public_path('assets/images/profilefoto');
-                        if (! file_exists($uploadPath)) {
-                            mkdir($uploadPath, 0777, true);
-                        }
-                        $file->move($uploadPath, $filename);
-                        $profileData['foto'] = $filename;
+                        // Use Storage facade
+                        $path = $file->store('profile-photos', 'public');
+                        $profileData['foto'] = $path;
                     }
                 }
 

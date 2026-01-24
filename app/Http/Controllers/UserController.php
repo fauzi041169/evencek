@@ -103,29 +103,22 @@ class UserController extends Controller
 
             Log::info('User data updated:', $user->toArray());
 
-            // Handle photo upload
-            $fotoPath = null;
+            // Handle photo logic
+            $currentPhoto = $user->profile->foto ?? null;
+            $newPhoto = $currentPhoto;
+
             if ($request->hasFile('foto_file')) {
                 // Delete old photo if exists
-                if ($user->profile && $user->profile->foto) {
-                    $oldPhotoPath = public_path('assets/images/profilefoto/'.$user->profile->foto);
-                    if (file_exists($oldPhotoPath)) {
-                        unlink($oldPhotoPath);
+                if ($currentPhoto) {
+                    if (Storage::disk('public')->exists($currentPhoto)) {
+                        Storage::disk('public')->delete($currentPhoto);
+                    } elseif (file_exists(public_path('assets/images/profilefoto/'.$currentPhoto))) {
+                        @unlink(public_path('assets/images/profilefoto/'.$currentPhoto));
                     }
                 }
 
-                // Store new photo in public/assets/images/profilefoto directory
                 $foto = $request->file('foto_file');
-                $filename = time().'_'.$foto->getClientOriginalName();
-                $uploadPath = public_path('assets/images/profilefoto');
-
-                // Create directory if it doesn't exist
-                if (! file_exists($uploadPath)) {
-                    mkdir($uploadPath, 0777, true);
-                }
-
-                $foto->move($uploadPath, $filename);
-                $fotoPath = $filename;
+                $newPhoto = $foto->store('profile-photos', 'public');
             }
             // Handle base64 image from camera
             elseif ($request->filled('foto_data') && $request->foto_data != 'delete') {
@@ -150,25 +143,29 @@ class UserController extends Controller
                         ->withInput();
                 }
 
-                $filename = time().'.jpg';
-                $uploadPath = public_path('assets/images/profilefoto');
-
-                if (! file_exists($uploadPath)) {
-                    mkdir($uploadPath, 0777, true);
+                // Delete old photo if exists
+                if ($currentPhoto) {
+                    if (Storage::disk('public')->exists($currentPhoto)) {
+                        Storage::disk('public')->delete($currentPhoto);
+                    } elseif (file_exists(public_path('assets/images/profilefoto/'.$currentPhoto))) {
+                        @unlink(public_path('assets/images/profilefoto/'.$currentPhoto));
+                    }
                 }
 
-                file_put_contents($uploadPath.'/'.$filename, $image_data);
-                $fotoPath = $filename;
+                $filename = 'profile-photos/' . time() . '_' . Str::random(10) . '.jpg';
+                Storage::disk('public')->put($filename, $image_data);
+                $newPhoto = $filename;
             }
             // Handle photo deletion
             elseif ($request->filled('foto_data') && $request->foto_data === 'delete') {
-                if ($user->profile && $user->profile->foto) {
-                    $oldPhotoPath = public_path('assets/images/profilefoto/'.$user->profile->foto);
-                    if (file_exists($oldPhotoPath)) {
-                        unlink($oldPhotoPath);
+                if ($currentPhoto) {
+                    if (Storage::disk('public')->exists($currentPhoto)) {
+                        Storage::disk('public')->delete($currentPhoto);
+                    } elseif (file_exists(public_path('assets/images/profilefoto/'.$currentPhoto))) {
+                        @unlink(public_path('assets/images/profilefoto/'.$currentPhoto));
                     }
                 }
-                $fotoPath = null;
+                $newPhoto = null;
             }
 
             // Normalisasi jenis kelamin
@@ -192,7 +189,7 @@ class UserController extends Controller
                 'district_id' => $request->district_id,
                 'alamat' => $request->alamat,
                 'jenis_kelamin' => $jenis_kelamin,
-                'foto' => $fotoPath ?? ($user->profile->foto ?? null),
+                'foto' => $newPhoto,
             ];
 
             if ($user->profile) {

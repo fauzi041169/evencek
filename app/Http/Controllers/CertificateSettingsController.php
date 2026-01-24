@@ -95,19 +95,11 @@ class CertificateSettingsController extends Controller
                 ], 400);
             }
 
-            // Pastikan direktori ada
+            // Simpan menggunakan Storage facade
             $activityId = $request->input('activity_id');
-            $relativeDir = $activityId ? ('background/certificate/'.$activityId) : 'background/certificate';
-            $uploadPath = public_path('assets/images/certificate/'.$relativeDir);
-            if (! file_exists($uploadPath)) {
-                mkdir($uploadPath, 0755, true);
-            }
+            $path = $file->store('certificate-backgrounds/'.($activityId ?: 'default'), 'public');
 
-            $filename = 'cert_bg_'.time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-            $file->move($uploadPath, $filename);
-
-            // Cek apakah file benar-benar tersimpan
-            if (! file_exists($uploadPath.'/'.$filename)) {
+            if (! $path) {
                 return response()->json([
                     'success' => false,
                     'message' => 'File gagal disimpan ke server',
@@ -117,7 +109,7 @@ class CertificateSettingsController extends Controller
             try {
                 \DB::table('certificate_backgrounds')->insert([
                     'activity_id' => $activityId,
-                    'filename' => $relativeDir.'/'.$filename,
+                    'filename' => $path,
                     'original_name' => basename($file->getClientOriginalName()),
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -129,8 +121,8 @@ class CertificateSettingsController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Latar sertifikat berhasil diupload',
-                'filename' => $relativeDir.'/'.$filename,
-                'url' => asset('assets/images/certificate/'.$relativeDir.'/'.$filename),
+                'filename' => $path,
+                'url' => \Illuminate\Support\Facades\Storage::url($path),
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -154,9 +146,12 @@ class CertificateSettingsController extends Controller
         ]);
 
         $filename = ltrim($request->input('filename'), '/');
-        $path = public_path('assets/images/certificate/'.$filename);
+        
+        $existsInStorage = \Illuminate\Support\Facades\Storage::disk('public')->exists($filename);
+        $legacyPath = public_path('assets/images/certificate/'.$filename);
+        $existsInLegacy = file_exists($legacyPath);
 
-        if (! file_exists($path)) {
+        if (! $existsInStorage && ! $existsInLegacy) {
             return response()->json([
                 'success' => false,
                 'message' => 'File tidak ditemukan',
@@ -164,7 +159,11 @@ class CertificateSettingsController extends Controller
         }
 
         try {
-            unlink($path);
+            if ($existsInStorage) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($filename);
+            } elseif ($existsInLegacy) {
+                unlink($legacyPath);
+            }
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
