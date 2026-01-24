@@ -183,13 +183,9 @@ Route::prefix('payments')->name('payments.')->middleware(['auth'])->controller(P
     Route::get('/methods/{activity}', 'getPaymentMethodsJson')->name('methods');
     Route::post('/store/{activity}', 'store')->name('store');
     Route::get('/ledger', 'financialLedger')->name('ledger');
-    Route::get('/rules', 'financialRules')->name('rules');
-    Route::get('/channels', 'channels')->name('channels');
     Route::post('/channels/sync', 'syncChannels')->name('channels.sync'); // Added sync route
-    Route::get('/withdraw/history', 'withdrawHistory')->name('withdraw.history');
     
     // Rule Routes
-    Route::post('/rules/save', 'financialRulesSave')->name('rules.save');
     Route::post('/rules/vouchers', 'financialRulesCreateVoucher')->name('rules.vouchers.create');
     Route::post('/rules/auto-override', 'financialRulesSaveAutoOverride')->name('rules.auto-override.save');
     Route::delete('/rules/auto-override/{activity}', 'financialRulesDeleteAutoOverride')->name('rules.auto-override.delete');
@@ -576,7 +572,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/activities/{activity}', 'store')->name('activity.store');
         // Financial Ledger (Neraca Keuangan) — place BEFORE catch-all '/{payment}'
         Route::get('/rules', 'financialRules')->name('rules')->middleware('role:admin,superadmin');
-        Route::post('/rules', 'financialRulesSave')->name('admin.rules.save')->middleware('role:admin,superadmin');
+        Route::post('/rules', 'financialRulesSave')->name('rules.save')->middleware('role:admin,superadmin');
         Route::post('/rules/subscription-prices', 'financialRulesSaveSubscriptionPrices')->name('rules.subscription.save')->middleware('role:admin,superadmin');
         Route::post('/rules/plan-facilities', 'financialRulesSavePlanFacilities')->name('rules.plan-facilities.save')->middleware('role:admin,superadmin');
         Route::get('/{payment}', 'show')->name('show');
