@@ -150,7 +150,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true }) {
                                     >
                                         <div className="bg-white rounded-2xl shadow-2xl ring-1 ring-black ring-opacity-5 overflow-hidden">
                                             {/* Header Section */}
-                                            <div className="relative bg-gradient-to-br from-primary to-secondary px-6 py-5">
+                                            <div className="relative navbar-gradient px-6 py-5">
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex items-center gap-3">
                                                         <div className="relative">
