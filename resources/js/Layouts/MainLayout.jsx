@@ -128,12 +128,23 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                         <p className="text-sm font-semibold text-gray-700 leading-tight group-hover:text-indigo-600 transition-colors">{auth.user.name}</p>
                                         <p className="text-xs text-gray-500 capitalize">{auth.user.role}</p>
                                     </div>
-                                    <img 
-                                        src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'} 
-                                        alt={auth.user.name}
-                                        className="w-9 h-9 rounded-full object-cover border-2 border-indigo-100 shadow-sm group-hover:border-indigo-300 transition-colors"
-                                        onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                    />
+                                    <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-indigo-100 shadow-sm group-hover:border-indigo-300 transition-colors bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                                        {auth.user.profile_photo_url ? (
+                                            <img 
+                                                src={auth.user.profile_photo_url} 
+                                                alt={auth.user.name}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = 'none';
+                                                    e.currentTarget.nextSibling.classList.remove('hidden');
+                                                    e.currentTarget.nextSibling.classList.add('flex');
+                                                }}
+                                            />
+                                        ) : null}
+                                        <div className={`w-full h-full items-center justify-center text-sm font-bold text-indigo-600 bg-indigo-100 ${auth.user.profile_photo_url ? 'hidden' : 'flex'}`}>
+                                            {auth.user.name?.charAt(0).toUpperCase()}
+                                        </div>
+                                    </div>
                                     <i className={`fas fa-chevron-down text-xs text-gray-400 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`}></i>
                                 </button>
 
@@ -153,12 +164,23 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                             <div className="flex justify-between items-start">
                                                 <div className="flex items-center gap-3">
                                                     <div className="relative">
-                                                        <img 
-                                                            src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'} 
-                                                            alt={auth.user.name} 
-                                                            className="h-12 w-12 rounded-full object-cover border-2 border-white shadow-md"
-                                                            onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                                        />
+                                                        <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-white shadow-md bg-white/10 flex items-center justify-center flex-shrink-0">
+                                                            {auth.user.profile_photo_url ? (
+                                                                <img 
+                                                                    src={auth.user.profile_photo_url} 
+                                                                    alt={auth.user.name} 
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.style.display = 'none';
+                                                                        e.currentTarget.nextSibling.classList.remove('hidden');
+                                                                        e.currentTarget.nextSibling.classList.add('flex');
+                                                                    }}
+                                                                />
+                                                            ) : null}
+                                                            <div className={`w-full h-full items-center justify-center text-lg font-bold text-white bg-white/20 ${auth.user.profile_photo_url ? 'hidden' : 'flex'}`}>
+                                                                {auth.user.name?.charAt(0).toUpperCase()}
+                                                            </div>
+                                                        </div>
                                                         <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-400 rounded-full border-2 border-indigo-600"></div>
                                                     </div>
                                                     <div className="text-white">
@@ -190,22 +212,22 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                         {/* Menu Items */}
                                         <div className="px-2 py-2">
                                             <div className="grid gap-1">
-                                                <Link href="/dashboard" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 rounded-xl hover:bg-primary/5 hover:text-primary transition-colors group">
-                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary mr-3 group-hover:bg-primary group-hover:text-white transition-colors">
+                                                <Link href="/dashboard" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group">
+                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-tachometer-alt"></i>
                                                     </div>
                                                     Dashboard
                                                 </Link>
-                                                <Link href={`/profile/${auth.user.id}`} className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 rounded-xl hover:bg-primary/5 hover:text-primary transition-colors group">
-                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-secondary/10 text-secondary mr-3 group-hover:bg-secondary group-hover:text-white transition-colors">
+                                                <Link href={`/profile/${auth.user.id}`} className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group">
+                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-user"></i>
                                                     </div>
                                                     Profil Saya
                                                 </Link>
 
                                                 {auth.user.role === 'superadmin' && (
-                                                    <Link href="/settings" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 rounded-xl hover:bg-primary/5 hover:text-primary transition-colors group">
-                                                        <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-600 group-hover:text-white transition-colors">
+                                                    <Link href="/settings" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group">
+                                                        <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                             <i className="fas fa-cog"></i>
                                                         </div>
                                                         Pengaturan
@@ -214,14 +236,14 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                 
                                                 <div className="border-t border-gray-100 my-1 mx-2"></div>
                                                 
-                                                <Link href="/download-apk" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 rounded-xl hover:bg-primary/5 hover:text-primary transition-colors group">
-                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-green-100 text-green-600 mr-3 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                                                <Link href="/download-apk" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group">
+                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-download"></i>
                                                     </div>
                                                     Download APK
                                                 </Link>
-                                                <Link href="/scan-qr" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 rounded-xl hover:bg-primary/5 hover:text-primary transition-colors group">
-                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-100 text-blue-600 mr-3 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                                <Link href="/scan-qr" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group">
+                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-qrcode"></i>
                                                     </div>
                                                     Scan QR Code
@@ -239,9 +261,9 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                             window.location.reload(true);
                                                         }
                                                     }}
-                                                    className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 rounded-xl hover:bg-primary/5 hover:text-primary transition-colors group"
+                                                    className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group"
                                                 >
-                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-100 text-orange-600 mr-3 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-broom"></i>
                                                     </div>
                                                     Bersihkan Cache

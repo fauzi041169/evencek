@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Helpers\RegionMatcher;
+use App\Helpers\GenderHelper;
 use App\Models\Activity;
 use App\Models\ActivityUser;
 use App\Models\Payment;
@@ -228,13 +229,7 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
             $gender = null;
             $originalGender = $row['jenis_kelamin'] ?? null;
             if (! empty($row['jenis_kelamin'])) {
-                $g = strtolower(trim(str_replace(['-', '_'], ' ', $row['jenis_kelamin'])));
-                $g = preg_replace('/\s+/', ' ', $g);
-                if (in_array($g, ['laki laki', 'laki-laki', 'laki', 'l'])) {
-                    $gender = 'Laki-laki';
-                } elseif (in_array($g, ['perempuan', 'wanita', 'p'])) {
-                    $gender = 'Perempuan';
-                }
+                $gender = GenderHelper::normalize($row['jenis_kelamin']);
             }
             Log::debug('IMPORT MODEL START', [
                 'row_index' => $currentIndex,
@@ -433,7 +428,7 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
                     'district_id' => $profile->district_id,
                     'gender_saved' => $profile->jenis_kelamin,
                 ]);
-                if ($profile && $profile->jenis_kelamin !== $gender) {
+                if ($profile && !empty($gender) && $profile->jenis_kelamin !== $gender) {
                     Log::error('Field jenis_kelamin tidak tersimpan dengan benar', [
                         'expected' => $gender,
                         'actual' => $profile->jenis_kelamin,

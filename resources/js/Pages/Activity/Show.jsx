@@ -456,17 +456,15 @@ export default function Show({
                                 </div>
                                 
                                 {/* Price display */}
-                                {(activity.price > 0 || activity.price === 0) && (
+                                {((Number(activity.price) > 0 && (showPrice || canAdminViewButtons)) || Number(activity.price) <= 0) && (
                                     <div className="py-4 animate-fade-up delay-200">
                                         <div className="inline-flex items-center gap-3">
-                                            {activity.price > 0 ? (
+                                            {Number(activity.price) > 0 ? (
                                                 <>
                                                     <span className="text-3xl font-bold text-white">
-                                                        {(showPrice || canAdminViewButtons) ? (
-                                                            <span className={!showPrice && canAdminViewButtons ? 'opacity-50' : ''}>
-                                                                Rp {Number(activity.price).toLocaleString('id-ID')}
-                                                            </span>
-                                                        ) : 'Rp ***.***'}
+                                                        <span className={!showPrice && canAdminViewButtons ? 'opacity-50' : ''}>
+                                                            Rp {Number(activity.price).toLocaleString('id-ID')}
+                                                        </span>
                                                     </span>
                                                     {canAdminViewButtons && (
                                                         <button onClick={togglePriceVisibility} className="text-white/60 hover:text-white transition-colors" title={showPrice ? 'Sembunyikan Harga' : 'Tampilkan Harga'}>

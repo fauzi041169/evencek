@@ -1,9 +1,93 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useForm, router } from '@inertiajs/react';
 import { Building, X, Plus, Upload, Download, Trash2, CheckCircle, Ban, UserPlus, Users } from 'lucide-react';
 
+// Internal component for searchable select
+const SearchableParticipantSelect = ({ participants, onSelect, placeholder = "+ Pilih Peserta" }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const wrapperRef = useRef(null);
+
+    // Close on click outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [wrapperRef]);
+
+    // Safety check for participants
+    const safeParticipants = Array.isArray(participants) ? participants : [];
+
+    const filtered = safeParticipants.filter(p => 
+        (p.name && p.name.toLowerCase().includes(search.toLowerCase())) || 
+        (p.email && p.email.toLowerCase().includes(search.toLowerCase()))
+    );
+
+    return (
+        <div className="relative mt-1" ref={wrapperRef}>
+            {!isOpen ? (
+                <button
+                    type="button"
+                    onClick={() => { setIsOpen(true); setSearch(''); }}
+                    className="w-full text-left text-xs border border-gray-300 rounded-md shadow-sm px-2 py-1.5 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                    {placeholder}
+                </button>
+            ) : (
+                <div className="absolute z-10 w-full bg-white shadow-lg rounded-md border border-gray-200 mt-0 min-w-[200px]">
+                    <input
+                        type="text"
+                        autoFocus
+                        placeholder="Cari..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full border-0 border-b border-gray-100 text-xs px-2 py-1.5 focus:ring-0"
+                    />
+                    <div className="max-h-48 overflow-y-auto">
+                        {filtered.length > 0 ? (
+                            filtered.map(p => (
+                                <div
+                                    key={p.id}
+                                    onClick={() => {
+                                        onSelect(p.id);
+                                        setIsOpen(false);
+                                    }}
+                                    className="px-2 py-1.5 text-xs hover:bg-indigo-50 cursor-pointer truncate"
+                                    title={`${p.name} (${p.email || '-'})`}
+                                >
+                                    <div className="font-medium">{p.name}</div>
+                                    <div className="text-[10px] text-gray-400">{p.email}</div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="px-2 py-2 text-xs text-gray-400 text-center">Tidak ditemukan</div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hotels = [], unassignedParticipants = [], roomOccupants = [] }) {
     if (!isOpen) return null;
+
+    useEffect(() => {
+        if (isOpen) {
+            console.log('RoomsModal OPENED', { activity, rooms, hotels, unassignedParticipants, roomOccupants });
+        }
+    }, [isOpen]);
+
+    // Safety check for activity
+    if (!activity) {
+        console.error('RoomsModal: activity prop is missing');
+        return null;
+    }
 
     const { data, setData, post, processing, errors, reset } = useForm({
         hotel_name: '',
@@ -110,8 +194,8 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         });
     };
 
-    return (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+    return createPortal(
+        <div className="fixed inset-0 z-[100] overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
                 <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose} />
 
@@ -307,7 +391,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                                             )}
                                                             
                                                             <div className="text-[10px] text-gray-400 text-right mt-0.5">
-                                                                {occupants.length} / {room.capacity > 0 ? room.capacity : 'âˆž'}
+                                                                {occupants.length} / {room.capacity > 0 ? room.capacity : '∞'}
                                                             </div>
                                                         </div>
                                                     </td>
@@ -333,75 +417,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
-
-// Internal component for searchable select
-const SearchableParticipantSelect = ({ participants, onSelect, placeholder = "+ Pilih Peserta" }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [search, setSearch] = useState('');
-    const wrapperRef = useRef(null);
-
-    // Close on click outside
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [wrapperRef]);
-
-    const filtered = participants.filter(p => 
-        p.name.toLowerCase().includes(search.toLowerCase()) || 
-        (p.email && p.email.toLowerCase().includes(search.toLowerCase()))
-    );
-
-    return (
-        <div className="relative mt-1" ref={wrapperRef}>
-            {!isOpen ? (
-                <button
-                    type="button"
-                    onClick={() => { setIsOpen(true); setSearch(''); }}
-                    className="w-full text-left text-xs border border-gray-300 rounded-md shadow-sm px-2 py-1.5 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                    {placeholder}
-                </button>
-            ) : (
-                <div className="absolute z-10 w-full bg-white shadow-lg rounded-md border border-gray-200 mt-0 min-w-[200px]">
-                    <input
-                        type="text"
-                        autoFocus
-                        placeholder="Cari..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        className="w-full border-0 border-b border-gray-100 text-xs px-2 py-1.5 focus:ring-0"
-                    />
-                    <div className="max-h-48 overflow-y-auto">
-                        {filtered.length > 0 ? (
-                            filtered.map(p => (
-                                <div
-                                    key={p.id}
-                                    onClick={() => {
-                                        onSelect(p.id);
-                                        setIsOpen(false);
-                                    }}
-                                    className="px-2 py-1.5 text-xs hover:bg-indigo-50 cursor-pointer truncate"
-                                    title={`${p.name} (${p.email || '-'})`}
-                                >
-                                    <div className="font-medium">{p.name}</div>
-                                    <div className="text-[10px] text-gray-400">{p.email}</div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="px-2 py-2 text-xs text-gray-400 text-center">Tidak ditemukan</div>
-                        )}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-

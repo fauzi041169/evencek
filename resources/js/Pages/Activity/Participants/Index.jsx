@@ -636,7 +636,10 @@ export default function Index({
                             )}
 
                             <button
-                                onClick={() => setShowRoomsModal(true)}
+                                onClick={() => {
+                                    console.log('Manajemen Kamar clicked');
+                                    setShowRoomsModal(true);
+                                }}
                                 className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
                             >
                                 <Building className="w-4 h-4 text-indigo-500" />

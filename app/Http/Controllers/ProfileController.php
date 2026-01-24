@@ -440,7 +440,7 @@ class ProfileController extends Controller
             if ($regencies->isEmpty()) {
                 \Log::warning('No regencies found for province: '.$provinceId);
 
-                return response()->json(['error' => 'No regencies found'], 404);
+                return response()->json([]);
             }
 
             \Log::info('Found '.$regencies->count().' regencies');
@@ -449,7 +449,7 @@ class ProfileController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error fetching regencies: '.$e->getMessage());
 
-            return response()->json(['error' => 'Failed to fetch regencies'], 500);
+            return response()->json([]);
         }
     }
 
@@ -475,7 +475,7 @@ class ProfileController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error fetching districts: '.$e->getMessage());
 
-            return response()->json(['error' => 'Failed to fetch districts'], 500);
+            return response()->json([]);
         }
     }
 

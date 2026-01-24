@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasCustomUid;
+use App\Helpers\GenderHelper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -46,6 +47,32 @@ class Profile extends Model
     protected static function boot()
     {
         parent::boot();
+
+        // Normalisasi dan Prediksi Gender sebelum simpan
+        static::saving(function ($profile) {
+            // 1. Normalisasi
+            if (!empty($profile->jenis_kelamin)) {
+                $profile->jenis_kelamin = GenderHelper::normalize($profile->jenis_kelamin);
+            }
+
+            // 2. Prediksi jika kosong
+            if (empty($profile->jenis_kelamin)) {
+                // Coba ambil nama dari relasi user
+                $user = $profile->user;
+                
+                // Jika user belum terload (misal saat create baru via user_id), coba cari
+                if (!$user && $profile->user_id) {
+                    $user = \App\Models\User::find($profile->user_id);
+                }
+
+                if ($user && !empty($user->name)) {
+                    $prediction = GenderHelper::predict($user->name);
+                    if ($prediction) {
+                        $profile->jenis_kelamin = $prediction;
+                    }
+                }
+            }
+        });
 
         // Hapus foto lama saat update foto baru
         static::updating(function ($profile) {

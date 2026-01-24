@@ -35,6 +35,7 @@ class Kernel extends ConsoleKernel
         // Commands\GenerateTestImportFile::class,
         Commands\GenerateUserTemplate::class,
         \App\Console\Commands\NormalizeUserRoles::class,
+        \App\Console\Commands\NormalizeGender::class,
         \App\Console\Commands\AuditRoles::class,
         \App\Console\Commands\CleanupUnusedFiles::class,
         \App\Console\Commands\SyncMidtransPayments::class,

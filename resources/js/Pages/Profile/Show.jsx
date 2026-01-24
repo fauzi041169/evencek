@@ -1,10 +1,10 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Head, useForm, usePage, Link, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import MyQrCodeModal from '@/Components/MyQrCodeModal';
 import Cropper from 'react-easy-crop';
 
-export default function ProfileShow({ auth, user, provinces }) {
+export default function ProfileShow({ auth, user, provinces = [] }) {
     const { props } = usePage();
     const flash = props.flash || {};
     const isOwnProfile = auth.user.id === user.id;
@@ -138,10 +138,16 @@ export default function ProfileShow({ auth, user, provinces }) {
         setLoadingRegencies(true);
         try {
             const response = await fetch(route('profile.ajax.regencies', provinceId));
+            if (!response.ok) {
+                // If 404 or other error, clear regencies
+                setRegencies([]);
+                return;
+            }
             const json = await response.json();
-            setRegencies(json);
+            setRegencies(Array.isArray(json) ? json : []);
         } catch (error) {
             console.error("Failed to fetch regencies", error);
+            setRegencies([]);
         } finally {
             setLoadingRegencies(false);
         }
@@ -155,10 +161,15 @@ export default function ProfileShow({ auth, user, provinces }) {
         setLoadingDistricts(true);
         try {
             const response = await fetch(route('profile.ajax.districts', regencyId));
+            if (!response.ok) {
+                setDistricts([]);
+                return;
+            }
             const json = await response.json();
-            setDistricts(json);
+            setDistricts(Array.isArray(json) ? json : []);
         } catch (error) {
             console.error("Failed to fetch districts", error);
+            setDistricts([]);
         } finally {
             setLoadingDistricts(false);
         }
@@ -272,7 +283,7 @@ export default function ProfileShow({ auth, user, provinces }) {
 
             <div className="max-w-6xl mx-auto">
                 {/* Missing Profile Fields Alert */}
-                {flash.missing_profile_fields && (
+                {Array.isArray(flash.missing_profile_fields) && flash.missing_profile_fields.length > 0 && (
                     <div className="mb-6 animate-in slide-in-from-top-4 duration-500">
                         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-xl shadow-sm">
                             <div className="flex items-center">

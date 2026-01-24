@@ -858,7 +858,8 @@ class DashboardController extends Controller
             $genderQuery = Profile::select('jenis_kelamin', DB::raw('COUNT(profiles.id) as total'))
                 ->whereNotNull('jenis_kelamin')
                 ->where('jenis_kelamin', '!=', '')
-                ->groupBy('jenis_kelamin');
+                ->groupBy('jenis_kelamin')
+                ->orderBy('jenis_kelamin');
 
             // Optimize: Use subquery instead of pluck('id')
             $genderQuery->whereIn('user_id', $userQuery->clone()->select('id'));

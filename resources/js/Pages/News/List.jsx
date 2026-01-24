@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import { format } from 'date-fns';
@@ -58,7 +58,7 @@ export default function List({ news }) {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {news.data.length > 0 ? (
+                                    {news && news.data && Array.isArray(news.data) && news.data.length > 0 ? (
                                         news.data.map((item) => (
                                             <tr key={item.id} className="hover:bg-gray-50 transition">
                                                 <td className="px-6 py-4 whitespace-nowrap">

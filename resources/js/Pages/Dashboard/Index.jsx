@@ -98,12 +98,24 @@ export default function DashboardIndex(props) {
         }
     };
 
+    // Gender Chart Configuration
+    const genderMapping = {
+        'L': { label: 'Laki-laki', color: '#3B82F6' }, // Blue
+        'P': { label: 'Perempuan', color: '#EC4899' }, // Pink
+    };
+
+    const rawGenderLabels = profileStats?.gender?.labels || [];
+    const rawGenderData = profileStats?.gender?.data || [];
+
+    const totalUserLabels = rawGenderLabels.map(l => genderMapping[l]?.label || l);
+    const totalUserColors = rawGenderLabels.map(l => genderMapping[l]?.color || '#E5E7EB');
+
     const totalUserData = {
-        labels: ['Dengan Profil', 'Tanpa Profil'],
+        labels: totalUserLabels,
         datasets: [
             {
-                data: [usersWithProfile || 0, usersWithoutProfile || 0],
-                backgroundColor: ['#10B981', '#E5E7EB'],
+                data: rawGenderData,
+                backgroundColor: totalUserColors,
                 borderWidth: 0,
             },
         ],
@@ -213,12 +225,11 @@ export default function DashboardIndex(props) {
                         <div className="lg:col-span-3">
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-full flex flex-col">
                                 <h3 className="font-bold text-gray-800 text-center mb-4">TOTAL USER</h3>
-                                <div className="h-48 flex-grow">
+                                <div className="h-48 flex-grow relative">
                                     <Doughnut options={totalUserOptions} data={totalUserData} />
-                                </div>
-                                <div className="mt-4 text-center">
-                                    <span className="text-2xl font-bold text-gray-900">{stats?.totalUsers || 0}</span>
-                                    <span className="text-sm text-gray-500 block">Total Pengguna</span>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                        <span className="text-3xl font-bold text-gray-900">{stats?.totalUsers || 0}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
