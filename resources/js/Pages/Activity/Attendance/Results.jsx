@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link } from '@inertiajs/react';
 
 export default function Results({ activity, attendance, participants }) {
@@ -102,10 +102,7 @@ export default function Results({ activity, attendance, participants }) {
                                     {/* Profile Section */}
                                     <div className="p-5 text-center border-b border-gray-100">
                                         <img 
-                                            src={record.user?.profile?.foto 
-                                                ? `/assets/images/profilefoto/${record.user.profile.foto}` 
-                                                : '/assets/images/profilefoto/default-profile.png'
-                                            }
+                                            src={record.user?.profile?.foto_url || '/assets/images/profilefoto/default-profile.png'}
                                             alt="Profile" 
                                             className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover mx-auto mb-3 border-4 border-blue-500 p-0.5"
                                             onError={(e) => {

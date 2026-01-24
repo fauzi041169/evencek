@@ -107,12 +107,12 @@ class Profile extends Model
         if ($this->foto) {
             $photoPath = public_path('assets/images/profilefoto/'.$this->foto);
 
-            return file_exists($photoPath)
-                ? asset('assets/images/profilefoto/'.$this->foto)
-                : asset('assets/images/profilefoto/default-profile.png');
+            if (file_exists($photoPath)) {
+                return '/assets/images/profilefoto/'.$this->foto;
+            }
         }
 
-        return asset('assets/images/profilefoto/default-profile.png');
+        return '/assets/images/profilefoto/default-profile.png';
     }
 
     public function getCoverImageUrlAttribute()
@@ -120,12 +120,12 @@ class Profile extends Model
         if ($this->cover_image) {
             $coverPath = public_path('assets/images/profilecover/'.$this->cover_image);
 
-            return file_exists($coverPath)
-                ? asset('assets/images/profilecover/'.$this->cover_image)
-                : asset('assets/images/profilecover/default-cover.png');
+            if (file_exists($coverPath)) {
+                return '/assets/images/profilecover/'.$this->cover_image;
+            }
         }
 
-        return asset('assets/images/profilecover/default-cover.png');
+        return '/assets/images/profilecover/default-cover.png';
     }
 
     public function getFullAddressAttribute()
