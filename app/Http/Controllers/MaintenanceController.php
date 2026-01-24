@@ -205,16 +205,25 @@ class MaintenanceController extends Controller
                 \Log::info("Skipping git pull: $reason");
                 $output .= "Skipping git pull: $reason. Proceeding to migration...\n\n";
             } else {
-                // 1. Git Pull
-                $gitCommand = "cd \"{$basePath}\" && git pull origin main 2>&1";
+                // 1. Git Pull with Token Authentication
+                // NOTE: Using token from user input (Hardcoded as requested, ideally should be in .env)
+                $token = "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";
+                $repoUrl = "https://{$token}@github.com/fauzi041169/EvenReac.git";
+                
+                // Configure safe directory globally to prevent ownership errors
+                shell_exec("git config --global --add safe.directory \"{$basePath}\"");
+
+                $gitCommand = "cd \"{$basePath}\" && git pull {$repoUrl} main 2>&1";
                 $gitOutput = [];
                 $gitReturn = 0;
                 
-                \Log::info("Executing git command: $gitCommand");
+                \Log::info("Executing git command (masked token): " . str_replace($token, '***', $gitCommand));
                 exec($gitCommand, $gitOutput, $gitReturn);
                 
-                $output .= "Git Pull Output:\n" . implode("\n", $gitOutput) . "\n\n";
-                \Log::info("Git Pull Result (Code $gitReturn): " . implode("\n", $gitOutput));
+                // Mask token in output for security
+                $cleanOutput = str_replace($token, '***', implode("\n", $gitOutput));
+                $output .= "Git Pull Output:\n" . $cleanOutput . "\n\n";
+                \Log::info("Git Pull Result (Code $gitReturn): " . $cleanOutput);
 
                 if ($gitReturn !== 0) {
                     return response()->json([

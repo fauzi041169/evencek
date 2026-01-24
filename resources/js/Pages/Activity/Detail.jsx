@@ -324,7 +324,7 @@ export default function Detail({
             <Head title={activity.title || activity.name} />
 
             {/* Hero Section */}
-            <div className="relative bg-slate-900 overflow-hidden min-h-[600px] flex items-center">
+            <div className="relative bg-slate-900 overflow-hidden min-h-[700px] flex items-center">
                 <style>{`
                     @keyframes fade-up {
                         from { opacity: 0; transform: translateY(20px); }
@@ -338,19 +338,20 @@ export default function Detail({
                     .delay-300 { animation-delay: 0.3s; }
                     .glass-badge {
                         background: rgba(255, 255, 255, 0.1);
-                        backdrop-filter: blur(8px);
+                        backdrop-filter: blur(12px);
                         border: 1px solid rgba(255, 255, 255, 0.2);
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
                     }
                     .glass-button {
                         background: rgba(255, 255, 255, 0.15);
-                        backdrop-filter: blur(10px);
+                        backdrop-filter: blur(12px);
                         border: 1px solid rgba(255, 255, 255, 0.3);
                         transition: all 0.3s ease;
                     }
                     .glass-button:hover {
                         background: rgba(255, 255, 255, 0.25);
                         transform: translateY(-2px);
-                        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+                        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
                     }
                     .gradient-text {
                         background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
@@ -388,47 +389,50 @@ export default function Detail({
 
                 {/* Background Elements */}
                 <div className="absolute inset-0">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 via-slate-900/95 to-slate-900 z-10"></div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 z-10"></div>
                     <img 
                         src="/assets/images/begron/bg-pattern.png" 
                         alt="Background Pattern" 
-                        className="w-full h-full object-cover opacity-20 mix-blend-overlay"
+                        className="w-full h-full object-cover opacity-10 mix-blend-overlay"
                         onError={(e) => e.target.style.display = 'none'}
                     />
                     {/* Animated Blobs */}
-                    <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-                    <div className="absolute top-0 -right-4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-                    <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+                    <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+                    <div className="absolute top-0 -right-4 w-96 h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+                    <div className="absolute -bottom-8 left-20 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
                 </div>
 
                 {/* Content Container */}
-                <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-48">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
 
                         {/* Left Column: Text Content */}
-                        <div className="lg:col-span-7 space-y-6 text-left order-2 lg:order-1">
+                        <div className="lg:col-span-7 space-y-8 text-left order-2 lg:order-1">
                             <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white leading-tight animate-fade-up">
-                                <span className="inline-block px-3 py-1 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-cyan-300 text-sm md:text-base font-bold tracking-widest uppercase mb-4 shadow-lg">Event Spesial</span>
-                                <span className="gradient-text block mt-2 text-glow">{activity.title || activity.name}</span>
+                                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-cyan-300 text-sm md:text-base font-bold tracking-widest uppercase mb-4 shadow-lg">
+                                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                                    Event Spesial
+                                </span>
+                                <span className="gradient-text block mt-2 text-glow leading-tight pb-2">{activity.title || activity.name}</span>
                             </h1>
 
                             {/* Meta Info */}
                             <div className="flex flex-wrap gap-3 animate-fade-up delay-100">
                                 {(activity.date || activity.start_date) && (
-                                    <span className="glass-badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-white text-sm">
-                                        <i className="far fa-calendar-alt text-primary/80"></i>
+                                    <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
+                                        <i className="far fa-calendar-alt text-cyan-300"></i>
                                         <span>{formatDateRange(activity.date || activity.start_date, activity.end_date)}</span>
                                     </span>
                                 )}
                                 {(activity.time || activity.start_time) && (
-                                    <span className="glass-badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-white text-sm">
-                                        <i className="fas fa-clock text-primary/80"></i>
+                                    <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
+                                        <i className="fas fa-clock text-cyan-300"></i>
                                         <span>{formatTimeRange(activity.time || activity.start_time, activity.end_time)}</span>
                                     </span>
                                 )}
                                 {activity.location && (
-                                    <span className="glass-badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-white text-sm">
-                                        <i className="fas fa-map-marker-alt text-primary/80"></i>
+                                    <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
+                                        <i className="fas fa-map-marker-alt text-cyan-300"></i>
                                         <span>{activity.location}</span>
                                     </span>
                                 )}
@@ -436,39 +440,39 @@ export default function Detail({
 
                             {/* Price */}
                             {activity.price !== null && (
-                                <div className="py-4 animate-fade-up delay-200">
+                                <div className="py-2 animate-fade-up delay-200">
                                     <div className="inline-flex items-center gap-3">
                                         {Number(activity.price) > 0 ? (
-                                            <>
-                                                <div className="glass-badge px-6 py-3 rounded-2xl flex flex-col">
-                                                    <span className="text-xs text-gray-300 uppercase tracking-wider mb-1">Harga Tiket</span>
-                                                    <span className="text-3xl lg:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
-                                                        {shouldShowPrice ? (
-                                                            <span className={!showPrice && canEdit ? 'opacity-50' : ''}>
-                                                                Rp {new Intl.NumberFormat('id-ID').format(activity.price)}
-                                                            </span>
-                                                        ) : 'Rp ***.***'}
-                                                    </span>
+                                            <div className="glass-badge pl-6 pr-8 py-4 rounded-2xl flex flex-col relative group min-w-[200px]">
+                                                <div className="flex justify-between items-start w-full mb-1">
+                                                    <span className="text-xs text-gray-300 uppercase tracking-wider font-semibold">Harga Tiket</span>
+                                                    {canEdit && (
+                                                        <button
+                                                            onClick={(e) => { e.preventDefault(); togglePriceVisibility(); }}
+                                                            className="absolute top-3 right-3 p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition-all"
+                                                            title={showPrice ? 'Sembunyikan Harga' : 'Tampilkan Harga'}
+                                                        >
+                                                            <i className={`fas ${showPrice ? 'fa-eye' : 'fa-eye-slash'} text-xs`}></i>
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                {canEdit && (
-                                                    <button
-                                                        onClick={(e) => { e.preventDefault(); togglePriceVisibility(); }}
-                                                        className="ml-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all text-white"
-                                                        title={showPrice ? 'Sembunyikan Harga' : 'Tampilkan Harga'}
-                                                    >
-                                                        <i className={`fas ${showPrice ? 'fa-eye' : 'fa-eye-slash'}`}></i>
-                                                    </button>
-                                                )}
-                                            </>
+                                                <span className="text-3xl lg:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300 tracking-tight">
+                                                    {shouldShowPrice ? (
+                                                        <span className={!showPrice && canEdit ? 'opacity-50' : ''}>
+                                                            Rp {new Intl.NumberFormat('id-ID').format(activity.price)}
+                                                        </span>
+                                                    ) : 'Rp ***.***'}
+                                                </span>
+                                            </div>
                                         ) : Number(activity.price) <= 0 ? (
-                                            <span className="text-3xl font-bold text-emerald-400">GRATIS</span>
+                                            <span className="text-4xl font-extrabold text-emerald-400 drop-shadow-lg">GRATIS</span>
                                         ) : null}
                                     </div>
                                 </div>
                             )}
 
                             {/* Action Buttons */}
-                            <div className="flex flex-wrap gap-4 animate-fade-up delay-300 pt-2 relative z-30">
+                            <div className="flex flex-wrap gap-4 animate-fade-up delay-300 pt-4 relative z-30">
                                 {/* Share Button */}
                                 <div className="relative">
                                     <button
