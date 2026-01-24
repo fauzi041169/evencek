@@ -132,27 +132,37 @@ class Profile extends Model
     public function getFotoUrlAttribute()
     {
         if ($this->foto) {
+            // Check if it's a storage path (contains slash or starts with profile-photos)
+            if (str_contains($this->foto, '/') || str_starts_with($this->foto, 'profile-photos')) {
+                return \Illuminate\Support\Facades\Storage::url($this->foto);
+            }
+
             $photoPath = public_path('assets/images/profilefoto/'.$this->foto);
 
             if (file_exists($photoPath)) {
-                return '/assets/images/profilefoto/'.$this->foto;
+                return asset('assets/images/profilefoto/'.$this->foto);
             }
         }
 
-        return '/assets/images/profilefoto/default-profile.png';
+        return asset('assets/images/profilefoto/default-profile.png');
     }
 
     public function getCoverImageUrlAttribute()
     {
         if ($this->cover_image) {
+            // Check if it's a storage path (contains slash or starts with profile-covers)
+            if (str_contains($this->cover_image, '/') || str_starts_with($this->cover_image, 'profile-covers')) {
+                return \Illuminate\Support\Facades\Storage::url($this->cover_image);
+            }
+
             $coverPath = public_path('assets/images/profilecover/'.$this->cover_image);
 
             if (file_exists($coverPath)) {
-                return '/assets/images/profilecover/'.$this->cover_image;
+                return asset('assets/images/profilecover/'.$this->cover_image);
             }
         }
 
-        return '/assets/images/profilecover/default-cover.png';
+        return asset('assets/images/profilecover/default-cover.png');
     }
 
     public function getFullAddressAttribute()

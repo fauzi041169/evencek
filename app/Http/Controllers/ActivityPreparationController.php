@@ -3786,10 +3786,16 @@ class ActivityPreparationController extends Controller
                                 }
                             } else {
                                 // Fallback ke public_path jika file tidak ada di storage disk (legacy)
-                                $path = public_path($payment->proof_of_payment);
-                                if (File::exists($path) &&
-                                    ! str_contains($payment->proof_of_payment, 'assets/images/credit/bukti bayar.png')) {
-                                    File::delete($path);
+                                $pathsToCheck = [
+                                    public_path($payment->proof_of_payment),
+                                    public_path('storage/' . $payment->proof_of_payment)
+                                ];
+                                
+                                foreach ($pathsToCheck as $path) {
+                                    if (File::exists($path) &&
+                                        ! str_contains($payment->proof_of_payment, 'assets/images/credit/bukti bayar.png')) {
+                                        File::delete($path);
+                                    }
                                 }
                             }
                         } catch (\Exception $e) {
@@ -5111,6 +5117,10 @@ class ActivityPreparationController extends Controller
                     } else {
                         // Fallback ke public_path
                         $publicPath = public_path('storage/'.$normalized);
+                        
+                        // Cek juga direct path
+                        $directPath = public_path($normalized);
+                        
                         if (file_exists($publicPath)) {
                             $fileExists = true;
                             // Untuk PDF, gunakan route serve-material
@@ -5126,6 +5136,14 @@ class ActivityPreparationController extends Controller
                             } else {
                                 $materialUrl = asset('storage/'.$normalized);
                             }
+                        } elseif (file_exists($directPath)) {
+                             $fileExists = true;
+                             if ($fileType === 'pdf') {
+                                 $materialUrl = url('/activity/'.$activityId.'/materials/'.$materialId.'/serve');
+                             } else {
+                                 // If it's in public root (not storage), asset() points to it
+                                 $materialUrl = asset($normalized);
+                             }
                         } else {
                             \Log::warning('Material file not found', [
                                 'activity_id' => $activityId,

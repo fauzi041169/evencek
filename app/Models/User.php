@@ -218,7 +218,7 @@ class User extends Authenticatable
             if (str_starts_with($this->avatar, 'http')) {
                 return $this->avatar;
             }
-            return asset('storage/'.$this->avatar);
+            return \Illuminate\Support\Facades\Storage::url($this->avatar);
         }
 
         return asset('assets/images/profilefoto/default-profile.png');
@@ -232,7 +232,7 @@ class User extends Authenticatable
 
         // Check if it's a storage path (contains slash or starts with subdomain_logos)
         if (str_contains($this->subdomain_logo, '/') || str_starts_with($this->subdomain_logo, 'subdomain_logos')) {
-            return asset('storage/'.$this->subdomain_logo);
+            return \Illuminate\Support\Facades\Storage::url($this->subdomain_logo);
         }
 
         // Fallback to legacy path
@@ -242,7 +242,7 @@ class User extends Authenticatable
         }
 
         // Default to storage
-        return asset('storage/'.$this->subdomain_logo);
+        return \Illuminate\Support\Facades\Storage::url($this->subdomain_logo);
     }
 
     public function getHeroBackgroundUrlAttribute()
@@ -253,7 +253,7 @@ class User extends Authenticatable
 
         // Check if it's a storage path (contains slash or starts with hero_backgrounds)
         if (str_contains($this->hero_background, '/') || str_starts_with($this->hero_background, 'hero_backgrounds')) {
-            return asset('storage/'.$this->hero_background);
+            return \Illuminate\Support\Facades\Storage::url($this->hero_background);
         }
 
         // Fallback to manual path
@@ -263,7 +263,7 @@ class User extends Authenticatable
         }
 
         // Default to storage
-        return asset('storage/'.$this->hero_background);
+        return \Illuminate\Support\Facades\Storage::url($this->hero_background);
     }
 
     // Di User model

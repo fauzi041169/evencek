@@ -34,18 +34,16 @@ class GalleryController extends Controller
 
         $saved = [];
         if ($request->hasFile('image')) {
-            $uploadPath = public_path('storage/activities/gallery');
-            if (! file_exists($uploadPath)) {
-                mkdir($uploadPath, 0755, true);
-            }
-
             foreach ($request->file('image') as $file) {
                 if (! $file->isValid()) {
                     return back()->with('error', 'File upload tidak valid: '.($file->getError() ?? 'Unknown error'));
                 }
 
                 $filename = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-                $file->move($uploadPath, $filename);
+                
+                // Use Storage facade to store file
+                // Store in storage/app/public/activities/gallery
+                Storage::disk('public')->putFileAs('activities/gallery', $file, $filename);
 
                 // Simpan ke DB hanya nama file; path publik di-blade
                 Gallery::create([
@@ -58,7 +56,7 @@ class GalleryController extends Controller
         // Jika request AJAX/JSON, kembalikan daftar URL agar bisa ditampilkan tanpa reload
         if ($request->ajax() || $request->wantsJson()) {
             $urls = array_map(function ($name) {
-                return asset('storage/activities/gallery/'.$name);
+                return Storage::url('activities/gallery/'.$name);
             }, $saved);
 
             return response()->json(['success' => true, 'urls' => $urls]);

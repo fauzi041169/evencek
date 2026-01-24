@@ -176,52 +176,52 @@ class ActivityController extends Controller
             if ($request->hasFile('hero_background')) {
                 $file = $request->file('hero_background');
                 $name = time().'_'.$creator->id.'_hero.'.$file->getClientOriginalExtension();
-                $dir = public_path('assets/images/herobackground');
-
-                if (! File::isDirectory($dir)) {
-                    File::makeDirectory($dir, 0777, true, true);
-                }
-
-                // Hapus file lama jika ada (dan bukan storage path)
-                if ($creator->hero_background && ! str_contains($creator->hero_background, '/') && ! str_starts_with($creator->hero_background, 'hero_backgrounds')) {
-                    $oldPath = public_path('assets/images/herobackground/'.$creator->hero_background);
-                    if (File::exists($oldPath)) {
-                        File::delete($oldPath);
+                
+                // Hapus file lama
+                if ($creator->hero_background) {
+                    // Cek apakah file lama ada di storage (path mengandung slash atau folder baru)
+                    if (str_contains($creator->hero_background, '/') || str_starts_with($creator->hero_background, 'hero_backgrounds')) {
+                        if (Storage::disk('public')->exists($creator->hero_background)) {
+                            Storage::disk('public')->delete($creator->hero_background);
+                        }
+                    } else {
+                        // Legacy path fallback
+                        $oldPath = public_path('assets/images/herobackground/'.$creator->hero_background);
+                        if (File::exists($oldPath)) {
+                            File::delete($oldPath);
+                        }
                     }
                 }
-                // Hapus file lama jika ada di storage (backward compatibility)
-                elseif ($creator->hero_background && Storage::disk('public')->exists($creator->hero_background)) {
-                    Storage::disk('public')->delete($creator->hero_background);
-                }
 
-                $file->move($dir, $name);
-                $creator->hero_background = $name;
+                // Simpan ke storage (public disk)
+                $path = $file->storeAs('hero_backgrounds', $name, 'public');
+                $creator->hero_background = $path;
             }
 
             // Handle Logo Upload
             if ($request->hasFile('subdomain_logo')) {
                 $file = $request->file('subdomain_logo');
                 $name = time().'_'.$creator->id.'_logo.'.$file->getClientOriginalExtension();
-                $dir = public_path('assets/images/creatorlogo');
 
-                if (! File::isDirectory($dir)) {
-                    File::makeDirectory($dir, 0777, true, true);
-                }
-
-                // Hapus file lama jika ada (dan bukan storage path)
-                if ($creator->subdomain_logo && ! str_contains($creator->subdomain_logo, '/') && ! str_starts_with($creator->subdomain_logo, 'subdomain_logos')) {
-                    $oldPath = public_path('assets/images/creatorlogo/'.$creator->subdomain_logo);
-                    if (File::exists($oldPath)) {
-                        File::delete($oldPath);
+                // Hapus file lama
+                if ($creator->subdomain_logo) {
+                    // Cek apakah file lama ada di storage
+                    if (str_contains($creator->subdomain_logo, '/') || str_starts_with($creator->subdomain_logo, 'subdomain_logos')) {
+                        if (Storage::disk('public')->exists($creator->subdomain_logo)) {
+                            Storage::disk('public')->delete($creator->subdomain_logo);
+                        }
+                    } else {
+                        // Legacy path fallback
+                        $oldPath = public_path('assets/images/creatorlogo/'.$creator->subdomain_logo);
+                        if (File::exists($oldPath)) {
+                            File::delete($oldPath);
+                        }
                     }
                 }
-                // Hapus file lama jika ada di storage (backward compatibility)
-                elseif ($creator->subdomain_logo && Storage::disk('public')->exists($creator->subdomain_logo)) {
-                    Storage::disk('public')->delete($creator->subdomain_logo);
-                }
 
-                $file->move($dir, $name);
-                $creator->subdomain_logo = $name;
+                // Simpan ke storage (public disk)
+                $path = $file->storeAs('subdomain_logos', $name, 'public');
+                $creator->subdomain_logo = $path;
             }
 
             $creator->save();

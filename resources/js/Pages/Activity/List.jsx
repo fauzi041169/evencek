@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
@@ -146,6 +146,7 @@ export default function List({
                                                     const isOwner = user && (activity.user_id === user.id || (activity.owners && activity.owners.some(o => o.id === user.id)));
                                                     const canManage = isAdmin || isOwner;
                                                     const canDelete = isAdmin || (user?.role === 'creator' && isOwner);
+                                                    const isPublic = activity.status?.toLowerCase() === 'public';
                                                     
                                                     // Status Pendaftaran Logic (Simulation based on blade)
                                                     const registrationStatuses = {
@@ -242,17 +243,17 @@ export default function List({
                                                             <td className="px-6 py-2 whitespace-nowrap">
                                                                 {canManage ? (
                                                                     <select 
-                                                                        value={activity.status || 'private'}
+                                                                        value={activity.status?.toLowerCase() || 'private'}
                                                                         onChange={(e) => handleStatusChange(e.target.value)}
-                                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-0 ${activity.status === 'public' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-0 ${isPublic ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
                                                                         style={{ paddingRight: '2rem' }}
                                                                     >
                                                                         <option value="public">Public</option>
                                                                         <option value="private">Private</option>
                                                                     </select>
                                                                 ) : (
-                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${activity.status === 'public' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                                        {activity.status === 'public' ? 'Public' : 'Private'}
+                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${isPublic ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                                        {isPublic ? 'Public' : 'Private'}
                                                                     </span>
                                                                 )}
                                                             </td>

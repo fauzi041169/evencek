@@ -110,6 +110,19 @@ export default function Detail({
         }
     }, [flash, activity.id, activeBatch]);
 
+    const descriptionRef = useRef(null);
+
+    useEffect(() => {
+        if (descriptionRef.current) {
+            const images = descriptionRef.current.querySelectorAll('img');
+            images.forEach(img => {
+                img.onerror = () => {
+                    img.style.display = 'none';
+                };
+            });
+        }
+    }, [activity.description]);
+
     const handleCommentSubmit = (e) => {
         e.preventDefault();
         router.post(route('activity.comments.store', activity.id), {
@@ -194,15 +207,15 @@ export default function Detail({
 
                 if (registrationTarget.type === 'link' || registrationTarget.type === 'form') {
                     // Cek apakah kegiatan berbayar
-                    const currentPrice = activeBatch?.price !== undefined && activeBatch?.price !== null 
-                        ? Number(activeBatch.price) 
+                    const currentPrice = activeBatch?.price !== undefined && activeBatch?.price !== null
+                        ? Number(activeBatch.price)
                         : Number(activity.price);
 
                     // Jika berbayar, arahkan langsung ke form pembayaran sebelum mendaftar
                     if (currentPrice > 0) {
-                        window.location.href = route('payments.create', { 
-                            activity: activity.id, 
-                            batch_id: activeBatch?.id 
+                        window.location.href = route('payments.create', {
+                            activity: activity.id,
+                            batch_id: activeBatch?.id
                         });
                         return;
                     }
@@ -407,14 +420,14 @@ export default function Detail({
                 <div className="absolute inset-0">
                     {/* Simple Blue/Purple Gradient Background */}
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 z-10"></div>
-                    
+
                     {/* Optional: Very subtle pattern or noise if desired, but user said 'simple' */}
                     {/* <div className="absolute inset-0 bg-[url('/assets/images/begron/bg-pattern.png')] opacity-5 mix-blend-overlay"></div> */}
                 </div>
 
                 {/* Content Container */}
                 <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-48 flex flex-col items-center justify-center text-center">
-                    
+
                     {/* Title */}
                     <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight animate-fade-up max-w-4xl mb-6">
                         {activity.title || activity.name}
@@ -440,7 +453,7 @@ export default function Detail({
                                 <span>{activity.location}</span>
                             </span>
                         )}
-                        
+
                         {/* Price Pill */}
                         {activity.price !== null && (
                             <>
@@ -462,7 +475,7 @@ export default function Detail({
                                     )
                                 ) : (
                                     <div className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
-                                       <span className="text-emerald-300 font-bold">GRATIS</span>
+                                        <span className="text-emerald-300 font-bold">GRATIS</span>
                                     </div>
                                 )}
                             </>
@@ -494,49 +507,49 @@ export default function Detail({
                         </div>
 
                         {isJoined ? (
-                                    <>
-                                        <button
-                                            onClick={() => openPaymentDetailLookup(activity.id, user?.id)}
-                                            className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gradient-to-r from-primary to-secondary text-white font-bold hover:shadow-lg hover:shadow-primary/30 transition-all transform hover:-translate-y-1"
-                                        >
-                                            <i className="fas fa-file-invoice"></i>
-                                            {buttonText || 'Lihat Detail'}
-                                        </button>
+                            <>
+                                <button
+                                    onClick={() => openPaymentDetailLookup(activity.id, user?.id)}
+                                    className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gradient-to-r from-primary to-secondary text-white font-bold hover:shadow-lg hover:shadow-primary/30 transition-all transform hover:-translate-y-1"
+                                >
+                                    <i className="fas fa-file-invoice"></i>
+                                    {buttonText || 'Lihat Detail'}
+                                </button>
 
-                                        <button
-                                            onClick={() => setIsBulkImportModalOpen(true)}
-                                            className="glass-button inline-flex items-center gap-2 h-14 px-8 rounded-full text-white font-bold"
-                                        >
-                                            <i className="fas fa-user-plus"></i>
-                                            Daftarkan Lain
-                                        </button>
-                                    </>
-                                ) : registrationTarget ? (
-                                    <>
-                                        {registrationTarget.type === 'disabled' ? (
-                                            <span className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gray-500/50 backdrop-blur-sm text-white font-bold cursor-not-allowed border border-white/10">
-                                                <i className="fas fa-ban"></i>
-                                                {registrationTarget.label}
-                                            </span>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (registrationTarget.type === 'login_modal') {
-                                                        setIsLoginModalOpen(true);
-                                                    } else {
-                                                        setIsRegistrationTypeModalOpen(true);
-                                                    }
-                                                }}
-                                                className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-white text-primary font-bold hover:bg-secondary/5 hover:shadow-lg hover:shadow-white/20 transition-all transform hover:-translate-y-1"
-                                            >
-                                                <i className="fas fa-user-plus"></i>
-                                                {registrationTarget.label}
-                                            </button>
-                                        )}
-                                    </>
-                                ) : null}
-                            </div>
+                                <button
+                                    onClick={() => setIsBulkImportModalOpen(true)}
+                                    className="glass-button inline-flex items-center gap-2 h-14 px-8 rounded-full text-white font-bold"
+                                >
+                                    <i className="fas fa-user-plus"></i>
+                                    Daftarkan Lain
+                                </button>
+                            </>
+                        ) : registrationTarget ? (
+                            <>
+                                {registrationTarget.type === 'disabled' ? (
+                                    <span className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gray-500/50 backdrop-blur-sm text-white font-bold cursor-not-allowed border border-white/10">
+                                        <i className="fas fa-ban"></i>
+                                        {registrationTarget.label}
+                                    </span>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (registrationTarget.type === 'login_modal') {
+                                                setIsLoginModalOpen(true);
+                                            } else {
+                                                setIsRegistrationTypeModalOpen(true);
+                                            }
+                                        }}
+                                        className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-white text-primary font-bold hover:bg-secondary/5 hover:shadow-lg hover:shadow-white/20 transition-all transform hover:-translate-y-1"
+                                    >
+                                        <i className="fas fa-user-plus"></i>
+                                        {registrationTarget.label}
+                                    </button>
+                                )}
+                            </>
+                        ) : null}
+                    </div>
                 </div>
 
                 {/* Wave Separator */}
@@ -557,6 +570,7 @@ export default function Detail({
                             <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Tentang Kegiatan</h2>
                                 <div
+                                    ref={descriptionRef}
                                     className="prose max-w-none text-gray-600"
                                     dangerouslySetInnerHTML={{ __html: activity.description }}
                                 />

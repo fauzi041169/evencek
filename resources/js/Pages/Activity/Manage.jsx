@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Swal from 'sweetalert2';
@@ -91,7 +91,7 @@ export default function Manage({ activities }) {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                            activity.status === 'public' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                                            activity.status?.toLowerCase() === 'public' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                                                         }`}>
                                                             {activity.status}
                                                         </span>

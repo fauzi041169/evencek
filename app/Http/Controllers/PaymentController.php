@@ -437,8 +437,15 @@ class PaymentController extends Controller
                 }
             }
             // Ambil rekening penerimaan milik creator kegiatan (semua jika ada)
-            $creatorBank = $this->getSavedBankAccount($activity->user_id);
-            $creatorBankAccounts = $this->getSavedBankAccounts($activity->user_id) ?? [];
+            // Cek apakah ada pengaturan manual payment spesifik di activity
+            if (!empty($activity->manual_payment_details) && is_array($activity->manual_payment_details)) {
+                $creatorBankAccounts = $activity->manual_payment_details;
+                $creatorBank = !empty($creatorBankAccounts) ? $creatorBankAccounts[0] : null;
+            } else {
+                $creatorBank = $this->getSavedBankAccount($activity->user_id);
+                $creatorBankAccounts = $this->getSavedBankAccounts($activity->user_id) ?? [];
+            }
+            
             if (! is_array($creatorBankAccounts)) {
                 $creatorBankAccounts = (array) $creatorBankAccounts;
             }
@@ -571,8 +578,14 @@ class PaymentController extends Controller
     {
         try {
             // Replicate logic from create method
-            $creatorBank = $this->getSavedBankAccount($activity->user_id);
-            $creatorBankAccounts = $this->getSavedBankAccounts($activity->user_id) ?? [];
+            if (!empty($activity->manual_payment_details) && is_array($activity->manual_payment_details)) {
+                $creatorBankAccounts = $activity->manual_payment_details;
+                $creatorBank = !empty($creatorBankAccounts) ? $creatorBankAccounts[0] : null;
+            } else {
+                $creatorBank = $this->getSavedBankAccount($activity->user_id);
+                $creatorBankAccounts = $this->getSavedBankAccounts($activity->user_id) ?? [];
+            }
+
             if (! is_array($creatorBankAccounts)) {
                 $creatorBankAccounts = (array) $creatorBankAccounts;
             }
