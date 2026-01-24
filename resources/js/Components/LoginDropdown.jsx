@@ -84,7 +84,8 @@ export default function LoginDropdown() {
         <div className="relative" ref={dropdownRef}>
             <button 
                 onClick={() => setIsOpen(!isOpen)} 
-                className="flex items-center focus:outline-none transition-transform hover:scale-105"
+                onMouseEnter={() => setIsOpen(true)}
+                className="flex items-center focus:outline-none transition-all duration-300 hover:scale-110 hover:drop-shadow-lg"
             >
                 <img 
                     src="/assets/images/icon/login.png" 
