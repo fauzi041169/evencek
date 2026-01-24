@@ -1631,6 +1631,81 @@ class PaymentController extends Controller
                     'proof_of_payment' => $path,
                 ]);
 
+                // CASCADE UPDATE: Update proof for all group members
+                $activityUser = ActivityUser::where('activity_id', $payment->activity_id)
+                    ->where('user_id', $payment->user_id)
+                    ->first();
+                
+                $relatedUserIds = [];
+
+                // 1. Explicit Group
+                if ($activityUser && $activityUser->activity_participant_group_id) {
+                    $relatedUserIds = ActivityUser::where('activity_id', $payment->activity_id)
+                        ->where('activity_participant_group_id', $activityUser->activity_participant_group_id)
+                        ->pluck('user_id')
+                        ->toArray();
+                } else {
+                    // 2. Implicit Group (via Payment Notes)
+                    $decoded = $this->decodeNotesToArray($payment->notes);
+                    if (is_array($decoded)) {
+                        $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
+                        if (is_array($uids) && !empty($uids)) {
+                             // Verify current user is in the list
+                             if (in_array((string)$payment->user_id, array_map('strval', $uids))) {
+                                 $relatedUserIds = $uids;
+                             }
+                        }
+                    }
+                }
+
+                $otherUserIds = array_diff($relatedUserIds, [$payment->user_id]);
+                
+                if (! empty($otherUserIds)) {
+                        Log::info('Cascading proof update to group members', [
+                            'parent_payment_id' => $payment->id,
+                            'group_type' => $activityUser && $activityUser->activity_participant_group_id ? 'explicit' : 'implicit',
+                            'affected_users' => $otherUserIds
+                        ]);
+
+                        foreach ($otherUserIds as $uid) {
+                            try {
+                                // Find or create payment for this user
+                                $memberPayment = Payment::firstOrNew([
+                                    'user_id' => $uid,
+                                    'activity_id' => $payment->activity_id,
+                                    'activity_batch_id' => $payment->activity_batch_id
+                                ]);
+
+                                // Copy file to unique path for this user
+                                $ext = pathinfo($path, PATHINFO_EXTENSION);
+                                $uniqueName = 'payment_group_'.$payment->activity_id.'_'.$uid.'_'.uniqid().'.'.$ext;
+                                $uniquePathRelative = 'payment-proofs/'.$uniqueName;
+                                
+                                if (Storage::disk('public')->exists($path)) {
+                                    Storage::disk('public')->copy($path, $uniquePathRelative);
+                                    
+                                    // Delete old proof if exists
+                                    if ($memberPayment->exists && $memberPayment->proof_of_payment && $memberPayment->proof_of_payment !== 'imported') {
+                                        if (Storage::disk('public')->exists($memberPayment->proof_of_payment)) {
+                                            Storage::disk('public')->delete($memberPayment->proof_of_payment);
+                                        }
+                                    }
+
+                                    $memberPayment->proof_of_payment = $uniquePathRelative;
+                                    // Sync other fields if new
+                                    if (!$memberPayment->exists) {
+                                        $memberPayment->amount = $payment->amount;
+                                        $memberPayment->status = 'pending'; 
+                                        $memberPayment->payment_method_id = $payment->payment_method_id;
+                                    }
+                                    $memberPayment->save();
+                                }
+                            } catch (\Exception $e) {
+                                Log::error("Failed to cascade proof to user $uid: " . $e->getMessage());
+                            }
+                        }
+                    }
+
                 if ($request->expectsJson()) {
                     return response()->json([
                         'success' => true,
@@ -1730,6 +1805,100 @@ class PaymentController extends Controller
                 $payment->update($updateData);
             }
             
+            // CASCADE UPDATE: Sync changes to all group members
+            $activityUser = ActivityUser::where('activity_id', $payment->activity_id)
+                ->where('user_id', $payment->user_id)
+                ->first();
+
+            $relatedUserIds = [];
+
+            // 1. Explicit Group
+            if ($activityUser && $activityUser->activity_participant_group_id) {
+                $relatedUserIds = ActivityUser::where('activity_id', $payment->activity_id)
+                    ->where('activity_participant_group_id', $activityUser->activity_participant_group_id)
+                    ->pluck('user_id')
+                    ->toArray();
+            } else {
+                // 2. Implicit Group
+                $decoded = $this->decodeNotesToArray($payment->notes);
+                if (is_array($decoded)) {
+                    $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
+                    if (is_array($uids) && !empty($uids)) {
+                         if (in_array((string)$payment->user_id, array_map('strval', $uids))) {
+                             $relatedUserIds = $uids;
+                         }
+                    }
+                }
+            }
+            
+            $otherUserIds = array_diff($relatedUserIds, [$payment->user_id]);
+
+            if (!empty($otherUserIds)) {
+                Log::info('Cascading payment details update to group members', [
+                    'parent_payment_id' => $payment->id,
+                    'group_type' => $activityUser && $activityUser->activity_participant_group_id ? 'explicit' : 'implicit',
+                    'affected_users' => $otherUserIds
+                ]);
+
+                foreach ($otherUserIds as $uid) {
+                    try {
+                        $memberPayment = Payment::firstOrNew([
+                            'user_id' => $uid,
+                            'activity_id' => $payment->activity_id,
+                            'activity_batch_id' => $payment->activity_batch_id
+                        ]);
+
+                        // Sync Amount
+                        if (isset($updateData['amount'])) {
+                            $memberPayment->amount = $updateData['amount'];
+                        }
+                        
+                        // Sync Notes (preserve notes structure if complex, or just copy?)
+                        // User request: "anggota lagin otomatis datanya ikut berubah"
+                        // Assuming simple sync for manual edits is fine, but we should be careful about overwriting specific member metadata.
+                        // However, usually bulk edits imply same notes.
+                        if (isset($updateData['notes'])) {
+                             // Ideally we shouldn't overwrite the 'user_ids' meta in other members if they carry it, but usually they don't or it's identical.
+                             // Implementing direct copy for consistency with requirement "datanya ikut berubah".
+                            $memberPayment->notes = $updateData['notes'];
+                        }
+
+                        // Sync Proof File if updated
+                        if (isset($updateData['proof_of_payment'])) {
+                            $sourcePath = $updateData['proof_of_payment'];
+                            $ext = pathinfo($sourcePath, PATHINFO_EXTENSION);
+                            $uniqueName = 'payment_group_'.$payment->activity_id.'_'.$uid.'_'.uniqid().'.'.$ext;
+                            $uniquePathRelative = 'payment-proofs/'.$uniqueName;
+                            
+                            if (Storage::disk('public')->exists($sourcePath)) {
+                                Storage::disk('public')->copy($sourcePath, $uniquePathRelative);
+                                
+                                // Delete old proof
+                                if ($memberPayment->exists && $memberPayment->proof_of_payment && $memberPayment->proof_of_payment !== 'imported') {
+                                    if (Storage::disk('public')->exists($memberPayment->proof_of_payment)) {
+                                        Storage::disk('public')->delete($memberPayment->proof_of_payment);
+                                    }
+                                }
+                                
+                                $memberPayment->proof_of_payment = $uniquePathRelative;
+                            }
+                        }
+
+                        if (!$memberPayment->exists) {
+                            // Set defaults for new payment
+                            $memberPayment->status = 'pending';
+                            $memberPayment->payment_method_id = $payment->payment_method_id;
+                            if (!isset($memberPayment->amount)) $memberPayment->amount = $payment->amount;
+                        }
+
+                        $memberPayment->save();
+
+                    } catch (\Exception $e) {
+                        Log::error("Failed to cascade update to user $uid: " . $e->getMessage());
+                    }
+                }
+            }
+
             DB::commit();
 
             if ($request->expectsJson()) {
@@ -1871,28 +2040,60 @@ class PaymentController extends Controller
             // 1. Determine "kelompok" via ActivityParticipantGroup
             if ($activityUser && $activityUser->activity_participant_group_id) {
                 $registrationMethod = 'kelompok';
+                // Strictly filter by activity and group ID to ensure NO spillover to other groups
                 $relatedUserIds = ActivityUser::where('activity_id', $payment->activity_id)
                     ->where('activity_participant_group_id', $activityUser->activity_participant_group_id)
                     ->pluck('user_id')
                     ->toArray();
+                
+                Log::info('Group members identified for cascading validation', [
+                    'group_id' => $activityUser->activity_participant_group_id,
+                    'count' => count($relatedUserIds),
+                    'user_ids' => $relatedUserIds
+                ]);
             }
 
-            // 2. Fallback to bulk-import notes (legacy group)
-            if ($registrationMethod === 'mandiri' && is_string($payment->notes)) {
+            // 2. Fallback to implicit/bulk-import notes
+            if ($registrationMethod === 'mandiri') {
                 $decoded = $this->decodeNotesToArray($payment->notes);
-                if (is_array($decoded)) {
-                    $uidsMeta = [];
-                    if (! empty($decoded['user_ids']) && is_array($decoded['user_ids'])) {
-                        $uidsMeta = $decoded['user_ids'];
-                    } elseif (! empty($decoded['bulk_import']) && is_array($decoded['bulk_import']) && ! empty($decoded['bulk_import']['user_ids'])) {
-                        $uidsMeta = $decoded['bulk_import']['user_ids'];
+                if (is_array($decoded) && (!empty($decoded['user_ids']) || !empty($decoded['bulk_import']['user_ids']))) {
+                    // Start from THIS payment if it has the list
+                    $uidsMeta = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
+                    if (!empty($uidsMeta)) {
+                         $registrationMethod = 'kelompok';
+                         $meta = $decoded;
+                         $shouldActivateUploader = in_array($payment->user_id, $uidsMeta);
+                         $relatedUserIds = $uidsMeta;
                     }
-
-                    if (! empty($uidsMeta)) {
-                        $registrationMethod = 'kelompok';
-                        $meta = $decoded;
-                        $shouldActivateUploader = in_array($payment->user_id, $uidsMeta);
-                        $relatedUserIds = $uidsMeta;
+                } else {
+                    // SEARCH FOR PARENT PAYMENT: If this payment doesn't have the list, maybe another payment (the parent) has THIS user in its list
+                     try {
+                        $parentPayment = Payment::where('activity_id', $payment->activity_id)
+                            ->where('notes', 'like', '%user_ids%')
+                            ->get()
+                            ->first(function($p) use ($payment) {
+                                $notes = json_decode($p->notes, true);
+                                if (!is_array($notes)) return false;
+                                
+                                $uids = $notes['user_ids'] ?? ($notes['bulk_import']['user_ids'] ?? []);
+                                if (is_array($uids)) {
+                                    return in_array((string)$payment->user_id, array_map('strval', $uids));
+                                }
+                                return false;
+                            });
+                        
+                        if ($parentPayment) {
+                             $notes = json_decode($parentPayment->notes, true);
+                             $groupUids = $notes['user_ids'] ?? ($notes['bulk_import']['user_ids'] ?? []);
+                             if (!empty($groupUids)) {
+                                 $registrationMethod = 'kelompok';
+                                 $meta = $notes;
+                                 $shouldActivateUploader = in_array($payment->user_id, $groupUids);
+                                 $relatedUserIds = $groupUids;
+                             }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Error searching parent payment in verify: ' . $e->getMessage());
                     }
                 }
             }
@@ -1908,12 +2109,6 @@ class PaymentController extends Controller
                 if ($shouldActivateUploader) {
                     $existingParticipant = ActivityUser::where('user_id', $payment->user_id)
                         ->where('activity_id', $payment->activity_id)
-                        ->when($payment->activity_batch_id, function ($q) use ($payment) {
-                            // If payment has batch, try to match it, but be flexible if user has no batch yet
-                            // However, strictly speaking, we should look for the user record that generated this payment
-                            // But usually searching by user_id + activity_id is enough if only 1 enrollment allowed.
-                            // Let's stick to finding ANY record for this user in this activity first.
-                        })
                         ->orderBy('id', 'desc')
                         ->first();
 
@@ -1943,21 +2138,26 @@ class PaymentController extends Controller
                 // Process Related Members (Auto-Approve Payments & Activate Enrollment)
                 if (! empty($relatedUserIds)) {
                     $uids = $relatedUserIds;
-                    // Exclude current user from the loop if we want, but updatingOrCreate is safe.
-                    // However, we MUST update their PAYMENTS too.
-
+                    
                     // Update Payments for related users
+                    // STRICTLY LIMIT to this activity and these specific user IDs
                     $otherUserIds = array_diff($uids, [$payment->user_id]);
                     if (! empty($otherUserIds)) {
+                        $groupUpdateData = [
+                            'status' => 'approved',
+                            'verified_by' => auth()->id(),
+                            'verified_at' => now(),
+                            'notes' => DB::raw("CONCAT(COALESCE(notes, ''), ' | Auto-approved via group member #{$payment->id}')"),
+                        ];
+                        
+                        if (isset($validated['amount'])) {
+                            $groupUpdateData['amount'] = $validated['amount'];
+                        }
+
                         Payment::whereIn('user_id', $otherUserIds)
                             ->where('activity_id', $payment->activity_id)
                             ->where('status', 'pending') // Only approve pending ones
-                            ->update([
-                                'status' => 'approved',
-                                'verified_by' => auth()->id(),
-                                'verified_at' => now(),
-                                'notes' => DB::raw("CONCAT(COALESCE(notes, ''), ' | Auto-approved via group member #{$payment->id}')"),
-                            ]);
+                            ->update($groupUpdateData);
 
                         Log::info('Auto-approved related group payments', [
                             'parent_payment_id' => $payment->id,
@@ -2073,15 +2273,21 @@ class PaymentController extends Controller
                 // Update Payments for related users (Reject them too)
                 $otherUserIds = array_diff($usersToReject, [$payment->user_id]);
                 if (! empty($otherUserIds)) {
+                    $groupRejectData = [
+                        'status' => 'rejected',
+                        'verified_by' => auth()->id(),
+                        'verified_at' => now(),
+                        'notes' => DB::raw("CONCAT(COALESCE(notes, ''), ' | Auto-rejected via group member #{$payment->id}')"),
+                    ];
+                    
+                    if (isset($validated['amount'])) {
+                        $groupRejectData['amount'] = $validated['amount'];
+                    }
+
                     Payment::whereIn('user_id', $otherUserIds)
                         ->where('activity_id', $payment->activity_id)
                         ->whereIn('status', ['pending', 'approved']) // Reject pending and approved payments
-                        ->update([
-                            'status' => 'rejected',
-                            'verified_by' => auth()->id(),
-                            'verified_at' => now(),
-                            'notes' => DB::raw("CONCAT(COALESCE(notes, ''), ' | Auto-rejected via group member #{$payment->id}')"),
-                        ]);
+                        ->update($groupRejectData);
 
                     Log::info('Auto-rejected related group payments', [
                         'parent_payment_id' => $payment->id,

@@ -365,6 +365,11 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                                                         rows="3"
                                                         className={`w-full rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm ${showRejectInput ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500 bg-rose-50' : ''}`}
                                                     ></textarea>
+                                                    {payment.verifier && (
+                                                        <div className="mt-2 text-xs text-slate-500 text-right">
+                                                            Divalidasi oleh: <span className="font-medium text-slate-700">{payment.verifier.name}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 

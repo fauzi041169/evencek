@@ -1569,7 +1569,10 @@ class ActivityController extends Controller
             return Inertia::render('Activity/Show', [
                 'heroAnimationStyle' => $heroAnimationStyle,
                 'currentUser' => $currentUser,
-                'activity' => $activity,
+                'activity' => array_merge($activity->toArray(), [
+                    'id_card_visible' => $printSettings['id_card_visible'] ?? true,
+                    'certificate_visible' => $certificatePrintSettings['download_card_visible'] ?? false,
+                ]),
                 'isEnrolled' => $isEnrolled,
                 'isRegistered' => $isRegistered,
                 'enrollmentStatus' => $enrollmentStatus,
@@ -4801,6 +4804,7 @@ class ActivityController extends Controller
             $printSettings = [];
         }
         $printSettings['card_id_visible'] = (bool) $visible;
+        $printSettings['id_card_visible'] = (bool) $visible; // Sync with new standard
 
         // Jika card_setting kosong, buat default (kosong array)
         if (! $cardSettings->card_setting) {

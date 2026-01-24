@@ -470,7 +470,7 @@ export default function Index({
             <div className="">
                 {/* Stats & Quick Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-gradient-to-br from-primary to-secondary p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Users className="w-24 h-24 transform translate-x-4 -translate-y-4" />
                         </div>
@@ -485,7 +485,7 @@ export default function Index({
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-success to-success/80 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <MapPin className="w-24 h-24 transform translate-x-4 -translate-y-4" />
                         </div>
@@ -500,7 +500,7 @@ export default function Index({
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-warning to-warning/80 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Building className="w-24 h-24 transform translate-x-4 -translate-y-4" />
                         </div>
@@ -515,7 +515,7 @@ export default function Index({
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-danger to-danger/80 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <MapPin className="w-24 h-24 transform translate-x-4 -translate-y-4" />
                         </div>
@@ -936,13 +936,13 @@ export default function Index({
                                                 <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.jabatan || '-'}</td>
                                             )}
                                             {visibleColumns['col-prov'] && (
-                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.province?.name || '-'}</td>
+                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.province?.name || participant.user?.profile?.other_province || '-'}</td>
                                             )}
                                             {visibleColumns['col-regency'] && (
-                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.regency?.name || '-'}</td>
+                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.regency?.name || participant.user?.profile?.other_regency || '-'}</td>
                                             )}
                                             {visibleColumns['col-district'] && (
-                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.district?.name || '-'}</td>
+                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.district?.name || participant.user?.profile?.other_district || '-'}</td>
                                             )}
                                             {visibleColumns['col-alamat'] && (
                                                 <td className="px-6 py-4 text-slate-600 truncate max-w-xs" title={participant.user?.profile?.address}>

@@ -537,7 +537,7 @@ class ActivityPreparationController extends Controller
                     'updater', 
                     'payment' => function($q) use ($activityId) {
                         $q->where('activity_id', $activityId)
-                          ->with(['paymentMethod'])
+                          ->with(['paymentMethod', 'verifier'])
                           ->latest();
                     }
                 ]);
@@ -5401,18 +5401,69 @@ class ActivityPreparationController extends Controller
 
         $participant = $query->firstOrFail();
 
-        if ($participant->status == ActivityUser::STATUS_ACTIVE) {
-            // Disable (set to Verification)
-            $participant->status = ActivityUser::STATUS_VERIFICATION;
-            $message = 'Peserta dinonaktifkan (status diubah ke verifikasi).';
+        // Determine target status
+        $isCurrentlyActive = ($participant->status == ActivityUser::STATUS_ACTIVE);
+        $newStatus = $isCurrentlyActive ? ActivityUser::STATUS_VERIFICATION : ActivityUser::STATUS_ACTIVE;
+        $message = $isCurrentlyActive ? 'Peserta dinonaktifkan (status diubah ke verifikasi).' : 'Peserta diaktifkan.';
+        
+        $userIdsToUpdate = [$userId];
+        
+        // 1. Check explicit group
+        if ($participant->activity_participant_group_id) {
+            $groupMembers = ActivityUser::where('activity_id', $activityId)
+                ->where('activity_participant_group_id', $participant->activity_participant_group_id)
+                ->pluck('user_id')
+                ->toArray();
+            $userIdsToUpdate = array_merge($userIdsToUpdate, $groupMembers);
         } else {
-            // Enable (set to Active)
-            $participant->status = ActivityUser::STATUS_ACTIVE;
-            $message = 'Peserta diaktifkan.';
+            // 2. Check implicit bulk group (via Payment notes) to ensure integrity of bulk registrations
+            try {
+                // Find any payment in this activity that lists this user in 'user_ids'
+                $parentPayment = Payment::where('activity_id', $activityId)
+                    ->where('notes', 'like', '%user_ids%')
+                    ->get()
+                    ->first(function($p) use ($userId) {
+                        $notes = json_decode($p->notes, true);
+                        if (!is_array($notes)) return false;
+                        
+                        $uids = $notes['user_ids'] ?? ($notes['bulk_import']['user_ids'] ?? []);
+                        if (is_array($uids)) {
+                            // Compare as strings to be safe
+                            return in_array((string)$userId, array_map('strval', $uids));
+                        }
+                        return false;
+                    });
+                
+                if ($parentPayment) {
+                     $notes = json_decode($parentPayment->notes, true);
+                     $groupUids = $notes['user_ids'] ?? ($notes['bulk_import']['user_ids'] ?? []);
+                     if (!empty($groupUids)) {
+                         $userIdsToUpdate = array_merge($userIdsToUpdate, $groupUids);
+                     }
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Error checking implict group structure: ' . $e->getMessage());
+            }
+        }
+        
+        $userIdsToUpdate = array_unique($userIdsToUpdate);
+        $count = count($userIdsToUpdate);
+        
+        if ($count > 1) {
+            $message .= " (Status diterapkan untuk $count anggota kelompok)";
         }
 
-        $participant->updated_by = auth()->id();
-        $participant->save();
+        // Apply update to all found members
+        ActivityUser::where('activity_id', $activityId)
+            ->whereIn('user_id', $userIdsToUpdate)
+            ->when($request->has('batch_id') && $request->batch_id, function($q) use ($request) {
+                $q->where('activity_batch_id', $request->batch_id);
+            })
+            ->update([
+                'status' => $newStatus,
+                'updated_by' => auth()->id(),
+                'updated_at' => now(),
+            ]);
 
         return redirect()->back()->with('success', $message);
     }
