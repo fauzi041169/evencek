@@ -24,7 +24,11 @@ yarn-error.log
 /dist_temp
 /dist_production
 /public/D_
-/public/images
 *.zip
 find_method.php
 prepare_production_zip.ps1
+/public/storage_old
+/public/storage_backup_*
+/public/cgi-bin
+/public/error_log
+/public/check_file.php
