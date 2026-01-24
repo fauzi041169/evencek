@@ -156,20 +156,34 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], lates
                 .animate-marquee:hover {
                     animation-play-state: paused;
                 }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fade-in-up {
+                    animation: fadeInUp 0.5s ease-out forwards;
+                }
             `}</style>
 
             {/* Hero Section */}
             
                 <section className="relative min-h-screen overflow-hidden flex items-center">
                     {heroSlides.length > 0 ? (
-                        heroSlides.map((img, index) => (
+                        heroSlides.map((slide, index) => (
                             <div 
                                 key={index}
                                 className={`hero-slide absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
-                                style={{ backgroundImage: `url('${img}')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                                style={{ 
+                                    backgroundImage: `url('${typeof slide === 'string' ? slide : slide.image}')`, 
+                                    backgroundSize: 'cover', 
+                                    backgroundPosition: 'center' 
+                                }}
                             >
                                 <div className="hero-gradient-overlay"></div>
                                 <div className="hero-gradient-overlay-top"></div>
+                                {/* Side Brightening Overlays */}
+                                <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-white/10 to-transparent pointer-events-none"></div>
+                                <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-white/10 to-transparent pointer-events-none"></div>
                             </div>
                         ))
                     ) : (
@@ -177,26 +191,59 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], lates
                     )}
 
                     <div className="relative z-10 flex items-center justify-center h-full px-4 sm:px-6 lg:px-8 w-full">
-                        <Reveal className="hero-content text-center max-w-5xl mx-auto bg-white/10 backdrop-blur-md rounded-3xl px-6 py-8 ring-1 ring-white/20">
-                            <h1 className="hero-title text-4xl sm:text-5xl lg:text-6xl font-black mb-6 leading-tight tracking-tight text-white">
-                                Platform Manajemen Event Digital Profesional
-                            </h1>
-                            <p className="text-lg sm:text-xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed">
-                                Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.
-                            </p>
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                <Link href="/activity" 
-                                   className="group cta-primary cta-shimmer inline-flex items-center px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white font-bold text-lg rounded-2xl transition-all duration-300 hover:shadow-2xl">
-                                    <i className="fas fa-rocket text-white text-lg mr-3"></i>
-                                    <span>Mulai Kelola Event</span>
-                                </Link>
-                                {/* Note: Login logic usually requires client-side state or redirect. Assuming simple link for now or just hidden if auth logic not ported fully */}
-                                <a href="#fitur" className="group cta-tertiary cta-shimmer inline-flex items-center px-8 py-4 bg-white/10 text-white font-bold text-lg rounded-2xl transition-all duration-300 hover:bg-white/20 ring-1 ring-white/20">
-                                    <i className="fas fa-layer-group text-white text-lg mr-3"></i>
-                                    <span>Jelajahi Fitur</span>
-                                </a>
-                            </div>
-                        </Reveal>
+                        <div className="hero-content text-center max-w-5xl mx-auto bg-white/10 backdrop-blur-md rounded-3xl px-6 py-8 ring-1 ring-white/20 transition-all duration-500">
+                            {heroSlides.length > 0 && (() => {
+                                const slide = heroSlides[currentSlide];
+                                const isActivity = typeof slide === 'object' && slide.type === 'activity';
+                                const isStatic = typeof slide === 'object' && slide.type === 'static';
+                                
+                                return (
+                                    <div key={currentSlide} className="animate-fade-in-up">
+                                        <h1 className="hero-title text-4xl sm:text-5xl lg:text-6xl font-black mb-6 leading-tight tracking-tight text-white drop-shadow-lg">
+                                            {isActivity ? slide.title : (isStatic ? slide.title : 'Platform Manajemen Event Digital Profesional')}
+                                        </h1>
+                                        <p className="text-lg sm:text-xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed drop-shadow-md">
+                                            {isActivity ? slide.description : (isStatic ? slide.description : 'Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.')}
+                                        </p>
+                                        
+                                        {isActivity && (
+                                            <div className="flex flex-wrap justify-center gap-4 mb-8 text-white/80 text-sm font-medium">
+                                                {slide.date && (
+                                                    <span className="bg-black/30 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                                                        <i className="fas fa-calendar-alt mr-2 text-primary-400"></i>{slide.date}
+                                                    </span>
+                                                )}
+                                                {slide.location && (
+                                                    <span className="bg-black/30 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                                                        <i className="fas fa-map-marker-alt mr-2 text-red-400"></i>{slide.location}
+                                                    </span>
+                                                )}
+                                                {slide.price && (
+                                                    <span className="bg-black/30 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                                                        <i className="fas fa-tag mr-2 text-green-400"></i>{slide.price}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                            <Link href={isActivity ? `/activity/${slide.id}` : (isStatic && slide.link ? slide.link : '/activity')} 
+                                               className="group cta-primary cta-shimmer inline-flex items-center px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white font-bold text-lg rounded-2xl transition-all duration-300 hover:shadow-2xl">
+                                                <i className={`fas ${isActivity ? 'fa-ticket-alt' : 'fa-rocket'} text-white text-lg mr-3`}></i>
+                                                <span>{isActivity ? 'Lihat Detail' : (isStatic && slide.link_text ? slide.link_text : 'Mulai Kelola Event')}</span>
+                                            </Link>
+                                            
+                                            {!isActivity && (
+                                                <a href="#fitur" className="group cta-tertiary cta-shimmer inline-flex items-center px-8 py-4 bg-white/10 text-white font-bold text-lg rounded-2xl transition-all duration-300 hover:bg-white/20 ring-1 ring-white/20">
+                                                    <i className="fas fa-layer-group text-white text-lg mr-3"></i>
+                                                    <span>Jelajahi Fitur</span>
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
                     </div>
 
                     {/* Slider Navigation Dots */}

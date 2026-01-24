@@ -10,10 +10,39 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
     const [isSearching, setIsSearching] = useState(false);
     const [editMode, setEditMode] = useState(false);
 
+    // Shape Editor State
+    const [showShapeEditor, setShowShapeEditor] = useState(false);
+    const [shapeSettings, setShapeSettings] = useState({
+        left: {
+            width: '15', // percentage
+            color: '#1e293b', // slate-800
+            opacity: 0.9,
+            clipPath: 'polygon(0 0, 0 100%, 100% 100%)',
+            visible: true
+        },
+        right: {
+            width: '15', // percentage
+            color: '#1e293b', // slate-800
+            opacity: 0.9,
+            clipPath: 'polygon(100% 0, 100% 100%, 0 100%)',
+            visible: true
+        }
+    });
+
     useEffect(() => {
         // Initial check
         const storedMode = localStorage.getItem('editMode') === 'true';
         setEditMode(storedMode);
+
+        // Load shape settings
+        const savedShapes = localStorage.getItem('heroShapeSettings_v5');
+        if (savedShapes) {
+            try {
+                setShapeSettings(JSON.parse(savedShapes));
+            } catch (e) {
+                console.error('Failed to parse shape settings', e);
+            }
+        }
 
         // Listen for changes
         const handleEditModeChange = () => {
@@ -24,7 +53,12 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
         window.addEventListener('editModeChanged', handleEditModeChange);
         return () => window.removeEventListener('editModeChanged', handleEditModeChange);
     }, []);
-    
+
+    // Save settings when changed
+    useEffect(() => {
+        localStorage.setItem('heroShapeSettings_v5', JSON.stringify(shapeSettings));
+    }, [shapeSettings]);
+
     // Auto-play slider
     useEffect(() => {
         if (!sliderActivities || sliderActivities.length <= 1) return;
@@ -72,7 +106,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
         const userBatches = enrolledActivityBatches[activity.id] || [];
         // Filter empty values
         const validUserBatches = userBatches.filter(v => v !== null && v !== '');
-        
+
         let isEnrolledInActiveBatch = false;
         if (activity.active_batch) {
             isEnrolledInActiveBatch = validUserBatches.includes(activity.active_batch.id);
@@ -81,7 +115,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
         }
 
         const canGoToShow = validUserBatches.length > 0;
-        
+
         let batchIdForShow = null;
         if (isEnrolledInActiveBatch && activity.active_batch) {
             batchIdForShow = activity.active_batch.id;
@@ -102,6 +136,21 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
         }
     };
 
+    // Helper for date formatting
+    const formatDateRange = (start, end) => {
+        if (!start) return '';
+        const startDate = new Date(start);
+        const endDate = end ? new Date(end) : null;
+
+        if (endDate && endDate > startDate) {
+            if (startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear()) {
+                return `${format(startDate, 'd')} - ${format(endDate, 'd MMMM yyyy', { locale: id })}`;
+            }
+            return `${format(startDate, 'd MMMM')} - ${format(endDate, 'd MMMM yyyy', { locale: id })}`;
+        }
+        return format(startDate, 'd MMMM yyyy', { locale: id });
+    };
+
     return (
         <WebLayout hasHeaderSpacer={false}>
             <Head title="Jelajahi Aktivitas" />
@@ -114,9 +163,9 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                     {/* Background Elements */}
                     <div className="absolute inset-0">
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 via-slate-900/95 to-slate-900 z-10"></div>
-                        <img 
-                            src="/assets/images/begron/bg-pattern.png" 
-                            alt="Background Pattern" 
+                        <img
+                            src="/assets/images/begron/bg-pattern.png"
+                            alt="Background Pattern"
                             className="w-full h-full object-cover opacity-20 mix-blend-overlay"
                             onError={(e) => e.target.style.display = 'none'}
                         />
@@ -126,6 +175,38 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                         <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
                     </div>
 
+                    {/* Decorative Side Shapes */}
+                    {shapeSettings.left.visible && (
+                        <div
+                            className="absolute inset-y-0 left-0 z-10 hidden xl:block pointer-events-none transition-all duration-300"
+                            style={{ width: `${shapeSettings.left.width}%` }}
+                        >
+                            <div
+                                className="h-full w-full transition-all duration-300"
+                                style={{
+                                    backgroundColor: shapeSettings.left.color,
+                                    opacity: shapeSettings.left.opacity,
+                                    clipPath: shapeSettings.left.clipPath
+                                }}
+                            ></div>
+                        </div>
+                    )}
+                    {shapeSettings.right.visible && (
+                        <div
+                            className="absolute inset-y-0 right-0 z-10 hidden xl:block pointer-events-none transition-all duration-300"
+                            style={{ width: `${shapeSettings.right.width}%` }}
+                        >
+                            <div
+                                className="h-full w-full transition-all duration-300"
+                                style={{
+                                    backgroundColor: shapeSettings.right.color,
+                                    opacity: shapeSettings.right.opacity,
+                                    clipPath: shapeSettings.right.clipPath
+                                }}
+                            ></div>
+                        </div>
+                    )}
+
                     <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-12">
                         {sliderActivities && sliderActivities.length > 0 ? (
                             <div className="relative">
@@ -134,15 +215,14 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                     {sliderActivities.map((activity, index) => {
                                         const isOngoing = new Date(activity.date) <= new Date() && new Date(activity.date) >= new Date(new Date().setDate(new Date().getDate() - 7));
                                         const isUpcoming = new Date(activity.date) > new Date();
-                                        
+
                                         return (
-                                            <div 
-                                                key={activity.id} 
-                                                className={`absolute inset-0 transition-all duration-700 ease-out ${
-                                                    index === currentSlide 
-                                                        ? 'opacity-100 translate-x-0 z-20' 
-                                                        : 'opacity-0 -translate-x-8 z-10 pointer-events-none'
-                                                }`}
+                                            <div
+                                                key={activity.id}
+                                                className={`absolute inset-0 transition-all duration-700 ease-out ${index === currentSlide
+                                                    ? 'opacity-100 translate-x-0 z-20'
+                                                    : 'opacity-0 -translate-x-8 z-10 pointer-events-none'
+                                                    }`}
                                             >
                                                 <div className="grid lg:grid-cols-12 gap-8 items-center h-full">
                                                     {/* Text Content */}
@@ -151,8 +231,8 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                             {isOngoing && (
                                                                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm font-semibold backdrop-blur-sm">
                                                                     <span className="relative flex h-2 w-2">
-                                                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                                                     </span>
                                                                     SEDANG BERLANGSUNG
                                                                 </span>
@@ -184,7 +264,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                     <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
                                                                         <i className="far fa-calendar-alt text-indigo-400"></i>
                                                                     </div>
-                                                                    <span>{format(new Date(activity.date), 'd MMM yyyy', { locale: id })}</span>
+                                                                    <span>{formatDateRange(activity.date, activity.end_date)}</span>
                                                                 </div>
                                                             )}
                                                             {activity.location && (
@@ -198,7 +278,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                         </div>
 
                                                         <div className="flex flex-wrap items-center gap-4 pt-4">
-                                                            <Link 
+                                                            <Link
                                                                 href={getActivityLink(activity)}
                                                                 className="group relative inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-xl font-bold shadow-xl hover:shadow-2xl hover:bg-indigo-50 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
                                                             >
@@ -206,7 +286,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                 <i className="fas fa-arrow-right relative z-10 transition-transform group-hover:translate-x-1"></i>
                                                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-100 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                                             </Link>
-                                                            
+
                                                             <div className="flex flex-col">
                                                                 <span className="text-sm text-slate-400 font-medium">Harga Tiket</span>
                                                                 <div className="text-2xl font-bold">
@@ -229,20 +309,20 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                         <div className="relative group">
                                                             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
                                                             <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10 bg-slate-800">
-                                                                <img 
-                                                                    src={getImageUrl(activity)} 
+                                                                <img
+                                                                    src={getImageUrl(activity)}
                                                                     alt={activity.name}
                                                                     className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105"
                                                                     onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
                                                                 />
                                                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
                                                             </div>
-                                                            
+
                                                             {/* Floating Card Element */}
                                                             <div className="absolute -bottom-6 -right-6 bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl shadow-xl hidden xl:block animate-float">
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="flex -space-x-3">
-                                                                        {[1,2,3].map(i => (
+                                                                        {[1, 2, 3].map(i => (
                                                                             <div key={i} className="w-8 h-8 rounded-full bg-slate-300 border-2 border-slate-800 flex items-center justify-center text-[10px] text-slate-600 font-bold">
                                                                                 <i className="fas fa-user"></i>
                                                                             </div>
@@ -270,24 +350,23 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                 <button
                                                     key={idx}
                                                     onClick={() => goToSlide(idx)}
-                                                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                                                        idx === currentSlide 
-                                                            ? 'bg-white w-8' 
-                                                            : 'bg-white/30 w-4 hover:bg-white/50'
-                                                    }`}
+                                                    className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide
+                                                        ? 'bg-white w-8'
+                                                        : 'bg-white/30 w-4 hover:bg-white/50'
+                                                        }`}
                                                     aria-label={`Go to slide ${idx + 1}`}
                                                 ></button>
                                             ))}
                                         </div>
-                                        
+
                                         <div className="flex gap-3 pointer-events-auto">
-                                            <button 
+                                            <button
                                                 onClick={() => changeSlide(-1)}
                                                 className="w-12 h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group"
                                             >
                                                 <i className="fas fa-arrow-left transition-transform group-hover:-translate-x-1"></i>
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={() => changeSlide(1)}
                                                 className="w-12 h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group"
                                             >
@@ -308,7 +387,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                     Bergabunglah dengan ribuan peserta lainnya.
                                 </p>
                                 <div className="inline-flex gap-4">
-                                    <button 
+                                    <button
                                         onClick={() => document.getElementById('latest-activities').scrollIntoView({ behavior: 'smooth' })}
                                         className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-all"
                                     >
@@ -323,34 +402,34 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                 {/* Latest Activities Section */}
                 <section id="latest-activities" className="py-12 container mx-auto px-4">
                     <h2 className="text-center text-3xl font-bold text-gray-900 mb-8">Kegiatan Terbaru</h2>
-                    
+
                     {latestActivities && latestActivities.data && latestActivities.data.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                             {latestActivities.data.slice(0, 3).map((activity) => (
-                                <div 
+                                <div
                                     key={activity.id}
                                     className={`bg-white rounded-xl shadow-md overflow-hidden group activity-card-hover transition-all duration-300 h-full flex flex-col relative ${editMode ? 'border-2 border-yellow-400 ring-2 ring-yellow-400 ring-offset-2' : ''}`}
                                 >
                                     {editMode && (
                                         <div className="absolute top-4 right-4 z-30 flex space-x-2">
-                                            <Link 
-                                                href={route('activity.edit', activity.id)} 
+                                            <Link
+                                                href={route('activity.edit', activity.id)}
                                                 className="w-10 h-10 flex items-center justify-center bg-yellow-400 text-white rounded-xl shadow-lg hover:bg-yellow-500 hover:scale-110 transition-all duration-200"
                                                 title="Edit Kegiatan"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
                                                 <i className="fas fa-edit"></i>
                                             </Link>
-                                            <button 
-                                                onClick={(e) => { 
-                                                    e.preventDefault(); 
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
                                                     e.stopPropagation();
-                                                    if(confirm('Apakah Anda yakin ingin menghapus kegiatan ini?')) {
+                                                    if (confirm('Apakah Anda yakin ingin menghapus kegiatan ini?')) {
                                                         router.delete(route('activity.destroy', activity.id), {
                                                             preserveScroll: true,
                                                         });
                                                     }
-                                                }} 
+                                                }}
                                                 className="w-10 h-10 flex items-center justify-center bg-danger text-white rounded-xl shadow-lg hover:bg-danger/90 hover:scale-110 transition-all duration-200"
                                                 title="Hapus Kegiatan"
                                             >
@@ -359,70 +438,75 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                         </div>
                                     )}
                                     <Link href={getActivityLink(activity)} className="flex flex-col h-full">
-                                    <div className="relative h-64 md:h-48 overflow-hidden bg-gray-200">
-                                        <img 
-                                            src={getImageUrl(activity)} 
-                                            alt={activity.name}
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                            onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
-                                        />
-                                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
-                                            {activity.category ? activity.category.name : 'Event'}
-                                        </div>
-                                        {/* Mobile Title Overlay */}
-                                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
-                                            <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
-                                                {activity.name}
-                                            </h3>
-                                            <div className="flex items-center justify-between text-white/90 text-xs">
-                                                <span>{activity.date ? format(new Date(activity.date), 'd MMM yyyy') : '-'}</span>
-                                                <span className="font-bold">
-                                                    {activity.price > 0 ? (
-                                                        activity.show_price !== false ? (
-                                                            `Rp ${Number(activity.price).toLocaleString('id-ID')}`
-                                                        ) : ''
-                                                    ) : 'GRATIS'}
-                                                </span>
+                                        <div className="relative h-64 md:h-48 overflow-hidden bg-gray-200">
+                                            <img
+                                                src={getImageUrl(activity)}
+                                                alt={activity.name}
+                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
+                                            />
+                                            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
+                                                {activity.category ? activity.category.name : 'Event'}
+                                            </div>
+                                            {/* Mobile Title Overlay */}
+                                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
+                                                <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
+                                                    {activity.name}
+                                                </h3>
+                                                <div className="flex items-center justify-between text-white/90 text-xs">
+                                                    <span>{formatDateRange(activity.date, activity.end_date) || '-'}</span>
+                                                    {activity.activity_type !== 'non_batch' && activity.active_batch && (
+                                                        <span className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] mx-2 truncate max-w-[80px]">
+                                                            {activity.active_batch.name}
+                                                        </span>
+                                                    )}
+                                                    <span className="font-bold ml-auto">
+                                                        {activity.price > 0 ? (
+                                                            activity.show_price !== false ? (
+                                                                `Rp ${Number(activity.price).toLocaleString('id-ID')}`
+                                                            ) : ''
+                                                        ) : 'GRATIS'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div className="p-6 flex-grow hidden md:flex flex-col">
-                                        <div className="flex items-center text-xs text-gray-500 mb-3 gap-3">
-                                            <span className="flex items-center gap-1">
-                                                <i className="far fa-calendar-alt text-primary"></i>
-                                                {activity.date ? format(new Date(activity.date), 'd MMM yyyy') : '-'}
-                                            </span>
-                                            {activity.active_batch && (
-                                                <span className="bg-primary/10 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
-                                                    {activity.active_batch.name}
+
+                                        <div className="p-6 flex-grow hidden md:flex flex-col">
+                                            <div className="flex items-center text-xs text-gray-500 mb-3 gap-3">
+                                                <span className="flex items-center gap-1">
+                                                    <i className="far fa-calendar-alt text-primary"></i>
+                                                    {formatDateRange(activity.date, activity.end_date) || '-'}
                                                 </span>
-                                            )}
-                                        </div>
-                                        
-                                        <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                                            {activity.name}
-                                        </h3>
-                                        
-                                        <p className="text-sm text-gray-600 mb-4 flex-grow line-clamp-2">
-                                            {activity.description ? activity.description.replace(/<[^>]*>/g, '') : ''}
-                                        </p>
-                                        
-                                        <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-                                            <div className="text-sm font-bold">
-                                                {activity.price > 0 ? (
-                                                    activity.show_price !== false ? (
-                                                        <span className="text-primary">Rp {Number(activity.price).toLocaleString('id-ID')}</span>
-                                                    ) : null
-                                                ) : (
-                                                    <span className="text-success">GRATIS</span>
+                                                {activity.activity_type !== 'non_batch' && activity.active_batch && (
+                                                    <span className="bg-primary/10 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
+                                                        {activity.active_batch.name}
+                                                    </span>
                                                 )}
                                             </div>
-                                            <span className="text-xs font-medium text-gray-500 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                                                Lihat Detail <i className="fas fa-arrow-right"></i>
-                                            </span>
+
+                                            <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                                                {activity.name}
+                                            </h3>
+
+                                            <p className="text-sm text-gray-600 mb-4 flex-grow line-clamp-2">
+                                                {activity.description ? activity.description.replace(/<[^>]*>/g, '') : ''}
+                                            </p>
+
+                                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+                                                <div className="text-sm font-bold">
+                                                    {activity.price > 0 ? (
+                                                        activity.show_price !== false ? (
+                                                            <span className="text-primary">Rp {Number(activity.price).toLocaleString('id-ID')}</span>
+                                                        ) : null
+                                                    ) : (
+                                                        <span className="text-success">GRATIS</span>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs font-medium text-gray-500 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                                    Lihat Detail <i className="fas fa-arrow-right"></i>
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
                                     </Link>
                                 </div>
                             ))}
@@ -454,15 +538,15 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                     <div className="pl-6 text-gray-400">
                                         <i className="fas fa-search text-lg"></i>
                                     </div>
-                                    <input 
-                                        type="text" 
+                                    <input
+                                        type="text"
                                         className="w-full px-4 py-4 outline-none text-gray-700 bg-transparent placeholder-gray-400"
                                         placeholder="Cari kegiatan berdasarkan nama, lokasi, atau kategori..."
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
                                     />
-                                    <button 
-                                        type="submit" 
+                                    <button
+                                        type="submit"
                                         className="px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white font-bold hover:shadow-lg transition-all duration-300"
                                         disabled={isSearching}
                                     >
@@ -476,30 +560,30 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                         {latestActivities && latestActivities.data && latestActivities.data.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {latestActivities.data.map((activity) => (
-                                    <div 
+                                    <div
                                         key={activity.id}
                                         className={`bg-white rounded-xl shadow-md overflow-hidden group activity-card-hover transition-all duration-300 h-full flex flex-col border border-gray-100 relative ${editMode ? 'border-2 border-yellow-400 ring-2 ring-yellow-400 ring-offset-2' : ''}`}
                                     >
                                         {editMode && (
                                             <div className="absolute top-4 right-4 z-30 flex space-x-2">
-                                                <Link 
-                                                    href={route('activity.edit', activity.id)} 
+                                                <Link
+                                                    href={route('activity.edit', activity.id)}
                                                     className="w-10 h-10 flex items-center justify-center bg-warning text-white rounded-xl shadow-lg hover:bg-warning/90 hover:scale-110 transition-all duration-200"
                                                     title="Edit Kegiatan"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <i className="fas fa-edit"></i>
                                                 </Link>
-                                                <button 
-                                                    onClick={(e) => { 
-                                                        e.preventDefault(); 
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
                                                         e.stopPropagation();
-                                                        if(confirm('Apakah Anda yakin ingin menghapus kegiatan ini?')) {
+                                                        if (confirm('Apakah Anda yakin ingin menghapus kegiatan ini?')) {
                                                             router.delete(route('activity.destroy', activity.id), {
                                                                 preserveScroll: true,
                                                             });
                                                         }
-                                                    }} 
+                                                    }}
                                                     className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded-xl shadow-lg hover:bg-red-600 hover:scale-110 transition-all duration-200"
                                                     title="Hapus Kegiatan"
                                                 >
@@ -508,70 +592,75 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                             </div>
                                         )}
                                         <Link href={getActivityLink(activity)} className="flex flex-col h-full">
-                                        <div className="relative h-64 md:h-48 overflow-hidden bg-gray-200">
-                                            <img 
-                                                src={getImageUrl(activity)} 
-                                                alt={activity.name}
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                                onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
-                                            />
-                                            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
-                                                {activity.category ? activity.category.name : 'Event'}
-                                            </div>
-                                            {/* Mobile Title Overlay */}
-                                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
-                                                <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
-                                                    {activity.name}
-                                                </h3>
-                                                <div className="flex items-center justify-between text-white/90 text-xs">
-                                                    <span>{activity.date ? format(new Date(activity.date), 'd MMM yyyy') : '-'}</span>
-                                                    <span className="font-bold">
-                                                        {activity.price > 0 ? (
-                                                            activity.show_price !== false ? (
-                                                                `Rp ${Number(activity.price).toLocaleString('id-ID')}`
-                                                            ) : ''
-                                                        ) : 'GRATIS'}
-                                                    </span>
+                                            <div className="relative h-64 md:h-48 overflow-hidden bg-gray-200">
+                                                <img
+                                                    src={getImageUrl(activity)}
+                                                    alt={activity.name}
+                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                    onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
+                                                />
+                                                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
+                                                    {activity.category ? activity.category.name : 'Event'}
+                                                </div>
+                                                {/* Mobile Title Overlay */}
+                                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
+                                                    <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
+                                                        {activity.name}
+                                                    </h3>
+                                                    <div className="flex items-center justify-between text-white/90 text-xs">
+                                                        <span>{formatDateRange(activity.date, activity.end_date) || '-'}</span>
+                                                        {activity.activity_type !== 'non_batch' && activity.active_batch && (
+                                                            <span className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] mx-2 truncate max-w-[80px]">
+                                                                {activity.active_batch.name}
+                                                            </span>
+                                                        )}
+                                                        <span className="font-bold ml-auto">
+                                                            {activity.price > 0 ? (
+                                                                activity.show_price !== false ? (
+                                                                    `Rp ${Number(activity.price).toLocaleString('id-ID')}`
+                                                                ) : ''
+                                                            ) : 'GRATIS'}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        
-                                        <div className="p-6 flex-grow hidden md:flex flex-col">
-                                            <div className="flex items-center text-xs text-gray-500 mb-3 gap-3">
-                                                <span className="flex items-center gap-1">
-                                                    <i className="far fa-calendar-alt text-primary"></i>
-                                                    {activity.date ? format(new Date(activity.date), 'd MMM yyyy') : '-'}
-                                                </span>
-                                                {activity.active_batch && (
-                                                    <span className="bg-primary/10 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
-                                                        {activity.active_batch.name}
+
+                                            <div className="p-6 flex-grow hidden md:flex flex-col">
+                                                <div className="flex items-center text-xs text-gray-500 mb-3 gap-3">
+                                                    <span className="flex items-center gap-1">
+                                                        <i className="far fa-calendar-alt text-primary"></i>
+                                                        {formatDateRange(activity.date, activity.end_date) || '-'}
                                                     </span>
-                                                )}
-                                            </div>
-                                            
-                                            <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                                                {activity.name}
-                                            </h3>
-                                            
-                                            <p className="text-sm text-gray-600 mb-4 flex-grow line-clamp-2">
-                                                {activity.description ? activity.description.replace(/<[^>]*>/g, '') : ''}
-                                            </p>
-                                            
-                                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-                                                <div className="text-sm font-bold">
-                                                    {activity.price > 0 ? (
-                                                        activity.show_price !== false ? (
-                                                            <span className="text-primary">Rp {Number(activity.price).toLocaleString('id-ID')}</span>
-                                                        ) : null
-                                                    ) : (
-                                                        <span className="text-green-600">GRATIS</span>
+                                                    {activity.activity_type !== 'non_batch' && activity.active_batch && (
+                                                        <span className="bg-primary/10 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
+                                                            {activity.active_batch.name}
+                                                        </span>
                                                     )}
                                                 </div>
-                                                <span className="text-xs font-medium text-gray-500 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                                                    Lihat Detail <i className="fas fa-arrow-right"></i>
-                                                </span>
+
+                                                <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                                                    {activity.name}
+                                                </h3>
+
+                                                <p className="text-sm text-gray-600 mb-4 flex-grow line-clamp-2">
+                                                    {activity.description ? activity.description.replace(/<[^>]*>/g, '') : ''}
+                                                </p>
+
+                                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
+                                                    <div className="text-sm font-bold">
+                                                        {activity.price > 0 ? (
+                                                            activity.show_price !== false ? (
+                                                                <span className="text-primary">Rp {Number(activity.price).toLocaleString('id-ID')}</span>
+                                                            ) : null
+                                                        ) : (
+                                                            <span className="text-green-600">GRATIS</span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs font-medium text-gray-500 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                                        Lihat Detail <i className="fas fa-arrow-right"></i>
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
                                         </Link>
                                     </div>
                                 ))}
@@ -585,7 +674,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                 <p className="text-gray-600">Coba cari dengan kata kunci lain.</p>
                             </div>
                         )}
-                        
+
                         {/* Pagination */}
                         {latestActivities && latestActivities.links && latestActivities.links.length > 3 && (
                             <div className="mt-12 flex justify-center">
@@ -595,11 +684,10 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                             <Link
                                                 key={i}
                                                 href={link.url}
-                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                                    link.active
-                                                        ? 'bg-primary text-white shadow-md'
-                                                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                                                }`}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${link.active
+                                                    ? 'bg-primary text-white shadow-md'
+                                                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                                    }`}
                                                 dangerouslySetInnerHTML={{ __html: link.label }}
                                             />
                                         ) : (
@@ -615,6 +703,188 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                         )}
                     </div>
                 </section>
+                {/* Shape Editor Toggle */}
+                <button
+                    onClick={() => setShowShapeEditor(!showShapeEditor)}
+                    className="fixed bottom-4 right-4 z-50 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
+                    title="Edit Hero Shapes"
+                >
+                    <i className={`fas ${showShapeEditor ? 'fa-times' : 'fa-pen-fancy'}`}></i>
+                </button>
+
+                {/* Shape Editor Panel */}
+                {showShapeEditor && (
+                    <div className="fixed bottom-20 right-4 z-50 bg-white p-4 rounded-xl shadow-2xl w-80 border border-slate-200 max-h-[80vh] overflow-y-auto">
+                        <h3 className="font-bold text-slate-800 mb-4 flex justify-between items-center">
+                            Shape Settings
+                            <button
+                                onClick={() => {
+                                    if (confirm('Reset settings?')) {
+                                        localStorage.removeItem('heroShapeSettings_v5');
+                                        window.location.reload();
+                                    }
+                                }}
+                                className="text-xs text-red-500 hover:text-red-700"
+                            >
+                                Reset
+                            </button>
+                        </h3>
+
+                        {/* Left Shape Controls */}
+                        <div className="mb-6 space-y-3">
+                            <h4 className="font-semibold text-slate-700 text-sm border-b pb-1">Left Shape</h4>
+
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs text-slate-600">Visible</label>
+                                <input
+                                    type="checkbox"
+                                    checked={shapeSettings.left.visible}
+                                    onChange={e => setShapeSettings(prev => ({
+                                        ...prev, left: { ...prev.left, visible: e.target.checked }
+                                    }))}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-slate-600 block mb-1">Width ({shapeSettings.left.width}%)</label>
+                                <input
+                                    type="range"
+                                    min="0" max="50"
+                                    value={shapeSettings.left.width}
+                                    onChange={e => setShapeSettings(prev => ({
+                                        ...prev, left: { ...prev.left, width: e.target.value }
+                                    }))}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-slate-600 block mb-1">Opacity ({shapeSettings.left.opacity})</label>
+                                <input
+                                    type="range"
+                                    min="0" max="1" step="0.1"
+                                    value={shapeSettings.left.opacity}
+                                    onChange={e => setShapeSettings(prev => ({
+                                        ...prev, left: { ...prev.left, opacity: parseFloat(e.target.value) }
+                                    }))}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-slate-600 block mb-1">Color</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="color"
+                                        value={shapeSettings.left.color}
+                                        onChange={e => setShapeSettings(prev => ({
+                                            ...prev, left: { ...prev.left, color: e.target.value }
+                                        }))}
+                                        className="h-8 w-12 cursor-pointer"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={shapeSettings.left.color}
+                                        onChange={e => setShapeSettings(prev => ({
+                                            ...prev, left: { ...prev.left, color: e.target.value }
+                                        }))}
+                                        className="flex-1 text-xs border rounded px-2"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-slate-600 block mb-1">Clip Path (Polygon)</label>
+                                <textarea
+                                    value={shapeSettings.left.clipPath}
+                                    onChange={e => setShapeSettings(prev => ({
+                                        ...prev, left: { ...prev.left, clipPath: e.target.value }
+                                    }))}
+                                    className="w-full text-xs border rounded p-1 h-16 font-mono"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Right Shape Controls */}
+                        <div className="mb-4 space-y-3">
+                            <h4 className="font-semibold text-slate-700 text-sm border-b pb-1">Right Shape</h4>
+
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs text-slate-600">Visible</label>
+                                <input
+                                    type="checkbox"
+                                    checked={shapeSettings.right.visible}
+                                    onChange={e => setShapeSettings(prev => ({
+                                        ...prev, right: { ...prev.right, visible: e.target.checked }
+                                    }))}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-slate-600 block mb-1">Width ({shapeSettings.right.width}%)</label>
+                                <input
+                                    type="range"
+                                    min="0" max="50"
+                                    value={shapeSettings.right.width}
+                                    onChange={e => setShapeSettings(prev => ({
+                                        ...prev, right: { ...prev.right, width: e.target.value }
+                                    }))}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-slate-600 block mb-1">Opacity ({shapeSettings.right.opacity})</label>
+                                <input
+                                    type="range"
+                                    min="0" max="1" step="0.1"
+                                    value={shapeSettings.right.opacity}
+                                    onChange={e => setShapeSettings(prev => ({
+                                        ...prev, right: { ...prev.right, opacity: parseFloat(e.target.value) }
+                                    }))}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-slate-600 block mb-1">Color</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="color"
+                                        value={shapeSettings.right.color}
+                                        onChange={e => setShapeSettings(prev => ({
+                                            ...prev, right: { ...prev.right, color: e.target.value }
+                                        }))}
+                                        className="h-8 w-12 cursor-pointer"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={shapeSettings.right.color}
+                                        onChange={e => setShapeSettings(prev => ({
+                                            ...prev, right: { ...prev.right, color: e.target.value }
+                                        }))}
+                                        className="flex-1 text-xs border rounded px-2"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-slate-600 block mb-1">Clip Path (Polygon)</label>
+                                <textarea
+                                    value={shapeSettings.right.clipPath}
+                                    onChange={e => setShapeSettings(prev => ({
+                                        ...prev, right: { ...prev.right, clipPath: e.target.value }
+                                    }))}
+                                    className="w-full text-xs border rounded p-1 h-16 font-mono"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="text-[10px] text-slate-400 mt-4 text-center">
+                            Settings saved locally
+                        </div>
+                    </div>
+                )}
             </div>
         </WebLayout>
     );

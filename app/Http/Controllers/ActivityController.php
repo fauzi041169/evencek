@@ -375,331 +375,6 @@ class ActivityController extends Controller
         return redirect()->back()->with('success', $newStatus ? 'Aktivitas dipin ke hero' : 'Aktivitas unpin dari hero');
     }
 
-    public function toggleGallery(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $newStatus = ! $activity->show_gallery;
-        $activity->show_gallery = $newStatus;
-        $activity->save();
-
-        return response()->json([
-            'success' => true,
-            'new_status' => $newStatus,
-            'message' => $newStatus ? 'Galeri ditampilkan' : 'Galeri disembunyikan',
-        ]);
-    }
-
-    public function toggleComments(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        $newStatus = ! $activity->enable_comments;
-        $activity->enable_comments = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Komentar diaktifkan' : 'Komentar dinonaktifkan');
-    }
-
-    public function toggleDetailGallery(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        if (! Schema::hasColumn('activities', 'detail_gallery_visible')) {
-            return redirect()->back()->with('error', 'Kolom detail_gallery_visible belum ada');
-        }
-
-        $newStatus = ! $activity->detail_gallery_visible;
-        $activity->detail_gallery_visible = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Galeri detail ditampilkan' : 'Galeri detail disembunyikan');
-    }
-
-    public function toggleDetailDescription(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        if (! Schema::hasColumn('activities', 'detail_description_visible')) {
-            return redirect()->back()->with('error', 'Kolom detail_description_visible belum ada');
-        }
-
-        $newStatus = $request->has('visible') ? (bool) $request->input('visible') : ! $activity->detail_description_visible;
-        $activity->detail_description_visible = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Deskripsi detail ditampilkan' : 'Deskripsi detail disembunyikan');
-    }
-
-    public function toggleDetailComments(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        if (! Schema::hasColumn('activities', 'detail_comments_visible')) {
-            return redirect()->back()->with('error', 'Kolom detail_comments_visible belum ada');
-        }
-
-        $newStatus = ! $activity->detail_comments_visible;
-        $activity->detail_comments_visible = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Komentar detail ditampilkan' : 'Komentar detail disembunyikan');
-    }
-
-    public function toggleDetailParticipants(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        if (! Schema::hasColumn('activities', 'detail_participants_visible')) {
-            return redirect()->back()->with('error', 'Kolom detail_participants_visible belum ada');
-        }
-
-        $newStatus = ! $activity->detail_participants_visible;
-        $activity->detail_participants_visible = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Peserta detail ditampilkan' : 'Peserta detail disembunyikan');
-    }
-
-    public function toggleDetailSpeakers(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        if (! Schema::hasColumn('activities', 'detail_speakers_visible')) {
-            return redirect()->back()->with('error', 'Kolom detail_speakers_visible belum ada');
-        }
-
-        $newStatus = ! $activity->detail_speakers_visible;
-        $activity->detail_speakers_visible = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Narasumber detail ditampilkan' : 'Narasumber detail disembunyikan');
-    }
-
-    public function toggleDetailRundown(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        if (! Schema::hasColumn('activities', 'detail_rundown_visible')) {
-            return redirect()->back()->with('error', 'Kolom detail_rundown_visible belum ada');
-        }
-
-        $newStatus = ! $activity->detail_rundown_visible;
-        $activity->detail_rundown_visible = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Rundown detail ditampilkan' : 'Rundown detail disembunyikan');
-    }
-
-    public function toggleSpeakersVisibility(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        if (! Schema::hasColumn('activities', 'speakers_visible')) {
-            return redirect()->back()->with('error', 'Kolom speakers_visible belum ada');
-        }
-
-        $newStatus = $request->has('visible') ? (bool) $request->input('visible') : ! $activity->speakers_visible;
-        $activity->speakers_visible = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Narasumber show ditampilkan' : 'Narasumber show disembunyikan');
-    }
-
-    public function toggleDescriptionVisibility(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        if (! Schema::hasColumn('activities', 'description_visible')) {
-            return redirect()->back()->with('error', 'Kolom description_visible belum ada');
-        }
-
-        $newStatus = $request->has('visible') ? (bool) $request->input('visible') : ! $activity->description_visible;
-        $activity->description_visible = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Deskripsi show ditampilkan' : 'Deskripsi show disembunyikan');
-    }
-
-    public function toggleParticipantsVisibility(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        if (! Schema::hasColumn('activities', 'participants_visible')) {
-            return redirect()->back()->with('error', 'Kolom participants_visible belum ada');
-        }
-
-        $newStatus = $request->has('visible') ? (bool) $request->input('visible') : ! $activity->participants_visible;
-        $activity->participants_visible = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Peserta show ditampilkan' : 'Peserta show disembunyikan');
-    }
-
-    public function toggleGalleryVisibility(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        if (! Schema::hasColumn('activities', 'show_gallery')) {
-            return response()->json(['success' => false, 'message' => 'Kolom show_gallery belum ada'], 500);
-        }
-
-        $newStatus = ! $activity->show_gallery;
-        $activity->show_gallery = $newStatus;
-        $activity->save();
-
-        return response()->json([
-            'success' => true,
-            'new_status' => $newStatus,
-            'message' => $newStatus ? 'Galeri show ditampilkan' : 'Galeri show disembunyikan',
-        ]);
-    }
-
-    public function toggleCommentsVisibility(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        if (! Schema::hasColumn('activities', 'enable_comments')) {
-            return response()->json(['success' => false, 'message' => 'Kolom enable_comments belum ada'], 500);
-        }
-
-        $newStatus = ! $activity->enable_comments;
-        $activity->enable_comments = $newStatus;
-        $activity->save();
-
-        return response()->json([
-            'success' => true,
-            'new_status' => $newStatus,
-            'message' => $newStatus ? 'Komentar show ditampilkan' : 'Komentar show disembunyikan',
-        ]);
-    }
-
-    public function toggleDetailMaterials(Request $request, $id)
-    {
-        $user = auth()->user();
-        if (! $user) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-        $activity = Activity::findOrFail($id);
-
-        if (! $activity->canManageRegistration($user->id)) {
-            return redirect()->back()->with('error', 'Unauthorized');
-        }
-
-        if (! Schema::hasColumn('activities', 'detail_materials_visible')) {
-            return redirect()->back()->with('error', 'Kolom detail_materials_visible belum ada');
-        }
-
-        $newStatus = ! $activity->detail_materials_visible;
-        $activity->detail_materials_visible = $newStatus;
-        $activity->save();
-
-        return redirect()->back()->with('success', $newStatus ? 'Materi detail ditampilkan' : 'Materi detail disembunyikan');
-    }
 
     public function show(Activity $activity)
     {
@@ -1027,6 +702,17 @@ class ActivityController extends Controller
             $cardSetting = is_array($decoded) ? $decoded : [];
         } elseif (! is_array($cardSetting)) {
             $cardSetting = [];
+        }
+
+        // Ensure minimal structure for card setting to prevent frontend crash
+        if (empty($cardSetting) || ! isset($cardSetting['card'])) {
+            $cardSetting = [
+                'card' => [
+                    'width_cm' => 5.4,
+                    'height_cm' => 8.6,
+                    'background' => null,
+                ],
+            ];
         }
 
         if (is_string($printSettings)) {
@@ -1605,23 +1291,8 @@ class ActivityController extends Controller
             ]);
         }
 
-        $heroCoverPath = $activity->image 
-            ? asset('storage/activities/' . $activity->image)
-            : asset('assets/images/begron/defoult.png');
-
-        $registerTarget = [
-            'type' => 'link',
-            'url' => route('activity.enroll', $activity->id)
-        ];
-
-        return Inertia::render('Activity/Detail', [
-            'activity' => $activity,
-            'activeBatch' => $activeBatch,
-            'missingProfileFields' => $missingProfileFields,
-            'heroCoverPath' => $heroCoverPath,
-            'registerTarget' => $registerTarget,
-            'heroAnimationStyle' => $heroAnimationStyle,
-        ]);
+        // Redirect participants with incomplete status (or guests) to the detail page
+        return redirect()->route('activity.detail', $activity->id);
     }
 
     // Show form to edit an activity
@@ -4862,7 +4533,7 @@ class ActivityController extends Controller
             if ($batchId) {
                 $query->where('activity_batch_id', $batchId);
             }
-            $participants = $query->get();
+            $participants = $query->get()->unique('user_id');
             // Update print_count untuk setiap peserta
             foreach ($participants as $participant) {
                 $participant->print_count = ($participant->print_count ?? 0) + 1;
@@ -4894,11 +4565,11 @@ class ActivityController extends Controller
         $cardSetting = $cardSettingsModel ? $cardSettingsModel->card_setting : null;
         $printSettings = $cardSettingsModel ? ($cardSettingsModel->print_settings ?? []) : [];
 
-        // Defaults
-        $cols = (int) data_get($printSettings, 'cols', 2);
-        $rows = (int) data_get($printSettings, 'rows', 4);
-        $paper = data_get($printSettings, 'paper', 'A4');
-        $orientation = data_get($printSettings, 'orientation', 'landscape');
+        // Defaults with Request Overrides
+    $cols = $request->has('cols') ? (int) $request->input('cols') : (int) data_get($printSettings, 'cols', 2);
+    $rows = $request->has('rows') ? (int) $request->input('rows') : (int) data_get($printSettings, 'rows', 4);
+    $paper = $request->input('paper', data_get($printSettings, 'paper', 'A4'));
+    $orientation = $request->input('orientation', data_get($printSettings, 'orientation', 'landscape'));
 
         return view('pdf.cards.print', compact('activity', 'participants', 'cardSetting', 'cols', 'rows', 'paper', 'orientation'));
     }
@@ -4943,6 +4614,61 @@ class ActivityController extends Controller
         return Inertia::render('Activity/Certificates', [
             'activity' => $activity,
             'participants' => $participants,
+        ]);
+    }
+
+    /**
+     * Design Certificate page.
+     */
+    public function designCertificate($id)
+    {
+        if (!auth()->check()) {
+            return redirect()->route('login');
+        }
+
+        $activity = Activity::where('id', $id)->orWhere('uid', $id)->firstOrFail();
+        $id = $activity->id;
+        $user = auth()->user();
+
+        // Permission check
+        $isOwner = $activity->user_id === $user->id;
+        $isAdditionalOwner = $activity->owners()->where('user_id', $user->id)->exists();
+        $canManage = $user->isSuperAdmin() || $user->isAdmin() || $isOwner || $isAdditionalOwner;
+
+        if (!$canManage) {
+             return redirect()->route('activity.show', $id)->with('error', 'Unauthorized');
+        }
+
+        // Load settings
+        // Assuming we are designing for the activity level for now (no batch specific yet in UI)
+        $certSettings = CertificateSettings::where('activity_id', $id)->first();
+        $certificateSetting = $certSettings ? $certSettings->certificate_setting : null;
+        $printSettings = $certSettings ? $certSettings->print_settings : null;
+
+        // Define available columns (Reuse logic from designIdCard or similar)
+        $availableColumns = [
+            // Standard User Columns
+            ['key' => 'name', 'label' => 'Nama Lengkap', 'group' => 'User'],
+            ['key' => 'email', 'label' => 'Email', 'group' => 'User'],
+            ['key' => 'role', 'label' => 'Jabatan/Peran', 'group' => 'User'],
+            ['key' => 'id_number', 'label' => 'Nomor ID', 'group' => 'System'],
+            ['key' => 'qr_code', 'label' => 'QR Code', 'group' => 'System'],
+            
+            // Standard Profile Columns
+            ['key' => 'instansi', 'label' => 'Instansi', 'group' => 'Profile'],
+            ['key' => 'jabatan', 'label' => 'Jabatan', 'group' => 'Profile'],
+            ['key' => 'province', 'label' => 'Provinsi', 'group' => 'Region'],
+            ['key' => 'regency', 'label' => 'Kabupaten/Kota', 'group' => 'Region'],
+        ];
+        
+        // Add custom columns logic if needed (simplified for now)
+
+        return Inertia::render('Activity/CertificateDesign', [
+            'activity' => $activity,
+            'certificateSettings' => $certificateSetting,
+            'printSettings' => $printSettings,
+            'user' => $user->load('profile'),
+            'availableColumns' => $availableColumns,
         ]);
     }
 

@@ -447,6 +447,12 @@ export default function Detail({
                                 <span>{formatTimeRange(activity.time || activity.start_time, activity.end_time)}</span>
                             </span>
                         )}
+                        {activity.activity_type !== 'non_batch' && activeBatch && activeBatch.name && (
+                            <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
+                                <i className="fas fa-layer-group text-cyan-300"></i>
+                                <span>{activeBatch.name}</span>
+                            </span>
+                        )}
                         {activity.location && (
                             <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
                                 <i className="fas fa-map-marker-alt text-cyan-300"></i>
@@ -575,181 +581,175 @@ export default function Detail({
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-8">
                         {/* Description */}
-                        {(activity.detail_description_visible !== 0 && activity.detail_description_visible !== '0' && activity.detail_description_visible !== false) && (
-                            <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-4">Tentang Kegiatan</h2>
-                                <div
-                                    ref={descriptionRef}
-                                    className="prose max-w-none text-gray-600"
-                                    dangerouslySetInnerHTML={{ __html: activity.description }}
-                                />
-                            </div>
-                        )}
+                        <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Tentang Kegiatan</h2>
+                            <div
+                                ref={descriptionRef}
+                                className="prose max-w-none text-gray-600"
+                                dangerouslySetInnerHTML={{ __html: activity.description }}
+                            />
+                        </div>
 
                         {/* Gallery */}
-                        {(activity.detail_gallery_visible !== 0 && activity.detail_gallery_visible !== '0' && activity.detail_gallery_visible !== false) && (activity.show_gallery || canEdit) && (
-                            <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-2xl font-bold text-gray-900">Galeri</h2>
-                                    {canEdit && (
-                                        <button
-                                            type="button"
-                                            onClick={() => document.getElementById('galleryInput').click()}
-                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-sm"
-                                        >
-                                            <i className="fas fa-plus mr-2"></i> Tambah Gambar
-                                        </button>
-                                    )}
-                                </div>
-
+                        <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-2xl font-bold text-gray-900">Galeri</h2>
                                 {canEdit && (
-                                    <input
-                                        type="file"
-                                        id="galleryInput"
-                                        multiple
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={(e) => {
-                                            if (e.target.files.length > 0) {
-                                                const formData = new FormData();
-                                                Array.from(e.target.files).forEach(file => {
-                                                    formData.append('image[]', file);
-                                                });
-                                                router.post(route('gallery.store', activity.id), formData, {
-                                                    forceFormData: true,
-                                                    preserveScroll: true,
-                                                    onSuccess: () => alert('Foto berhasil diunggah'),
-                                                    onError: () => alert('Gagal mengunggah foto'),
-                                                });
-                                                e.target.value = ''; // Reset input
-                                            }
-                                        }}
-                                    />
-                                )}
-
-                                {activity.galleries && activity.galleries.length > 0 ? (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {activity.galleries.map((image, index) => (
-                                            <div key={image.id} className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                                <img
-                                                    src={`/storage/activities/gallery/${image.image}`}
-                                                    alt="Gallery"
-                                                    className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-105 cursor-zoom-in"
-                                                    onClick={() => {
-                                                        setLightboxIndex(index);
-                                                        setIsLightboxOpen(true);
-                                                    }}
-                                                    onError={(e) => e.target.src = '/assets/images/begron/defoult.png'}
-                                                />
-                                                {canEdit && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (confirm('Hapus foto ini?')) {
-                                                                router.delete(route('gallery.destroy', { activity: activity.id, gallery: image.id }), {
-                                                                    preserveScroll: true
-                                                                });
-                                                            }
-                                                        }}
-                                                        className="absolute top-2 right-2 p-2 bg-danger/90 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger shadow-sm"
-                                                        title="Hapus"
-                                                    >
-                                                        <i className="fas fa-trash-alt text-xs"></i>
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                        <p className="text-gray-500">Belum ada foto galeri yang ditambahkan.</p>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => document.getElementById('galleryInput').click()}
+                                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-sm"
+                                    >
+                                        <i className="fas fa-plus mr-2"></i> Tambah Gambar
+                                    </button>
                                 )}
                             </div>
-                        )}
+
+                            {canEdit && (
+                                <input
+                                    type="file"
+                                    id="galleryInput"
+                                    multiple
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        if (e.target.files.length > 0) {
+                                            const formData = new FormData();
+                                            Array.from(e.target.files).forEach(file => {
+                                                formData.append('image[]', file);
+                                            });
+                                            router.post(route('gallery.store', activity.id), formData, {
+                                                forceFormData: true,
+                                                preserveScroll: true,
+                                                onSuccess: () => alert('Foto berhasil diunggah'),
+                                                onError: () => alert('Gagal mengunggah foto'),
+                                            });
+                                            e.target.value = ''; // Reset input
+                                        }
+                                    }}
+                                />
+                            )}
+
+                            {activity.galleries && activity.galleries.length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {activity.galleries.map((image, index) => (
+                                        <div key={image.id} className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                            <img
+                                                src={`/storage/activities/gallery/${image.image}`}
+                                                alt="Gallery"
+                                                className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-105 cursor-zoom-in"
+                                                onClick={() => {
+                                                    setLightboxIndex(index);
+                                                    setIsLightboxOpen(true);
+                                                }}
+                                                onError={(e) => e.target.src = '/assets/images/begron/defoult.png'}
+                                            />
+                                            {canEdit && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm('Hapus foto ini?')) {
+                                                            router.delete(route('gallery.destroy', { activity: activity.id, gallery: image.id }), {
+                                                                preserveScroll: true
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="absolute top-2 right-2 p-2 bg-danger/90 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger shadow-sm"
+                                                    title="Hapus"
+                                                >
+                                                    <i className="fas fa-trash-alt text-xs"></i>
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                    <p className="text-gray-500">Belum ada foto galeri yang ditambahkan.</p>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Rating & Comments */}
-                        {(activity.detail_comments_visible !== 0 && activity.detail_comments_visible !== '0' && activity.detail_comments_visible !== false) && (
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
-                                <div className="border-b border-gray-100 pb-4 mb-6">
-                                    <h2 className="text-2xl font-bold text-gray-900">Rating & Komentar</h2>
-                                </div>
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+                            <div className="border-b border-gray-100 pb-4 mb-6">
+                                <h2 className="text-2xl font-bold text-gray-900">Rating & Komentar</h2>
+                            </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center mb-8">
-                                    <div className="col-span-1 flex items-center gap-4">
-                                        <div>
-                                            <div className="text-5xl font-bold text-gray-900">{Number(activity.rating_avg || 0).toFixed(1)}</div>
-                                            <div className="text-gray-500 text-sm mt-1">Berdasarkan {activity.rating_count || 0} rating</div>
-                                        </div>
-                                        <div className="text-amber-400 text-2xl">
-                                            {[1, 2, 3, 4, 5].map(i => (
-                                                <i key={i} className={`fas fa-star ${i <= Math.round(activity.rating_avg || 0) ? '' : 'text-gray-200'}`}></i>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center mb-8">
+                                <div className="col-span-1 flex items-center gap-4">
+                                    <div>
+                                        <div className="text-5xl font-bold text-gray-900">{Number(activity.rating_avg || 0).toFixed(1)}</div>
+                                        <div className="text-gray-500 text-sm mt-1">Berdasarkan {activity.rating_count || 0} rating</div>
+                                    </div>
+                                    <div className="text-amber-400 text-2xl">
+                                        {[1, 2, 3, 4, 5].map(i => (
+                                            <i key={i} className={`fas fa-star ${i <= Math.round(activity.rating_avg || 0) ? '' : 'text-gray-200'}`}></i>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {auth.user ? (
+                                <form onSubmit={handleCommentSubmit} className="mb-8 bg-gray-50 rounded-xl p-6 border border-gray-100">
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Berikan Rating</label>
+                                        <div className="flex items-center gap-2">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <button
+                                                    key={star}
+                                                    type="button"
+                                                    onClick={() => setRating(star)}
+                                                    className={`text-2xl transition-colors ${rating >= star ? 'text-amber-400' : 'text-gray-300 hover:text-amber-200'}`}
+                                                >
+                                                    <i className="fas fa-star"></i>
+                                                </button>
                                             ))}
                                         </div>
                                     </div>
-                                </div>
-
-                                {auth.user ? (
-                                    <form onSubmit={handleCommentSubmit} className="mb-8 bg-gray-50 rounded-xl p-6 border border-gray-100">
-                                        <div className="mb-4">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Berikan Rating</label>
-                                            <div className="flex items-center gap-2">
-                                                {[1, 2, 3, 4, 5].map((star) => (
-                                                    <button
-                                                        key={star}
-                                                        type="button"
-                                                        onClick={() => setRating(star)}
-                                                        className={`text-2xl transition-colors ${rating >= star ? 'text-amber-400' : 'text-gray-300 hover:text-amber-200'}`}
-                                                    >
-                                                        <i className="fas fa-star"></i>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="mb-4">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Komentar Anda</label>
-                                            <textarea
-                                                value={commentBody}
-                                                onChange={(e) => setCommentBody(e.target.value)}
-                                                className="w-full border-gray-300 rounded-lg shadow-sm focus:border-primary focus:ring-primary"
-                                                rows="3"
-                                                placeholder="Bagikan pengalaman Anda..."
-                                                required
-                                            ></textarea>
-                                        </div>
-                                        <div className="flex justify-end">
-                                            <button
-                                                type="submit"
-                                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-                                            >
-                                                Kirim Komentar
-                                            </button>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <div className="bg-gray-50 rounded-xl p-6 text-center mb-8 border border-gray-100">
-                                        <p className="text-gray-600 mb-4">Silakan masuk untuk memberikan rating dan komentar.</p>
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Komentar Anda</label>
+                                        <textarea
+                                            value={commentBody}
+                                            onChange={(e) => setCommentBody(e.target.value)}
+                                            className="w-full border-gray-300 rounded-lg shadow-sm focus:border-primary focus:ring-primary"
+                                            rows="3"
+                                            placeholder="Bagikan pengalaman Anda..."
+                                            required
+                                        ></textarea>
+                                    </div>
+                                    <div className="flex justify-end">
                                         <button
-                                            onClick={() => router.visit(route('login'), { data: { return_url: window.location.href } })}
-                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
+                                            type="submit"
+                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                                         >
-                                            Masuk
+                                            Kirim Komentar
                                         </button>
                                     </div>
-                                )}
-
-                                <div className="space-y-4">
-                                    {activity.comments && activity.comments.length > 0 ? (
-                                        activity.comments.map(comment => (
-                                            <CommentItem key={comment.id} comment={comment} activity={activity} auth={auth} />
-                                        ))
-                                    ) : (
-                                        <p className="text-gray-500 text-center py-4">Belum ada komentar.</p>
-                                    )}
+                                </form>
+                            ) : (
+                                <div className="bg-gray-50 rounded-xl p-6 text-center mb-8 border border-gray-100">
+                                    <p className="text-gray-600 mb-4">Silakan masuk untuk memberikan rating dan komentar.</p>
+                                    <button
+                                        onClick={() => router.visit(route('login'), { data: { return_url: window.location.href } })}
+                                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
+                                    >
+                                        Masuk
+                                    </button>
                                 </div>
+                            )}
+
+                            <div className="space-y-4">
+                                {activity.comments && activity.comments.length > 0 ? (
+                                    activity.comments.map(comment => (
+                                        <CommentItem key={comment.id} comment={comment} activity={activity} auth={auth} />
+                                    ))
+                                ) : (
+                                    <p className="text-gray-500 text-center py-4">Belum ada komentar.</p>
+                                )}
                             </div>
-                        )}
+                        </div>
                     </div>
 
                     {/* Sidebar */}
@@ -798,7 +798,7 @@ export default function Detail({
                         </div>
 
                         {/* Speakers */}
-                        {(activity.detail_speakers_visible !== 0 && activity.detail_speakers_visible !== '0' && activity.detail_speakers_visible !== false && activity.speakers && activity.speakers.length > 0) && (
+                        {activity.speakers && activity.speakers.length > 0 && (
                             <div className="bg-white rounded-2xl shadow-sm p-6">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4">Narasumber</h3>
                                 <div className="space-y-4">
@@ -824,57 +824,55 @@ export default function Detail({
                         )}
 
                         {/* Participants List */}
-                        {(activity.detail_participants_visible !== 0 && activity.detail_participants_visible !== '0' && activity.detail_participants_visible !== false) && (
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[500px] overflow-hidden">
-                                <div className="px-6 py-4 border-b flex items-center justify-between bg-amber-50 border-yellow-200">
-                                    <h5 className="m-0 font-bold text-yellow-800">Daftar Peserta</h5>
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[500px] overflow-hidden">
+                            <div className="px-6 py-4 border-b flex items-center justify-between bg-amber-50 border-yellow-200">
+                                <h5 className="m-0 font-bold text-yellow-800">Daftar Peserta</h5>
+                            </div>
+                            <div className="px-6 py-5 flex-1 flex flex-col min-h-0">
+                                <div className="mb-3">
+                                    <div className="relative">
+                                        <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                        <input
+                                            type="search"
+                                            value={participantSearch}
+                                            onChange={(e) => setParticipantSearch(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Cari peserta..."
+                                        />
+                                    </div>
                                 </div>
-                                <div className="px-6 py-5 flex-1 flex flex-col min-h-0">
-                                    <div className="mb-3">
-                                        <div className="relative">
-                                            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                                            <input
-                                                type="search"
-                                                value={participantSearch}
-                                                onChange={(e) => setParticipantSearch(e.target.value)}
-                                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                                                placeholder="Cari peserta..."
-                                            />
+                                <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                                    {filteredParticipants && filteredParticipants.length > 0 ? (
+                                        <ul className="space-y-3">
+                                            {filteredParticipants.map((participant, index) => (
+                                                <li key={participant.id || index} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                                                    <div className="flex-shrink-0">
+                                                        <img
+                                                            src={participant.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                            alt={participant.name}
+                                                            className="w-10 h-10 rounded-full object-cover"
+                                                            onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                                        />
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                                            {participant.name || 'Peserta'}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500 truncate">
+                                                            {participant.pivot?.created_at ? new Date(participant.pivot.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (participant.created_at ? new Date(participant.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '')}
+                                                        </p>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <div className="text-center py-8 text-gray-500">
+                                            {participantSearch ? 'Peserta tidak ditemukan' : 'Belum ada peserta'}
                                         </div>
-                                    </div>
-                                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-                                        {filteredParticipants && filteredParticipants.length > 0 ? (
-                                            <ul className="space-y-3">
-                                                {filteredParticipants.map((participant, index) => (
-                                                    <li key={participant.id || index} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                                                        <div className="flex-shrink-0">
-                                                            <img
-                                                                src={participant.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
-                                                                alt={participant.name}
-                                                                className="w-10 h-10 rounded-full object-cover"
-                                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                                            />
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="text-sm font-medium text-gray-900 truncate">
-                                                                {participant.name || 'Peserta'}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500 truncate">
-                                                                {participant.pivot?.created_at ? new Date(participant.pivot.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (participant.created_at ? new Date(participant.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '')}
-                                                            </p>
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <div className="text-center py-8 text-gray-500">
-                                                {participantSearch ? 'Peserta tidak ditemukan' : 'Belum ada peserta'}
-                                            </div>
-                                        )}
-                                    </div>
+                                    )}
                                 </div>
                             </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             </div>

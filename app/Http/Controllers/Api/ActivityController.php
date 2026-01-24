@@ -318,18 +318,7 @@ class ActivityController extends Controller
                     })->values(),
                     // Chat Messages (hanya untuk user yang terdaftar)
                     'chats' => Auth::check() && $isRegistered ? $this->getActivityChats($id, Auth::id()) : [],
-                    // Visibility settings
-                    'visibility' => [
-                        'rundown_visible' => $activity->rundown_visible,
-                        'detail_rundown_visible' => $activity->detail_rundown_visible ?? true,
-                        'materials_visible' => $activity->materials_visible,
-                        'detail_materials_visible' => $activity->detail_materials_visible ?? true,
-                        'speakers_visible' => $activity->speakers_visible ?? true,
-                        'detail_speakers_visible' => $activity->detail_speakers_visible ?? true,
-                        'show_gallery' => $activity->show_gallery,
-                        'enable_comments' => $activity->enable_comments,
-                        'rooms_visible' => $activity->rooms_visible ?? true,
-                    ],
+
                     // Participants (Peserta) - Limit 50 untuk menghindari response terlalu besar
                     'participants' => $activity->users->take(50)->map(function ($user) {
                         $pivot = $user->pivot;

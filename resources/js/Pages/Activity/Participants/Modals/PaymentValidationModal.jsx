@@ -5,7 +5,7 @@ import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { CheckCircle, XCircle, AlertCircle, FileText, Image, DollarSign, Calendar, User, CreditCard, Users, Upload, Save } from 'lucide-react';
 
-export default function PaymentValidationModal({ show, onClose, payment, participant, activity }) {
+export default function PaymentValidationModal({ show, onClose, payment, participant, activity, paymentMethods = [] }) {
     const { props } = usePage();
     const [processing, setProcessing] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -14,6 +14,8 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
     const [showRejectInput, setShowRejectInput] = useState(false);
     const [localProofUrl, setLocalProofUrl] = useState(null);
     const [amount, setAmount] = useState(0);
+    const [paymentMethodId, setPaymentMethodId] = useState('');
+    const [senderName, setSenderName] = useState('');
     const [isDirty, setIsDirty] = useState(false);
     const fileInputRef = useRef(null);
 
@@ -22,12 +24,14 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
         if (payment) {
             const isGroup = payment.is_group_payment || (payment.group_members && payment.group_members.length > 0);
             const totalMembers = 1 + (payment.group_members?.length || 0);
-            const initialAmount = parseInt(payment.amount) > 0 
-                ? parseInt(payment.amount) 
-                : (isGroup && activity?.price 
-                    ? parseInt(activity.price) * totalMembers 
+            const initialAmount = parseInt(payment.amount) > 0
+                ? parseInt(payment.amount)
+                : (isGroup && activity?.price
+                    ? parseInt(activity.price) * totalMembers
                     : parseInt(payment.amount));
             setAmount(initialAmount);
+            setPaymentMethodId(payment.payment_method_id || '');
+            setSenderName(payment.sender_name || '');
         }
     }, [payment, activity]);
 
@@ -43,7 +47,7 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
         }
 
         setUploading(true);
-        
+
         const formData = new FormData();
         formData.append('proof_file', file);
 
@@ -53,21 +57,21 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                 'Accept': 'application/json'
             }
         })
-        .then(response => {
-            if (response.data.success) {
-                setLocalProofUrl(response.data.proof_url);
-                if (fileInputRef.current) fileInputRef.current.value = '';
-                // Reload parent data silently to keep sync
-                router.reload({ only: ['participants'] });
-            }
-        })
-        .catch(error => {
-            console.error('Upload failed:', error);
-            alert('Gagal mengunggah bukti pembayaran');
-        })
-        .finally(() => {
-            setUploading(false);
-        });
+            .then(response => {
+                if (response.data.success) {
+                    setLocalProofUrl(response.data.proof_url);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                    // Reload parent data silently to keep sync
+                    router.reload({ only: ['participants'] });
+                }
+            })
+            .catch(error => {
+                console.error('Upload failed:', error);
+                alert('Gagal mengunggah bukti pembayaran');
+            })
+            .finally(() => {
+                setUploading(false);
+            });
     };
 
     const handleSave = () => {
@@ -76,6 +80,8 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
         router.put(route('payments.update', payment.id), {
             notes: notes,
             amount: amount,
+            payment_method_id: paymentMethodId,
+            sender_name: senderName,
         }, {
             onSuccess: (page) => {
                 setProcessing(false);
@@ -105,13 +111,15 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
         }
 
         setProcessing(true);
-        
+
         const finalNotes = status === 'rejected' ? rejectReason : notes;
 
         router.put(route('payments.verify', payment.id), {
             status: status,
             notes: finalNotes,
             amount: amount,
+            payment_method_id: paymentMethodId,
+            sender_name: senderName,
         }, {
             onSuccess: (page) => {
                 setProcessing(false);
@@ -241,9 +249,16 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                                                         <CreditCard className="w-4 h-4" />
                                                         <span className="text-xs font-bold uppercase tracking-wider">Metode Pembayaran</span>
                                                     </div>
-                                                    <div className="font-medium text-slate-900 break-words">
-                                                        {paymentMethodName}
-                                                    </div>
+                                                    <select
+                                                        value={paymentMethodId}
+                                                        onChange={(e) => { setPaymentMethodId(e.target.value); setIsDirty(true); }}
+                                                        className="w-full border-0 p-0 text-slate-900 font-medium focus:ring-0 bg-transparent cursor-pointer"
+                                                    >
+                                                        <option value="">-- Pilih Metode --</option>
+                                                        {paymentMethods.map(pm => (
+                                                            <option key={pm.id} value={pm.id}>{pm.name}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
                                             </div>
 
@@ -284,9 +299,13 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                                                         <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm">
                                                             <div>
                                                                 <span className="text-slate-500 text-xs block mb-1">Nama Pengirim</span>
-                                                                <div className="font-medium text-slate-900">
-                                                                    {payment.sender_name || participant?.user?.name || '-'}
-                                                                </div>
+                                                                <input
+                                                                    type="text"
+                                                                    value={senderName}
+                                                                    onChange={(e) => { setSenderName(e.target.value); setIsDirty(true); }}
+                                                                    className="w-full bg-transparent border-0 p-0 text-slate-900 font-medium focus:ring-0 placeholder:text-slate-400"
+                                                                    placeholder="Nama Pengirim"
+                                                                />
                                                             </div>
                                                         </div>
                                                     </div>
@@ -299,14 +318,14 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                                                     </div>
                                                     {localProofUrl ? (
                                                         <div className="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-[4/3] flex items-center justify-center">
-                                                            <img 
-                                                                src={localProofUrl} 
-                                                                alt="Bukti Pembayaran" 
-                                                                className="max-w-full max-h-full object-contain" 
+                                                            <img
+                                                                src={localProofUrl}
+                                                                alt="Bukti Pembayaran"
+                                                                className="max-w-full max-h-full object-contain"
                                                             />
-                                                            <a 
-                                                                href={localProofUrl} 
-                                                                target="_blank" 
+                                                            <a
+                                                                href={localProofUrl}
+                                                                target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white font-medium gap-2"
                                                             >
@@ -409,7 +428,7 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                                                         )}
                                                         <button
                                                             onClick={() => handleVerify('rejected')}
-                                                            disabled={processing || payment.status === 'rejected'}
+                                                            disabled={processing}
                                                             className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-rose-100 text-rose-600 rounded-xl hover:bg-rose-50 hover:border-rose-200 font-bold transition-colors disabled:opacity-50"
                                                         >
                                                             <XCircle className="w-5 h-5" />

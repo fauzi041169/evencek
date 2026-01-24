@@ -31,6 +31,13 @@ class NormalizeGender extends Command
     {
         $this->info('Starting gender normalization...');
 
+        if (config('services.ai_gender.enabled')) {
+            $this->info('AI Gender Prediction is ENABLED using ' . config('services.ai_gender.model'));
+            $this->warn('This process may be slow due to API requests.');
+        } else {
+            $this->info('Using Local Dictionary for Gender Prediction (AI Disabled)');
+        }
+
         $profiles = Profile::with('user')->get();
         $countNormalized = 0;
         $countPredicted = 0;

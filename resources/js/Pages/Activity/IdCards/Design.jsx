@@ -49,10 +49,10 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
             // Check if current background exists in the fetched list
             // We need to match filename. Note: settings.card.background might be full path or just filename relative to assets/images/card
             // Based on upload response: relativeDir + '/' + filename
-            
+
             const currentBg = settings.card.background;
             const exists = backgrounds.find(bg => bg.filename === currentBg);
-            
+
             if (!exists) {
                 console.warn('Background image not found in server list, resetting...');
                 // Optional: showToast('Background yang digunakan tidak ditemukan (mungkin telah dihapus), telah direset.', 'warning');
@@ -120,7 +120,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
     // Handler Reset Elements (Clear all except background/config)
     const handleResetElements = () => {
         if (!confirm('Apakah Anda yakin ingin menghapus semua elemen?')) return;
-        
+
         setSettings(prev => {
             // Keep only 'card' config
             const newSettings = {
@@ -144,7 +144,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
         if (type === 'province' || dataKey === 'province') previewText = user.profile?.province?.name || 'Provinsi';
         if (type === 'regency' || dataKey === 'regency') previewText = user.profile?.regency?.name || 'Kabupaten/Kota';
         if (type === 'district' || dataKey === 'district') previewText = user.profile?.district?.name || 'Kecamatan';
-        
+
         // Handle other keys from user/profile if available
         if (!previewText && dataKey) {
             if (user[dataKey]) previewText = user[dataKey];
@@ -191,7 +191,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                     const canvas = document.createElement('canvas');
                     let width = img.width;
                     let height = img.height;
-                    
+
                     // Limit Max Dimensions (e.g., 4000px) to prevent memory issues and huge files
                     const MAX_DIMENSION = 4000;
                     if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
@@ -216,7 +216,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                                 reject(new Error('Image compression failed'));
                                 return;
                             }
-                            
+
                             if (blob.size <= maxSizeMB * 1024 * 1024 || quality <= 0.1) {
                                 // Done or max compression reached
                                 const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
@@ -268,10 +268,10 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
 
 
             const url = `/idcard-background/upload`; // Updated route
-            
+
             // Use window.axios if available to ensure global config (CSRF, etc.) is used
             const axiosInstance = window.axios || axios;
-            
+
             const res = await axiosInstance.post(url, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
@@ -286,18 +286,18 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
         } catch (error) {
             console.error('Upload error:', error.response || error);
             let errMsg = error.response?.data?.message || 'Gagal upload background';
-            
+
             // Handle specific validation errors
             if (error.response?.status === 422) {
-                 const errors = error.response.data.errors;
-                 if (errors) {
-                     // If activity_id is missing, it might be due to post_max_size limit
-                     if (errors.activity_id) {
-                         errMsg = 'Gagal: Data aktivitas tidak terbaca (Mungkin file terlalu besar)';
-                     } else {
-                         errMsg = Object.values(errors).flat().join(', ');
-                     }
-                 }
+                const errors = error.response.data.errors;
+                if (errors) {
+                    // If activity_id is missing, it might be due to post_max_size limit
+                    if (errors.activity_id) {
+                        errMsg = 'Gagal: Data aktivitas tidak terbaca (Mungkin file terlalu besar)';
+                    } else {
+                        errMsg = Object.values(errors).flat().join(', ');
+                    }
+                }
             } else if (error.response?.status === 413) {
                 errMsg = 'File terlalu besar (Server Reject)';
             }
@@ -320,7 +320,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                 activity_id: activity.id,
                 filename: filename
             });
-            
+
             // If the deleted background was selected, clear it from settings
             if (settings.card?.background === filename) {
                 setSettings(prev => ({
@@ -328,7 +328,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                     card: { ...prev.card, background: null }
                 }));
             }
-            
+
             showToast('Background berhasil dihapus');
             fetchBackgrounds(); // Refresh list
         } catch (error) {
@@ -402,7 +402,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
             } else {
                 photoSrc = "/assets/images/profilefoto/default-profile.png";
             }
-            
+
             // Determine border radius based on shape config
             const borderRadius = config.shape === 'circle' ? '50%' : (config.borderRadius || '0px');
 
@@ -433,6 +433,25 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                     />
                 </div>
             );
+        }
+
+        // Dynamic Text Binding during Design Mode
+        const key = config.data_key || id;
+        if (key) {
+            // Check specific mappings
+            if (key === 'name' || key === 'name_text') return user.name || config.text || 'Nama Peserta';
+            if (key === 'email') return user.email || config.text || 'Email';
+            if (key === 'no_hp') return p.no_hp || config.text || '-';
+            if (key === 'instansi' || key === 'agency') return p.instansi || config.text || '-';
+            if (key === 'province') return p.province?.name || config.text || '-';
+            if (key === 'regency') return p.regency?.name || config.text || '-';
+            if (key === 'district') return p.district?.name || config.text || '-';
+
+            // General lookup
+            if (config.data_key) {
+                if (user[config.data_key]) return user[config.data_key];
+                if (p[config.data_key]) return p[config.data_key];
+            }
         }
 
         if (config.text) return config.text;
@@ -553,8 +572,8 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                                         <p className="text-xs text-gray-500 mb-1">Background Tersimpan:</p>
                                         <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto p-1">
                                             {backgrounds.map(bg => (
-                                                <div 
-                                                    key={bg.id} 
+                                                <div
+                                                    key={bg.id}
                                                     className={`relative cursor-pointer border rounded overflow-hidden group ${settings.card?.background === bg.filename ? 'ring-2 ring-indigo-500' : 'border-gray-200'}`}
                                                     onClick={() => setSettings(prev => ({ ...prev, card: { ...prev.card, background: bg.filename } }))}
                                                 >
@@ -593,7 +612,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tambah Elemen</h3>
-                                <button 
+                                <button
                                     onClick={handleResetElements}
                                     className="text-xs text-red-500 hover:text-red-700 font-medium"
                                     title="Hapus semua elemen dari kartu"
@@ -601,7 +620,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                                     Hapus Semua
                                 </button>
                             </div>
-                            
+
                             <div className="relative">
                                 <button
                                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -615,7 +634,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                                     <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
                                         {/* Standard Custom Text Option */}
                                         <div className="px-4 py-2 border-b border-gray-100">
-                                            <button 
+                                            <button
                                                 onClick={() => {
                                                     addField('custom', 'Teks Bebas', 'Teks Baru');
                                                     setIsDropdownOpen(false);
@@ -641,7 +660,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                                                         let targetKey = col.key;
                                                         if (col.key === 'qr_code') targetKey = 'qr';
                                                         if (col.key === 'avatar') targetKey = 'photo';
-                                                        
+
                                                         const isChecked = Object.values(settings).some(s => s.data_key === targetKey);
 
                                                         return (
@@ -671,14 +690,25 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
 
                 {/* MAIN EDITOR AREA */}
                 <div className="flex-1 bg-gray-100 relative overflow-auto flex items-center justify-center p-10">
-                    
+
                     {/* CANVAS WRAPPER */}
                     <div
                         className="relative shadow-2xl bg-white transition-all duration-300 ease-in-out"
                         style={{
                             width: `${(settings.card?.width_cm || 5.4) * 37.795}px`, // CM to PX (approx 96 DPI) -> actually 1cm = 37.8px
                             height: `${(settings.card?.height_cm || 8.6) * 37.795}px`,
-                            backgroundImage: settings.card?.background ? `url(/assets/images/card/${settings.card.background})` : 'none',
+                            backgroundImage: (() => {
+                                if (!settings.card?.background) return 'none';
+                                const bg = backgrounds.find(b => b.filename === settings.card.background);
+                                if (bg) return `url("${bg.url}")`;
+                                // Fallback logic
+                                if (settings.card.background.startsWith('id-card-backgrounds/') || settings.card.background.startsWith('http')) {
+                                    // If it's already a full URL or storage path
+                                    if (settings.card.background.startsWith('http')) return `url("${settings.card.background}")`;
+                                    return `url("/storage/${settings.card.background}")`;
+                                }
+                                return `url("/assets/images/card/${settings.card.background}")`;
+                            })(),
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
                             overflow: 'hidden' // Clip content

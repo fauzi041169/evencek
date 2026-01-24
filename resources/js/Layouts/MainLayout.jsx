@@ -212,13 +212,13 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                         {/* Menu Items */}
                                         <div className="px-2 py-2">
                                             <div className="grid gap-1">
-                                                <Link href="/dashboard" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group">
+                                                <Link href="/dashboard" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 hover:translate-x-1 group">
                                                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-tachometer-alt"></i>
                                                     </div>
                                                     Dashboard
                                                 </Link>
-                                                <Link href={`/profile/${auth.user.id}`} className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group">
+                                                <Link href={`/profile/${auth.user.id}`} className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 hover:translate-x-1 group">
                                                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-user"></i>
                                                     </div>
@@ -226,7 +226,7 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                 </Link>
 
                                                 {auth.user.role === 'superadmin' && (
-                                                    <Link href="/settings" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group">
+                                                    <Link href="/settings" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 hover:translate-x-1 group">
                                                         <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                             <i className="fas fa-cog"></i>
                                                         </div>
@@ -236,13 +236,13 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                 
                                                 <div className="border-t border-gray-100 my-1 mx-2"></div>
                                                 
-                                                <Link href="/download-apk" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group">
+                                                <Link href="/download-apk" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 hover:translate-x-1 group">
                                                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-download"></i>
                                                     </div>
                                                     Download APK
                                                 </Link>
-                                                <Link href="/scan-qr" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group">
+                                                <Link href="/scan-qr" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 hover:translate-x-1 group">
                                                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-qrcode"></i>
                                                     </div>
@@ -261,7 +261,7 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                             window.location.reload(true);
                                                         }
                                                     }}
-                                                    className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-colors group"
+                                                    className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 hover:translate-x-1 group"
                                                 >
                                                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-broom"></i>
@@ -275,7 +275,7 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                     as="button" 
                                                     method="post" 
                                                     href={route('logout')} 
-                                                    className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-colors group"
+                                                    className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-all duration-200 hover:translate-x-1 group"
                                                 >
                                                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-100 text-red-600 mr-3 group-hover:bg-red-600 group-hover:text-white transition-colors">
                                                         <i className="fas fa-sign-out-alt"></i>

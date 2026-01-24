@@ -2,6 +2,9 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
 class GenderHelper
 {
     /**
@@ -48,7 +51,25 @@ class GenderHelper
             return null;
         }
 
-        $name = strtoupper(trim($name));
+        // Clean name
+        $name = strtoupper(trim(preg_replace('/[^a-zA-Z\s]/', '', $name)));
+        
+        // Try AI if enabled
+        if (config('services.ai_gender.enabled')) {
+            $aiPrediction = self::predictWithAI($name);
+            if ($aiPrediction) {
+                return $aiPrediction;
+            }
+        }
+
+        return self::predictLocal($name);
+    }
+
+    /**
+     * Predict gender using Local Dictionary / Heuristics.
+     */
+    public static function predictLocal($name)
+    {
         $parts = explode(' ', $name);
         $firstName = $parts[0];
         $lastName = end($parts);
@@ -61,7 +82,21 @@ class GenderHelper
             'ADITYA', 'AGUNG', 'ANDI', 'ANTON', 'ARIEF', 'ARIF', 'BAYU', 'DANI',
             'DIMAS', 'FAJAR', 'FIRMAN', 'GILANG', 'HADI', 'ILHAM', 'INDRA',
             'MAULANA', 'RAMA', 'REZA', 'SATRIA', 'SURYA', 'TEGUH', 'WAHYU',
-            'KEVIN', 'MICHAEL', 'DAVID', 'JASON', 'ANDREW', 'WILLIAM'
+            'KEVIN', 'MICHAEL', 'DAVID', 'JASON', 'ANDREW', 'WILLIAM',
+            'TAUFIK', 'HIDAYAT', 'DODDY', 'FERRY', 'GUNAWAN', 'HARTONO',
+            'IMAM', 'IRFAN', 'IRWAN', 'ISMAIL', 'KURNIAWAN', 'LUKMAN',
+            'MUKTI', 'NANANG', 'NUGROHO', 'PRAS', 'PRASETYO', 'RAHMAT',
+            'RENDY', 'RICKY', 'RIDWAN', 'RIFKY', 'RIO', 'ROBBY', 'RONY',
+            'RYAN', 'SALIM', 'SAMSUL', 'ANDRI', 'ANDRY', 'ARIS', 'BAGAS',
+            'BAGUS', 'CAHYO', 'DEDDY', 'DEDY', 'DENI', 'DENNY', 'DICKY',
+            'DONI', 'DONNY', 'DWIKI', 'DZAKY', 'FAISAL', 'FARHAN', 'FARID',
+            'FAUZAN', 'FIKRI', 'GALIH', 'HAFIZ', 'HAMZAH', 'HANIF', 'HASAN',
+            'HUSEIN', 'IKBAL', 'IQBAL', 'JAMAL', 'KAMAL', 'LUTFI', 'MALIK',
+            'MIFTAH', 'MUHLIS', 'NASRUL', 'RAFLI', 'RAFIF', 'RAIHAN', 'RANDY',
+            'RAYHAN', 'RIAN', 'RIFQI', 'ROHMAD', 'ROHMAT', 'ROZAK', 'SEPTIAN',
+            'SIDIK', 'SLAMET', 'SOFYAN', 'SUGENG', 'SUPRI', 'SYAHRUL', 'SYAMSUL',
+            'TOMMY', 'TONI', 'TOTOK', 'TRIYONO', 'UMAR', 'USMAN', 'WILDAN',
+            'WISNU', 'YOGA', 'YOGI', 'YOSEP', 'YUDHA', 'ZAKI', 'ZULKARNAEN'
         ];
 
         // Kata kunci spesifik Perempuan (Strong)
@@ -76,7 +111,31 @@ class GenderHelper
             'MARIA', 'MELI', 'MILA', 'MIRA', 'MONICA', 'MUTIARA', 'NOVA',
             'OLIVIA', 'RISA', 'RISKA', 'ROSI', 'SARAH', 'SELVIA', 'SHINTA',
             'SISKA', 'SUCI', 'SYIFA', 'TANIA', 'TASYA', 'TIARA', 'TIKA', 'VINA',
-            'VIVI', 'WIDYA', 'WINDA', 'YENI', 'YESI', 'YUNI'
+            'VIVI', 'WIDYA', 'WINDA', 'YENI', 'YESI', 'YUNI',
+            'ADINDA', 'AFIIFAH', 'AGUSTINA', 'AINI', 'ALFIAH', 'ALIFIA', 'ALIN',
+            'AMALIA', 'AMANDA', 'ANASTASIA', 'ANDINI', 'ANGEL', 'ANGGI', 'ANGGITA',
+            'ANIS', 'APRILIA', 'ARINA', 'ARUM', 'ASTRI', 'ASTRID', 'AUREL',
+            'AZIZAH', 'BUNGA', 'CANTIKA', 'CHINTYA', 'CLARA', 'CUT', 'DEA',
+            'DELLA', 'DESTI', 'DEVI', 'DHINI', 'DIAH', 'DWI', 'ELISA',
+            'ELLA', 'ELSA', 'ELVI', 'ELY', 'ENDAH', 'ENI', 'ERIKA',
+            'ERINA', 'ERMA', 'ERNA', 'ERNI', 'ESTI', 'FAIZA', 'FARIDA',
+            'FEBY', 'FENNY', 'FINA', 'FRISKA', 'GABRIELLA', 'HANA', 'HANNA',
+            'HESTI', 'IIS', 'IKKE', 'IMAS', 'INNA', 'IRA', 'IRMA',
+            'ISNA', 'JESSICA', 'KARINA', 'KHARISMA', 'KHUSNUL', 'KIKI', 'LAILA',
+            'LENI', 'LILIS', 'LISA', 'LULU', 'MARLINA', 'MAWAR', 'MELANI',
+            'MELATI', 'MELDA', 'MELISA', 'MERRY', 'MIA', 'MURNI', 'NABILA',
+            'NADA', 'NADYA', 'NAFA', 'NANA', 'NANCY', 'NANDA', 'NATASIA',
+            'NELLA', 'NENENG', 'NENI', 'NIA', 'NIKI', 'NIKITA', 'NILA',
+            'NILAM', 'NOOR', 'NORMA', 'NOVIA', 'NUR', 'NURLELA', 'NURMALA',
+            'OKTA', 'OKTAVIA', 'PIPIT', 'PRATIWI', 'PUTU', 'QORY', 'RACHMA',
+            'RAHMI', 'RANI', 'RARA', 'RESTI', 'RETNO', 'RIA', 'RIKA',
+            'RINDI', 'RIRIN', 'RISMA', 'RISTI', 'RIZKA', 'ROSA', 'ROSE',
+            'SAFIRA', 'SALMA', 'SANDRA', 'SANTY', 'SEKAR', 'SEPTIA', 'SHERLY',
+            'SILVI', 'SILVIA', 'SINTA', 'SONYA', 'SUCI', 'SUSAN', 'SYAFIKA',
+            'TARA', 'TATA', 'TIA', 'TIKA', 'TINA', 'TITIK', 'TITIN',
+            'TRIANA', 'ULFA', 'UMI', 'UTAMI', 'VENNY', 'VERA', 'VICKY',
+            'VIDYA', 'VIRA', 'VITA', 'WIDIA', 'WIDURI', 'WINDY', 'WIRDA',
+            'YAYUK', 'YOVITA', 'YULIA', 'YUNITA', 'YUYUN', 'ZASKIA'
         ];
 
         // Cek Nama Depan (Strong Match)
@@ -88,24 +147,64 @@ class GenderHelper
         if (str_ends_with($name, ' PUTRI') || str_ends_with($name, ' WATI') || str_ends_with($name, ' SARI') || str_ends_with($name, ' NINGSIH')) return 'P';
 
         // Heuristik berdasarkan kata yang terkandung (Medium)
-        // Perlu hati-hati dengan nama ambigu seperti NUR, TRI, EKA, DWI, RIZKI
-        
-        // Loop kata per kata
         foreach ($parts as $part) {
             if (in_array($part, $maleStrong)) return 'L';
             if (in_array($part, $femaleStrong)) return 'P';
         }
 
-        // Heuristik Akhiran Nama Depan
-        // Akhiran -a, -i, -ti, -ni biasanya Perempuan
-        // Akhiran -o, -us, -an, -ar biasanya Laki-laki
-        
-        if (preg_match('/(WATI|SARI|DEWI|YANTI|YANI|ASTUTI|NINGSIH)$/', $name)) return 'P';
-        
-        $lastChar = substr($firstName, -1);
-        if (in_array($lastChar, ['o', 'u', 'k'])) return 'L'; // Joko, Heru, Didik
-        if (in_array($lastChar, ['a', 'i', 'e'])) return 'P'; // Lina, Susi, Dea (Weak)
+        // Regex Patterns
+        if (preg_match('/(WATI|SARI|DEWI|YANTI|YANI|ASTUTI|NINGSIH|NURUL|AYU|PUTRI)$/', $name)) return 'P';
+        if (preg_match('/(PUTRA|SANTOSO|WIBOWO|SAPUTRA|HIDAYAT|PRATAMA|PERDANA|LAKSANA)$/', $name)) return 'L';
 
-        return null; // Tidak berani tebak
+        // Akhiran (Weak Heuristics)
+        $lastChar = substr($firstName, -1);
+        if (in_array($lastChar, ['o', 'u', 'k'])) return 'L'; 
+        if (in_array($lastChar, ['a', 'e'])) {
+            // Check pengecualian nama berakhiran 'a' tapi cowok (misal: Eka, Indra, Reza, Rama)
+            $maleEndsA = ['EKA', 'INDRA', 'REZA', 'RAMA', 'YUDHA', 'SATRIA', 'ARYA', 'DWI', 'EZZA', 'PRADANA', 'MAHENDRA'];
+            if (in_array($firstName, $maleEndsA)) return 'L';
+            
+            return 'P'; 
+        }
+
+        return null;
+    }
+
+    /**
+     * Predict using external AI API
+     */
+    public static function predictWithAI($name)
+    {
+        $apiKey = config('services.ai_gender.key');
+        $url = config('services.ai_gender.url');
+        $model = config('services.ai_gender.model');
+
+        if (!$apiKey) return null;
+
+        try {
+            // Using generic OpenAI Chat Completion format
+            $response = Http::withToken($apiKey)->post($url, [
+                'model' => $model,
+                'messages' => [
+                    ['role' => 'system', 'content' => 'You are a helper to determine gender from Indonesian names. Respond ONLY with "L" (Male) or "P" (Female). If unsure, guess based on common Indonesian naming conventions.'],
+                    ['role' => 'user', 'content' => $name],
+                ],
+                'temperature' => 0.1,
+                'max_tokens' => 5,
+            ]);
+
+            if ($response->successful()) {
+                $content = strtoupper(trim($response->json('choices.0.message.content')));
+                // Clean response
+                $content = str_replace(['.', '"', "'"], '', $content);
+                
+                if (str_contains($content, 'LAKI') || $content === 'L') return 'L';
+                if (str_contains($content, 'PEREMPUAN') || $content === 'P') return 'P';
+            }
+        } catch (\Exception $e) {
+            Log::error('AI Gender Prediction Error: ' . $e->getMessage());
+        }
+
+        return null;
     }
 }

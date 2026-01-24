@@ -1183,6 +1183,7 @@ export default function Index({
                 payment={selectedPaymentParticipant?.payment}
                 participant={selectedPaymentParticipant?.participant}
                 activity={activity}
+                paymentMethods={paymentMethodOptions}
             />
         </AcaraLayout>
     );

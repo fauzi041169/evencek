@@ -7,20 +7,20 @@ export default function CardPreview({ settings, user, activity, scale = 1 }) {
     // Helper to resolve dynamic content
     const getContent = (id, config) => {
         const p = user.profile || {};
-        
+
         // Handle Photo/Avatar
         if (config.data_key === 'photo' || id === 'photo' || (id && id.toString().startsWith('photo_'))) {
-            const photoUrl = p.foto_url && p.foto_url !== 'undefined' 
-                ? p.foto_url 
+            const photoUrl = p.foto_url && p.foto_url !== 'undefined'
+                ? p.foto_url
                 : '/assets/images/profilefoto/default-profile.png';
-            
+
             const shapeClass = config.shape === 'circle' ? 'rounded-full' : 'rounded-none';
-            
+
             return (
-                <img 
-                    src={photoUrl} 
-                    className={`w-full h-full object-cover ${shapeClass}`} 
-                    alt="Foto Peserta" 
+                <img
+                    src={photoUrl}
+                    className={`w-full h-full object-cover ${shapeClass}`}
+                    alt="Foto Peserta"
                     draggable={false}
                 />
             );
@@ -31,13 +31,13 @@ export default function CardPreview({ settings, user, activity, scale = 1 }) {
             // QR Value: Use specific data or fallback to validation URL
             // Default validation URL: /activity/{id}/validate/{user_id} (Example)
             // Or just the user code/ID
-            const qrValue = config.text || `MEMBER:${user.id}:${activity.id}`; 
-            
+            const qrValue = config.text || `MEMBER:${user.id}:${activity.id}`;
+
             return (
                 <div className="w-full h-full bg-white p-1">
-                     <QRCodeSVG
+                    <QRCodeSVG
                         value={qrValue}
-                        size={config.width} 
+                        size={config.width}
                         className="w-full h-full"
                         level="M"
                     />
@@ -53,22 +53,34 @@ export default function CardPreview({ settings, user, activity, scale = 1 }) {
         // Let's look at what Design.jsx does.
         // It has a getPreviewContent function or similar?
         // In Design.jsx, it uses `getContent`.
-        
+
         let text = config.text || 'Teks';
-        
-        // If data_key is present, use it to fetch data
-        if (config.data_key) {
-            switch(config.data_key) {
-                case 'name': text = user.name; break;
-                case 'email': text = user.email; break;
-                case 'no_hp': text = p.no_hp || '-'; break;
-                case 'instansi': text = p.instansi || '-'; break;
-                case 'province': text = p.province?.name || '-'; break;
-                case 'regency': text = p.regency?.name || '-'; break;
-                case 'district': text = p.district?.name || '-'; break;
-                case 'village': text = p.village?.name || '-'; break;
+        const key = config.data_key || id;
+
+        // If data_key is present or id is a known key, use it to fetch data
+        if (key) {
+            switch (key) {
+                case 'name':
+                case 'name_text':
+                    text = user?.name || config.text || 'Nama Peserta';
+                    break;
+                case 'email': text = user?.email || config.text || 'Email'; break;
+                case 'no_hp': text = p.no_hp || config.text || '-'; break;
+                case 'instansi':
+                case 'agency':
+                    text = p.instansi || config.text || '-';
+                    break;
+                case 'province': text = p.province?.name || config.text || '-'; break;
+                case 'regency': text = p.regency?.name || config.text || '-'; break;
+                case 'district': text = p.district?.name || config.text || '-'; break;
+                case 'village': text = p.village?.name || config.text || '-'; break;
                 case 'custom': text = config.text || '-'; break;
-                default: text = config.text || '-';
+                default:
+                    // If we have a specific data_key but it didn't match above, keep text.
+                    // If we fell back to 'id' and it didn't match, keep text.
+                    if (config.data_key) {
+                        text = config.text || '-';
+                    }
             }
         }
 
@@ -98,7 +110,7 @@ export default function CardPreview({ settings, user, activity, scale = 1 }) {
 
     return (
         <div style={{ width: widthPx * scale, height: heightPx * scale, margin: '0 auto' }}>
-            <div 
+            <div
                 className="relative shadow-lg bg-white overflow-hidden"
                 style={{
                     width: `${widthPx}px`,

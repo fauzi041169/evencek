@@ -59,4 +59,11 @@ return [
         'sender_name' => env('WHATSAPP_SENDER_NAME', env('APP_NAME', 'IVEN-HUB')),
     ],
 
+    'ai_gender' => [
+        'enabled' => env('AI_GENDER_ENABLED', false),
+        'key' => env('AI_GENDER_API_KEY'),
+        'url' => env('AI_GENDER_API_URL', 'https://api.openai.com/v1/chat/completions'),
+        'model' => env('AI_GENDER_MODEL', 'gpt-3.5-turbo'),
+    ],
+
 ];

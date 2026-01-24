@@ -339,7 +339,6 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     // Activity Preparation Routes
     Route::prefix('activity/{activityId}/preparation')->name('activity.preparation.')->middleware('auth')->controller(ActivityPreparationController::class)->group(function () {
         Route::get('/', 'index')->name('index');
-        Route::put('/settings', 'updateSettings')->name('update-settings');
         Route::get('/owners/search', 'searchUsers')->name('owners.search');
         Route::post('/owners', 'storeOwner')->name('store-owner');
         Route::delete('/owners/{userId}', 'destroyOwner')->name('destroy-owner');
@@ -408,6 +407,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/{id}/export/{format}', 'export')->name('export');
         // React pages for printing
         Route::get('/{id}/certificates', 'showCertificates')->name('certificates')->middleware('auth');
+        Route::get('/{id}/custom-certificate', 'designCertificate')->name('custom-certificate')->middleware('auth');
         Route::get('/{id}/idcards', 'showIdCards')->name('idcards')->middleware('auth');
         Route::get('/{id}/idcards/design', 'designIdCard')->name('idcards.design')->middleware('auth');
         
@@ -426,7 +426,6 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/gallery/{id}/update-caption', 'updateGalleryCaption')->name('gallery.update-caption');
         Route::post('/{id}/toggle-price', 'togglePrice')->name('togglePrice');
         Route::post('/{id}/toggle-registration', 'toggleRegistration')->name('toggleRegistration');
-        Route::post('/{id}/toggle-hero-pin', 'toggleHeroPin')->name('toggleHeroPin');
         Route::post('/{id}/toggle-gallery', 'toggleGallery')->name('toggleGallery');
         Route::post('/{id}/toggle-comments', 'toggleComments')->name('toggleComments');
         // Dipindahkan ke route publik (di luar grup auth)

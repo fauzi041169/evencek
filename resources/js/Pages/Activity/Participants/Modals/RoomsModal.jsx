@@ -23,8 +23,8 @@ const SearchableParticipantSelect = ({ participants, onSelect, placeholder = "+ 
     // Safety check for participants
     const safeParticipants = Array.isArray(participants) ? participants : [];
 
-    const filtered = safeParticipants.filter(p => 
-        (p.name && p.name.toLowerCase().includes(search.toLowerCase())) || 
+    const filtered = safeParticipants.filter(p =>
+        (p.name && p.name.toLowerCase().includes(search.toLowerCase())) ||
         (p.email && p.email.toLowerCase().includes(search.toLowerCase()))
     );
 
@@ -97,7 +97,8 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     });
 
     const [selectedRooms, setSelectedRooms] = useState([]);
-    
+    const [activeTab, setActiveTab] = useState('manual');
+
     // Import form
     const importForm = useForm({
         file: null
@@ -195,110 +196,143 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose} />
+        <div className="relative z-[100]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            {/* Background backdrop */}
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
-                <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            {/* Modal panel wrapper */}
+            <div className="fixed inset-0 z-10 overflow-y-auto">
+                <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                    <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-6xl">
+                        <div className="bg-indigo-600 px-4 py-3 sm:px-6 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Building className="w-5 h-5" />
+                                Kelola Kamar Hotel
+                            </h3>
+                            <button onClick={onClose} className="text-indigo-100 hover:text-white focus:outline-none">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
 
-                <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl w-full">
-                    <div className="bg-primary px-4 py-3 sm:px-6 flex justify-between items-center">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                            <Building className="w-5 h-5" />
-                            Kelola Kamar Hotel
-                        </h3>
-                        <button onClick={onClose} className="text-indigo-100 hover:text-white focus:outline-none">
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
+                        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
 
-                    <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        
+                            {/* Add Room Form */}
+
+                        {/* Tabs */}
+                        <div className="flex border-b border-gray-200 mb-4">
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('manual')}
+                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'manual'
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Plus className="w-4 h-4" />
+                                    Tambah Manual
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('import')}
+                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'import'
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Upload className="w-4 h-4" />
+                                    Import Excel
+                                </div>
+                            </button>
+                        </div>
+
                         {/* Add Room Form */}
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                            <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-3 items-end">
-                                <div className="col-span-12 sm:col-span-3">
-                                    <label className="block text-sm text-gray-700 font-medium mb-1">Hotel</label>
-                                    <input 
-                                        type="text" 
-                                        list="hotel-suggestions"
-                                        value={data.hotel_name}
-                                        onChange={e => setData('hotel_name', e.target.value)}
-                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500" 
-                                        placeholder="Nama/Kode Hotel" 
-                                    />
-                                    <datalist id="hotel-suggestions">
-                                        {hotels.map((h, i) => <option key={i} value={h} />)}
-                                    </datalist>
-                                    {errors.hotel_name && <p className="text-red-500 text-xs">{errors.hotel_name}</p>}
-                                </div>
-                                <div className="col-span-12 sm:col-span-2">
-                                    <label className="block text-sm text-gray-700 font-medium mb-1">Nomor Kamar</label>
-                                    <input 
-                                        type="text" 
-                                        value={data.room_number}
-                                        onChange={e => setData('room_number', e.target.value)}
-                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500" 
-                                        required 
-                                        placeholder="Contoh: 101" 
-                                    />
-                                    {errors.room_number && <p className="text-red-500 text-xs">{errors.room_number}</p>}
-                                </div>
-                                <div className="col-span-6 sm:col-span-2">
-                                    <label className="block text-sm text-gray-700 font-medium mb-1">Kapasitas</label>
-                                    <input 
-                                        type="number" 
-                                        min="0"
-                                        max="1000"
-                                        value={data.capacity}
-                                        onChange={e => setData('capacity', e.target.value)}
-                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500" 
-                                    />
-                                </div>
-                                <div className="col-span-6 sm:col-span-3">
-                                    <label className="block text-sm text-gray-700 font-medium mb-1">Catatan</label>
-                                    <input 
-                                        type="text" 
-                                        value={data.notes}
-                                        onChange={e => setData('notes', e.target.value)}
-                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500" 
-                                        placeholder="Keterangan" 
-                                    />
-                                </div>
-                                <div className="col-span-12 sm:col-span-2">
-                                    <button 
-                                        type="submit" 
-                                        disabled={processing}
-                                        className="rounded-lg bg-sky-600 px-4 py-2 text-white text-sm font-semibold hover:bg-sky-700 w-full flex justify-center items-center gap-2"
-                                    >
-                                        <Plus className="w-4 h-4" /> Tambah
-                                    </button>
-                                </div>
-                            </form>
-
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                                <form onSubmit={handleImport} className="flex flex-col sm:flex-row items-center gap-3">
+                            {activeTab === 'manual' ? (
+                                <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-3 items-end">
+                                    <div className="col-span-12 sm:col-span-3">
+                                        <label className="block text-sm text-gray-700 font-medium mb-1">Hotel</label>
+                                        <input
+                                            type="text"
+                                            list="hotel-suggestions"
+                                            value={data.hotel_name}
+                                            onChange={e => setData('hotel_name', e.target.value)}
+                                            className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Nama/Kode Hotel"
+                                        />
+                                        <datalist id="hotel-suggestions">
+                                            {hotels.map((h, i) => <option key={i} value={h} />)}
+                                        </datalist>
+                                        {errors.hotel_name && <p className="text-red-500 text-xs">{errors.hotel_name}</p>}
+                                    </div>
+                                    <div className="col-span-12 sm:col-span-2">
+                                        <label className="block text-sm text-gray-700 font-medium mb-1">Nomor Kamar</label>
+                                        <input
+                                            type="text"
+                                            value={data.room_number}
+                                            onChange={e => setData('room_number', e.target.value)}
+                                            className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                            required
+                                            placeholder="Contoh: 101"
+                                        />
+                                        {errors.room_number && <p className="text-red-500 text-xs">{errors.room_number}</p>}
+                                    </div>
+                                    <div className="col-span-6 sm:col-span-2">
+                                        <label className="block text-sm text-gray-700 font-medium mb-1">Kapasitas</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="1000"
+                                            value={data.capacity}
+                                            onChange={e => setData('capacity', e.target.value)}
+                                            className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+                                    </div>
+                                    <div className="col-span-6 sm:col-span-3">
+                                        <label className="block text-sm text-gray-700 font-medium mb-1">Catatan</label>
+                                        <input
+                                            type="text"
+                                            value={data.notes}
+                                            onChange={e => setData('notes', e.target.value)}
+                                            className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Keterangan"
+                                        />
+                                    </div>
+                                    <div className="col-span-12 sm:col-span-2">
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="rounded-lg bg-sky-600 px-4 py-2 text-white text-sm font-semibold hover:bg-sky-700 w-full flex justify-center items-center gap-2"
+                                        >
+                                            <Plus className="w-4 h-4" /> Tambah
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <form onSubmit={handleImport} className="flex flex-col sm:flex-row items-center gap-3 animate-in fade-in">
                                     <div className="w-full sm:w-auto flex-grow">
                                         <label className="block text-xs text-gray-500 mb-1">Import Excel (.xlsx, .csv)</label>
-                                        <input 
-                                            type="file" 
+                                        <input
+                                            type="file"
                                             accept=".xlsx,.xls,.csv"
                                             onChange={e => importForm.setData('file', e.target.files[0])}
-                                            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-primary/10" 
+                                            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-primary/10"
                                             required
                                         />
                                         {importForm.errors.file && <p className="text-red-500 text-xs">{importForm.errors.file}</p>}
                                     </div>
                                     <div className="flex gap-2 w-full sm:w-auto mt-auto">
-                                        <a 
-                                            href={route('activity.participants.rooms.template', activity.uid)} 
-                                            title="Unduh Template" 
+                                        <a
+                                            href={route('activity.participants.rooms.template', activity.uid)}
+                                            title="Unduh Template"
                                             className="inline-flex items-center justify-center rounded-lg bg-gray-800 text-white px-4 py-2 text-sm font-semibold h-[38px] hover:bg-gray-900"
                                         >
                                             <Download className="w-4 h-4" />
                                         </a>
-                                        <button 
-                                            type="submit" 
+                                        <button
+                                            type="submit"
                                             disabled={importForm.processing}
                                             className="rounded-lg bg-primary px-4 py-2 text-white text-sm font-semibold hover:bg-purple-700 h-[38px] flex items-center gap-2"
                                         >
@@ -306,7 +340,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                         </button>
                                     </div>
                                 </form>
-                            </div>
+                            )}
                         </div>
 
                         {/* Bulk Actions */}
@@ -328,16 +362,16 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                         )}
 
                         {/* Rooms List */}
-                        <div className="overflow-hidden rounded-lg border border-gray-200">
+                        <div className="rounded-lg border border-gray-200">
                             <table className="min-w-full text-sm divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-4 py-3 text-left w-10">
-                                            <input 
-                                                type="checkbox" 
+                                            <input
+                                                type="checkbox"
                                                 onChange={toggleSelectAll}
                                                 checked={rooms.length > 0 && selectedRooms.length === rooms.length}
-                                                className="rounded border-gray-300 text-primary focus:ring-indigo-500" 
+                                                className="rounded border-gray-300 text-primary focus:ring-indigo-500"
                                             />
                                         </th>
                                         <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
@@ -348,20 +382,20 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                         <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-200 max-h-[400px] overflow-y-auto block sm:table-row-group">
+                                <tbody className="bg-white divide-y divide-gray-200">
                                     {rooms.length > 0 ? (
                                         rooms.map((room) => {
                                             const occupants = roomOccupants[room.id] || [];
                                             const isFull = room.capacity > 0 && occupants.length >= room.capacity;
-                                            
+
                                             return (
                                                 <tr key={room.id} className="hover:bg-gray-50">
                                                     <td className="px-4 py-2 whitespace-nowrap">
-                                                        <input 
-                                                            type="checkbox" 
+                                                        <input
+                                                            type="checkbox"
                                                             checked={selectedRooms.includes(room.id)}
                                                             onChange={() => toggleSelectRoom(room.id)}
-                                                            className="rounded border-gray-300 text-primary focus:ring-indigo-500" 
+                                                            className="rounded border-gray-300 text-primary focus:ring-indigo-500"
                                                         />
                                                     </td>
                                                     <td className="px-4 py-2 whitespace-nowrap">{room.hotel_name || '-'}</td>
@@ -372,24 +406,24 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                                             {occupants.map(occ => (
                                                                 <div key={occ.id} className="flex justify-between items-center bg-blue-50 px-2 py-1 rounded text-xs border border-blue-100">
                                                                     <span className="truncate font-medium text-secondary max-w-[150px]" title={occ.name}>{occ.name}</span>
-                                                                    <button 
-                                                                        type="button" 
+                                                                    <button
+                                                                        type="button"
                                                                         onClick={() => handleRemoveParticipant(room.id, occ.id)}
-                                                                        className="text-red-400 hover:text-red-600 ml-1 p-0.5 rounded hover:bg-red-50" 
+                                                                        className="text-red-400 hover:text-red-600 ml-1 p-0.5 rounded hover:bg-red-50"
                                                                         title="Keluarkan"
                                                                     >
                                                                         <X className="w-3 h-3" />
                                                                     </button>
                                                                 </div>
                                                             ))}
-                                                            
+
                                                             {!isFull && (
-                                                                <SearchableParticipantSelect 
+                                                                <SearchableParticipantSelect
                                                                     participants={unassignedParticipants}
                                                                     onSelect={(userId) => handleAssignParticipant(room.id, userId)}
                                                                 />
                                                             )}
-                                                            
+
                                                             <div className="text-[10px] text-gray-400 text-right mt-0.5">
                                                                 {occupants.length} / {room.capacity > 0 ? room.capacity : '∞'}
                                                             </div>
@@ -417,7 +451,8 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                     </div>
                 </div>
             </div>
-        </div>,
-        document.body
-    );
+        </div>
+    </div>,
+    document.body
+);
 }

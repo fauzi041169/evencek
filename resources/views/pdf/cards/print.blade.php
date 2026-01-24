@@ -16,12 +16,24 @@
 
                     $paperUpper = strtoupper($paper);
                     $isCustomIdCard = ($paperUpper === 'IDCARD');
+                    
+                    // Define dimensions matching the body render logic
+                    $customSizes = [
+                        'F4' => ['21.59cm', '33.02cm'], // 8.5 x 13 inch (Folio)
+                    ];
 
                     if ($isCustomIdCard) {
                         $w = '53.98mm';
                         $h = '85.60mm';
                         if ($orientation === 'landscape') { $tmp = $w; $w = $h; $h = $tmp; }
                         $sizeCss = $w.' '.$h;
+                    } elseif (isset($customSizes[$paperUpper])) {
+                        [$w, $h] = $customSizes[$paperUpper];
+                        if ($orientation === 'landscape') { 
+                            $sizeCss = $h.' '.$w; 
+                        } else { 
+                            $sizeCss = $w.' '.$h; 
+                        }
                     } else {
                         $sizeCss = ($paper.' '.$orientation);
                     }
@@ -82,23 +94,63 @@
         }
         .no-print {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: #1f2937;
+            color: #fff;
+            padding: 12px 24px;
             z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            height: 70px;
+        }
+        body { 
+            padding-top: 90px; /* Make space for fixed header */
         }
         .no-print button {
-            background: #bfa100;
-            color: #fff;
+            background: #fbbf24;
+            color: #000;
             border: none;
-            border-radius: 8px;
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: bold;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: 600;
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.2s;
         }
         .no-print button:hover {
-            background: #998000;
+            background: #f59e0b;
+        }
+        .print-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .print-control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .print-control-group label {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .print-control-group select, .print-control-group input {
+            background: #374151;
+            border: 1px solid #4b5563;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .print-control-group input[type="number"] {
+            width: 60px;
         }
         .sheet {
             background: #fff;
@@ -327,8 +379,47 @@
 </head>
 <body>
     <div class="no-print">
-        <button onclick="window.print()">🖨️ Cetak Kartu ({{ $participants->count() }} kartu)</button>
-        <button type="button" onclick="enableEditMode()" style="background:#4f46e5; margin-left:10px;">✏️ Mode Edit</button>
+        <div class="print-controls">
+            <div style="font-weight:bold; font-size:1.1rem; margin-right:10px;">🖨️ Cetak Kartu</div>
+            
+            <form id="printSettingsForm" action="" method="GET" style="display:flex; gap:12px; align-items:center;">
+                 @foreach(request()->except(['cols','rows','paper','orientation']) as $key => $value)
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                 @endforeach
+                 
+                 <div class="print-control-group">
+                     <label>Kertas</label>
+                     <select name="paper" onchange="this.form.submit()">
+                         @foreach(['A4'=>'A4','A5'=>'A5','Letter'=>'Letter','Legal'=>'Legal','F4'=>'F4 (Folio)'] as $pKey => $pLabel)
+                            <option value="{{ $pKey }}" {{ (request('paper') ?? $paper) == $pKey ? 'selected' : '' }}>{{ $pLabel }}</option>
+                         @endforeach
+                     </select>
+                 </div>
+
+                 <div class="print-control-group">
+                     <label>Orientasi</label>
+                     <select name="orientation" onchange="this.form.submit()">
+                         <option value="portrait" {{ (request('orientation') ?? $orientation) == 'portrait' ? 'selected' : '' }}>Portrait</option>
+                         <option value="landscape" {{ (request('orientation') ?? $orientation) == 'landscape' ? 'selected' : '' }}>Landscape</option>
+                     </select>
+                 </div>
+
+                 <div class="print-control-group">
+                     <label>Kolom</label>
+                     <input type="number" name="cols" value="{{ $cols }}" min="1" max="10" onchange="this.form.submit()">
+                 </div>
+                 
+                 <div class="print-control-group">
+                     <label>Baris</label>
+                     <input type="number" name="rows" value="{{ $rows }}" min="1" max="10" onchange="this.form.submit()">
+                 </div>
+            </form>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <button onclick="window.print()">Cetak ({{ $participants->count() }})</button>
+            <button type="button" onclick="enableEditMode()" style="background:#4f46e5; color:white;">✏️ Mode Edit</button>
+        </div>
     </div>
 
     <!-- Edit Mode Toolbar -->
@@ -341,6 +432,9 @@
                     <label>Warna: <input type="color" id="editColorPicker" onchange="updateSelectedStyle('color', this.value)"></label>
                     <label>Size: <input type="number" id="editSizeInput" style="width:50px" onchange="updateSelectedStyle('fontSize', this.value + 'px')"></label>
                     <label>Bold: <input type="checkbox" id="editBoldInput" onchange="updateSelectedStyle('fontWeight', this.checked ? 'bold' : 'normal')"></label>
+                    <button onclick="deleteSelectedElement()" style="background:#dc2626; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.8rem; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                        <span>🗑️ Hapus</span>
+                    </button>
                 </div>
             </div>
             <div style="display:flex; gap:10px;">
@@ -364,7 +458,16 @@
             $heightCm = $hpx ? round($hpx / 37.8, 2) : 15;
         }
         $bgFilename = data_get($cardSetting, 'card.background');
-        $bgUrl = $bgFilename ? asset('assets/images/card/' . $bgFilename) : asset('assets/images/card/defould.png');
+        $bgUrl = asset('assets/images/card/defould.png');
+        if ($bgFilename) {
+            if (str_starts_with($bgFilename, 'id-card-backgrounds/') || str_starts_with($bgFilename, 'backgrounds/')) {
+                $bgUrl = asset('storage/' . $bgFilename);
+            } elseif (str_starts_with($bgFilename, 'http')) {
+                $bgUrl = $bgFilename;
+            } else {
+                $bgUrl = asset('assets/images/card/' . $bgFilename);
+            }
+        }
         $titleStyle = data_get($cardSetting, 'title', []);
         $photoStyle = data_get($cardSetting, 'photo', []);
         $qrStyle = data_get($cardSetting, 'qr', []);
@@ -378,7 +481,13 @@
     @endphp
 
     @php
-        $paperSizes = [ 'A4' => [21.0, 29.7], 'A5' => [14.8, 21.0], 'Letter' => [21.59, 27.94] ];
+        $paperSizes = [ 
+            'A4' => [21.0, 29.7], 
+            'A5' => [14.8, 21.0], 
+            'Letter' => [21.59, 27.94],
+            'Legal' => [21.59, 35.56],
+            'F4' => [21.59, 33.02]
+        ];
         [$sheetW, $sheetH] = $paperSizes[$paper] ?? $paperSizes['A4'];
         if (strtolower($orientation ?? '') === 'landscape') { [$sheetW, $sheetH] = [$sheetH, $sheetW]; }
     @endphp
@@ -400,13 +509,22 @@
                                 $regencyParticipant = optional($profileParticipant->regency)->name ?? ($profileParticipant->other_regency ?? null);
                                 $districtParticipant = optional($profileParticipant->district)->name ?? ($profileParticipant->other_district ?? null);
                                 
-                                $photoFilename = optional($profileParticipant)->foto;
-                                $photoPathRaw = $photoFilename ? public_path('assets/images/profilefoto/' . $photoFilename) : null;
-                                $hasPhoto = $photoFilename && file_exists($photoPathRaw);
+                                // Determine Photo URL
+                                $photoUrl = asset('assets/images/profilefoto/default-profile.png');
+                                $photoPath = public_path('assets/images/profilefoto/default-profile.png');
                                 
-                                $photoUrl = $hasPhoto ? asset('assets/images/profilefoto/' . $photoFilename) : asset('assets/images/profilefoto/default-profile.png');
-                                $photoPath = $hasPhoto ? $photoPathRaw : public_path('assets/images/profilefoto/default-profile.png');
-                                $imgSize = (file_exists($photoPath) && is_readable($photoPath)) ? @getimagesize($photoPath) : null;
+                                if (!empty($profileParticipant->foto) && file_exists(public_path('assets/images/profilefoto/' . $profileParticipant->foto))) {
+                                    $photoUrl = asset('assets/images/profilefoto/' . $profileParticipant->foto);
+                                    $photoPath = public_path('assets/images/profilefoto/' . $profileParticipant->foto);
+                                } elseif (!empty($userParticipant->profile_photo_path) && \Illuminate\Support\Facades\Storage::disk('public')->exists($userParticipant->profile_photo_path)) {
+                                    $photoUrl = asset('storage/' . $userParticipant->profile_photo_path);
+                                    $photoPath = storage_path('app/public/' . $userParticipant->profile_photo_path);
+                                } elseif (!empty($userParticipant->profile_photo_url)) {
+                                    $photoUrl = $userParticipant->profile_photo_url;
+                                    $photoPath = null; // Cannot check size locally
+                                }
+
+                                $imgSize = ($photoPath && file_exists($photoPath) && is_readable($photoPath)) ? @getimagesize($photoPath) : null;
                                 $imgAspectRatio = ($imgSize && isset($imgSize[0]) && isset($imgSize[1]) && $imgSize[0] > 0 && $imgSize[1] > 0) ? ($imgSize[0] / $imgSize[1]) : 1.22;
                             @endphp
                             <div class="page-wrapper">
@@ -416,11 +534,50 @@
                                         @php
                                             // Normalize elements structure
                                             $elements = data_get($cardSetting, 'elements', []);
+
                                             if (empty($elements) && is_array($cardSetting)) {
                                                 // Backward compatibility for flat structure
                                                 $elements = array_filter($cardSetting, function($k) {
                                                     return !in_array($k, ['width', 'height', 'bg_type', 'bg_color', 'bg_image', 'layout', 'card', 'status']);
                                                 }, ARRAY_FILTER_USE_KEY);
+                                            }
+
+                                            // Auto-Deduplicate Logic
+                                            // Runs on the final $elements array (whether from 'elements' key or flat structure)
+                                            if (!empty($elements)) {
+                                                $seen = [];
+                                                $deduped = [];
+                                                foreach ($elements as $k => $el) {
+                                                    // Generate a signature for comparison (Data Key + Approx Position)
+                                                    $dKey = data_get($el, 'data_key', is_string($k) ? $k : 'unknown');
+                                                    if ($dKey === 'unknown') $dKey = 'txt_'.json_encode($el); // Fallback for pure custom text without key
+                                                    
+                                                    // Determine if this is a unique field that should strictly not be duplicated (e.g. name, qr, avatar)
+                                                    // Unless it's a custom text element (starts with txt_) or explicitly 'custom'
+                                                    $isUniqueField = !str_starts_with($dKey, 'txt_') && $dKey !== 'custom';
+
+                                                    if ($isUniqueField) {
+                                                        // Strict deduplication for fields: Ignore position!
+                                                        // This fixes "Ghost Elements" where an old element and new element exist for the same field
+                                                        $sig = $dKey;
+                                                    } else {
+                                                        // For custom text or shapes, we trust the ID ($k) to be unique.
+                                                        // We do NOT want to merge custom elements even if they are in the same position.
+                                                        // This ensures that if a user places two texts close to each other, both appear.
+                                                        $sig = $k;
+                                                    }
+                                                    
+                                                    if (isset($seen[$sig])) {
+                                                        // It's a duplicate! Skip it.
+                                                        continue;
+                                                    }
+                                                    $seen[$sig] = true;
+                                                    $deduped[$k] = $el;
+                                                }
+                                                // If we actually filtered something, use the filtered list
+                                                if (count($deduped) < count($elements)) {
+                                                    $elements = $deduped;
+                                                }
                                             }
                                         @endphp
 
@@ -554,7 +711,7 @@
                                                             $val = $val->name ?? '-';
                                                         }
                                                     @endphp
-                                                    <div class="certificate-element" style="{{ $posStyle }} font-size:{{ $size }}{{ $fontSizeUnit }}; color:{{ $color }}; font-family:'{{ $font }}'; font-weight:{{ $weight }}; font-style:{{ $italic }}; white-space: nowrap;">
+                                                    <div class="certificate-element" style="{{ $posStyle }} font-size:{{ $size }}{{ $fontSizeUnit }}; color:{{ $color }}; font-family:'{{ $font }}'; font-weight:{{ $weight }}; font-style:{{ $italic }}; white-space: normal; word-break: break-word; line-height: 1.2;">
                                                         {{ $val }}
                                                     </div>
                                                 @endif
@@ -746,6 +903,20 @@
                 });
             };
 
+            window.deleteSelectedElement = function() {
+                if (!selectedElementClass) return;
+                if (!confirm('Hapus elemen ini?')) return;
+                
+                document.querySelectorAll('.' + selectedElementClass).forEach(el => {
+                    el.style.display = 'none';
+                    el.classList.add('marked-for-deletion');
+                });
+                
+                // Reset Selection
+                selectedElementClass = null;
+                document.getElementById('selectedElementControls').style.display = 'none';
+            };
+
             window.saveCurrentEditable = async function() {
             const btn = document.querySelector('#editModeToolbar button[onclick="saveCurrentEditable()"]');
             const originalText = btn.innerText;
@@ -801,6 +972,11 @@
                 elements.forEach(item => {
                     const el = document.querySelector('.' + item.class);
                     if (el) {
+                        // Skip if marked for deletion or hidden
+                        if (el.classList.contains('marked-for-deletion') || el.style.display === 'none') {
+                            return;
+                        }
+                        
                         const style = window.getComputedStyle(el);
                         const pos = getPosition('.' + item.class);
                         

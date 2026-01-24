@@ -413,8 +413,21 @@ class PaymentController extends Controller
                                     ];
                                     if (isset($bulkMatch['activity_batch_id'])) {
                                         $userPaymentMatch['activity_batch_id'] = $bulkMatch['activity_batch_id'];
-                                    } else {
-                                        $userPaymentMatch['activity_batch_id'] = null;
+                                    $userPaymentMatch['activity_batch_id'] = null;
+                                    }
+
+                                    // Prevent overwriting APPROVED payments unless force update is needed
+                                    // For bulk import, we generally skip if already approved.
+                                    $existingMemberPayment = Payment::where('user_id', $uid)
+                                        ->where('activity_id', $activity->id)
+                                        ->when(isset($userPaymentMatch['activity_batch_id']), function($q) use ($userPaymentMatch) {
+                                            return $q->where('activity_batch_id', $userPaymentMatch['activity_batch_id']);
+                                        })
+                                        ->first();
+
+                                    if ($existingMemberPayment && $existingMemberPayment->status === 'approved') {
+                                        Log::info("Skipping bulk payment distribution for User $uid - Already Approved");
+                                        continue;
                                     }
 
                                     Payment::updateOrCreate(
@@ -1327,6 +1340,7 @@ class PaymentController extends Controller
             // Check specific batch price if user is enrolled in one
             $activityUser = ActivityUser::where('activity_id', $activity->id)
                 ->where('user_id', $userId)
+                ->orderBy('id', 'desc')
                 ->first();
                 
             if ($activityUser && $activityUser->activity_batch_id) {
@@ -1752,6 +1766,8 @@ class PaymentController extends Controller
             'notes' => 'nullable|string|max:255',
             'amount' => 'nullable|numeric|min:0',
             'proof_file' => 'nullable|image|max:10240', // 10MB max
+            'payment_method_id' => 'nullable|exists:payment_methods,id',
+            'sender_name' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -1801,6 +1817,16 @@ class PaymentController extends Controller
                 $updateData['amount'] = $validated['amount'];
             }
 
+            // Handle Payment Method
+            if (isset($validated['payment_method_id'])) {
+                $updateData['payment_method_id'] = $validated['payment_method_id'];
+            }
+
+            // Handle Sender Name
+            if (isset($validated['sender_name'])) {
+                $updateData['sender_name'] = $validated['sender_name'];
+            }
+
             if (!empty($updateData)) {
                 $payment->update($updateData);
             }
@@ -1808,6 +1834,7 @@ class PaymentController extends Controller
             // CASCADE UPDATE: Sync changes to all group members
             $activityUser = ActivityUser::where('activity_id', $payment->activity_id)
                 ->where('user_id', $payment->user_id)
+                ->orderBy('id', 'desc')
                 ->first();
 
             $relatedUserIds = [];
@@ -1852,15 +1879,21 @@ class PaymentController extends Controller
                         if (isset($updateData['amount'])) {
                             $memberPayment->amount = $updateData['amount'];
                         }
+
+                        // Sync Payment Method
+                        if (isset($updateData['payment_method_id'])) {
+                            $memberPayment->payment_method_id = $updateData['payment_method_id'];
+                        }
+
+                        // Sync Sender Name
+                        if (isset($updateData['sender_name'])) {
+                            $memberPayment->sender_name = $updateData['sender_name'];
+                        }
                         
-                        // Sync Notes (preserve notes structure if complex, or just copy?)
-                        // User request: "anggota lagin otomatis datanya ikut berubah"
-                        // Assuming simple sync for manual edits is fine, but we should be careful about overwriting specific member metadata.
-                        // However, usually bulk edits imply same notes.
+                        // Sync Notes - FORCE OVERWRITE to ensure consistency
+                        // "samakan isi format dan nilai untk semua angoota jadi satu prsis"
                         if (isset($updateData['notes'])) {
-                             // Ideally we shouldn't overwrite the 'user_ids' meta in other members if they carry it, but usually they don't or it's identical.
-                             // Implementing direct copy for consistency with requirement "datanya ikut berubah".
-                            $memberPayment->notes = $updateData['notes'];
+                             $memberPayment->notes = $updateData['notes'];
                         }
 
                         // Sync Proof File if updated
@@ -1981,6 +2014,8 @@ class PaymentController extends Controller
                 'status' => 'required|in:approved,rejected',
                 'notes' => 'nullable|string|max:255',
                 'amount' => 'nullable|numeric|min:0',
+                'payment_method_id' => 'nullable|exists:payment_methods,id',
+                'sender_name' => 'nullable|string|max:255',
             ]);
 
             Log::info('Payment validation passed', [
@@ -2019,6 +2054,12 @@ class PaymentController extends Controller
             if (isset($validated['amount'])) {
                 $updateData['amount'] = $validated['amount'];
             }
+            if (isset($validated['payment_method_id'])) {
+                $updateData['payment_method_id'] = $validated['payment_method_id'];
+            }
+            if (isset($validated['sender_name'])) {
+                $updateData['sender_name'] = $validated['sender_name'];
+            }
 
             $payment->update($updateData);
 
@@ -2035,6 +2076,7 @@ class PaymentController extends Controller
 
             $activityUser = ActivityUser::where('activity_id', $payment->activity_id)
                 ->where('user_id', $payment->user_id)
+                ->orderBy('id', 'desc')
                 ->first();
 
             // 1. Determine "kelompok" via ActivityParticipantGroup
@@ -2143,21 +2185,49 @@ class PaymentController extends Controller
                     // STRICTLY LIMIT to this activity and these specific user IDs
                     $otherUserIds = array_diff($uids, [$payment->user_id]);
                     if (! empty($otherUserIds)) {
-                        $groupUpdateData = [
-                            'status' => 'approved',
-                            'verified_by' => auth()->id(),
-                            'verified_at' => now(),
-                            'notes' => DB::raw("CONCAT(COALESCE(notes, ''), ' | Auto-approved via group member #{$payment->id}')"),
-                        ];
-                        
-                        if (isset($validated['amount'])) {
-                            $groupUpdateData['amount'] = $validated['amount'];
-                        }
-
-                        Payment::whereIn('user_id', $otherUserIds)
+                        $paymentsToUpdate = Payment::whereIn('user_id', $otherUserIds)
                             ->where('activity_id', $payment->activity_id)
-                            ->where('status', 'pending') // Only approve pending ones
-                            ->update($groupUpdateData);
+                            ->where('status', 'pending')
+                            ->get();
+
+                        foreach ($paymentsToUpdate as $pToUpdate) {
+                            $pNote = $pToUpdate->notes;
+                            $suffix = " | Auto-approved via group member #{$payment->id}";
+                            
+                            // Safe merge
+                            $pDecoded = null;
+                            if (is_string($pNote)) {
+                                $d = json_decode($pNote, true);
+                                if (json_last_error() === JSON_ERROR_NONE && is_array($d)) {
+                                    $pDecoded = $d;
+                                }
+                            }
+
+                            if ($pDecoded) {
+                                $currentV = $pDecoded['verifier_note'] ?? '';
+                                $pDecoded['verifier_note'] = $currentV . $suffix;
+                                $pNote = json_encode($pDecoded);
+                            } else {
+                                $pNote = ((string)$pNote) . $suffix;
+                            }
+
+                            $pUpdateData = [
+                                'status' => 'approved',
+                                'verified_by' => auth()->id(),
+                                'verified_at' => now(),
+                                'notes' => $pNote,
+                                // Sync key fields from Parent to ensure consistency
+                                'payment_method_id' => $payment->payment_method_id,
+                                'sender_name' => $payment->sender_name,
+                            ];
+                            if (isset($validated['amount'])) {
+                                $pUpdateData['amount'] = $validated['amount'];
+                            } else {
+                                $pUpdateData['amount'] = $payment->amount;
+                            }
+                            
+                            $pToUpdate->update($pUpdateData);
+                        }
 
                         Log::info('Auto-approved related group payments', [
                             'parent_payment_id' => $payment->id,
@@ -2273,21 +2343,49 @@ class PaymentController extends Controller
                 // Update Payments for related users (Reject them too)
                 $otherUserIds = array_diff($usersToReject, [$payment->user_id]);
                 if (! empty($otherUserIds)) {
-                    $groupRejectData = [
-                        'status' => 'rejected',
-                        'verified_by' => auth()->id(),
-                        'verified_at' => now(),
-                        'notes' => DB::raw("CONCAT(COALESCE(notes, ''), ' | Auto-rejected via group member #{$payment->id}')"),
-                    ];
-                    
-                    if (isset($validated['amount'])) {
-                        $groupRejectData['amount'] = $validated['amount'];
-                    }
-
-                    Payment::whereIn('user_id', $otherUserIds)
+                    $paymentsToReject = Payment::whereIn('user_id', $otherUserIds)
                         ->where('activity_id', $payment->activity_id)
-                        ->whereIn('status', ['pending', 'approved']) // Reject pending and approved payments
-                        ->update($groupRejectData);
+                        ->whereIn('status', ['pending', 'approved'])
+                        ->get();
+
+                    foreach ($paymentsToReject as $pToReject) {
+                        $pNote = $pToReject->notes;
+                        $suffix = " | Auto-rejected via group member #{$payment->id}";
+
+                        // Safe merge
+                        $pDecoded = null;
+                        if (is_string($pNote)) {
+                            $d = json_decode($pNote, true);
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($d)) {
+                                $pDecoded = $d;
+                            }
+                        }
+
+                        if ($pDecoded) {
+                            $currentV = $pDecoded['verifier_note'] ?? '';
+                            $pDecoded['verifier_note'] = $currentV . $suffix;
+                            $pNote = json_encode($pDecoded);
+                        } else {
+                            $pNote = ((string)$pNote) . $suffix;
+                        }
+
+                        $pRejectData = [
+                            'status' => 'rejected',
+                            'verified_by' => auth()->id(),
+                            'verified_at' => now(),
+                            'notes' => $pNote,
+                            // Sync key fields from Parent
+                            'payment_method_id' => $payment->payment_method_id,
+                            'sender_name' => $payment->sender_name,
+                        ];
+                        if (isset($validated['amount'])) {
+                            $pRejectData['amount'] = $validated['amount'];
+                        } else {
+                            $pRejectData['amount'] = $payment->amount;
+                        }
+
+                        $pToReject->update($pRejectData);
+                    }
 
                     Log::info('Auto-rejected related group payments', [
                         'parent_payment_id' => $payment->id,

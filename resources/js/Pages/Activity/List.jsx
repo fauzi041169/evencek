@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
-export default function List({ 
-    latestActivities, 
-    categories, 
-    title, 
+export default function List({
+    latestActivities,
+    categories,
+    title,
     titlepage,
     manualLimit,
     currentManualPaidCount,
     manualLimitExceeded,
     category: currentCategory,
-    filters 
+    filters
 }) {
     const { auth } = usePage().props;
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
@@ -52,6 +54,21 @@ export default function List({
     const activityList = latestActivities.data || latestActivities;
     const paginationLinks = latestActivities.links;
 
+    // Helper for date formatting
+    const formatDateRange = (start, end) => {
+        if (!start) return '';
+        const startDate = new Date(start);
+        const endDate = end ? new Date(end) : null;
+
+        if (endDate && endDate > startDate) {
+            if (startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear()) {
+                return `${format(startDate, 'd')} - ${format(endDate, 'd MMMM yyyy', { locale: id })}`;
+            }
+            return `${format(startDate, 'd MMMM')} - ${format(endDate, 'd MMMM yyyy', { locale: id })}`;
+        }
+        return format(startDate, 'd MMMM yyyy', { locale: id });
+    };
+
     return (
         <MainLayout>
             <Head title={title || "Daftar Aktivitas"} />
@@ -60,7 +77,7 @@ export default function List({
                 <div className="w-full sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6 bg-white border-b border-gray-200">
-                            
+
                             {/* Header & Filters Section */}
                             <div className="flex flex-row items-center gap-4 mb-6 overflow-x-auto pb-2">
                                 <h2 className="text-2xl font-bold text-gray-800 whitespace-nowrap shrink-0">
@@ -147,7 +164,7 @@ export default function List({
                                                     const canManage = isAdmin || isOwner;
                                                     const canDelete = isAdmin || (user?.role === 'creator' && isOwner);
                                                     const isPublic = activity.status?.toLowerCase() === 'public';
-                                                    
+
                                                     // Status Pendaftaran Logic (Simulation based on blade)
                                                     const registrationStatuses = {
                                                         0: { label: 'Belum Dibuka', class: 'bg-gray-100 text-gray-800' },
@@ -203,8 +220,15 @@ export default function List({
                                                                 {startIndex + index}
                                                             </td>
                                                             <td className="px-6 py-2">
-                                                                <div className="text-sm font-semibold text-gray-900 max-w-md truncate" title={activity.name}>
-                                                                    {activity.name}
+                                                                <div className="flex flex-col">
+                                                                    <div className="text-sm font-semibold text-gray-900 max-w-md truncate" title={activity.name}>
+                                                                        {activity.name}
+                                                                    </div>
+                                                                    {activity.activity_type !== 'non_batch' && activity.active_batch && (
+                                                                        <span className="text-xs text-indigo-600 font-medium">
+                                                                            {activity.active_batch.name}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-2 whitespace-nowrap">
@@ -215,7 +239,7 @@ export default function List({
                                                             <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-600">
                                                                 <div className="flex items-center">
                                                                     <i className="fas fa-calendar-alt mr-1.5 text-gray-400 text-xs"></i>
-                                                                    {activity.date}
+                                                                    {formatDateRange(activity.date, activity.end_date)}
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-600">
@@ -242,7 +266,7 @@ export default function List({
                                                             </td>
                                                             <td className="px-6 py-2 whitespace-nowrap">
                                                                 {canManage ? (
-                                                                    <select 
+                                                                    <select
                                                                         value={activity.status?.toLowerCase() || 'private'}
                                                                         onChange={(e) => handleStatusChange(e.target.value)}
                                                                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-0 ${isPublic ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
@@ -261,7 +285,7 @@ export default function List({
                                                                 <>
                                                                     <td className="px-6 py-2 whitespace-nowrap">
                                                                         {canManage ? (
-                                                                            <button 
+                                                                            <button
                                                                                 type="button"
                                                                                 onClick={handleRegistrationToggle}
                                                                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold transition-all hover:opacity-80 cursor-pointer ${statusInfo.class}`}
@@ -337,8 +361,8 @@ export default function List({
                                                             <h3 className="text-lg font-semibold text-gray-900 mb-2">Tidak ada aktivitas</h3>
                                                             <p className="text-gray-600 mb-4">Belum ada aktivitas yang ditambahkan</p>
                                                             {user && (isCreator || isAdmin) && (
-                                                                <Link 
-                                                                    href={route('activity.create')} 
+                                                                <Link
+                                                                    href={route('activity.create')}
                                                                     className="inline-flex items-center px-4 py-2 bg-secondary hover:bg-blue-700 text-white rounded-lg transition-all"
                                                                 >
                                                                     <i className="fas fa-plus mr-2"></i>

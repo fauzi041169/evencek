@@ -2,12 +2,7 @@ import React from 'react';
 
 export default function RundownSection({ activity, rundowns }) {
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900">Rundown Acara</h3>
-                {/* Button to add rundown could go here */}
-            </div>
-
+        <div className="space-y-6 p-6 bg-white">
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">

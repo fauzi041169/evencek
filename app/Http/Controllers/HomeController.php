@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Models\Setting;
 
 class HomeController extends Controller
@@ -97,30 +98,75 @@ class HomeController extends Controller
 
             // Prepare Hero Slides
             $heroSlides = [];
-            $cfg1 = Setting::get('home_hero_background_1') ?? Setting::get('home_hero_background');
-            $cfg2 = Setting::get('home_hero_background_2');
-            $cfg3 = Setting::get('home_hero_background_3');
             
-            foreach ([$cfg1, $cfg2, $cfg3] as $img) {
-                if (!empty($img) && file_exists(public_path($img))) {
-                    $heroSlides[] = asset($img);
-                }
-            }
+            // Prioritize pinned activities
+            $pinnedActivities = Activity::where('hero_pinned', true)
+                ->where('status', 'public') // Ensure only public activities are shown
+                ->latest()
+                ->take(5)
+                ->get();
 
-            if (empty($heroSlides)) {
-                if ($specialActivities->isNotEmpty()) {
-                    $defaultHeroSetting = Setting::get('home_hero_background');
-                    $defaultHero = $defaultHeroSetting ? asset($defaultHeroSetting) : asset('assets/images/hero/defoult.webp');
-                    
-                    foreach ($specialActivities as $activity) {
-                        $heroSlides[] = $resolvePublicImage(
-                            $activity->image,
-                            $defaultHero,
-                            'activities'
-                        );
+            if ($pinnedActivities->isNotEmpty()) {
+                $defaultHeroSetting = Setting::get('home_hero_background');
+                $defaultHero = $defaultHeroSetting ? asset($defaultHeroSetting) : asset('assets/images/hero/defoult.webp');
+
+                foreach ($pinnedActivities as $activity) {
+                    $heroSlides[] = [
+                        'type' => 'activity',
+                        'image' => $resolvePublicImage($activity->image, $defaultHero, 'activities'),
+                        'title' => $activity->name,
+                        'description' => Str::limit(strip_tags($activity->description), 150),
+                        'id' => $activity->id,
+                        'date' => $activity->date ? $activity->date->format('d M Y') : null,
+                        'location' => $activity->location,
+                        'price' => $activity->price > 0 ? 'Rp ' . number_format($activity->price, 0, ',', '.') : 'Gratis',
+                    ];
+                }
+            } else {
+                // Fallback to manual settings
+                $cfg1 = Setting::get('home_hero_background_1') ?? Setting::get('home_hero_background');
+                $cfg2 = Setting::get('home_hero_background_2');
+                $cfg3 = Setting::get('home_hero_background_3');
+                
+                foreach ([$cfg1, $cfg2, $cfg3] as $img) {
+                    if (!empty($img) && file_exists(public_path($img))) {
+                        $heroSlides[] = [
+                            'type' => 'static',
+                            'image' => asset($img),
+                            'title' => 'Platform Manajemen Event Digital Profesional',
+                            'description' => 'Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.',
+                            'link' => '/activity',
+                            'link_text' => 'Mulai Kelola Event'
+                        ];
                     }
-                } else {
-                    $heroSlides[] = asset('assets/images/hero/defoult.webp');
+                }
+
+                // Fallback if no settings
+                if (empty($heroSlides)) {
+                     // Check special private activities (legacy fallback)
+                    if ($specialActivities->isNotEmpty()) {
+                        $defaultHeroSetting = Setting::get('home_hero_background');
+                        $defaultHero = $defaultHeroSetting ? asset($defaultHeroSetting) : asset('assets/images/hero/defoult.webp');
+                        
+                        foreach ($specialActivities as $activity) {
+                             $heroSlides[] = [
+                                'type' => 'activity',
+                                'image' => $resolvePublicImage($activity->image, $defaultHero, 'activities'),
+                                'title' => $activity->name,
+                                'description' => Str::limit(strip_tags($activity->description), 150),
+                                'id' => $activity->id
+                            ];
+                        }
+                    } else {
+                        $heroSlides[] = [
+                            'type' => 'static',
+                            'image' => asset('assets/images/hero/defoult.webp'),
+                            'title' => 'Platform Manajemen Event Digital Profesional',
+                            'description' => 'Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.',
+                            'link' => '/activity',
+                            'link_text' => 'Mulai Kelola Event'
+                        ];
+                    }
                 }
             }
 

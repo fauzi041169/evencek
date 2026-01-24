@@ -5,8 +5,12 @@ import DivisionSidebar from './Components/DivisionSidebar';
 import RequirementsManager from './Components/RequirementsManager';
 import OwnerSection from './Components/OwnerSection';
 import CommitteeSection from './Components/CommitteeSection';
+import DescriptionSection from './Components/DescriptionSection';
+import GallerySection from './Components/GallerySection';
 import RundownSection from './Components/RundownSection';
-import VisibilityControls from './Components/VisibilityControls';
+import ParticipantsSection from './Components/ParticipantsSection';
+import SectionContainer from './Components/SectionContainer';
+// import VisibilityControls from './Components/VisibilityControls';
 import AddDivisionModal from './Modals/AddDivisionModal';
 import AddRequirementModal from './Modals/AddRequirementModal';
 
@@ -26,9 +30,6 @@ export default function PreparationIndex({
     const divisionsList = Array.isArray(divisions) ? divisions : (divisions ? Object.values(divisions) : []);
 
     const [selectedDivisionId, setSelectedDivisionId] = useState(null);
-    const [showParticipants, setShowParticipants] = useState(false); // Local toggle for previewing participants in preparation
-    const [showDescription, setShowDescription] = useState(true);
-    const [showGallery, setShowGallery] = useState(true);
 
     // Effect to select first division if available and none selected
     useEffect(() => {
@@ -63,8 +64,37 @@ export default function PreparationIndex({
                     {/* Owner Section */}
                     <OwnerSection owners={owners} activity={activity} />
 
-                    {/* Visibility Controls */}
-                    <VisibilityControls activity={activity} />
+                    {/* Description Section */}
+                    <SectionContainer 
+                        title="Deskripsi Kegiatan" 
+                        activity={activity}
+                    >
+                        <DescriptionSection activity={activity} />
+                    </SectionContainer>
+
+                    {/* Gallery Section */}
+                    <SectionContainer 
+                        title="Galeri Kegiatan" 
+                        activity={activity}
+                    >
+                        <GallerySection activity={activity} materials={materials} />
+                    </SectionContainer>
+
+                    {/* Rundown Section */}
+                    <SectionContainer 
+                        title="Rundown Acara" 
+                        activity={activity}
+                    >
+                        <RundownSection activity={activity} rundowns={rundowns} />
+                    </SectionContainer>
+
+                    {/* Participants Section */}
+                    <SectionContainer 
+                        title="Peserta" 
+                        activity={activity}
+                    >
+                        <ParticipantsSection activity={activity} participants={participants} />
+                    </SectionContainer>
 
                     {/* Committee Structure Section */}
                     <div className="bg-white rounded-xl border border-gray-200 shadow p-4 mb-6">
@@ -104,9 +134,6 @@ export default function PreparationIndex({
                             )}
                         </div>
                     </div>
-
-                    {/* Rundown Section (Optional, if needed below) */}
-                    {/* <RundownSection rundowns={rundowns} activity={activity} /> */}
                 </div>
             </div>
 
