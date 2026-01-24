@@ -368,60 +368,26 @@ class UserManagementController extends Controller
             foreach ($activities as $activity) {
                 // Delete Activity Files
                 if ($activity->image) {
-                    if (Storage::disk('public')->exists($activity->image)) {
-                        Storage::disk('public')->delete($activity->image);
-                    } elseif (file_exists(public_path('storage/'.$activity->image))) {
-                        unlink(public_path('storage/'.$activity->image));
-                    }
+                    $this->deleteFile($activity->image);
                 }
 
                 // Delete Speakers Files
                 foreach ($activity->speakers as $speaker) {
-                    if ($speaker->photo) {
-                        if (Storage::disk('public')->exists($speaker->photo)) {
-                            Storage::disk('public')->delete($speaker->photo);
-                        } elseif (file_exists(public_path('storage/'.$speaker->photo))) {
-                            unlink(public_path('storage/'.$speaker->photo));
-                        }
-                    }
-                    if ($speaker->cv) {
-                        if (Storage::disk('public')->exists($speaker->cv)) {
-                            Storage::disk('public')->delete($speaker->cv);
-                        } elseif (file_exists(public_path('storage/'.$speaker->cv))) {
-                            unlink(public_path('storage/'.$speaker->cv));
-                        }
-                    }
+                    if ($speaker->photo) $this->deleteFile($speaker->photo);
+                    if ($speaker->cv) $this->deleteFile($speaker->cv);
                     $speaker->delete();
                 }
 
                 // Delete Materials Files
                 foreach ($activity->materials as $material) {
-                    if ($material->file_path) {
-                        if (Storage::disk('public')->exists($material->file_path)) {
-                            Storage::disk('public')->delete($material->file_path);
-                        } elseif (file_exists(public_path('storage/'.$material->file_path))) {
-                            unlink(public_path('storage/'.$material->file_path));
-                        }
-                    }
-                    if ($material->cover_image_path) {
-                        if (Storage::disk('public')->exists($material->cover_image_path)) {
-                            Storage::disk('public')->delete($material->cover_image_path);
-                        } elseif (file_exists(public_path('storage/'.$material->cover_image_path))) {
-                            unlink(public_path('storage/'.$material->cover_image_path));
-                        }
-                    }
+                    if ($material->file_path) $this->deleteFile($material->file_path);
+                    if ($material->cover_image_path) $this->deleteFile($material->cover_image_path);
                     $material->delete();
                 }
 
                 // Delete Galleries Files
                 foreach ($activity->galleries as $gallery) {
-                    if ($gallery->image) {
-                        if (Storage::disk('public')->exists($gallery->image)) {
-                            Storage::disk('public')->delete($gallery->image);
-                        } elseif (file_exists(public_path('storage/'.$gallery->image))) {
-                            unlink(public_path('storage/'.$gallery->image));
-                        }
-                    }
+                    if ($gallery->image) $this->deleteFile($gallery->image);
                     $gallery->delete();
                 }
 
@@ -430,15 +396,13 @@ class UserManagementController extends Controller
                     ->where('activity_id', $activity->id)
                     ->get();
                 foreach ($certBackgrounds as $bg) {
-                    if ($bg->filename && file_exists(public_path('assets/images/certificate/'.$bg->filename))) {
-                        unlink(public_path('assets/images/certificate/'.$bg->filename));
-                    }
                     if ($bg->filename) {
-                        if (Storage::disk('public')->exists($bg->filename)) {
-                            Storage::disk('public')->delete($bg->filename);
-                        } elseif (file_exists(public_path('storage/'.$bg->filename))) {
-                            unlink(public_path('storage/'.$bg->filename));
+                        // Legacy assets deletion
+                        if (file_exists(public_path('assets/images/certificate/'.$bg->filename))) {
+                            @unlink(public_path('assets/images/certificate/'.$bg->filename));
                         }
+                        // Storage deletion
+                        $this->deleteFile($bg->filename);
                     }
                 }
                 \Illuminate\Support\Facades\DB::table('certificate_backgrounds')
@@ -448,14 +412,7 @@ class UserManagementController extends Controller
                 // Delete Payments related to Activity
                 foreach ($activity->payments as $payment) {
                     if ($payment->proof_of_payment) {
-                        $proofPath = $payment->proof_of_payment;
-                        if (Storage::disk('public')->exists($proofPath)) {
-                            Storage::disk('public')->delete($proofPath);
-                        } elseif (file_exists(public_path('storage/'.$proofPath))) {
-                            unlink(public_path('storage/'.$proofPath));
-                        } elseif (file_exists(public_path($proofPath))) {
-                            unlink(public_path($proofPath));
-                        }
+                        $this->deleteFile($payment->proof_of_payment);
                     }
                     $payment->delete();
                 }
@@ -464,13 +421,7 @@ class UserManagementController extends Controller
                 $enrollments = \App\Models\ActivityUser::where('activity_id', $activity->id)->get();
                 foreach ($enrollments as $enrollment) {
                     if (isset($enrollment->image_path) && $enrollment->image_path) {
-                        if (Storage::disk('public')->exists($enrollment->image_path)) {
-                            Storage::disk('public')->delete($enrollment->image_path);
-                        } elseif (file_exists(public_path($enrollment->image_path))) {
-                            unlink(public_path($enrollment->image_path));
-                        } elseif (file_exists(public_path('storage/'.$enrollment->image_path))) {
-                            unlink(public_path('storage/'.$enrollment->image_path));
-                        }
+                        $this->deleteFile($enrollment->image_path);
                     }
                     $enrollment->delete();
                 }
@@ -494,37 +445,11 @@ class UserManagementController extends Controller
             }
 
             // 2. Delete Activity Users (Participants)
-            // Check for both table names since we have a mix
-
-            // Table: activity_users
             if (\Illuminate\Support\Facades\Schema::hasTable('activity_users')) {
                 $participants = DB::table('activity_users')->where('user_id', $user->id)->get();
                 foreach ($participants as $p) {
                     if (isset($p->image_path) && $p->image_path) {
-                        if (Storage::disk('public')->exists($p->image_path)) {
-                            Storage::disk('public')->delete($p->image_path);
-                        } elseif (file_exists(public_path($p->image_path))) {
-                            unlink(public_path($p->image_path));
-                        } elseif (file_exists(public_path('storage/'.$p->image_path))) {
-                            unlink(public_path('storage/'.$p->image_path));
-                        }
-                    }
-                }
-                DB::table('activity_users')->where('user_id', $user->id)->delete();
-            }
-
-            // Table: activity_users
-            if (\Illuminate\Support\Facades\Schema::hasTable('activity_users')) {
-                $participants = DB::table('activity_users')->where('user_id', $user->id)->get();
-                foreach ($participants as $p) {
-                    if (isset($p->image_path) && $p->image_path) {
-                        if (Storage::disk('public')->exists($p->image_path)) {
-                            Storage::disk('public')->delete($p->image_path);
-                        } elseif (file_exists(public_path($p->image_path))) {
-                            unlink(public_path($p->image_path));
-                        } elseif (file_exists(public_path('storage/'.$p->image_path))) {
-                            unlink(public_path('storage/'.$p->image_path));
-                        }
+                        $this->deleteFile($p->image_path);
                     }
                 }
                 DB::table('activity_users')->where('user_id', $user->id)->delete();
@@ -540,20 +465,16 @@ class UserManagementController extends Controller
             $userPayments = \App\Models\Payment::where('user_id', $user->id)->get();
             foreach ($userPayments as $payment) {
                 if ($payment->proof_of_payment) {
-                    $proofPath = $payment->proof_of_payment;
-                    if (Storage::disk('public')->exists($proofPath)) {
-                        Storage::disk('public')->delete($proofPath);
-                    } elseif (file_exists(public_path('storage/'.$proofPath))) {
-                        unlink(public_path('storage/'.$proofPath));
-                    } elseif (file_exists(public_path($proofPath))) {
-                        unlink(public_path($proofPath));
-                    }
+                    $this->deleteFile($payment->proof_of_payment);
                 }
                 $payment->delete();
             }
 
             // 5. Delete Profile
             if ($user->profile) {
+                if ($user->profile->foto) {
+                    $this->deleteFile($user->profile->foto);
+                }
                 $user->profile->delete();
             }
 
@@ -567,22 +488,14 @@ class UserManagementController extends Controller
             $news = \App\Models\News::where('author_id', $user->id)->get();
             foreach ($news as $n) {
                 if ($n->image) {
-                    if (Storage::disk('public')->exists($n->image)) {
-                        Storage::disk('public')->delete($n->image);
-                    } elseif (file_exists(public_path('storage/'.$n->image))) {
-                        unlink(public_path('storage/'.$n->image));
-                    }
+                    $this->deleteFile($n->image);
                 }
                 $n->delete();
             }
 
             // Delete User Avatar
             if ($user->avatar) {
-                if (Storage::disk('public')->exists($user->avatar)) {
-                    Storage::disk('public')->delete($user->avatar);
-                } elseif (file_exists(public_path('storage/'.$user->avatar))) {
-                    unlink(public_path('storage/'.$user->avatar));
-                }
+                $this->deleteFile($user->avatar);
             }
 
             // Finally delete the user
@@ -717,6 +630,28 @@ class UserManagementController extends Controller
         } catch (\Exception $e) {
             \Log::error($e);
             return back()->with('error', 'Gagal mengimport data: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Helper to delete file from storage or public path
+     */
+    private function deleteFile($path)
+    {
+        if (empty($path)) {
+            return;
+        }
+
+        try {
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            } elseif (file_exists(public_path('storage/' . $path))) {
+                @unlink(public_path('storage/' . $path));
+            } elseif (file_exists(public_path($path))) {
+                @unlink(public_path($path));
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to delete file: ' . $path . ' - ' . $e->getMessage());
         }
     }
 }

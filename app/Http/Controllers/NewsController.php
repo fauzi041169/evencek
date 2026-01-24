@@ -395,14 +395,18 @@ class NewsController extends Controller
             // Handle image upload
             if ($request->hasFile('image')) {
                 // Delete old image if exists
-                if ($news->image && File::exists(public_path('storage/'.$news->image))) {
-                    File::delete(public_path('storage/'.$news->image));
+                if ($news->image) {
+                    if (Storage::disk('public')->exists($news->image)) {
+                        Storage::disk('public')->delete($news->image);
+                    } elseif (File::exists(public_path('storage/'.$news->image))) {
+                        @unlink(public_path('storage/'.$news->image));
+                    }
                 }
 
                 $image = $request->file('image');
                 $fileName = time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
-                $image->move(public_path('storage/news/images'), $fileName);
-                $data['image'] = 'news/images/'.$fileName;
+                $path = $image->storeAs('news/images', $fileName, 'public');
+                $data['image'] = $path;
             }
 
             $news->update($data);

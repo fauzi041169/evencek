@@ -49,14 +49,8 @@ class PengurusController extends Controller
             $foto = $request->file('foto');
             $filename = time().'_'.$foto->getClientOriginalName();
 
-            // Pastikan direktori ada
-            $uploadPath = public_path('storage/pengurus');
-            if (! file_exists($uploadPath)) {
-                mkdir($uploadPath, 0777, true);
-            }
-
-            // Simpan file ke direktori yang ditentukan
-            $foto->move($uploadPath, $filename);
+            // Simpan file menggunakan Storage facade
+            $path = $foto->storeAs('pengurus', $filename, 'public');
             $validated['foto'] = 'pengurus/'.$filename;
         }
 
