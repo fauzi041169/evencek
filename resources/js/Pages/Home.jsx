@@ -181,9 +181,6 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], lates
                             >
                                 <div className="hero-gradient-overlay"></div>
                                 <div className="hero-gradient-overlay-top"></div>
-                                {/* Side Brightening Overlays */}
-                                <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-white/10 to-transparent pointer-events-none"></div>
-                                <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-white/10 to-transparent pointer-events-none"></div>
                             </div>
                         ))
                     ) : (

@@ -1393,6 +1393,21 @@ class ActivityPreparationController extends Controller
                 $filters['per_page'] = $perPage;
             }
 
+            // DEBUG: Check specific user data before render
+            if ($participants->isNotEmpty()) {
+                $debugUser = $participants->first(function($p) {
+                    return $p->user && $p->user->email === 'maderum434@gmail.com';
+                });
+                if ($debugUser) {
+                     \Log::info('DEBUG CONTROLLER RENDER:', [
+                        'user_email' => $debugUser->user->email,
+                        'profile_exists' => (bool)$debugUser->user->profile,
+                        'province_relation' => $debugUser->user->profile ? $debugUser->user->profile->province : 'NO PROFILE',
+                        'regency_relation' => $debugUser->user->profile ? $debugUser->user->profile->regency : 'NO PROFILE',
+                     ]);
+                }
+            }
+
             return Inertia::render('Activity/Participants/Index', [
                 'activity' => $activity,
                 'participants' => $participants,

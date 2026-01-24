@@ -840,11 +840,7 @@
                     $backOffsetLeftCm = $offsetLeftCm;
                     $backBgFilename = data_get($certificateSetting, 'card.background_back');
                     if ($backBgFilename) {
-                        if (str_starts_with($backBgFilename, 'certificate-backgrounds/') || str_starts_with($backBgFilename, 'id-card-backgrounds/')) {
-                            $backBgPath = storage_path('app/public/' . $backBgFilename);
-                        } else {
-                            $backBgPath = public_path('assets/images/certificate/' . $backBgFilename);
-                        }
+                        $backBgPath = public_path('assets/images/certificate/' . $backBgFilename);
                         $backBgBase64 = image_to_base64_data_uri($backBgPath);
                         if (!$backBgBase64) {
                             $backBgBase64 = $bgBase64;

@@ -32,3 +32,4 @@ prepare_production_zip.ps1
 /public/cgi-bin
 /public/error_log
 /public/check_file.php
+/public/build

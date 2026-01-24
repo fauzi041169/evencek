@@ -4618,61 +4618,6 @@ class ActivityController extends Controller
     }
 
     /**
-     * Design Certificate page.
-     */
-    public function designCertificate($id)
-    {
-        if (!auth()->check()) {
-            return redirect()->route('login');
-        }
-
-        $activity = Activity::where('id', $id)->orWhere('uid', $id)->firstOrFail();
-        $id = $activity->id;
-        $user = auth()->user();
-
-        // Permission check
-        $isOwner = $activity->user_id === $user->id;
-        $isAdditionalOwner = $activity->owners()->where('user_id', $user->id)->exists();
-        $canManage = $user->isSuperAdmin() || $user->isAdmin() || $isOwner || $isAdditionalOwner;
-
-        if (!$canManage) {
-             return redirect()->route('activity.show', $id)->with('error', 'Unauthorized');
-        }
-
-        // Load settings
-        // Assuming we are designing for the activity level for now (no batch specific yet in UI)
-        $certSettings = CertificateSettings::where('activity_id', $id)->first();
-        $certificateSetting = $certSettings ? $certSettings->certificate_setting : null;
-        $printSettings = $certSettings ? $certSettings->print_settings : null;
-
-        // Define available columns (Reuse logic from designIdCard or similar)
-        $availableColumns = [
-            // Standard User Columns
-            ['key' => 'name', 'label' => 'Nama Lengkap', 'group' => 'User'],
-            ['key' => 'email', 'label' => 'Email', 'group' => 'User'],
-            ['key' => 'role', 'label' => 'Jabatan/Peran', 'group' => 'User'],
-            ['key' => 'id_number', 'label' => 'Nomor ID', 'group' => 'System'],
-            ['key' => 'qr_code', 'label' => 'QR Code', 'group' => 'System'],
-            
-            // Standard Profile Columns
-            ['key' => 'instansi', 'label' => 'Instansi', 'group' => 'Profile'],
-            ['key' => 'jabatan', 'label' => 'Jabatan', 'group' => 'Profile'],
-            ['key' => 'province', 'label' => 'Provinsi', 'group' => 'Region'],
-            ['key' => 'regency', 'label' => 'Kabupaten/Kota', 'group' => 'Region'],
-        ];
-        
-        // Add custom columns logic if needed (simplified for now)
-
-        return Inertia::render('Activity/CertificateDesign', [
-            'activity' => $activity,
-            'certificateSettings' => $certificateSetting,
-            'printSettings' => $printSettings,
-            'user' => $user->load('profile'),
-            'availableColumns' => $availableColumns,
-        ]);
-    }
-
-    /**
      * Show ID cards page with list of participants (React).
      */
     public function showIdCards($id)

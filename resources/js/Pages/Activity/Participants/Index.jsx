@@ -142,11 +142,20 @@ export default function Index({
 
     // Sync selectedPaymentParticipant when participants data updates (e.g. after upload)
     useEffect(() => {
+        if (participants?.data) {
+            console.log('DEBUG PARTICIPANTS DATA:', participants.data);
+            const debugUser = participants.data.find(p => p.user?.email === 'maderum434@gmail.com');
+            if (debugUser) {
+                console.log('DEBUG SPECIFIC USER:', debugUser.user?.name, debugUser);
+                console.log('DEBUG USER PROFILE:', debugUser.user?.profile);
+                console.log('DEBUG USER PROVINCE:', debugUser.user?.profile?.province);
+            }
+        }
         if (selectedPaymentParticipant && participants?.data) {
             const updatedParticipant = participants.data.find(p => p.id === selectedPaymentParticipant.participant.id);
             if (updatedParticipant) {
                 // Try to get payment from direct relationship first, then fallback to user payments
-                const updatedPayment = updatedParticipant.payment || 
+                const updatedPayment = updatedParticipant.payment ||
                     (updatedParticipant.user?.payments || []).find(p => p.id === selectedPaymentParticipant.payment.id);
 
                 if (updatedPayment) {
@@ -936,24 +945,51 @@ export default function Index({
                                                 <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.jabatan || '-'}</td>
                                             )}
                                             {visibleColumns['col-prov'] && (
-                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.province?.name || participant.user?.profile?.other_province || '-'}</td>
+                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
+                                                    {(() => {
+                                                        const p = participant.user?.profile;
+                                                        if (!p) return '-';
+                                                        return p.province?.name
+                                                            || provinces.find(ref => String(ref.id) === String(p.province_id))?.name
+                                                            || p.other_province
+                                                            || '-';
+                                                    })()}
+                                                </td>
                                             )}
                                             {visibleColumns['col-regency'] && (
-                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.regency?.name || participant.user?.profile?.other_regency || '-'}</td>
+                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
+                                                    {(() => {
+                                                        const p = participant.user?.profile;
+                                                        if (!p) return '-';
+                                                        return p.regency?.name
+                                                            || regencies.find(ref => String(ref.id) === String(p.regency_id))?.name
+                                                            || p.other_regency
+                                                            || '-';
+                                                    })()}
+                                                </td>
                                             )}
                                             {visibleColumns['col-district'] && (
-                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{participant.user?.profile?.district?.name || participant.user?.profile?.other_district || '-'}</td>
+                                                <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
+                                                    {(() => {
+                                                        const p = participant.user?.profile;
+                                                        if (!p) return '-';
+                                                        return p.district?.name
+                                                            || districts.find(ref => String(ref.id) === String(p.district_id))?.name
+                                                            || p.other_district
+                                                            || '-';
+                                                    })()}
+                                                </td>
                                             )}
                                             {visibleColumns['col-alamat'] && (
-                                                <td className="px-6 py-4 text-slate-600 truncate max-w-xs" title={participant.user?.profile?.address}>
-                                                    {participant.user?.profile?.address || '-'}
+                                                <td className="px-6 py-4 text-slate-600 truncate max-w-xs" title={participant.user?.profile?.alamat}>
+                                                    {participant.user?.profile?.alamat || '-'}
                                                 </td>
                                             )}
                                             {visibleColumns['col-gender'] && (
                                                 <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
-                                                    {participant.user?.profile?.gender === 'L' ? (
+                                                    {participant.user?.profile?.jenis_kelamin === 'L' ? (
                                                         <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">L</span>
-                                                    ) : participant.user?.profile?.gender === 'P' ? (
+                                                    ) : participant.user?.profile?.jenis_kelamin === 'P' ? (
                                                         <span className="inline-flex items-center gap-1 bg-pink-50 text-pink-700 px-2 py-0.5 rounded text-xs font-medium">P</span>
                                                     ) : '-'}
                                                 </td>
@@ -1113,10 +1149,10 @@ export default function Index({
                                         key={i}
                                         href={link.url || '#'}
                                         className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${link.active
-                                                ? 'bg-primary text-white shadow-md shadow-indigo-200'
-                                                : link.url
-                                                    ? 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary hover:border-indigo-200'
-                                                    : 'text-slate-400 cursor-not-allowed bg-slate-50'
+                                            ? 'bg-primary text-white shadow-md shadow-indigo-200'
+                                            : link.url
+                                                ? 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary hover:border-indigo-200'
+                                                : 'text-slate-400 cursor-not-allowed bg-slate-50'
                                             }`}
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                         preserveState

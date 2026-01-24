@@ -407,7 +407,6 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/{id}/export/{format}', 'export')->name('export');
         // React pages for printing
         Route::get('/{id}/certificates', 'showCertificates')->name('certificates')->middleware('auth');
-        Route::get('/{id}/custom-certificate', 'designCertificate')->name('custom-certificate')->middleware('auth');
         Route::get('/{id}/idcards', 'showIdCards')->name('idcards')->middleware('auth');
         Route::get('/{id}/idcards/design', 'designIdCard')->name('idcards.design')->middleware('auth');
         
