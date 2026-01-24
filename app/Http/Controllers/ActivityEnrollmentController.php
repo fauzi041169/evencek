@@ -368,6 +368,39 @@ class ActivityEnrollmentController extends Controller
 
                 // If status is PENDING (3) or VERIFICATION (0), allow to proceed to payment
                 if (in_array((int)$enrollment->status, [ActivityUser::STATUS_PENDING, ActivityUser::STATUS_VERIFICATION])) {
+                    
+                    // RECOVERY: Ensure payment record exists if missing
+                    $price = $activity->price;
+                    if ($activeBatch && $activeBatch->price !== null) {
+                        $price = $activeBatch->price;
+                    }
+
+                    if ($price > 0) {
+                        $paymentData = [
+                            'user_id' => auth()->id(),
+                            'activity_id' => $activityId,
+                        ];
+                        if ($activeBatch) {
+                            $paymentData['activity_batch_id'] = $activeBatch->id;
+                        } else {
+                            $paymentData['activity_batch_id'] = null;
+                        }
+
+                        // Ensure payment exists to prevent blank payment page
+                        Payment::firstOrCreate(
+                            $paymentData,
+                            [
+                                'payment_method_id' => PaymentMethod::first()->id ?? 1,
+                                'amount' => $price,
+                                'proof_of_payment' => 'imported', // Default filler
+                                'status' => 'pending',
+                                'notes' => 'Generated during re-enrollment check',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]
+                        );
+                    }
+
                     $routeParams = ['activity' => $activityId];
                     if ($activeBatch) {
                         $routeParams['batch_id'] = $activeBatch->id;
