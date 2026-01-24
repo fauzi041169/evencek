@@ -576,14 +576,14 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/activities/{activity}', 'store')->name('activity.store');
         // Financial Ledger (Neraca Keuangan) — place BEFORE catch-all '/{payment}'
         Route::get('/rules', 'financialRules')->name('rules')->middleware('role:admin,superadmin');
-        Route::post('/rules', 'financialRulesSave')->name('rules.save')->middleware('role:admin,superadmin');
+        Route::post('/rules', 'financialRulesSave')->name('admin.rules.save')->middleware('role:admin,superadmin');
         Route::post('/rules/subscription-prices', 'financialRulesSaveSubscriptionPrices')->name('rules.subscription.save')->middleware('role:admin,superadmin');
         Route::post('/rules/plan-facilities', 'financialRulesSavePlanFacilities')->name('rules.plan-facilities.save')->middleware('role:admin,superadmin');
         Route::get('/{payment}', 'show')->name('show');
         Route::post('/{payment}/update-proof', 'updateProof')->name('update-proof');
         Route::put('/{payment}/verify', 'verify')->name('verify'); // Permission check dilakukan di controller
         Route::post('/withdraw/request', 'withdrawRequest')->name('withdraw.request')->middleware('role:admin,superadmin,creator');
-        Route::get('/withdraw/history', 'withdrawHistory')->name('withdraw.history')->middleware('role:admin,superadmin,creator');
+        Route::get('/withdraw/history', 'withdrawHistory')->name('admin.withdraw.history')->middleware('role:admin,superadmin,creator');
         Route::get('/withdraw/{withdrawal}', 'withdrawShow')->name('withdraw.show')->middleware('role:admin,superadmin,creator');
         Route::post('/withdraw/{withdrawal}/pay', 'withdrawMarkPaid')->name('withdraw.pay')->middleware('role:admin,superadmin');
     });
