@@ -401,8 +401,11 @@
                                 $districtParticipant = optional($profileParticipant->district)->name ?? ($profileParticipant->other_district ?? null);
                                 
                                 $photoFilename = optional($profileParticipant)->foto;
-                                $photoUrl = $photoFilename ? asset('assets/images/profilefoto/' . $photoFilename) : asset('assets/images/profilefoto/default-profile.png');
-                                $photoPath = $photoFilename ? public_path('assets/images/profilefoto/' . $photoFilename) : public_path('assets/images/profilefoto/default-profile.png');
+                                $photoPathRaw = $photoFilename ? public_path('assets/images/profilefoto/' . $photoFilename) : null;
+                                $hasPhoto = $photoFilename && file_exists($photoPathRaw);
+                                
+                                $photoUrl = $hasPhoto ? asset('assets/images/profilefoto/' . $photoFilename) : asset('assets/images/profilefoto/default-profile.png');
+                                $photoPath = $hasPhoto ? $photoPathRaw : public_path('assets/images/profilefoto/default-profile.png');
                                 $imgSize = (file_exists($photoPath) && is_readable($photoPath)) ? @getimagesize($photoPath) : null;
                                 $imgAspectRatio = ($imgSize && isset($imgSize[0]) && isset($imgSize[1]) && $imgSize[0] > 0 && $imgSize[1] > 0) ? ($imgSize[0] / $imgSize[1]) : 1.22;
                             @endphp

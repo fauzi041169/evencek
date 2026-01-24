@@ -47,7 +47,9 @@ export default function Maintenance({ setting, apkList = [] }) {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-            throw new Error(data?.message || 'Terjadi kesalahan');
+            const error = new Error(data?.message || 'Terjadi kesalahan');
+            error.data = data;
+            throw error;
         }
         return data;
     };

@@ -50,19 +50,14 @@ export default function Sidebar({ collapsed = false }) {
     return (
         <div className="sidebar bg-gradient-to-b from-gray-800 to-gray-900 h-full w-full flex flex-col">
             {/* Logo Panel */}
-            <div className={`logo-panel px-4 py-5 border-b border-white/10 ${collapsed ? 'flex justify-center' : ''}`}>
-                <Link href="/" className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
+            <div className={`logo-panel px-4 py-6 border-b border-white/10 flex justify-center items-center`}>
+                <Link href="/" className="flex justify-center items-center w-full">
                     <img 
                         src={appSettings?.app_logo ? (appSettings.app_logo.startsWith('http') ? appSettings.app_logo : `/${appSettings.app_logo}`) : '/assets/images/logo.png'} 
                         alt="Logo"
-                        className="h-10 w-auto object-contain"
+                        className={`object-contain transition-all duration-300 ${collapsed ? 'h-10 w-10' : 'h-24 w-auto max-w-full'}`}
                         onError={(e) => { e.target.src = '/assets/images/logo.png'; }}
                     />
-                    {!collapsed && (
-                        <span className="text-white font-bold text-lg truncate tracking-wide">
-                            {appSettings?.app_name || 'EVENTCEK'}
-                        </span>
-                    )}
                 </Link>
             </div>
 
@@ -73,7 +68,7 @@ export default function Sidebar({ collapsed = false }) {
                     {isUser && (
                         <>
                             <MenuSection title="Menu Utama" />
-                            <NavLink href="/" icon="fas fa-home" label="Home" active={isActive('home')} />
+                            {/* Home button removed as per request, use Logo to go home */}
                             <NavLink href={route('dashboard.user')} icon="fas fa-tasks" label="Aktivitas Saya" active={isActive('dashboard.user')} />
                         </>
                     )}

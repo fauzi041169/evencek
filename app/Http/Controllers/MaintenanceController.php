@@ -195,43 +195,25 @@ class MaintenanceController extends Controller
             set_time_limit(300); // 5 minutes
             $basePath = base_path();
 
-            // Check if git is available and is a git repository
-            $gitVersion = shell_exec('git --version');
-            $isGitRepo = File::exists($basePath . '/.git');
             $output = "";
 
-            if (!$gitVersion || !$isGitRepo) {
-                $reason = !$gitVersion ? 'Git not installed' : 'Not a git repository';
-                \Log::info("Skipping git pull: $reason");
-                $output .= "Skipping git pull: $reason. Proceeding to migration...\n\n";
-            } else {
-                // 1. Git Pull with Token Authentication
-                // NOTE: Using token from user input (Hardcoded as requested, ideally should be in .env)
-                $token = "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";
-                $repoUrl = "https://{$token}@github.com/fauzi041169/EvenReac.git";
-                
-                // Configure safe directory globally to prevent ownership errors
-                shell_exec("git config --global --add safe.directory \"{$basePath}\"");
+            // 1. Git Pull (Simple)
+            $gitCommand = "cd \"{$basePath}\" && git pull origin main 2>&1";
+            $gitOutput = [];
+            $gitReturn = 0;
+            
+            \Log::info("Executing git command: $gitCommand");
+            exec($gitCommand, $gitOutput, $gitReturn);
+            
+            $output .= "Git Pull Output:\n" . implode("\n", $gitOutput) . "\n\n";
+            \Log::info("Git Pull Result (Code $gitReturn): " . implode("\n", $gitOutput));
 
-                $gitCommand = "cd \"{$basePath}\" && git pull {$repoUrl} main 2>&1";
-                $gitOutput = [];
-                $gitReturn = 0;
-                
-                \Log::info("Executing git command (masked token): " . str_replace($token, '***', $gitCommand));
-                exec($gitCommand, $gitOutput, $gitReturn);
-                
-                // Mask token in output for security
-                $cleanOutput = str_replace($token, '***', implode("\n", $gitOutput));
-                $output .= "Git Pull Output:\n" . $cleanOutput . "\n\n";
-                \Log::info("Git Pull Result (Code $gitReturn): " . $cleanOutput);
-
-                if ($gitReturn !== 0) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Gagal melakukan git pull. Code: ' . $gitReturn,
-                        'output' => $output
-                    ], 500);
-                }
+            if ($gitReturn !== 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal melakukan git pull. Code: ' . $gitReturn,
+                    'output' => $output
+                ], 500);
             }
 
             // 2. Migrate
@@ -244,10 +226,44 @@ class MaintenanceController extends Controller
             
             $output .= "Migrate Output:\n" . implode("\n", $migrateOutput) . "\n\n";
             \Log::info("Migrate Result (Code $migrateReturn): " . implode("\n", $migrateOutput));
+
+            if ($migrateReturn !== 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal melakukan migrasi database. Code: ' . $migrateReturn,
+                    'output' => $output
+                ], 500);
+            }
+            
+            // 3. Optimize Clear (Route, View, Config, Cache)
+            $optimizeCommand = "cd \"{$basePath}\" && php artisan optimize:clear 2>&1";
+            $optimizeOutput = [];
+            $optimizeReturn = 0;
+            exec($optimizeCommand, $optimizeOutput, $optimizeReturn);
+            $output .= "Optimize Clear Output:\n" . implode("\n", $optimizeOutput) . "\n\n";
+
+            // 4. Create Storage Symlink (Native PHP Fallback)
+            try {
+                $target = storage_path('app/public');
+                $link = public_path('storage');
+                
+                if (!file_exists($link)) {
+                    if (function_exists('symlink')) {
+                        symlink($target, $link);
+                        $output .= "Storage Link Created (symlink).\n";
+                    } else {
+                         $output .= "Warning: symlink() function disabled. Cannot create storage link.\n";
+                    }
+                } else {
+                    $output .= "Storage Link already exists.\n";
+                }
+            } catch (\Exception $e) {
+                $output .= "Storage Link Error: " . $e->getMessage() . "\n";
+            }
             
             return response()->json([
                 'success' => true,
-                'message' => 'Aplikasi berhasil diupdate (Git Pull & Migrate).',
+                'message' => 'Aplikasi berhasil diupdate (Git Pull, Migrate & Storage Link).',
                 'output' => $output
             ]);
         } catch (\Exception $e) {

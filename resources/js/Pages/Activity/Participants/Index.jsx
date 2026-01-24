@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { Transition } from '@headlessui/react';
 import axios from 'axios';
@@ -75,6 +75,7 @@ export default function Index({
     rooms = [],
     hotels = [],
     unassignedParticipants = [],
+    roomOccupants = [],
     totalProvinces = 0,
     totalRegencies = 0,
     totalDistricts = 0
@@ -1166,6 +1167,7 @@ export default function Index({
                 activity={activity}
                 rooms={rooms}
                 hotels={hotels}
+                roomOccupants={roomOccupants}
                 unassignedParticipants={unassignedParticipants}
             />
 

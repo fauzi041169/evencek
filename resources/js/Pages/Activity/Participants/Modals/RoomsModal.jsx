@@ -1,8 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import { Building, X, Plus, Upload, Download, Trash2, CheckCircle, Ban, UserPlus, Users } from 'lucide-react';
 
-export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hotels = [], unassignedParticipants = [] }) {
+export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hotels = [], unassignedParticipants = [], roomOccupants = [] }) {
     if (!isOpen) return null;
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -267,7 +267,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                 <tbody className="bg-white divide-y divide-gray-200 max-h-[400px] overflow-y-auto block sm:table-row-group">
                                     {rooms.length > 0 ? (
                                         rooms.map((room) => {
-                                            const occupants = room.occupants || [];
+                                            const occupants = roomOccupants[room.id] || [];
                                             const isFull = room.capacity > 0 && occupants.length >= room.capacity;
                                             
                                             return (
@@ -300,18 +300,10 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                                             ))}
                                                             
                                                             {!isFull && (
-                                                                <select 
-                                                                    onChange={(e) => {
-                                                                        handleAssignParticipant(room.id, e.target.value);
-                                                                        e.target.value = '';
-                                                                    }}
-                                                                    className="mt-1 block w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1 pl-2 pr-6"
-                                                                >
-                                                                    <option value="">+ Pilih Peserta</option>
-                                                                    {unassignedParticipants.map(up => (
-                                                                        <option key={up.id} value={up.id}>{up.name}</option>
-                                                                    ))}
-                                                                </select>
+                                                                <SearchableParticipantSelect 
+                                                                    participants={unassignedParticipants}
+                                                                    onSelect={(userId) => handleAssignParticipant(room.id, userId)}
+                                                                />
                                                             )}
                                                             
                                                             <div className="text-[10px] text-gray-400 text-right mt-0.5">

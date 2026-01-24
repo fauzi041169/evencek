@@ -572,7 +572,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/activities/{activity}', 'store')->name('activity.store');
         // Financial Ledger (Neraca Keuangan) — place BEFORE catch-all '/{payment}'
         Route::get('/rules', 'financialRules')->name('rules')->middleware('role:admin,superadmin');
-        Route::post('/rules', 'financialRulesSave')->name('rules.save')->middleware('role:admin,superadmin');
+        Route::post('/rules', 'financialRulesSave')->name('rules.store')->middleware('role:admin,superadmin');
         Route::post('/rules/subscription-prices', 'financialRulesSaveSubscriptionPrices')->name('rules.subscription.save')->middleware('role:admin,superadmin');
         Route::post('/rules/plan-facilities', 'financialRulesSavePlanFacilities')->name('rules.plan-facilities.save')->middleware('role:admin,superadmin');
         Route::get('/{payment}', 'show')->name('show');

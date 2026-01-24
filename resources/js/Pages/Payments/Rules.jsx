@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
@@ -29,7 +29,7 @@ export default function Rules({ settings, financial, vouchers = [], activities =
                                 </h5>
                             </div>
                             <div className="p-6">
-                                <form method="post" action={route('payments.rules.save')}>
+                                <form method="post" action={route('payments.rules.store')}>
                                     <input type="hidden" name="_token" value={csrfToken} />
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>

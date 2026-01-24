@@ -155,8 +155,13 @@
       <div class="card-title drag-item" style="{{ stylePos($title, $cardWidthPx, $cardHeightPx) }};{{ textCssFrom($title) }};{{ visibilityFrom($title) }}">{{ $displayTitle }}</div>
       @php $photo = $card['photo'] ?? []; $shape = $photo['shape'] ?? 'square'; $photoClass = $shape==='circle' ? 'circle-photo' : 'square-photo'; $overlayColor = rgbaOverlay($photo['overlay_color'] ?? null, $photo['overlay_opacity'] ?? 0); @endphp
       <div class="card-photo drag-item {{ $photoClass }}" style="{{ stylePos($photo, $cardWidthPx, $cardHeightPx) }};{{ visibilityFrom($photo) }}">
-        @if($pCard && $pCard->foto)
-          <img src="{{ asset('assets/images/profilefoto/' . $pCard->foto) }}" alt="{{ $uCard->name }}">
+        @php
+          $photoFilename = ($pCard && $pCard->foto) ? $pCard->foto : null;
+          $photoPathRaw = $photoFilename ? public_path('assets/images/profilefoto/' . $photoFilename) : null;
+          $hasPhoto = $photoFilename && file_exists($photoPathRaw);
+        @endphp
+        @if($hasPhoto)
+          <img src="{{ asset('assets/images/profilefoto/' . $photoFilename) }}" alt="{{ $uCard->name }}">
         @else
           <img src="{{ asset('assets/images/profilefoto/default-profile.png') }}" alt="Default photo">
         @endif

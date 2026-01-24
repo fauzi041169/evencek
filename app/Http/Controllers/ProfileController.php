@@ -466,7 +466,7 @@ class ProfileController extends Controller
             if ($districts->isEmpty()) {
                 \Log::warning('No districts found for regency: '.$regencyId);
 
-                return response()->json([], 200);
+                return response()->json([]);
             }
 
             \Log::info('Found '.$districts->count().' districts');
