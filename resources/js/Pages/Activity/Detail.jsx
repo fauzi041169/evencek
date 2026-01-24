@@ -195,6 +195,20 @@ export default function Detail({
 
         setTimeout(async () => {
             if (type === 'mandiri') {
+                // Cek apakah kegiatan berbayar - Prioritaskan pembayaran sebelum validasi profil
+                const currentPrice = activeBatch?.price !== undefined && activeBatch?.price !== null
+                    ? Number(activeBatch.price)
+                    : Number(activity.price);
+
+                // Jika berbayar, arahkan langsung ke form pembayaran
+                if (currentPrice > 0) {
+                    window.location.href = route('payments.create', {
+                        activity: activity.id,
+                        batch_id: activeBatch?.id
+                    });
+                    return;
+                }
+
                 if (!force && missingProfileFields && missingProfileFields.length > 0) {
                     // Save intent for auto-enroll after profile update
                     sessionStorage.setItem('pending_enrollment', JSON.stringify({
@@ -206,20 +220,6 @@ export default function Detail({
                 }
 
                 if (registrationTarget.type === 'link' || registrationTarget.type === 'form') {
-                    // Cek apakah kegiatan berbayar
-                    const currentPrice = activeBatch?.price !== undefined && activeBatch?.price !== null
-                        ? Number(activeBatch.price)
-                        : Number(activity.price);
-
-                    // Jika berbayar, arahkan langsung ke form pembayaran sebelum mendaftar
-                    if (currentPrice > 0) {
-                        window.location.href = route('payments.create', {
-                            activity: activity.id,
-                            batch_id: activeBatch?.id
-                        });
-                        return;
-                    }
-
                     // Gunakan Axios untuk menangani respons JSON dan redirect ke pembayaran (modal/page)
                     try {
                         // Ensure we use axios directly

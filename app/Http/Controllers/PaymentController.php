@@ -64,7 +64,7 @@ class PaymentController extends Controller
                 $user->load('profile');
             }
 
-            $validationKeys = ['name', 'email', 'foto']; // Default mandatory
+            $validationKeys = ['name', 'email']; // Default mandatory
 
             // Add keys from import_template
             $template = $activity->import_template;
@@ -138,6 +138,8 @@ class PaymentController extends Controller
             }
 
             $validationKeys = array_unique($validationKeys);
+            // Allow payment even if photo is missing (will be required later)
+            $validationKeys = array_diff($validationKeys, ['foto']);
 
             // Perform Unified Validation (Skip if this is a bulk payment/import request)
             if (! request()->boolean('is_bulk')) {
