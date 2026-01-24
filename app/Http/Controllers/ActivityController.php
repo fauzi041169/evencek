@@ -3869,7 +3869,11 @@ class ActivityController extends Controller
             'provinces',
             'heroCoverPath',
             'registerTarget',
-            'buttonText'
+            'buttonText',
+            'showCompletePaymentCTA',
+            'completePaymentUrl',
+            'completePaymentLabel',
+            'completePaymentInfo'
         ));
     }
 

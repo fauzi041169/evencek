@@ -22,6 +22,9 @@ yarn-error.log
 *.sql
 *.sqlite
 /dist_temp
+/dist_production
 /public/D_
 /public/images
-
+*.zip
+find_method.php
+prepare_production_zip.ps1

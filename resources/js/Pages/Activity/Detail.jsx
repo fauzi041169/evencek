@@ -195,7 +195,17 @@ export default function Detail({
 
         setTimeout(async () => {
             if (type === 'mandiri') {
-                // Cek apakah kegiatan berbayar - Prioritaskan pembayaran sebelum validasi profil
+                if (!force && missingProfileFields && missingProfileFields.length > 0) {
+                    // Save intent for auto-enroll after profile update
+                    sessionStorage.setItem('pending_enrollment', JSON.stringify({
+                        activityId: activity.id,
+                        type: type
+                    }));
+                    setIsMissingDataModalOpen(true);
+                    return;
+                }
+
+                // Cek apakah kegiatan berbayar
                 const currentPrice = activeBatch?.price !== undefined && activeBatch?.price !== null
                     ? Number(activeBatch.price)
                     : Number(activity.price);
@@ -206,16 +216,6 @@ export default function Detail({
                         activity: activity.id,
                         batch_id: activeBatch?.id
                     });
-                    return;
-                }
-
-                if (!force && missingProfileFields && missingProfileFields.length > 0) {
-                    // Save intent for auto-enroll after profile update
-                    sessionStorage.setItem('pending_enrollment', JSON.stringify({
-                        activityId: activity.id,
-                        type: type
-                    }));
-                    setIsMissingDataModalOpen(true);
                     return;
                 }
 
@@ -509,10 +509,19 @@ export default function Detail({
                         {isJoined ? (
                             <>
                                 <button
-                                    onClick={() => openPaymentDetailLookup(activity.id, user?.id)}
-                                    className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gradient-to-r from-primary to-secondary text-white font-bold hover:shadow-lg hover:shadow-primary/30 transition-all transform hover:-translate-y-1"
+                                    onClick={() => {
+                                        if (showCompletePaymentCTA && completePaymentUrl) {
+                                            router.visit(completePaymentUrl);
+                                        } else {
+                                            openPaymentDetailLookup(activity.id, user?.id);
+                                        }
+                                    }}
+                                    className={`inline-flex items-center gap-2 h-14 px-8 rounded-full text-white font-bold hover:shadow-lg transition-all transform hover:-translate-y-1 ${showCompletePaymentCTA
+                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-orange-500/30'
+                                        : 'bg-gradient-to-r from-primary to-secondary hover:shadow-primary/30'
+                                        }`}
                                 >
-                                    <i className="fas fa-file-invoice"></i>
+                                    <i className={`fas ${showCompletePaymentCTA ? 'fa-wallet' : 'fa-file-invoice'}`}></i>
                                     {buttonText || 'Lihat Detail'}
                                 </button>
 
