@@ -104,23 +104,18 @@ class PengurusController extends Controller
             if ($request->hasFile('foto')) {
                 // Hapus foto lama jika ada
                 if ($pengurus->foto) {
-                    $oldFilePath = public_path('storage/'.$pengurus->foto);
-                    if (file_exists($oldFilePath)) {
-                        unlink($oldFilePath);
+                    if (Storage::disk('public')->exists($pengurus->foto)) {
+                        Storage::disk('public')->delete($pengurus->foto);
+                    } elseif (file_exists(public_path('storage/'.$pengurus->foto))) {
+                        unlink(public_path('storage/'.$pengurus->foto));
                     }
                 }
 
                 $foto = $request->file('foto');
                 $filename = time().'_'.$foto->getClientOriginalName();
 
-                // Pastikan direktori ada
-                $uploadPath = public_path('storage/pengurus');
-                if (! file_exists($uploadPath)) {
-                    mkdir($uploadPath, 0777, true);
-                }
-
-                // Simpan file ke direktori yang ditentukan
-                $foto->move($uploadPath, $filename);
+                // Simpan file menggunakan Storage facade
+                $path = $foto->storeAs('pengurus', $filename, 'public');
                 $validated['foto'] = 'pengurus/'.$filename;
             }
 

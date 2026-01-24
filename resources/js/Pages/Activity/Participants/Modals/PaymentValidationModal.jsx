@@ -14,6 +14,7 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
     const [showRejectInput, setShowRejectInput] = useState(false);
     const [localProofUrl, setLocalProofUrl] = useState(null);
     const [amount, setAmount] = useState(0);
+    const [isDirty, setIsDirty] = useState(false);
     const fileInputRef = useRef(null);
 
     useEffect(() => {
@@ -352,7 +353,14 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                                                     </div>
                                                     <textarea
                                                         value={showRejectInput ? rejectReason : notes}
-                                                        onChange={(e) => showRejectInput ? setRejectReason(e.target.value) : setNotes(e.target.value)}
+                                                        onChange={(e) => {
+                                                            if (showRejectInput) {
+                                                                setRejectReason(e.target.value);
+                                                            } else {
+                                                                setNotes(e.target.value);
+                                                                setIsDirty(true);
+                                                            }
+                                                        }}
                                                         placeholder={showRejectInput ? "Tuliskan alasan penolakan..." : "Tuliskan catatan tambahan jika ada..."}
                                                         rows="3"
                                                         className={`w-full rounded-xl border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm ${showRejectInput ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500 bg-rose-50' : ''}`}
