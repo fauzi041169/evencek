@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 
@@ -7,7 +7,7 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
     const { data, setData, post, processing, errors } = useForm({
         payment_method_id: '',
         sender_name: bulk_import_payment?.sender_name || defaultSenderName || '',
-        proof_of_payment: null,
+        payment_proof: null,
         is_bulk: bulk_import_payment ? 1 : 0,
     });
 

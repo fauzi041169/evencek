@@ -6,6 +6,7 @@ use App\Models\Activity;
 use App\Models\Gallery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class GalleryController extends Controller
 {
@@ -82,10 +83,14 @@ class GalleryController extends Controller
         }
 
         $gallery = Gallery::where('activity_id', $activityId)->where('id', $galleryId)->firstOrFail();
-        $imagePath = public_path('storage/activities/gallery/'.$gallery->image);
-        if (file_exists($imagePath)) {
-            unlink($imagePath);
+        
+        // Try deleting from storage first
+        if (Storage::disk('public')->exists('activities/gallery/'.$gallery->image)) {
+            Storage::disk('public')->delete('activities/gallery/'.$gallery->image);
+        } elseif (file_exists(public_path('storage/activities/gallery/'.$gallery->image))) {
+            @unlink(public_path('storage/activities/gallery/'.$gallery->image));
         }
+
         $gallery->delete();
         // Jika request AJAX/JSON, kembalikan status tanpa redirect
         if (request()->ajax() || request()->wantsJson()) {

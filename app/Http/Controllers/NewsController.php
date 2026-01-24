@@ -171,18 +171,12 @@ class NewsController extends Controller
                     }
 
                     $fileName = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-                    $uploadPath = public_path('storage/news/images');
+                    
+                    // Gunakan Storage facade untuk menyimpan file
+                    $path = $file->storeAs('news/images', $fileName, 'public');
 
-                    // Pastikan direktori ada
-                    if (! File::exists($uploadPath)) {
-                        if (! File::makeDirectory($uploadPath, 0777, true)) {
-                            throw new \Exception('Gagal membuat direktori upload. Periksa permission folder storage.');
-                        }
-                    }
-
-                    // Coba upload file
-                    if (! $file->move($uploadPath, $fileName)) {
-                        throw new \Exception('Gagal menyimpan file. Periksa permission folder storage.');
+                    if (!$path) {
+                        throw new \Exception('Gagal menyimpan file ke storage.');
                     }
 
                     $validated['image'] = 'news/images/'.$fileName;
@@ -235,16 +229,9 @@ class NewsController extends Controller
                             if ($mimeType === 'image/webp') $extension = 'webp';
 
                             $filename = 'konten_'.time().'_'.Str::random(10).'.'.$extension;
-                            $path = public_path('storage/news/content');
+                            $path = 'news/content/'.$filename;
 
-                            // Pastikan direktori ada
-                            if (! File::exists($path)) {
-                                if (! File::makeDirectory($path, 0777, true)) {
-                                    throw new \Exception('Gagal membuat direktori untuk gambar konten');
-                                }
-                            }
-
-                            if (! File::put($path.'/'.$filename, $imageData)) {
+                            if (! Storage::disk('public')->put($path, $imageData)) {
                                 throw new \Exception('Gagal menyimpan gambar konten');
                             }
 
@@ -526,39 +513,19 @@ class NewsController extends Controller
 
             // Generate nama file unik
             $fileName = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-            $uploadPath = public_path('storage/news/images');
+            
+            // Gunakan Storage facade
+            $path = $file->storeAs('news/images', $fileName, 'public');
 
-            // Pastikan direktori ada
-            if (! File::exists($uploadPath)) {
-                if (! File::makeDirectory($uploadPath, 0777, true)) {
-                    \Log::error('Failed to create upload directory:', ['path' => $uploadPath]);
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Gagal membuat direktori upload. Hubungi administrator.',
-                    ], 500);
-                }
-            }
-
-            // Coba upload file
-            if (! $file->move($uploadPath, $fileName)) {
-                \Log::error('Failed to move uploaded file:', [
+            if (!$path) {
+                \Log::error('Failed to store uploaded file:', [
                     'original_name' => $file->getClientOriginalName(),
-                    'target_path' => $uploadPath.'/'.$fileName,
-                    'error' => error_get_last(),
+                    'error' => 'Storage::storeAs returned false',
                 ]);
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal menyimpan file. Periksa permission folder storage atau hubungi administrator.',
-                ], 500);
-            }
-
-            // Verifikasi file berhasil disimpan
-            if (! File::exists($uploadPath.'/'.$fileName)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'File berhasil diupload tetapi tidak dapat ditemukan. Hubungi administrator.',
+                    'message' => 'Gagal menyimpan file. Hubungi administrator.',
                 ], 500);
             }
 

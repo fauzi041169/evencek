@@ -153,10 +153,15 @@ class PengurusController extends Controller
             try {
                 // Hapus foto dari storage jika ada
                 if ($pengurus->foto) {
-                    $filePath = public_path('storage/'.$pengurus->foto);
-                    if (file_exists($filePath)) {
-                        unlink($filePath);
-                        Log::info('Foto berhasil dihapus', ['path' => $filePath]);
+                    $deleted = false;
+                    if (Storage::disk('public')->exists($pengurus->foto)) {
+                        $deleted = Storage::disk('public')->delete($pengurus->foto);
+                    } elseif (file_exists(public_path('storage/'.$pengurus->foto))) {
+                        $deleted = @unlink(public_path('storage/'.$pengurus->foto));
+                    }
+                    
+                    if ($deleted) {
+                        Log::info('Foto berhasil dihapus', ['path' => $pengurus->foto]);
                     }
                 }
 

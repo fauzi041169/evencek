@@ -1101,19 +1101,12 @@ class PaymentController extends Controller
                         // Distribute payment proof to individual user (Store Method)
                         try {
                             if (isset($path) && $path) {
-                                $originalFullPath = public_path('storage/'.$path);
-                                if (\Illuminate\Support\Facades\File::exists($originalFullPath)) {
-                                    $ext = \Illuminate\Support\Facades\File::extension($originalFullPath);
+                                if (Storage::disk('public')->exists($path)) {
+                                    $ext = pathinfo($path, PATHINFO_EXTENSION);
                                     $uniqueName = 'payment_bulk_'.$activity->id.'_'.$uid.'_'.uniqid().'.'.$ext;
                                     $uniquePathRelative = 'payment-proofs/'.$uniqueName;
-                                    $uniqueFullPath = public_path('storage/'.$uniquePathRelative);
-
-                                    // Ensure directory exists
-                                    if (! \Illuminate\Support\Facades\File::exists(dirname($uniqueFullPath))) {
-                                        \Illuminate\Support\Facades\File::makeDirectory(dirname($uniqueFullPath), 0777, true);
-                                    }
-
-                                    \Illuminate\Support\Facades\File::copy($originalFullPath, $uniqueFullPath);
+                                    
+                                    Storage::disk('public')->copy($path, $uniquePathRelative);
 
                                     // Create/Update Payment Record for User
                                     $userPaymentMatch = [

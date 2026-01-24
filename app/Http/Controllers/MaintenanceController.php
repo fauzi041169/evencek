@@ -27,23 +27,21 @@ class MaintenanceController extends Controller
         $setting = MaintenanceSetting::getCurrent();
 
         // Get APK List
-        $apkDir = public_path('assets/apk');
+        $files = Storage::disk('public')->files('apk');
         $apkList = [];
-        if (File::exists($apkDir)) {
-            $files = File::files($apkDir);
-            foreach ($files as $file) {
-                $name = $file->getFilename();
-                // Expected format: eventcekapp_VERSION.apk
-                if (preg_match('/^eventcekapp_(.+)\.apk$/', $name, $matches)) {
-                    $version = $matches[1];
-                    $apkList[] = [
-                        'name' => $name,
-                        'version' => $version,
-                        'path' => 'assets/apk/'.$name,
-                        'size' => $file->getSize(),
-                        'created_at' => $file->getMTime(),
-                    ];
-                }
+        
+        foreach ($files as $filePath) {
+            $name = basename($filePath);
+            // Expected format: eventcekapp_VERSION.apk
+            if (preg_match('/^eventcekapp_(.+)\.apk$/', $name, $matches)) {
+                $version = $matches[1];
+                $apkList[] = [
+                    'name' => $name,
+                    'version' => $version,
+                    'path' => 'storage/'.$filePath, // Public URL path
+                    'size' => Storage::disk('public')->size($filePath),
+                    'created_at' => Storage::disk('public')->lastModified($filePath),
+                ];
             }
         }
         // Sort by version descending
@@ -134,32 +132,46 @@ class MaintenanceController extends Controller
         ]);
 
         $filename = $request->filename;
-        $apkPath = public_path('assets/apk/'.$filename);
+        // $apkPath = public_path('assets/apk/'.$filename); // Legacy path
+        $storagePath = 'apk/' . $filename; // Storage path
 
         // Security check: prevent directory traversal
         if (strpos($filename, '..') !== false || strpos($filename, '/') !== false || strpos($filename, '\\') !== false) {
             return response()->json(['success' => false, 'message' => 'Filename tidak valid'], 400);
         }
 
-        if (File::exists($apkPath)) {
-            File::delete($apkPath);
+        $deleted = false;
 
+        // Try deleting from Storage first
+        if (Storage::disk('public')->exists($storagePath)) {
+            Storage::disk('public')->delete($storagePath);
+            $deleted = true;
+        }
+        
+        // Also check legacy path just in case
+        $legacyPath = public_path('assets/apk/'.$filename);
+        if (File::exists($legacyPath)) {
+            File::delete($legacyPath);
+            $deleted = true;
+        }
+
+        if ($deleted) {
             // Check if we deleted the currently active APK
             $currentApkPath = Setting::get('app_apk_path');
+            // Check if current path ends with this filename
             if ($currentApkPath && basename($currentApkPath) === $filename) {
                 // Find the next latest APK to set as active, or clear setting
-                $apkDir = public_path('assets/apk');
-                $files = File::files($apkDir);
+                $files = Storage::disk('public')->files('apk');
                 $latestApk = null;
                 $latestVersion = null;
 
-                foreach ($files as $file) {
-                    $name = $file->getFilename();
+                foreach ($files as $filePath) {
+                    $name = basename($filePath);
                     if (preg_match('/^eventcekapp_(.+)\.apk$/', $name, $matches)) {
                         $version = $matches[1];
                         if (! $latestVersion || version_compare($version, $latestVersion, '>')) {
                             $latestVersion = $version;
-                            $latestApk = 'assets/apk/'.$name;
+                            $latestApk = 'storage/apk/'.$name;
                         }
                     }
                 }
@@ -247,15 +259,31 @@ class MaintenanceController extends Controller
                 $target = storage_path('app/public');
                 $link = public_path('storage');
                 
-                if (!file_exists($link)) {
+                if (file_exists($link)) {
+                    if (is_dir($link) && !is_link($link)) {
+                        // It's a real directory! This blocks the symlink.
+                        // Rename it to storage_backup_TIMESTAMP
+                        $backupName = 'storage_backup_' . time();
+                        rename($link, public_path($backupName));
+                        $output .= "Warning: public/storage was a real directory. Renamed to $backupName.\n";
+                        
+                        // Now try to create symlink
+                        if (function_exists('symlink')) {
+                            symlink($target, $link);
+                            $output .= "Storage Link Created (symlink) after backup.\n";
+                        } else {
+                            $output .= "Warning: symlink() function disabled. Cannot create storage link.\n";
+                        }
+                    } else {
+                        $output .= "Storage Link already exists.\n";
+                    }
+                } else {
                     if (function_exists('symlink')) {
                         symlink($target, $link);
                         $output .= "Storage Link Created (symlink).\n";
                     } else {
                          $output .= "Warning: symlink() function disabled. Cannot create storage link.\n";
                     }
-                } else {
-                    $output .= "Storage Link already exists.\n";
                 }
             } catch (\Exception $e) {
                 $output .= "Storage Link Error: " . $e->getMessage() . "\n";
@@ -328,11 +356,6 @@ class MaintenanceController extends Controller
 
     private function handleApkUpload($file)
     {
-        $apkDir = public_path('assets/apk');
-        if (! File::exists($apkDir)) {
-            File::makeDirectory($apkDir, 0755, true);
-        }
-
         // Determine next version
         // Default to 0.1.0 so next is 0.1.1
         $currentVersion = Setting::get('app_apk_version', '0.1.0');
@@ -340,9 +363,13 @@ class MaintenanceController extends Controller
 
         // Generate filename: eventcekapp_0.1.1.apk
         $apkName = "eventcekapp_{$newVersion}.apk";
+        $path = "apk";
 
-        $file->move($apkDir, $apkName);
-        $apkPath = 'assets/apk/'.$apkName;
+        // Store using Storage facade
+        Storage::disk('public')->putFileAs($path, $file, $apkName);
+        
+        $apkPath = 'storage/apk/'.$apkName;
+        $fullPath = 'apk/'.$apkName; // Relative to public disk
 
         // Save settings
         Setting::set('app_apk_path', $apkPath, 'file', 'general', 'File APK aplikasi');
@@ -352,6 +379,7 @@ class MaintenanceController extends Controller
             'path' => $apkPath,
             'version' => $newVersion,
             'name' => $apkName,
+            'size' => Storage::disk('public')->size($fullPath),
         ];
     }
 

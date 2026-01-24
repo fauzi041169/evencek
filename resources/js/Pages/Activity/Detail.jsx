@@ -193,6 +193,20 @@ export default function Detail({
                 }
 
                 if (registrationTarget.type === 'link' || registrationTarget.type === 'form') {
+                    // Cek apakah kegiatan berbayar
+                    const currentPrice = activeBatch?.price !== undefined && activeBatch?.price !== null 
+                        ? Number(activeBatch.price) 
+                        : Number(activity.price);
+
+                    // Jika berbayar, arahkan langsung ke form pembayaran sebelum mendaftar
+                    if (currentPrice > 0) {
+                        window.location.href = route('payments.create', { 
+                            activity: activity.id, 
+                            batch_id: activeBatch?.id 
+                        });
+                        return;
+                    }
+
                     // Gunakan Axios untuk menangani respons JSON dan redirect ke pembayaran (modal/page)
                     try {
                         // Ensure we use axios directly

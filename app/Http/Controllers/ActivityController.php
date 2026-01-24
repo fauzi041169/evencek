@@ -1864,24 +1864,18 @@ class ActivityController extends Controller
             if ($request->hasFile('image')) {
                 // Delete old image if exists
                 if ($activity->image) {
-                    // Use file_exists to check if the file exists before attempting to delete
-                    $oldImagePath = public_path('storage/activities/'.$activity->image);
-                    if (file_exists($oldImagePath)) {
-                        unlink($oldImagePath);
+                    if (Storage::disk('public')->exists('activities/'.$activity->image)) {
+                        Storage::disk('public')->delete('activities/'.$activity->image);
+                    } elseif (file_exists(public_path('storage/activities/'.$activity->image))) {
+                        @unlink(public_path('storage/activities/'.$activity->image));
                     }
                 }
 
                 $image = $request->file('image');
                 $filename = 'activity_'.time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
 
-                // Ensure directory exists
-                $directory = public_path('storage/activities');
-                if (! file_exists($directory)) {
-                    mkdir($directory, 0755, true);
-                }
-
-                // Store the new image directly to the public path
-                $image->move($directory, $filename);
+                // Store using Storage facade
+                $image->storeAs('activities', $filename, 'public');
 
                 $validated['image'] = $filename;
             }

@@ -1,0 +1,9 @@
+<IfModule mod_mime.c>
+    AddType image/svg+xml .svg .svgz
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(svg|svgz|png|jpg|jpeg|gif)$">
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+</IfModule>

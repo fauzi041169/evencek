@@ -3778,11 +3778,19 @@ class ActivityPreparationController extends Controller
                 foreach ($payments as $payment) {
                     if ($payment->proof_of_payment) {
                         try {
-                            $path = public_path($payment->proof_of_payment);
-                            // Protect default files
-                            if (File::exists($path) &&
-                                ! str_contains($payment->proof_of_payment, 'assets/images/credit/bukti bayar.png')) {
-                                File::delete($path);
+                            // Gunakan Storage facade untuk menghapus file
+                            if (Storage::disk('public')->exists($payment->proof_of_payment)) {
+                                // Jangan hapus file default/aset
+                                if (! str_contains($payment->proof_of_payment, 'assets/images/credit/bukti bayar.png')) {
+                                    Storage::disk('public')->delete($payment->proof_of_payment);
+                                }
+                            } else {
+                                // Fallback ke public_path jika file tidak ada di storage disk (legacy)
+                                $path = public_path($payment->proof_of_payment);
+                                if (File::exists($path) &&
+                                    ! str_contains($payment->proof_of_payment, 'assets/images/credit/bukti bayar.png')) {
+                                    File::delete($path);
+                                }
                             }
                         } catch (\Exception $e) {
                         }
@@ -3795,9 +3803,15 @@ class ActivityPreparationController extends Controller
                 foreach ($enrollments as $enrollment) {
                     if ($enrollment->image_path) {
                         try {
-                            $path = public_path($enrollment->image_path);
-                            if (File::exists($path)) {
-                                File::delete($path);
+                            // Gunakan Storage facade
+                            if (Storage::disk('public')->exists($enrollment->image_path)) {
+                                Storage::disk('public')->delete($enrollment->image_path);
+                            } else {
+                                // Fallback ke public_path
+                                $path = public_path($enrollment->image_path);
+                                if (File::exists($path)) {
+                                    File::delete($path);
+                                }
                             }
                         } catch (\Exception $e) {
                         }
@@ -4769,6 +4783,8 @@ class ActivityPreparationController extends Controller
 
         $material = ActivityMaterial::where('activity_id', $activityId)->findOrFail($materialId);
         $relativePath = ltrim($material->file_path, '/');
+        // Remove storage/ prefix if present (since disk('public') maps to storage/app/public)
+        $relativePath = preg_replace('/^storage\//', '', $relativePath);
 
         if (Storage::disk('public')->exists($relativePath)) {
             try {
@@ -4791,9 +4807,16 @@ class ActivityPreparationController extends Controller
             }
         }
 
-        $publicPath = public_path('storage/'.$relativePath);
-        if (file_exists($publicPath)) {
-            return response()->download($publicPath, $material->file_name);
+        // Fallback checks
+        $pathsToCheck = [
+            public_path('storage/'.$relativePath),
+            public_path($material->file_path)
+        ];
+
+        foreach ($pathsToCheck as $path) {
+            if (file_exists($path)) {
+                return response()->download($path, $material->file_name);
+            }
         }
 
         abort(404);
