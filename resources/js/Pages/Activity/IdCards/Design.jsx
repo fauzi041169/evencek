@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -418,6 +418,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                         borderRadius: borderRadius,
                         pointerEvents: 'none' // Important so drag works on parent
                     }}
+                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
                 />
             );
         }

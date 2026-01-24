@@ -191,6 +191,7 @@ class MaintenanceController extends Controller
     public function updateApp()
     {
         try {
+            set_time_limit(300); // 5 minutes
             $basePath = base_path();
             
             // 1. Git Pull

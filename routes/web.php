@@ -58,6 +58,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Public Routes
+Route::get('/fix-storage-link', function () {
+    try {
+        Artisan::call('storage:link');
+        return 'Storage link created successfully. <br>Output: ' . Artisan::output();
+    } catch (\Exception $e) {
+        return 'Error: ' . $e->getMessage();
+    }
+});
 Route::get('/', [HomeController::class, 'index'])->name('home');
 // Fix for 404 on /login - redirect to home with login modal
 Route::get('/login', function() {

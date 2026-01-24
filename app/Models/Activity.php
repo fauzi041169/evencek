@@ -229,7 +229,7 @@ class Activity extends Model
 
     public function hasAutomaticPayment()
     {
-        return $this->payment_method_type === self::PAYMENT_METHOD_AUTOMATIC || $this->payment_method_type === null;
+        return $this->payment_method_type === self::PAYMENT_METHOD_AUTOMATIC;
     }
 
     public function author()

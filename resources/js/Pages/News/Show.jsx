@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 import { format } from 'date-fns';
@@ -72,6 +72,10 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
                                 src={getImageUrl(news.image)} 
                                 alt={news.title} 
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = '/assets/images/news/default-news.jpg';
+                                }}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                             <div className="absolute bottom-0 left-0 p-6 md:p-8 text-white w-full">

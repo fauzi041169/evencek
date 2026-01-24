@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 
 export default function CommitteeSection({ activity, committeeStructure, refPositions, divisions, participants = [] }) {
@@ -66,7 +66,12 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <div className="flex items-center">
                                         {member.user && (
-                                            <img className="h-8 w-8 rounded-full mr-3" src={member.user.profile_photo_url} alt="" />
+                                            <img 
+                                                className="h-8 w-8 rounded-full mr-3" 
+                                                src={member.user.profile_photo_url} 
+                                                alt=""
+                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                            />
                                         )}
                                         <span>{member.name}</span>
                                     </div>

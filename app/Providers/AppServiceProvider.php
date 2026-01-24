@@ -29,6 +29,21 @@ class AppServiceProvider extends ServiceProvider
     {
         // Share favicon with all views
         try {
+            // Self-healing: Ensure storage directories exist
+            $storageDirs = [
+                storage_path('framework/views'),
+                storage_path('framework/sessions'),
+                storage_path('framework/cache'),
+                storage_path('framework/testing'),
+                storage_path('logs'),
+            ];
+            
+            foreach ($storageDirs as $dir) {
+                if (!file_exists($dir)) {
+                    @mkdir($dir, 0755, true);
+                }
+            }
+
             if (Schema::hasTable('settings')) {
                 $favicon = \App\Models\Setting::get('app_favicon');
                 $faviconUrl = $favicon ? (str_starts_with($favicon, 'http') ? $favicon : asset($favicon)) : asset('favicon.ico');

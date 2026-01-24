@@ -529,7 +529,15 @@ export default function Show({
                             {/* Right Column: Poster */}
                             <div className="hidden lg:block lg:col-span-5 hero-poster-container animate-fade-up delay-200 order-1 lg:order-2">
                                 <div className="hero-poster-card aspect-[3/4] w-full max-w-md mx-auto bg-gray-900/50 backdrop-blur-sm border border-white/10 relative group">
-                                     <img src={heroCoverPath} alt={activity.name} className="w-full h-full object-cover" />
+                                     <img 
+                                        src={heroCoverPath} 
+                                        alt={activity.name} 
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = '/assets/images/begron/defoult.png';
+                                        }}
+                                     />
                                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity"></div>
                                 </div>
                             </div>

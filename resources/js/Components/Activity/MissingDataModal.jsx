@@ -127,6 +127,7 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                                             src={previewUrl || '/assets/images/profilefoto/default-profile.png'} 
                                             alt="Foto Profil" 
                                             className="w-full h-full rounded-full object-cover"
+                                            onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
                                         />
                                     </div>
                                     <label htmlFor="fotoProfileInput" className="absolute bottom-0 right-0 bg-indigo-600 hover:bg-indigo-700 text-white w-8 h-8 flex items-center justify-center rounded-full cursor-pointer shadow-lg transition-transform hover:scale-110 border-2 border-white">

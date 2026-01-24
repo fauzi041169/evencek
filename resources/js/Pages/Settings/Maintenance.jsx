@@ -187,10 +187,9 @@ export default function Maintenance({ setting, apkList = [] }) {
         } catch (err) {
             setUpdateStatus('error');
             setUpdateMessage(err.message || 'Gagal melakukan update.');
-            // If the error object has an output field (custom error from backend)
-            // But requestJson throws an Error with just the message usually. 
-            // We might want to adjust requestJson to return full error object or just display message.
-            // For now, let's stick to message.
+            if (err.data && err.data.output) {
+                setUpdateOutput(err.data.output);
+            }
         }
     };
 
@@ -209,7 +208,7 @@ export default function Maintenance({ setting, apkList = [] }) {
     return (
         <MainLayout>
             <Head title="Maintenance" />
-            <div className="min-h-screen bg-white py-6 px-4">
+            <div className="min-h-screen bg-gray-100 py-6 px-4">
                 <div className="max-w-7xl mx-auto space-y-6">
                     {alert && (
                         <div className={`px-4 py-3 rounded border ${alert.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
@@ -218,7 +217,7 @@ export default function Maintenance({ setting, apkList = [] }) {
                     )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 bg-white rounded-xl shadow p-6">
+                        <div className="lg:col-span-2 bg-blue-50 rounded-xl shadow p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-semibold text-gray-900">Konfigurasi Maintenance</h2>
                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusActive ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'}`}>
@@ -276,7 +275,7 @@ export default function Maintenance({ setting, apkList = [] }) {
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-xl shadow p-6">
+                        <div className="bg-purple-50 rounded-xl shadow p-6">
                             <h3 className="text-sm font-semibold text-gray-700 mb-2">Preview Pesan</h3>
                             <div className="rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 text-sm">
                                 {data.maintenance_message || 'Kami sedang melakukan pemeliharaan sistem.'}
@@ -292,7 +291,7 @@ export default function Maintenance({ setting, apkList = [] }) {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow p-6">
+                    <div className="bg-green-50 rounded-xl shadow p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Upload APK Android</h3>
                         <form onSubmit={uploadApk} className="flex flex-wrap items-center gap-3">
                             <input type="file" accept=".apk" onChange={(e) => setApkForm('app_apk', e.target.files[0])} />
@@ -321,10 +320,10 @@ export default function Maintenance({ setting, apkList = [] }) {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow p-6">
+                    <div className="bg-orange-50 rounded-xl shadow p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">System Tools</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <button onClick={() => runArtisan(route('maintenance.update-app'))} className="px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded hover:bg-emerald-100 font-medium col-span-2 md:col-span-1">Update App (Git Pull)</button>
+                            <button onClick={handleUpdateApp} className="px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded hover:bg-emerald-100 font-medium col-span-2 md:col-span-1">Update App (Git Pull)</button>
                             <button onClick={() => runArtisan(route('maintenance.artisan.migrate'))} className="px-3 py-2 bg-gray-100 rounded">Migrate</button>
                             <button onClick={() => runArtisan(route('maintenance.artisan.seed'))} className="px-3 py-2 bg-gray-100 rounded">Seed</button>
                             <button onClick={() => runArtisan(route('maintenance.artisan.optimize-clear'))} className="px-3 py-2 bg-gray-100 rounded">Optimize Clear</button>
@@ -343,7 +342,7 @@ export default function Maintenance({ setting, apkList = [] }) {
                         )}
                     </div>
 
-                    <div className="bg-white rounded-xl shadow p-6">
+                    <div className="bg-slate-50 rounded-xl shadow p-6">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-lg font-semibold text-gray-900">Log Aplikasi</h3>
                             <div className="flex gap-2">
