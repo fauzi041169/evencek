@@ -2822,12 +2822,8 @@ class PaymentController extends Controller
             $proofPath = null;
             if ($request->hasFile('proof')) {
                 $file = $request->file('proof');
-                // Simpan langsung ke public/storage agar URL asset('storage/...') valid di lingkungan saat ini
-                $targetDir = public_path('storage/withdrawals/proofs/'.$withdrawal->id);
-                if (! is_dir($targetDir)) {
-                    @mkdir($targetDir, 0777, true);
-                }
                 $filename = time().'_'.preg_replace('/[^A-Za-z0-9_\-.]/', '_', $file->getClientOriginalName());
+                $storagePath = 'withdrawals/proofs/'.$withdrawal->id.'/'.$filename;
                 
                 // Cek jika ukuran file > 20MB (20 * 1024 * 1024 bytes) dan tipe gambar
                 if ($file->getSize() > 20 * 1024 * 1024 && str_starts_with($file->getMimeType(), 'image/')) {
@@ -2839,18 +2835,25 @@ class PaymentController extends Controller
                         // Resize gambar agar tidak terlalu besar (max width 2500px), aspect ratio terjaga
                         $image->scaleDown(width: 2500);
                         
-                        // Simpan dengan kualitas 80%
-                        $image->save($targetDir.'/'.$filename, quality: 80);
+                        // Simpan sementara untuk diupload ke storage
+                        $tempPath = sys_get_temp_dir() . '/' . $filename;
+                        $image->save($tempPath, quality: 80);
+                        
+                        // Simpan ke storage (public disk)
+                        Storage::disk('public')->putFileAs('withdrawals/proofs/'.$withdrawal->id, new \Illuminate\Http\File($tempPath), $filename);
+                        
+                        // Hapus file temp
+                        @unlink($tempPath);
                     } catch (\Exception $e) {
                         Log::warning('Gagal resize gambar bukti transfer: '.$e->getMessage());
-                        // Fallback: pindahkan file asli jika gagal resize
-                        $file->move($targetDir, $filename);
+                        // Fallback: simpan file asli jika gagal resize
+                        Storage::disk('public')->putFileAs('withdrawals/proofs/'.$withdrawal->id, $file, $filename);
                     }
                 } else {
-                    $file->move($targetDir, $filename);
+                    Storage::disk('public')->putFileAs('withdrawals/proofs/'.$withdrawal->id, $file, $filename);
                 }
                 
-                $proofPath = 'withdrawals/proofs/'.$withdrawal->id.'/'.$filename;
+                $proofPath = $storagePath;
             }
 
             DB::beginTransaction();

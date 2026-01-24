@@ -2103,20 +2103,14 @@ class ActivityController extends Controller
         ]);
 
         try {
-            // Create directory if it doesn't exist
-            $directory = public_path('storage/description_images');
-            if (! file_exists($directory)) {
-                mkdir($directory, 0755, true);
-            }
-
             $file = $request->file('image');
             $filename = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-
-            // Move file to directory
-            $file->move($directory, $filename);
-
+            
+            // Simpan ke storage (public disk)
+            $path = $file->storeAs('description_images', $filename, 'public');
+            
             // Return the public URL
-            $url = asset('storage/description_images/'.$filename);
+            $url = \Illuminate\Support\Facades\Storage::url($path);
 
             return response()->json(['url' => $url]);
 
@@ -2528,18 +2522,12 @@ class ActivityController extends Controller
 
             DB::beginTransaction();
 
-            // Ensure directory exists
-            $directory = public_path('storage/activities');
-            if (! file_exists($directory)) {
-                mkdir($directory, 0755, true);
-            }
-
             if ($request->hasFile('image')) {
                 $image = $request->file('image');
                 $filename = 'activity_'.time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
 
-                // Store the image directly to the public path
-                $image->move($directory, $filename);
+                // Simpan ke storage (public disk)
+                $image->storeAs('activities', $filename, 'public');
 
                 // Set the image path in validated data
                 $validated['image'] = $filename;
@@ -6108,6 +6096,11 @@ class ActivityController extends Controller
             foreach ($orphans as $orphan) {
                  if ($orphan->image_path) {
                     try {
+                        // Try deleting using Storage facade first
+                        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($orphan->image_path)) {
+                            \Illuminate\Support\Facades\Storage::disk('public')->delete($orphan->image_path);
+                        }
+
                         $pathsToCheck = [
                             public_path($orphan->image_path),
                             public_path('storage/' . $orphan->image_path),

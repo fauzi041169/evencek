@@ -549,18 +549,25 @@ class ProfileController extends Controller
         if ($request->hasFile('creator_logo')) {
             $file = $request->file('creator_logo');
             $name = time().'_'.$user->id.'.'.$file->getClientOriginalExtension();
-            $dir = public_path('assets/images/creatorlogo');
-            if (! \Illuminate\Support\Facades\File::isDirectory($dir)) {
-                \Illuminate\Support\Facades\File::makeDirectory($dir, 0777, true, true);
-            }
-            $file->move($dir, $name);
+            
+            // Simpan ke storage (public disk)
+            $path = $file->storeAs('subdomain_logos', $name, 'public');
+
             if ($user->subdomain_logo) {
-                $old = public_path('assets/images/creatorlogo/'.$user->subdomain_logo);
-                if (\Illuminate\Support\Facades\File::exists($old)) {
-                    \Illuminate\Support\Facades\File::delete($old);
+                // Hapus file lama (support storage dan legacy path)
+                if (str_contains($user->subdomain_logo, '/') || str_starts_with($user->subdomain_logo, 'subdomain_logos')) {
+                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($user->subdomain_logo)) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($user->subdomain_logo);
+                    }
+                } else {
+                    // Legacy path fallback
+                    $old = public_path('assets/images/creatorlogo/'.$user->subdomain_logo);
+                    if (\Illuminate\Support\Facades\File::exists($old)) {
+                        \Illuminate\Support\Facades\File::delete($old);
+                    }
                 }
             }
-            $user->subdomain_logo = $name;
+            $user->subdomain_logo = $path;
         }
         $user->save();
 
