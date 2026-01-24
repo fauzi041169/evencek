@@ -195,29 +195,34 @@ class MaintenanceController extends Controller
             set_time_limit(300); // 5 minutes
             $basePath = base_path();
 
-            // Check if git is available
+            // Check if git is available and is a git repository
             $gitVersion = shell_exec('git --version');
-            if (!$gitVersion) {
-                throw new \Exception('Git executable not found or not accessible.');
-            }
-            
-            // 1. Git Pull
-            $gitCommand = "cd \"{$basePath}\" && git pull origin main 2>&1";
-            $gitOutput = [];
-            $gitReturn = 0;
-            
-            \Log::info("Executing git command: $gitCommand");
-            exec($gitCommand, $gitOutput, $gitReturn);
-            
-            $output = "Git Pull Output:\n" . implode("\n", $gitOutput) . "\n\n";
-            \Log::info("Git Pull Result (Code $gitReturn): " . implode("\n", $gitOutput));
+            $isGitRepo = File::exists($basePath . '/.git');
+            $output = "";
 
-            if ($gitReturn !== 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Gagal melakukan git pull. Code: ' . $gitReturn,
-                    'output' => $output
-                ], 500);
+            if (!$gitVersion || !$isGitRepo) {
+                $reason = !$gitVersion ? 'Git not installed' : 'Not a git repository';
+                \Log::info("Skipping git pull: $reason");
+                $output .= "Skipping git pull: $reason. Proceeding to migration...\n\n";
+            } else {
+                // 1. Git Pull
+                $gitCommand = "cd \"{$basePath}\" && git pull origin main 2>&1";
+                $gitOutput = [];
+                $gitReturn = 0;
+                
+                \Log::info("Executing git command: $gitCommand");
+                exec($gitCommand, $gitOutput, $gitReturn);
+                
+                $output .= "Git Pull Output:\n" . implode("\n", $gitOutput) . "\n\n";
+                \Log::info("Git Pull Result (Code $gitReturn): " . implode("\n", $gitOutput));
+
+                if ($gitReturn !== 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Gagal melakukan git pull. Code: ' . $gitReturn,
+                        'output' => $output
+                    ], 500);
+                }
             }
 
             // 2. Migrate
