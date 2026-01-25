@@ -5219,7 +5219,12 @@ class ActivityController extends Controller
         
         // Merge custom data if available
         if (!empty($sampleParticipant->custom_data) && is_array($sampleParticipant->custom_data)) {
-            $userData = array_merge($userData, $sampleParticipant->custom_data);
+            // Normalize keys to lowercase to match availableColumns
+            $normalizedCustomData = [];
+            foreach ($sampleParticipant->custom_data as $key => $value) {
+                $normalizedCustomData[strtolower($key)] = $value;
+            }
+            $userData = array_merge($userData, $normalizedCustomData);
         }
 
         return Inertia::render('Activity/IdCards/Design', [
@@ -5747,17 +5752,16 @@ class ActivityController extends Controller
             ->whereNotIn('user_id', $committeeUserIds)
             ->count();
 
-        // Status panitia (based on activity_users status)
-        $panitiaAktif = DB::table($tableName)
+        $pesertaDitolak = DB::table($tableName)
             ->where('activity_id', $activityId)
-            ->where('status', 1)
-            ->whereIn('user_id', $committeeUserIds)
+            ->where('status', 2)
+            ->whereNotIn('user_id', $committeeUserIds)
             ->count();
 
-        $panitiaPending = DB::table($tableName)
+        $pesertaMenungguPembayaran = DB::table($tableName)
             ->where('activity_id', $activityId)
-            ->where('status', 0)
-            ->whereIn('user_id', $committeeUserIds)
+            ->where('status', 3)
+            ->whereNotIn('user_id', $committeeUserIds)
             ->count();
 
         // Statistik absensi
@@ -5781,8 +5785,25 @@ class ActivityController extends Controller
 
         // Statistik Chat
         $totalChats = 0;
+        $totalChatHubungiPanitia = 0;
+        $totalUserKomentar = 0;
+        
         if (Schema::hasTable('activity_chats')) {
+            // Total chat dalam obrolan
             $totalChats = DB::table('activity_chats')
+                ->where('activity_id', $activityId)
+                ->count();
+            
+            // Total user unik yang memberikan komentar
+            $totalUserKomentar = DB::table('activity_chats')
+                ->where('activity_id', $activityId)
+                ->distinct('user_id')
+                ->count('user_id');
+        }
+        
+        // Chat Hubungi Panitia (dari tabel contact_committees atau sejenisnya)
+        if (Schema::hasTable('contact_committees')) {
+            $totalChatHubungiPanitia = DB::table('contact_committees')
                 ->where('activity_id', $activityId)
                 ->count();
         }
@@ -5868,10 +5889,33 @@ class ActivityController extends Controller
         }
 
         // Statistik kepanitiaan
-        // $totalPanitia = $activity->committeeStructures->count();
-        $totalPanitia = DB::table($tableName)
+        // Count directly from committee structures table
+        $totalPanitia = DB::table('activity_committee_structures')
             ->where('activity_id', $activityId)
-            ->whereIn('user_id', $committeeUserIds)
+            ->count();
+
+        // Count panitia aktif and pending from activity_users if they are registered
+        // Panitia aktif = those who are in committee AND have status 1 in activity_users
+        $panitiaAktif = DB::table('activity_committee_structures as acs')
+            ->leftJoin($tableName . ' as au', function($join) use ($activityId) {
+                $join->on('acs.user_id', '=', 'au.user_id')
+                     ->where('au.activity_id', '=', $activityId);
+            })
+            ->where('acs.activity_id', $activityId)
+            ->where(function($query) {
+                $query->where('au.status', 1)
+                      ->orWhereNull('au.user_id'); // Count committee members without user_id as active
+            })
+            ->count();
+
+        // Panitia pending = those who are in committee AND have status 0 in activity_users
+        $panitiaPending = DB::table('activity_committee_structures as acs')
+            ->join($tableName . ' as au', function($join) use ($activityId) {
+                $join->on('acs.user_id', '=', 'au.user_id')
+                     ->where('au.activity_id', '=', $activityId);
+            })
+            ->where('acs.activity_id', $activityId)
+            ->where('au.status', 0)
             ->count();
 
         // Committee Stats (Best PIC & Action Graphs)
@@ -5883,28 +5927,59 @@ class ActivityController extends Controller
 
             $userIds = $committees->pluck('user_id')->filter()->unique();
 
-            // Count registrations by user (created_by)
+            // Count registrations by user (based on payments for group registrations)
+            // Data pendaftaran diambil dari jumlah data yang diimput dari pendaftaran kelompok oleh user tersebut
+            // dan dihitung berdasarkan jumlah orang dalam kelompok tersebut (dari bukti transfer)
             $registrations = [];
-            if (Schema::hasColumn($tableName, 'created_by')) {
-                $registrations = DB::table($tableName)
+            if (Schema::hasTable('payments')) {
+                $payments = DB::table('payments')
                     ->where('activity_id', $activityId)
-                    ->whereIn('created_by', $userIds)
-                    ->select('created_by', DB::raw('count(*) as total'))
-                    ->groupBy('created_by')
-                    ->pluck('total', 'created_by')
-                    ->toArray();
+                    ->whereIn('user_id', $userIds)
+                    ->select('id', 'user_id', 'notes')
+                    ->get();
+
+                foreach ($payments as $payment) {
+                    $count = 1; // Default 1 per payment
+
+                    // Check for group payment in notes
+                    if ($payment->notes) {
+                        $decoded = json_decode($payment->notes, true);
+                        // Handle mixed content/json extraction if needed
+                        if (!$decoded && str_contains($payment->notes, '{')) {
+                            $start = strpos($payment->notes, '{');
+                            $end = strrpos($payment->notes, '}');
+                            if ($start !== false && $end !== false) {
+                                $candidate = substr($payment->notes, $start, $end - $start + 1);
+                                $decoded = json_decode($candidate, true);
+                            }
+                        }
+
+                        if (is_array($decoded)) {
+                            $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
+                            if (!empty($uids) && is_array($uids)) {
+                                $uniqueUids = array_unique($uids);
+                                $count = count($uniqueUids);
+                            }
+                        }
+                    }
+
+                    if (!isset($registrations[$payment->user_id])) {
+                        $registrations[$payment->user_id] = 0;
+                    }
+                    $registrations[$payment->user_id] += $count;
+                }
             }
 
-            // Count validations by user (updated_by)
+            // Count validations by user (verified_by from payments table)
+            // Validasi diambil dari total banyak bukti transfer yang divalidasi oleh user tersebut
             $validations = [];
-            if (Schema::hasColumn($tableName, 'updated_by')) {
-                $validations = DB::table($tableName)
+            if (Schema::hasTable('payments')) {
+                $validations = DB::table('payments')
                     ->where('activity_id', $activityId)
-                    ->whereIn('updated_by', $userIds)
-                    ->where('status', 1) // Only count successful validations
-                    ->select('updated_by', DB::raw('count(*) as total'))
-                    ->groupBy('updated_by')
-                    ->pluck('total', 'updated_by')
+                    ->whereIn('verified_by', $userIds)
+                    ->select('verified_by', DB::raw('count(*) as total'))
+                    ->groupBy('verified_by')
+                    ->pluck('total', 'verified_by')
                     ->toArray();
             }
 
@@ -5919,8 +5994,9 @@ class ActivityController extends Controller
                     'registrations' => $registrations[$userId] ?? 0,
                     'validations' => $validations[$userId] ?? 0,
                     'total_actions' => ($registrations[$userId] ?? 0) + ($validations[$userId] ?? 0),
+                    'akses' => ($member->jumlah_akses ?? 0) * ($member->lama_akses ?? 0),
                 ];
-            })->sortByDesc('total_actions')->values()->take(10);
+            })->sortByDesc('akses')->values()->take(10);
         }
 
         // Statistik rundown
@@ -6106,6 +6182,8 @@ class ActivityController extends Controller
             'totalPeserta',
             'pesertaPending',
             'pesertaAktif',
+            'pesertaDitolak',
+            'pesertaMenungguPembayaran',
             'totalAbsensi',
             'pesertaHadir',
             'pesertaTidakHadir',
@@ -6132,6 +6210,8 @@ class ActivityController extends Controller
             'roomStats',
             'groupStats',
             'totalChats',
+            'totalChatHubungiPanitia',
+            'totalUserKomentar',
             'committee_stats',
             'panitiaAktif',
             'panitiaPending',
