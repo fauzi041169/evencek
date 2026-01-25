@@ -3,9 +3,17 @@ import { Head, Link } from '@inertiajs/react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 
 export default function IdCards({ auth, activity, participants, committees = [], designTypes = ['participant'] }) {
-    const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [selectedType, setSelectedType] = useState(designTypes.includes('participant') ? 'participant' : (designTypes[0] || 'participant'));
+
+    // Filters state
+    const [filters, setFilters] = useState({
+        name: '',
+        province: '',
+        regency: '',
+        district: '',
+        role: ''
+    });
 
     // Determine current data source
     const currentData = useMemo(() => {
@@ -17,15 +25,22 @@ export default function IdCards({ auth, activity, participants, committees = [],
         setSelectedIds(new Set());
     }, [selectedType]);
 
-    // Filter data based on search term
+    // Filter data based on filters
     const filteredData = useMemo(() => {
-        if (!searchTerm) return currentData;
-        const lowerTerm = searchTerm.toLowerCase();
-        return currentData.filter(p =>
-            (p.user?.name || '').toLowerCase().includes(lowerTerm) ||
-            (p.user?.email || '').toLowerCase().includes(lowerTerm)
-        );
-    }, [currentData, searchTerm]);
+        return currentData.filter(p => {
+            const name = (p.user?.name || '').toLowerCase();
+            const email = (p.user?.email || '').toLowerCase();
+            const filterName = filters.name.toLowerCase();
+
+            const nameMatch = !filterName || name.includes(filterName) || email.includes(filterName);
+            const provinceMatch = !filters.province || (p.user?.profile?.province?.name || '').toLowerCase().includes(filters.province.toLowerCase());
+            const regencyMatch = !filters.regency || (p.user?.profile?.regency?.name || '').toLowerCase().includes(filters.regency.toLowerCase());
+            const districtMatch = !filters.district || (p.user?.profile?.district?.name || '').toLowerCase().includes(filters.district.toLowerCase());
+            const roleMatch = selectedType !== 'committee' || !filters.role || (p.role || '').toLowerCase().includes(filters.role.toLowerCase());
+
+            return nameMatch && provinceMatch && regencyMatch && districtMatch && roleMatch;
+        });
+    }, [currentData, filters, selectedType]);
 
     // Handle Checkbox
     const toggleSelection = (userId) => {
@@ -81,17 +96,7 @@ export default function IdCards({ auth, activity, participants, committees = [],
                 </div>
 
                 {/* Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <div className="w-full md:w-1/3 relative">
-                        <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                        <input
-                            type="text"
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            placeholder="Cari nama peserta..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+                <div className="flex flex-col md:flex-row justify-end items-center gap-4 mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                     <div className="flex items-center gap-2">
                         {/* Design Type Selector */}
                         {designTypes.length > 1 && (
@@ -132,9 +137,57 @@ export default function IdCards({ auth, activity, participants, committees = [],
                                     />
                                 </th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
+                                    Nama
+                                    <input
+                                        type="text"
+                                        className="mt-1 block w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Filter Nama..."
+                                        value={filters.name}
+                                        onChange={(e) => setFilters({ ...filters, name: e.target.value })}
+                                    />
+                                </th>
+                                {selectedType === 'committee' && (
+                                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Jabatan
+                                        <input
+                                            type="text"
+                                            className="mt-1 block w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Filter Jabatan..."
+                                            value={filters.role}
+                                            onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+                                        />
+                                    </th>
+                                )}
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    {selectedType === 'committee' ? 'Jabatan' : 'Provinsi'}
+                                    Provinsi
+                                    <input
+                                        type="text"
+                                        className="mt-1 block w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Filter Provinsi..."
+                                        value={filters.province}
+                                        onChange={(e) => setFilters({ ...filters, province: e.target.value })}
+                                    />
+                                </th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Kabupaten/Kota
+                                    <input
+                                        type="text"
+                                        className="mt-1 block w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Filter Kab/Kota..."
+                                        value={filters.regency}
+                                        onChange={(e) => setFilters({ ...filters, regency: e.target.value })}
+                                    />
+                                </th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Kecamatan
+                                    <input
+                                        type="text"
+                                        className="mt-1 block w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Filter Kecamatan..."
+                                        value={filters.district}
+                                        onChange={(e) => setFilters({ ...filters, district: e.target.value })}
+                                    />
                                 </th>
                                 <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Dicetak</th>
                             </tr>
@@ -156,8 +209,19 @@ export default function IdCards({ auth, activity, participants, committees = [],
                                             <div className="text-sm font-medium text-gray-900">{p.user?.name || '-'}</div>
                                             <div className="text-xs text-gray-500">{p.user?.email || ''}</div>
                                         </td>
+                                        {selectedType === 'committee' && (
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                                {p.role || '-'}
+                                            </td>
+                                        )}
                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                            {selectedType === 'committee' ? (p.role || '-') : (p.user?.profile?.province?.name || '-')}
+                                            {p.user?.profile?.province?.name || '-'}
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                            {p.user?.profile?.regency?.name || '-'}
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                            {p.user?.profile?.district?.name || '-'}
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-center">
                                             {p.print_count > 0 ? (
@@ -172,7 +236,7 @@ export default function IdCards({ auth, activity, participants, committees = [],
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-10 text-center text-gray-500">
+                                    <td colSpan={selectedType === 'committee' ? 8 : 7} className="px-6 py-10 text-center text-gray-500">
                                         Tidak ada data ditemukan.
                                     </td>
                                 </tr>

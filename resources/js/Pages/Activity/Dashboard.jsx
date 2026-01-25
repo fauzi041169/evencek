@@ -32,6 +32,7 @@ ChartJS.register(
 export default function Dashboard({
     activity,
     totalPeserta,
+    totalPesertaWithCommittee,
     pesertaPending,
     pesertaAktif,
     pesertaDitolak,
@@ -506,7 +507,7 @@ export default function Dashboard({
                                     <span className="text-purple-100 text-xs font-medium uppercase tracking-wider">Total Peserta</span>
                                 </div>
                             </div>
-                            <div className="text-4xl font-bold text-white mb-2">{totalPeserta.toLocaleString()}</div>
+                            <div className="text-4xl font-bold text-white mb-2">{totalPesertaWithCommittee ? totalPesertaWithCommittee.toLocaleString() : totalPeserta.toLocaleString()}</div>
                             <div className="flex items-center gap-3 pt-3 border-t border-white/20">
                                 <div className="flex items-center gap-1.5 text-emerald-200">
                                     <i className="fas fa-check-circle text-sm"></i>

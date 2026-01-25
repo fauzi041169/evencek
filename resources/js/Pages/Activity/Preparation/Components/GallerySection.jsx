@@ -2,10 +2,10 @@ import React from 'react';
 
 export default function GallerySection({ activity, materials }) {
     return (
-        <div className="p-6 bg-white">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="p-8 bg-white font-primary">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {materials.map((material) => (
-                    <div key={material.id} className="group relative bg-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div key={material.id} className="group relative bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                         {/* Assuming material has file_path or url. Adjust based on model */}
                         <div className="aspect-w-16 aspect-h-9 bg-gray-200">
                             {material.type === 'image' ? (

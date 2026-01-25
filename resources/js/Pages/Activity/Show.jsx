@@ -8,6 +8,7 @@ import BulkImportModal from '@/Components/Activity/BulkImportModal';
 import BulkPaymentModal from '@/Components/Activity/BulkPaymentModal';
 import ManualPaymentModal from '@/Components/Activity/ManualPaymentModal';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 export default function Show({
     activity,
@@ -88,12 +89,20 @@ export default function Show({
                     setShowPaymentModal(true);
                 } else {
                     // Show error in alert instead of redirecting
-                    alert('Gagal memuat form pembayaran. Silakan coba lagi.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        text: 'Gagal memuat form pembayaran. Silakan coba lagi.'
+                    });
                 }
             })
             .catch(err => {
                 console.error('Error fetching payment data:', err);
-                alert('Terjadi kesalahan saat memuat data pembayaran.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Terjadi kesalahan saat memuat data pembayaran.'
+                });
             })
             .finally(() => setLoadingPaymentModal(false));
     };
@@ -234,16 +243,35 @@ export default function Show({
     const [bulkImportResult, setBulkImportResult] = useState(null);
     const [shareMenuOpen, setShareMenuOpen] = useState(false);
 
-    const togglePriceVisibility = () => {
-        if (!confirm('Ubah visibilitas harga?')) return;
+    const togglePriceVisibility = async () => {
+        const result = await Swal.fire({
+            title: 'Ubah Visibilitas Harga?',
+            text: "Anda akan mengubah visibilitas harga untuk publik.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Ubah',
+            cancelButtonText: 'Batal'
+        });
+
+        if (!result.isConfirmed) return;
 
         router.post(route('activity.toggle-price', activity.id), {}, {
             preserveScroll: true,
             onSuccess: () => {
                 setShowPrice(!showPrice);
-                alert(showPrice ? 'Harga disembunyikan' : 'Harga ditampilkan');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: showPrice ? 'Harga disembunyikan' : 'Harga ditampilkan',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
             },
-            onError: () => alert('Gagal mengubah visibilitas harga')
+            onError: () => Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Gagal mengubah visibilitas harga'
+            })
         });
     };
 
@@ -260,7 +288,13 @@ export default function Show({
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(window.location.href);
-        alert('URL berhasil disalin!');
+        Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: 'URL berhasil disalin!',
+            timer: 1500,
+            showConfirmButton: false
+        });
         setShareMenuOpen(false);
     };
 
@@ -592,11 +626,10 @@ export default function Show({
                                                 <button
                                                     key={section.id}
                                                     onClick={() => toggleSection(section.id)}
-                                                    className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                                        isVisible(section.id)
-                                                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                                                            : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
-                                                    }`}
+                                                    className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isVisible(section.id)
+                                                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                                        : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
+                                                        }`}
                                                 >
                                                     <i className={`fas ${section.icon} mr-2 ${isVisible(section.id) ? 'text-indigo-500' : 'text-gray-400'}`}></i>
                                                     {section.label}
@@ -752,144 +785,144 @@ export default function Show({
 
                                 {/* Participants List */}
                                 {isVisible('participants') && (
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-primary to-purple-600"></span>
-                                            <h3 className="text-xl font-bold text-gray-900">Daftar Peserta</h3>
-                                            <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-200">
-                                                {participants.total || participantsList.length} terdaftar
-                                            </span>
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-primary to-purple-600"></span>
+                                                <h3 className="text-xl font-bold text-gray-900">Daftar Peserta</h3>
+                                                <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-200">
+                                                    {participants.total || participantsList.length} terdaftar
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    {/* Controls */}
-                                    <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                                        <div className="relative flex-1">
-                                            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400 text-sm"></i>
-                                            <input
-                                                type="text"
-                                                placeholder="Cari peserta..."
-                                                className="w-full border border-indigo-200 rounded-xl pl-10 pr-3 py-2.5 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400"
-                                                value={search}
-                                                onChange={(e) => setSearch(e.target.value)}
-                                            />
+                                        {/* Controls */}
+                                        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                                            <div className="relative flex-1">
+                                                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400 text-sm"></i>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Cari peserta..."
+                                                    className="w-full border border-indigo-200 rounded-xl pl-10 pr-3 py-2.5 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400"
+                                                    value={search}
+                                                    onChange={(e) => setSearch(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2 bg-indigo-50 px-3 py-2 rounded-xl border border-indigo-200">
+                                                <label className="text-xs font-semibold text-indigo-700 whitespace-nowrap">Tampil:</label>
+                                                <select
+                                                    className="border border-indigo-300 bg-white rounded-lg px-2 py-1 text-sm text-indigo-700 font-semibold focus:ring-2 focus:ring-indigo-500"
+                                                    value={perPage}
+                                                    onChange={handlePerPageChange}
+                                                >
+                                                    <option value="10">10</option>
+                                                    <option value="20">20</option>
+                                                    <option value="50">50</option>
+                                                    <option value="100">100</option>
+                                                </select>
+                                            </div>
+                                            {activity.activity_type !== 'non_batch' && batches && batches.length > 1 && (
+                                                <select
+                                                    className="border border-indigo-200 rounded-xl px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-indigo-700 font-medium"
+                                                    value={filterBatch}
+                                                    onChange={handleBatchChange}
+                                                >
+                                                    <option value="">Semua Sesi</option>
+                                                    {batches.map(batch => (
+                                                        <option key={batch.id} value={batch.id}>{batch.name}</option>
+                                                    ))}
+                                                </select>
+                                            )}
                                         </div>
-                                        <div className="flex items-center gap-2 bg-indigo-50 px-3 py-2 rounded-xl border border-indigo-200">
-                                            <label className="text-xs font-semibold text-indigo-700 whitespace-nowrap">Tampil:</label>
-                                            <select
-                                                className="border border-indigo-300 bg-white rounded-lg px-2 py-1 text-sm text-indigo-700 font-semibold focus:ring-2 focus:ring-indigo-500"
-                                                value={perPage}
-                                                onChange={handlePerPageChange}
-                                            >
-                                                <option value="10">10</option>
-                                                <option value="20">20</option>
-                                                <option value="50">50</option>
-                                                <option value="100">100</option>
-                                            </select>
-                                        </div>
-                                        {activity.activity_type !== 'non_batch' && batches && batches.length > 1 && (
-                                            <select
-                                                className="border border-indigo-200 rounded-xl px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-indigo-700 font-medium"
-                                                value={filterBatch}
-                                                onChange={handleBatchChange}
-                                            >
-                                                <option value="">Semua Sesi</option>
-                                                {batches.map(batch => (
-                                                    <option key={batch.id} value={batch.id}>{batch.name}</option>
-                                                ))}
-                                            </select>
-                                        )}
-                                    </div>
 
-                                    {/* List */}
-                                    <div className="space-y-3">
-                                        {participantsList.length > 0 ? (
-                                            participantsList.map((participant) => {
-                                                const fotoUrl = (participant.profile?.foto_url && participant.profile.foto_url !== 'undefined')
-                                                    ? participant.profile.foto_url
-                                                    : '/assets/images/profilefoto/default-profile.png';
-                                                const status = parseInt(participant.pivot?.status || -1);
-                                                let statusText = '-';
-                                                let statusClass = 'bg-gray-100 text-gray-600';
+                                        {/* List */}
+                                        <div className="space-y-3">
+                                            {participantsList.length > 0 ? (
+                                                participantsList.map((participant) => {
+                                                    const fotoUrl = (participant.profile?.foto_url && participant.profile.foto_url !== 'undefined')
+                                                        ? participant.profile.foto_url
+                                                        : '/assets/images/profilefoto/default-profile.png';
+                                                    const status = parseInt(participant.pivot?.status || -1);
+                                                    let statusText = '-';
+                                                    let statusClass = 'bg-gray-100 text-gray-600';
 
-                                                if (status === 1) { // ACTIVE
-                                                    statusText = 'Aktif';
-                                                    statusClass = 'bg-green-100 text-green-700 border-green-200';
-                                                } else if (status === 0) { // PENDING
-                                                    statusText = 'Menunggu Verifikasi';
-                                                    statusClass = 'bg-yellow-100 text-yellow-700 border-yellow-200';
-                                                } else if (status === 2) { // REJECTED
-                                                    statusText = 'Ditolak';
-                                                    statusClass = 'bg-red-100 text-red-700 border-red-200';
-                                                }
+                                                    if (status === 1) { // ACTIVE
+                                                        statusText = 'Aktif';
+                                                        statusClass = 'bg-green-100 text-green-700 border-green-200';
+                                                    } else if (status === 0) { // PENDING
+                                                        statusText = 'Menunggu Verifikasi';
+                                                        statusClass = 'bg-yellow-100 text-yellow-700 border-yellow-200';
+                                                    } else if (status === 2) { // REJECTED
+                                                        statusText = 'Ditolak';
+                                                        statusClass = 'bg-red-100 text-red-700 border-red-200';
+                                                    }
 
-                                                return (
-                                                    <div key={participant.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-200 w-full gap-3 bg-white">
-                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                            <img
-                                                                src={fotoUrl}
-                                                                className="flex-shrink-0 rounded-full w-9 h-9 object-cover border border-gray-200"
-                                                                alt={participant.name}
-                                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                                            />
-                                                            <div className="min-w-0">
-                                                                <div className="text-gray-900 font-semibold whitespace-normal break-words sm:truncate">{participant.name}</div>
-                                                                <div className="text-xs text-gray-600 truncate flex flex-wrap gap-1">
-                                                                    {participant.profile?.instansi && (
-                                                                        <span>{participant.profile.instansi} â€¢</span>
-                                                                    )}
-                                                                    {participant.profile?.province?.name && (
-                                                                        <span>{participant.profile.province.name}</span>
-                                                                    )}
+                                                    return (
+                                                        <div key={participant.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-200 w-full gap-3 bg-white">
+                                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                                <img
+                                                                    src={fotoUrl}
+                                                                    className="flex-shrink-0 rounded-full w-9 h-9 object-cover border border-gray-200"
+                                                                    alt={participant.name}
+                                                                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                                                />
+                                                                <div className="min-w-0">
+                                                                    <div className="text-gray-900 font-semibold whitespace-normal break-words sm:truncate">{participant.name}</div>
+                                                                    <div className="text-xs text-gray-600 truncate flex flex-wrap gap-1">
+                                                                        {participant.profile?.instansi && (
+                                                                            <span>{participant.profile.instansi} â€¢</span>
+                                                                        )}
+                                                                        {participant.profile?.province?.name && (
+                                                                            <span>{participant.profile.province.name}</span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
+                                                            <div className="flex items-center ml-3 shrink-0">
+                                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${statusClass}`}>
+                                                                    {statusText}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex items-center ml-3 shrink-0">
-                                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${statusClass}`}>
-                                                                {statusText}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
-                                        ) : (
-                                            <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                                Belum ada peserta terdaftar.
+                                                    );
+                                                })
+                                            ) : (
+                                                <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                                    Belum ada peserta terdaftar.
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Pagination */}
+                                        {participants.links && participants.last_page > 1 && (
+                                            <div className="mt-6 flex flex-col items-center gap-3 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-lg shadow-sm border border-purple-100 p-4">
+                                                <div className="flex flex-wrap justify-center gap-1">
+                                                    {participants.links.map((link, i) => (
+                                                        link.url ? (
+                                                            <Link
+                                                                key={i}
+                                                                href={link.url}
+                                                                className={`px-3 py-1 rounded-md text-sm font-medium transition ${link.active
+                                                                    ? 'bg-primary text-white shadow-md'
+                                                                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                                                    }`}
+                                                                dangerouslySetInnerHTML={{ __html: link.label }}
+                                                            />
+                                                        ) : (
+                                                            <span
+                                                                key={i}
+                                                                className="px-3 py-1 rounded-md text-sm text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed"
+                                                                dangerouslySetInnerHTML={{ __html: link.label }}
+                                                            />
+                                                        )
+                                                    ))}
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    Menampilkan <span className="font-semibold text-indigo-700">{participants.from || 0}</span> sampai <span className="font-semibold text-indigo-700">{participants.to || 0}</span> dari <span className="font-semibold text-indigo-700">{participants.total || 0}</span> hasil
+                                                </div>
                                             </div>
                                         )}
                                     </div>
-
-                                    {/* Pagination */}
-                                    {participants.links && participants.last_page > 1 && (
-                                        <div className="mt-6 flex flex-col items-center gap-3 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-lg shadow-sm border border-purple-100 p-4">
-                                            <div className="flex flex-wrap justify-center gap-1">
-                                                {participants.links.map((link, i) => (
-                                                    link.url ? (
-                                                        <Link
-                                                            key={i}
-                                                            href={link.url}
-                                                            className={`px-3 py-1 rounded-md text-sm font-medium transition ${link.active
-                                                                ? 'bg-primary text-white shadow-md'
-                                                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                                                                }`}
-                                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                                        />
-                                                    ) : (
-                                                        <span
-                                                            key={i}
-                                                            className="px-3 py-1 rounded-md text-sm text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed"
-                                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                                        />
-                                                    )
-                                                ))}
-                                            </div>
-                                            <div className="text-xs text-gray-500">
-                                                Menampilkan <span className="font-semibold text-indigo-700">{participants.from || 0}</span> sampai <span className="font-semibold text-indigo-700">{participants.to || 0}</span> dari <span className="font-semibold text-indigo-700">{participants.total || 0}</span> hasil
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
                                 )}
                             </div>
 

@@ -19,6 +19,7 @@ import RoomsModal from './Modals/RoomsModal';
 import PaymentValidationModal from './Modals/PaymentValidationModal';
 import ColumnFilter from './ColumnFilter';
 import RoomSelect from './RoomSelect';
+import Swal from 'sweetalert2';
 
 // Helper for key normalization
 const normalizeCustomKey = (raw) => {
@@ -342,18 +343,27 @@ export default function Index({
     const handleBulkVerify = () => {
         if (!selectedIds.length) return;
 
-        if (confirm(`Apakah Anda yakin ingin memverifikasi email ${selectedIds.length} peserta terpilih?`)) {
-            router.post(route('activity.participants.verify-email-bulk', activity.uid), {
-                user_ids: selectedIds,
-                batch_id: filters.batch_id
-            }, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setSelectedIds([]);
-                    // Optional: show success toast
-                }
-            });
-        }
+        Swal.fire({
+            title: 'Verifikasi Email?',
+            text: `Apakah Anda yakin ingin memverifikasi email ${selectedIds.length} peserta terpilih?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Verifikasi',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('activity.participants.verify-email-bulk', activity.uid), {
+                    user_ids: selectedIds,
+                    batch_id: filters.batch_id
+                }, {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        setSelectedIds([]);
+                        Swal.fire('Berhasil!', 'Email peserta telah diverifikasi.', 'success');
+                    }
+                });
+            }
+        });
     };
 
     const handleBulkDelete = () => {
@@ -363,21 +373,32 @@ export default function Index({
 
         if (!activityId) {
             console.error('Activity ID not found for bulk delete', activity);
-            alert('Terjadi kesalahan: ID aktivitas tidak ditemukan.');
+            Swal.fire('Error', 'ID aktivitas tidak ditemukan.', 'error');
             return;
         }
 
-        if (confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} peserta terpilih? Data yang dihapus tidak dapat dikembalikan.`)) {
-            router.post(route('activity.removeParticipants', { activity: activityId }), {
-                user_ids: selectedIds,
-                batch_id: filters.batch_id
-            }, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setSelectedIds([]);
-                }
-            });
-        }
+        Swal.fire({
+            title: 'Hapus Peserta?',
+            text: `Apakah Anda yakin ingin menghapus ${selectedIds.length} peserta terpilih? Data yang dihapus tidak dapat dikembalikan.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('activity.removeParticipants', { activity: activityId }), {
+                    user_ids: selectedIds,
+                    batch_id: filters.batch_id
+                }, {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        setSelectedIds([]);
+                        Swal.fire('Terhapus!', 'Peserta berhasil dihapus.', 'success');
+                    }
+                });
+            }
+        });
     };
 
     // Column settings with local cache for stability

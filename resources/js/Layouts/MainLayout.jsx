@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import Sidebar from '../Components/Sidebar';
 import Alerts from '../Components/Alerts';
+import Swal from 'sweetalert2';
 
 export default function MainLayout({ children, title = 'Dashboard' }) {
     const { auth, flash, errors } = usePage().props;
@@ -50,27 +51,26 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
             <Head title={title} />
-            
+
             {/* Mobile Sidebar Overlay */}
             {isMobileSidebarOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
                     onClick={() => setIsMobileSidebarOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
-            <aside 
-                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 shadow-xl ${
-                    isSidebarCollapsed ? 'w-20' : 'w-64'
-                } ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+            <aside
+                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 shadow-xl ${isSidebarCollapsed ? 'w-20' : 'w-64'
+                    } ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
             >
                 <Sidebar collapsed={isSidebarCollapsed} />
             </aside>
 
             {/* Main Content Wrapper */}
             <div className={`transition-all duration-300 min-h-screen flex flex-col ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
-                
+
                 {/* Top Navbar */}
                 <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30 border-b border-gray-100">
                     <div className="px-4 py-3 flex items-center justify-between">
@@ -100,7 +100,7 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                         {/* Right Side */}
                         <div className="flex items-center gap-3">
                             {/* Home Link */}
-                            <Link 
+                            <Link
                                 href="/"
                                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary transition-colors"
                                 title="Ke Halaman Depan"
@@ -115,7 +115,7 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                             </button>
 
                             {/* User Dropdown */}
-                            <div 
+                            <div
                                 className="relative ml-1 pl-3 border-l border-gray-200"
                                 onMouseEnter={() => setIsProfileDropdownOpen(true)}
                                 onMouseLeave={() => setIsProfileDropdownOpen(false)}
@@ -130,8 +130,8 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                     </div>
                                     <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-indigo-100 shadow-sm group-hover:border-indigo-300 transition-colors bg-indigo-50 flex items-center justify-center flex-shrink-0">
                                         {auth.user.profile_photo_url ? (
-                                            <img 
-                                                src={auth.user.profile_photo_url} 
+                                            <img
+                                                src={auth.user.profile_photo_url}
                                                 alt={auth.user.name}
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => {
@@ -149,11 +149,11 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                 </button>
 
                                 {/* Dropdown Menu */}
-                                <div 
+                                <div
                                     className={`
                                         absolute right-0 top-full pt-2 w-80 z-50 transition-all duration-300 ease-in-out transform origin-top-right
-                                        ${isProfileDropdownOpen 
-                                            ? 'opacity-100 translate-y-0 scale-100 visible pointer-events-auto' 
+                                        ${isProfileDropdownOpen
+                                            ? 'opacity-100 translate-y-0 scale-100 visible pointer-events-auto'
                                             : 'opacity-0 -translate-y-2 scale-95 invisible pointer-events-none'
                                         }
                                     `}
@@ -166,9 +166,9 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                     <div className="relative">
                                                         <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-white shadow-md bg-white/10 flex items-center justify-center flex-shrink-0">
                                                             {auth.user.profile_photo_url ? (
-                                                                <img 
-                                                                    src={auth.user.profile_photo_url} 
-                                                                    alt={auth.user.name} 
+                                                                <img
+                                                                    src={auth.user.profile_photo_url}
+                                                                    alt={auth.user.name}
                                                                     className="w-full h-full object-cover"
                                                                     onError={(e) => {
                                                                         e.currentTarget.style.display = 'none';
@@ -190,14 +190,14 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                
+
                                                 {/* Mode Edit Toggle in Header */}
-                                                <button 
+                                                <button
                                                     onClick={toggleEditMode}
                                                     className={`
                                                         flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all duration-300 border border-white/20
-                                                        ${editMode 
-                                                            ? 'bg-red-500 text-white animate-pulse' 
+                                                        ${editMode
+                                                            ? 'bg-red-500 text-white animate-pulse'
                                                             : 'bg-white/20 text-white hover:bg-white/30'
                                                         }
                                                     `}
@@ -233,9 +233,9 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                         Pengaturan
                                                     </Link>
                                                 )}
-                                                
+
                                                 <div className="border-t border-gray-100 my-1 mx-2"></div>
-                                                
+
                                                 <Link href="/download-apk" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 hover:translate-x-1 group">
                                                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
                                                         <i className="fas fa-download"></i>
@@ -248,18 +248,29 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                     </div>
                                                     Scan QR Code
                                                 </Link>
-                                                <button 
+                                                <button
                                                     onClick={() => {
-                                                        if (confirm('Apakah Anda yakin ingin membersihkan cache browser? Halaman akan dimuat ulang.')) {
-                                                            if ('caches' in window) {
-                                                                caches.keys().then(names => {
-                                                                    names.forEach(name => caches.delete(name));
-                                                                });
+                                                        Swal.fire({
+                                                            title: 'Bersihkan Cache?',
+                                                            text: 'Browser cache akan dibersihkan dan halaman akan dimuat ulang.',
+                                                            icon: 'warning',
+                                                            showCancelButton: true,
+                                                            confirmButtonColor: '#3085d6',
+                                                            cancelButtonColor: '#d33',
+                                                            confirmButtonText: 'Ya, Bersihkan!',
+                                                            cancelButtonText: 'Batal'
+                                                        }).then((result) => {
+                                                            if (result.isConfirmed) {
+                                                                if ('caches' in window) {
+                                                                    caches.keys().then(names => {
+                                                                        names.forEach(name => caches.delete(name));
+                                                                    });
+                                                                }
+                                                                localStorage.clear();
+                                                                sessionStorage.clear();
+                                                                window.location.reload(true);
                                                             }
-                                                            localStorage.clear();
-                                                            sessionStorage.clear();
-                                                            window.location.reload(true);
-                                                        }
+                                                        });
                                                     }}
                                                     className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-gray-900 rounded-xl hover:bg-gray-100 hover:text-gray-900 transition-all duration-200 hover:translate-x-1 group"
                                                 >
@@ -268,13 +279,13 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                     </div>
                                                     Bersihkan Cache
                                                 </button>
-                                                
+
                                                 <div className="border-t border-gray-100 my-1 mx-2"></div>
-                                                
-                                                <Link 
-                                                    as="button" 
-                                                    method="post" 
-                                                    href={route('logout')} 
+
+                                                <Link
+                                                    as="button"
+                                                    method="post"
+                                                    href={route('logout')}
                                                     className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-all duration-200 hover:translate-x-1 group"
                                                 >
                                                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-100 text-red-600 mr-3 group-hover:bg-red-600 group-hover:text-white transition-colors">
@@ -305,7 +316,7 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                         </div>
                     </div>
                 </main>
-                
+
                 {/* Simple Footer */}
                 <footer className="bg-white border-t border-gray-200 py-4 px-6 text-center text-sm text-gray-500">
                     &copy; {new Date().getFullYear()} {usePage().props.appName || 'EventCek'}. All rights reserved.

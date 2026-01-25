@@ -483,6 +483,7 @@ class MidtransPaymentController extends Controller
             // Buat atau update payment record
             $bulk = session('import_bulk_payment') ?? session('import_bulk_payment_payload');
             $amount = (int) $activity->price;
+            // Prepare Notes
             $notesField = 'Pembayaran via Midtrans';
             if (is_array($bulk)) {
                 $amount = (int) ($bulk['gross_amount'] ?? $amount);
@@ -492,8 +493,18 @@ class MidtransPaymentController extends Controller
                     'user_ids' => (array) data_get($bulk, 'pending_user_ids', []),
                     'successfully_imported_count' => (int) data_get($bulk, 'successfully_imported_count', 0),
                 ]);
+            } elseif ($existingPayment && $existingPayment->notes) {
+                // Preserve existing notes if they are JSON (likely containing custom_data from enrollment)
+                $existingNotes = $existingPayment->notes;
+                if (is_string($existingNotes) && (str_starts_with($existingNotes, '{') || str_starts_with($existingNotes, '['))) {
+                     $decoded = json_decode($existingNotes, true);
+                     if (json_last_error() === JSON_ERROR_NONE) {
+                         // It is valid JSON, keep it. Don't overwrite with simple text.
+                         $notesField = $existingNotes;
+                     }
+                }
             }
-
+            
             $paymentMatch = [
                 'user_id' => $user->id,
                 'activity_id' => $activity->id,

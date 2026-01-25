@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { usePage } from '@inertiajs/react';
 
@@ -90,14 +90,17 @@ export default function RequirementsManager({ activity, divisionId, divisions })
     }
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-4">
-                <h4 className="text-lg font-medium text-gray-900">
-                    Kebutuhan Divisi: {selectedDivision?.name}
-                </h4>
+        <div className="font-primary">
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h4 className="text-xl font-bold text-gray-900 tracking-tight">
+                        {selectedDivision?.name}
+                    </h4>
+                    <p className="text-sm text-gray-500 mt-1">Daftar kebutuhan dan perlengkapan divisi</p>
+                </div>
                 <button
                     onClick={openAddRequirementModal}
-                    className="bg-primary text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm flex items-center"
+                    className="bg-primary text-white px-5 py-2.5 rounded-xl hover:bg-primary/90 text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center"
                 >
                     <i className="fas fa-plus mr-2"></i> Tambah Kebutuhan
                 </button>

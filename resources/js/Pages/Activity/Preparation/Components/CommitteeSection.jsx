@@ -57,34 +57,35 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
     };
 
     return (
-        <div className="p-6 font-primary">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-                <div>
-                    <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Susunan Panitia</h3>
-                    <p className="text-sm text-gray-500 font-medium italic mt-1">Struktur organisasi dan penanggung jawab kegiatan</p>
+        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-8 transition-all hover:shadow-md duration-300">
+            <div className="p-8 font-primary">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <div>
+                        <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Susunan Panitia</h3>
+                        <p className="text-sm text-gray-500 font-medium italic mt-1">Struktur organisasi dan penanggung jawab kegiatan</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
+                        >
+                            <i className="fas fa-plus mr-2"></i>
+                            Tambah Panitia
+                        </button>
+                        <a
+                            href={route('activity.print-cards', { id: activity.uid || activity.id, type: 'committee' })}
+                            target="_blank"
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-all active:scale-95"
+                        >
+                            <i className="fas fa-id-card mr-2 text-primary"></i>
+                            Cetak ID Card
+                        </a>
+                    </div>
                 </div>
-                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
-                    >
-                        <i className="fas fa-plus mr-2"></i>
-                        Tambah Panitia
-                    </button>
-                    <a
-                        href={route('activity.print-cards', { id: activity.uid || activity.id, type: 'committee' })}
-                        target="_blank"
-                        className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-all active:scale-95"
-                    >
-                        <i className="fas fa-id-card mr-2 text-primary"></i>
-                        Cetak ID Card
-                    </a>
-                </div>
-            </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-100">
+                <div className="overflow-hidden rounded-xl border border-gray-100">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-100">
                         <thead className="bg-gray-50/50">
                             <tr>
                                 <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Jabatan</th>
@@ -156,6 +157,7 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                         </tbody>
                     </table>
                 </div>
+            </div>
             </div>
 
             {/* Modal Tambah Panitia - Professional Rewrite */}

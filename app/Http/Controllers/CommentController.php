@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
+use App\Models\ActivityChat;
 use App\Models\Comment;
 use App\Models\News;
 use Illuminate\Http\Request;
@@ -52,6 +53,22 @@ class CommentController extends Controller
         ]);
 
         $activity->comments()->save($comment);
+
+        // Create chat message if user is not the owner
+        // This allows the committee to see the comment as a direct message
+        if ($request->user()->id != $activity->user_id) {
+            ActivityChat::create([
+                'activity_id' => $activity->id,
+                'user_id' => $request->user()->id,
+                'sender_id' => $request->user()->id,
+                'message' => $cleanBody,
+                'is_read' => false,
+            ]);
+        }
+
+        if ($request->header('X-Inertia')) {
+            return back()->with('success', 'Komentar berhasil dikirim.');
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             $comment->load('user');

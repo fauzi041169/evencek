@@ -2197,8 +2197,26 @@ class PaymentController extends Controller
                         ->orderBy('id', 'desc')
                         ->first();
 
+                    // Extract custom_data from payment notes
+                    $customData = null;
+                    if ($payment->notes) {
+                        $notes = json_decode($payment->notes, true);
+                        if (is_array($notes) && isset($notes['custom_data'])) {
+                            $customData = $notes['custom_data'];
+                        }
+                    }
+
                     if ($existingParticipant) {
                         $existingParticipant->status = ActivityUser::STATUS_ACTIVE;
+                        if ($customData) {
+                            // Merge with existing custom_data if any
+                            $existingCustom = $existingParticipant->custom_data ?? [];
+                            if (is_string($existingCustom)) {
+                                $decoded = json_decode($existingCustom, true);
+                                $existingCustom = is_array($decoded) ? $decoded : [];
+                            }
+                            $existingParticipant->custom_data = array_merge($existingCustom, $customData);
+                        }
                         $existingParticipant->updated_at = now();
                         $existingParticipant->save();
                     } else {
@@ -2212,11 +2230,17 @@ class PaymentController extends Controller
                             $matchAttributes['activity_batch_id'] = null;
                         }
 
-                        ActivityUser::create(array_merge($matchAttributes, [
+                        $createData = array_merge($matchAttributes, [
                             'status' => ActivityUser::STATUS_ACTIVE,
                             'created_at' => now(),
                             'updated_at' => now(),
-                        ]));
+                        ]);
+
+                        if ($customData) {
+                            $createData['custom_data'] = $customData;
+                        }
+
+                        ActivityUser::create($createData);
                     }
                 }
 

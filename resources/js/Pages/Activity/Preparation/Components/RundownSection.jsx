@@ -2,25 +2,25 @@ import React from 'react';
 
 export default function RundownSection({ activity, rundowns }) {
     return (
-        <div className="space-y-6 p-6 bg-white">
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+        <div className="space-y-6 p-8 bg-white font-primary">
+            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-100">
+                    <thead className="bg-gray-50/50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kegiatan</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PIC/Pengisi</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lokasi</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keterangan</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Waktu</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Kegiatan</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">PIC/Pengisi</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lokasi</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Keterangan</th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-gray-50">
                         {rundowns.map((item) => (
-                            <tr key={item.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <tr key={item.id} className="hover:bg-gray-50/30 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     {item.start_time ? item.start_time.substring(0, 5) : ''} - {item.end_time ? item.end_time.substring(0, 5) : ''}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                     {item.name}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

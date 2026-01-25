@@ -4,19 +4,32 @@ import Footer from '../Components/Footer';
 import Alerts from '../Components/Alerts';
 import LoginDropdown from '../Components/LoginDropdown';
 
-export default function WebLayout({ children, hasHeaderSpacer = true }) {
+export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = false }) {
     const { props, url } = usePage();
     const { auth, flash, errors, appSettings } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
         const storedEditMode = localStorage.getItem('editMode');
         if (storedEditMode) {
             setEditMode(storedEditMode === 'true');
         }
-    }, []);
+
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 20);
+        };
+        
+        if (transparentNavbar) {
+            window.addEventListener('scroll', handleScroll);
+        }
+        
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [transparentNavbar]);
 
     const toggleEditMode = () => {
         const newMode = !editMode;
@@ -37,6 +50,12 @@ export default function WebLayout({ children, hasHeaderSpacer = true }) {
         return `/${logoPath}`;
     };
 
+    const navClasses = `fixed top-0 left-0 right-0 z-[9999] transition-all duration-300 ${
+        transparentNavbar && !scrolled
+            ? 'bg-transparent py-4'
+            : 'navbar-gradient shadow-md bg-gradient-to-r from-primary to-secondary backdrop-blur-md bg-opacity-95'
+    }`;
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Flash Messages */}
@@ -45,7 +64,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true }) {
             </div>
 
             {/* Navbar */}
-            <nav id="mainNavbar" className="navbar-gradient fixed top-0 left-0 right-0 z-[9999] shadow-md bg-gradient-to-r from-primary to-secondary backdrop-blur-md bg-opacity-95">
+            <nav id="mainNavbar" className={navClasses}>
                 <div className="w-full px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         {/* Left Side */}

@@ -7,7 +7,6 @@ import CorePreparationSection from './Components/CorePreparationSection';
 import CommitteeSection from './Components/CommitteeSection';
 import GallerySection from './Components/GallerySection';
 import RundownSection from './Components/RundownSection';
-import ParticipantsSection from './Components/ParticipantsSection';
 import SectionContainer from './Components/SectionContainer';
 import AddDivisionModal from './Modals/AddDivisionModal';
 import AddRequirementModal from './Modals/AddRequirementModal';
@@ -70,15 +69,13 @@ export default function PreparationIndex({
                     {/* main content sections */}
                     <div className="space-y-10">
                         {/* Committee */}
-                        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-2 overflow-hidden">
-                            <CommitteeSection
-                                activity={activity}
-                                committeeStructure={committeeStructure}
-                                refPositions={refPositions}
-                                divisions={divisionsList}
-                                participants={participants}
-                            />
-                        </div>
+                        <CommitteeSection
+                            activity={activity}
+                            committeeStructure={committeeStructure}
+                            refPositions={refPositions}
+                            divisions={divisionsList}
+                            participants={participants}
+                        />
 
                         {/* Rundown */}
                         <SectionContainer title="Rundown Acara" activity={activity}>
@@ -87,11 +84,11 @@ export default function PreparationIndex({
                     </div>
 
                     {/* Requirements section - wider at bottom */}
-                    <div className="mt-10 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-8 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                    <div className="mt-10 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md duration-300">
+                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
                             <div>
-                                <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Kebutuhan Per Divisi</h3>
-                                <p className="text-gray-500 font-medium italic">Monitor kesiapan operasional setiap tim</p>
+                                <h3 className="text-xl font-bold text-gray-900 tracking-tight">Kebutuhan Per Divisi</h3>
+                                <p className="text-sm text-gray-500 font-medium italic mt-1">Monitor kesiapan operasional setiap tim</p>
                             </div>
                         </div>
                         <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100 min-h-[600px]">

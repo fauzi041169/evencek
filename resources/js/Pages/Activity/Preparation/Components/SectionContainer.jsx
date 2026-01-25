@@ -15,9 +15,9 @@ export default function SectionContainer({ title, children, activity, controls =
     };
 
     return (
-        <div className="bg-white overflow-hidden shadow-xl sm:rounded-lg mb-6 border border-gray-100">
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center flex-wrap gap-4">
-                <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-8 transition-all hover:shadow-md duration-300">
+            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center flex-wrap gap-4">
+                <h3 className="text-xl font-bold text-gray-900 tracking-tight">{title}</h3>
                 
                 <div className="flex items-center gap-4">
                     {controls.map((control) => (
@@ -25,8 +25,8 @@ export default function SectionContainer({ title, children, activity, controls =
                             <span className="text-sm font-medium text-gray-600">{control.label}:</span>
                             <button
                                 onClick={() => toggleField(control.field, control.value)}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
-                                    control.value ? 'bg-indigo-600' : 'bg-gray-200'
+                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                                    control.value ? 'bg-primary' : 'bg-gray-200'
                                 }`}
                                 role="switch"
                                 aria-checked={control.value}

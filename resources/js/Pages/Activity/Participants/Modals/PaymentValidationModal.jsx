@@ -31,9 +31,10 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                     : parseInt(payment.amount));
             setAmount(initialAmount);
             setPaymentMethodId(payment.payment_method_id || '');
-            setSenderName(payment.sender_name || '');
+            // Fallback ke nama user jika sender_name kosong
+            setSenderName(payment.sender_name || participant?.user?.name || '');
         }
-    }, [payment, activity]);
+    }, [payment, activity, participant]); // Added participant dependency
 
     if (!show || !payment) return null;
 
@@ -289,27 +290,25 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                                         {/* Right Column: Proof & Actions (7 cols) */}
                                         <div className="md:col-span-7 flex flex-col h-full">
                                             <div className="flex-grow space-y-4">
-                                                {/* Sender Info Section - Only for Group Payment */}
-                                                {registrationMethod !== 'Mandiri' && (
-                                                    <div>
-                                                        <div className="flex items-center gap-2 text-slate-500 mb-2">
-                                                            <CreditCard className="w-4 h-4" />
-                                                            <span className="text-xs font-bold uppercase tracking-wider">Informasi Pengirim</span>
-                                                        </div>
-                                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm">
-                                                            <div>
-                                                                <span className="text-slate-500 text-xs block mb-1">Nama Pengirim</span>
-                                                                <input
-                                                                    type="text"
-                                                                    value={senderName}
-                                                                    onChange={(e) => { setSenderName(e.target.value); setIsDirty(true); }}
-                                                                    className="w-full bg-transparent border-0 p-0 text-slate-900 font-medium focus:ring-0 placeholder:text-slate-400"
-                                                                    placeholder="Nama Pengirim"
-                                                                />
-                                                            </div>
+                                                {/* Sender Info Section - Show for ALL transaction types to fix missing sender info issue */}
+                                                <div>
+                                                    <div className="flex items-center gap-2 text-slate-500 mb-2">
+                                                        <CreditCard className="w-4 h-4" />
+                                                        <span className="text-xs font-bold uppercase tracking-wider">Informasi Pengirim</span>
+                                                    </div>
+                                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm">
+                                                        <div>
+                                                            <label className="text-slate-500 text-xs block mb-1 font-bold">Nama Pengirim</label>
+                                                            <input
+                                                                type="text"
+                                                                value={senderName}
+                                                                onChange={(e) => { setSenderName(e.target.value); setIsDirty(true); }}
+                                                                className="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-slate-900 font-medium placeholder:text-slate-400"
+                                                                placeholder="Masukkan nama pengirim..."
+                                                            />
                                                         </div>
                                                     </div>
-                                                )}
+                                                </div>
 
                                                 <div>
                                                     <div className="flex items-center gap-2 text-slate-500 mb-2">

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Head, usePage, router, useForm } from '@inertiajs/react';
 import axios from 'axios';
 import WebLayout from '@/Layouts/WebLayout';
-import LoginModal from '@/Components/Activity/LoginModal';
+import LoginModal from '@/Components/Auth/LoginModal';
 import MissingDataModal from '@/Components/Activity/MissingDataModal';
 import ProfileEditModal from '@/Components/Activity/ProfileEditModal';
 import PaymentDetailModal from '@/Components/Activity/PaymentDetailModal';
@@ -15,6 +15,7 @@ import ChatWidget from '@/Components/Activity/ChatWidget';
 import GalleryLightbox from '@/Components/Activity/GalleryLightbox';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import Swal from 'sweetalert2';
 
 export default function Detail({
     activity,
@@ -52,12 +53,12 @@ export default function Detail({
     const isVisible = (section) => {
         return visibleSections[section] !== false;
     };
-    
+
     const toggleSection = (section) => {
         const newValue = !isVisible(section);
         const newSections = { ...visibleSections, [section]: newValue };
         setVisibleSections(newSections);
-        
+
         axios.post(route('activity.toggle-section', activity.id), {
             section: section,
             visible: newValue
@@ -108,7 +109,7 @@ export default function Detail({
     // Handle Auto Enroll after Profile Update
     useEffect(() => {
         const pendingEnroll = sessionStorage.getItem('pending_enrollment');
-        
+
         if (pendingEnroll) {
             const { activityId, type } = JSON.parse(pendingEnroll);
             if (activityId === activity.id) {
@@ -128,6 +129,13 @@ export default function Detail({
             openManualPaymentModal({ is_bulk: 1 });
         }
     }, [flash, activity.id, activeBatch]);
+
+    // Handle Show Login Modal from Flash
+    useEffect(() => {
+        if (flash?.show_login_modal) {
+            setIsLoginModalOpen(true);
+        }
+    }, [flash]);
 
     const descriptionRef = useRef(null);
 
@@ -212,7 +220,7 @@ export default function Detail({
     const openManualPaymentModal = async (extraParams = {}) => {
         setIsManualPaymentLoading(true);
         setIsManualPaymentModalOpen(true);
-        
+
         try {
             const response = await axios.get(route('payments.create', {
                 activity: activity.id,
@@ -259,7 +267,11 @@ export default function Detail({
             console.error('Error fetching payment data:', error);
             // Handle specific error messages if available
             const msg = error.response?.data?.message || 'Gagal memuat data pembayaran. Silakan coba lagi.';
-            alert(msg);
+            Swal.fire({
+                icon: 'error',
+                title: 'Oops...',
+                text: msg
+            });
             setIsManualPaymentModalOpen(false);
         } finally {
             setIsManualPaymentLoading(false);
@@ -285,7 +297,7 @@ export default function Detail({
                 const currentPrice = activeBatch?.price !== undefined && activeBatch?.price !== null
                     ? Number(activeBatch.price)
                     : Number(activity.price);
-                
+
                 // Jika berbayar, arahkan langsung ke form pembayaran
                 if (currentPrice > 0) {
                     openManualPaymentModal();
@@ -350,21 +362,37 @@ export default function Detail({
                             }
                         } else {
                             // Handle if success is false but no error status code
-                            alert(response.data.message || 'Gagal memproses pendaftaran.');
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                text: response.data.message || 'Gagal memproses pendaftaran.'
+                            });
                         }
                     } catch (error) {
                         if (error.response && error.response.status === 422) {
                             // Jika error validasi (misal data belum lengkap yang terlewat), refresh atau tampilkan pesan
                             if (error.response.data.missing_fields) {
                                 // Harusnya sudah dicek di awal, tapi untuk jaga-jaga
-                                alert('Mohon lengkapi data profil Anda terlebih dahulu.');
+                                await Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Profil Belum Lengkap',
+                                    text: 'Mohon lengkapi data profil Anda terlebih dahulu.'
+                                });
                                 window.location.reload();
                             } else {
-                                alert(error.response.data.message || 'Terjadi kesalahan saat mendaftar.');
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal',
+                                    text: error.response.data.message || 'Terjadi kesalahan saat mendaftar.'
+                                });
                             }
                         } else {
                             console.error('Enroll error:', error);
-                            alert('Terjadi kesalahan sistem. Silakan coba lagi.');
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Terjadi kesalahan sistem. Silakan coba lagi.'
+                            });
                         }
                     }
                 } else if (registrationTarget.type === 'modal') {
@@ -378,7 +406,7 @@ export default function Detail({
 
     const handleMissingDataSuccess = () => {
         setIsMissingDataModalOpen(false);
-        
+
         // Immediate check for pending enrollment to trigger payment modal without reload
         const pendingEnroll = sessionStorage.getItem('pending_enrollment');
         if (pendingEnroll) {
@@ -386,7 +414,7 @@ export default function Detail({
                 const { activityId, type } = JSON.parse(pendingEnroll);
                 if (activityId === activity.id && type === 'mandiri') {
                     sessionStorage.removeItem('pending_enrollment');
-                    
+
                     // Directly open payment modal since we just saved the profile
                     openManualPaymentModal();
                     return;
@@ -400,28 +428,49 @@ export default function Detail({
         window.location.reload();
     };
 
-    const togglePriceVisibility = () => {
-        if (!confirm('Ubah visibilitas harga?')) return;
+    const togglePriceVisibility = async () => {
+        const result = await Swal.fire({
+            title: 'Ubah visibilitas harga?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Ubah',
+            cancelButtonText: 'Batal'
+        });
+
+        if (!result.isConfirmed) return;
 
         // Use Inertia to toggle price
         router.post(route('activity.toggle-price', activity.id), {}, {
             preserveScroll: true,
             onSuccess: (page) => {
-                // Assuming the controller returns updated activity or flash message
-                // Update local state if needed, or rely on page reload
-                // Since we don't have the controller code, we assume it redirects back
                 setShowPrice(!showPrice);
-                alert(page.props.flash?.message || 'Visibilitas harga berhasil diubah');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: page.props.flash?.message || 'Visibilitas harga berhasil diubah',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
             },
             onError: () => {
-                alert('Terjadi kesalahan saat mengubah visibilitas harga');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Terjadi kesalahan saat mengubah visibilitas harga'
+                });
             }
         });
     };
 
     const copyShareLink = () => {
         navigator.clipboard.writeText(window.location.href);
-        alert('Link berhasil disalin!');
+        Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: 'Link berhasil disalin!',
+            timer: 1500,
+            showConfirmButton: false
+        });
         setIsShareMenuOpen(false);
     };
 
@@ -683,11 +732,10 @@ export default function Detail({
                                 <button
                                     key={section.id}
                                     onClick={() => toggleSection(section.id)}
-                                    className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                        isVisible(section.id)
-                                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                                            : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
-                                    }`}
+                                    className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isVisible(section.id)
+                                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                        : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
+                                        }`}
                                 >
                                     <i className={`fas ${section.icon} mr-2 ${isVisible(section.id) ? 'text-indigo-500' : 'text-gray-400'}`}></i>
                                     {section.label}
@@ -703,97 +751,117 @@ export default function Detail({
                     <div className="lg:col-span-2 space-y-8">
                         {/* Description */}
                         {isVisible('description') && (
-                        <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4">Tentang Kegiatan</h2>
-                            <div
-                                ref={descriptionRef}
-                                className="prose max-w-none text-gray-600"
-                                dangerouslySetInnerHTML={{ __html: activity.description }}
-                            />
-                        </div>
+                            <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+                                <h2 className="text-2xl font-bold text-gray-900 mb-4">Tentang Kegiatan</h2>
+                                <div
+                                    ref={descriptionRef}
+                                    className="prose max-w-none text-gray-600"
+                                    dangerouslySetInnerHTML={{ __html: activity.description }}
+                                />
+                            </div>
                         )}
 
                         {/* Gallery */}
                         {isVisible('gallery') && (
-                        <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-2xl font-bold text-gray-900">Galeri</h2>
+                            <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-2xl font-bold text-gray-900">Galeri</h2>
+                                    {canEdit && (
+                                        <button
+                                            type="button"
+                                            onClick={() => document.getElementById('galleryInput').click()}
+                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-sm"
+                                        >
+                                            <i className="fas fa-plus mr-2"></i> Tambah Gambar
+                                        </button>
+                                    )}
+                                </div>
+
                                 {canEdit && (
-                                    <button
-                                        type="button"
-                                        onClick={() => document.getElementById('galleryInput').click()}
-                                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-sm"
-                                    >
-                                        <i className="fas fa-plus mr-2"></i> Tambah Gambar
-                                    </button>
+                                    <input
+                                        type="file"
+                                        id="galleryInput"
+                                        multiple
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            if (e.target.files.length > 0) {
+                                                const formData = new FormData();
+                                                Array.from(e.target.files).forEach(file => {
+                                                    formData.append('image[]', file);
+                                                });
+                                                router.post(route('gallery.store', activity.id), formData, {
+                                                    forceFormData: true,
+                                                    preserveScroll: true,
+                                                    onSuccess: () => Swal.fire({
+                                                        icon: 'success',
+                                                        title: 'Berhasil',
+                                                        text: 'Foto berhasil diunggah',
+                                                        timer: 1500,
+                                                        showConfirmButton: false
+                                                    }),
+                                                    onError: () => Swal.fire({
+                                                        icon: 'error',
+                                                        title: 'Gagal',
+                                                        text: 'Gagal mengunggah foto'
+                                                    }),
+                                                });
+                                                e.target.value = ''; // Reset input
+                                            }
+                                        }}
+                                    />
+                                )}
+
+                                {activity.galleries && activity.galleries.length > 0 ? (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {activity.galleries.map((image, index) => (
+                                            <div key={image.id} className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                                <img
+                                                    src={`/storage/activities/gallery/${image.image.replace('activities/gallery/', '').replace('storage/activities/gallery/', '')}`}
+                                                    alt="Gallery"
+                                                    className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-105 cursor-zoom-in"
+                                                    onClick={() => {
+                                                        setLightboxIndex(index);
+                                                        setIsLightboxOpen(true);
+                                                    }}
+                                                    onError={(e) => e.target.src = '/assets/images/begron/defoult.png'}
+                                                />
+                                                {canEdit && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            Swal.fire({
+                                                                title: 'Hapus foto ini?',
+                                                                text: "Foto tidak dapat dikembalikan",
+                                                                icon: 'warning',
+                                                                showCancelButton: true,
+                                                                confirmButtonColor: '#d33',
+                                                                cancelButtonColor: '#3085d6',
+                                                                confirmButtonText: 'Ya, Hapus!'
+                                                            }).then((result) => {
+                                                                if (result.isConfirmed) {
+                                                                    router.delete(route('gallery.destroy', { activity: activity.id, gallery: image.id }), {
+                                                                        preserveScroll: true
+                                                                    });
+                                                                }
+                                                            });
+                                                        }}
+                                                        className="absolute top-2 right-2 p-2 bg-danger/90 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger shadow-sm"
+                                                        title="Hapus"
+                                                    >
+                                                        <i className="fas fa-trash-alt text-xs"></i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                        <p className="text-gray-500">Belum ada foto galeri yang ditambahkan.</p>
+                                    </div>
                                 )}
                             </div>
-
-                            {canEdit && (
-                                <input
-                                    type="file"
-                                    id="galleryInput"
-                                    multiple
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        if (e.target.files.length > 0) {
-                                            const formData = new FormData();
-                                            Array.from(e.target.files).forEach(file => {
-                                                formData.append('image[]', file);
-                                            });
-                                            router.post(route('gallery.store', activity.id), formData, {
-                                                forceFormData: true,
-                                                preserveScroll: true,
-                                                onSuccess: () => alert('Foto berhasil diunggah'),
-                                                onError: () => alert('Gagal mengunggah foto'),
-                                            });
-                                            e.target.value = ''; // Reset input
-                                        }
-                                    }}
-                                />
-                            )}
-
-                            {activity.galleries && activity.galleries.length > 0 ? (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {activity.galleries.map((image, index) => (
-                                        <div key={image.id} className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                            <img
-                                                src={`/storage/activities/gallery/${image.image.replace('activities/gallery/', '').replace('storage/activities/gallery/', '')}`}
-                                                alt="Gallery"
-                                                className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-105 cursor-zoom-in"
-                                                onClick={() => {
-                                                    setLightboxIndex(index);
-                                                    setIsLightboxOpen(true);
-                                                }}
-                                                onError={(e) => e.target.src = '/assets/images/begron/defoult.png'}
-                                            />
-                                            {canEdit && (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (confirm('Hapus foto ini?')) {
-                                                            router.delete(route('gallery.destroy', { activity: activity.id, gallery: image.id }), {
-                                                                preserveScroll: true
-                                                            });
-                                                        }
-                                                    }}
-                                                    className="absolute top-2 right-2 p-2 bg-danger/90 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger shadow-sm"
-                                                    title="Hapus"
-                                                >
-                                                    <i className="fas fa-trash-alt text-xs"></i>
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                    <p className="text-gray-500">Belum ada foto galeri yang ditambahkan.</p>
-                                </div>
-                            )}
-                        </div>
                         )}
 
                         {/* Rating & Comments */}
@@ -950,55 +1018,55 @@ export default function Detail({
 
                         {/* Participants List */}
                         {isVisible('participants') && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[500px] overflow-hidden">
-                            <div className="px-6 py-4 border-b flex items-center justify-between bg-amber-50 border-yellow-200">
-                                <h5 className="m-0 font-bold text-yellow-800">Daftar Peserta</h5>
-                            </div>
-                            <div className="px-6 py-5 flex-1 flex flex-col min-h-0">
-                                <div className="mb-3">
-                                    <div className="relative">
-                                        <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                                        <input
-                                            type="search"
-                                            value={participantSearch}
-                                            onChange={(e) => setParticipantSearch(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                                            placeholder="Cari peserta..."
-                                        />
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[500px] overflow-hidden">
+                                <div className="px-6 py-4 border-b flex items-center justify-between bg-amber-50 border-yellow-200">
+                                    <h5 className="m-0 font-bold text-yellow-800">Daftar Peserta</h5>
+                                </div>
+                                <div className="px-6 py-5 flex-1 flex flex-col min-h-0">
+                                    <div className="mb-3">
+                                        <div className="relative">
+                                            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                            <input
+                                                type="search"
+                                                value={participantSearch}
+                                                onChange={(e) => setParticipantSearch(e.target.value)}
+                                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                                                placeholder="Cari peserta..."
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                                        {filteredParticipants && filteredParticipants.length > 0 ? (
+                                            <ul className="space-y-3">
+                                                {filteredParticipants.map((participant, index) => (
+                                                    <li key={participant.id || index} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                                                        <div className="flex-shrink-0">
+                                                            <img
+                                                                src={participant.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                                alt={participant.name}
+                                                                className="w-10 h-10 rounded-full object-cover"
+                                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                                            />
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-sm font-medium text-gray-900 truncate">
+                                                                {participant.name || 'Peserta'}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 truncate">
+                                                                {participant.pivot?.created_at ? new Date(participant.pivot.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (participant.created_at ? new Date(participant.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '')}
+                                                            </p>
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <div className="text-center py-8 text-gray-500">
+                                                {participantSearch ? 'Peserta tidak ditemukan' : 'Belum ada peserta'}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-                                    {filteredParticipants && filteredParticipants.length > 0 ? (
-                                        <ul className="space-y-3">
-                                            {filteredParticipants.map((participant, index) => (
-                                                <li key={participant.id || index} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                                                    <div className="flex-shrink-0">
-                                                        <img
-                                                            src={participant.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
-                                                            alt={participant.name}
-                                                            className="w-10 h-10 rounded-full object-cover"
-                                                            onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                                        />
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="text-sm font-medium text-gray-900 truncate">
-                                                            {participant.name || 'Peserta'}
-                                                        </p>
-                                                        <p className="text-xs text-gray-500 truncate">
-                                                            {participant.pivot?.created_at ? new Date(participant.pivot.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (participant.created_at ? new Date(participant.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '')}
-                                                        </p>
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <div className="text-center py-8 text-gray-500">
-                                            {participantSearch ? 'Peserta tidak ditemukan' : 'Belum ada peserta'}
-                                        </div>
-                                    )}
-                                </div>
                             </div>
-                        </div>
                         )}
                     </div>
                 </div>
@@ -1092,7 +1160,7 @@ export default function Detail({
             <ChatWidget
                 activityId={activity.id}
                 ownerId={activity.user_id}
-                ownerName={activity.creator?.name || 'Panitia'}
+                ownerName={activity.creator?.name || 'Penyelenggara'}
             />
 
             <GalleryLightbox

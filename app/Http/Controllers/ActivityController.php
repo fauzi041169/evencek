@@ -4954,7 +4954,7 @@ class ActivityController extends Controller
         // Get all participants with user profile
         $participants = ActivityUser::where('activity_id', $id)
             ->whereHas('user')
-            ->with(['user.profile.province'])
+            ->with(['user.profile.province', 'user.profile.regency', 'user.profile.district'])
             ->get()
             ->map(function ($participant) {
                 return [
@@ -4966,7 +4966,13 @@ class ActivityController extends Controller
                         'profile' => [
                             'province' => [
                                 'name' => $participant->user->profile?->province?->name,
-                            ]
+                            ],
+                            'regency' => [
+                                'name' => $participant->user->profile?->regency?->name,
+                            ],
+                            'district' => [
+                                'name' => $participant->user->profile?->district?->name,
+                            ],
                         ]
                     ],
                     'print_count' => $participant->print_count ?? 0,
@@ -4986,7 +4992,7 @@ class ActivityController extends Controller
 
         // Get committee members
         $committees = ActivityCommitteeStructure::where('activity_id', $id)
-            ->with(['user.profile.province'])
+            ->with(['user.profile.province', 'user.profile.regency', 'user.profile.district'])
             ->get()
             ->map(function ($member) {
                 return [
@@ -4998,7 +5004,13 @@ class ActivityController extends Controller
                         'profile' => [
                             'province' => [
                                 'name' => $member->user?->profile?->province?->name ?? '-',
-                            ]
+                            ],
+                            'regency' => [
+                                'name' => $member->user?->profile?->regency?->name ?? '-',
+                            ],
+                            'district' => [
+                                'name' => $member->user?->profile?->district?->name ?? '-',
+                            ],
                         ]
                     ],
                     'role' => $member->position,
@@ -5739,6 +5751,11 @@ class ActivityController extends Controller
             ->whereNotIn('user_id', $committeeUserIds)
             ->count();
 
+        // Total peserta terdaftar (termasuk panitia jika ada di activity_users)
+        $totalPesertaWithCommittee = DB::table($tableName)
+            ->where('activity_id', $activityId)
+            ->count();
+
         // Status peserta - EXCLUDING COMMITTEE
         $pesertaPending = DB::table($tableName)
             ->where('activity_id', $activityId)
@@ -5931,43 +5948,96 @@ class ActivityController extends Controller
             // Data pendaftaran diambil dari jumlah data yang diimput dari pendaftaran kelompok oleh user tersebut
             // dan dihitung berdasarkan jumlah orang dalam kelompok tersebut (dari bukti transfer)
             $registrations = [];
+            $committeeCreditedUsers = []; // [committee_id => [user_id => true]]
+            $committeeIdsArray = $userIds->toArray();
+
             if (Schema::hasTable('payments')) {
+                // Get all payments with notes for this activity
                 $payments = DB::table('payments')
                     ->where('activity_id', $activityId)
-                    ->whereIn('user_id', $userIds)
+                    ->whereNotNull('notes')
                     ->select('id', 'user_id', 'notes')
                     ->get();
 
                 foreach ($payments as $payment) {
-                    $count = 1; // Default 1 per payment
+                    $committeeId = null;
+                    $participantIds = [];
 
-                    // Check for group payment in notes
-                    if ($payment->notes) {
-                        $decoded = json_decode($payment->notes, true);
-                        // Handle mixed content/json extraction if needed
-                        if (!$decoded && str_contains($payment->notes, '{')) {
-                            $start = strpos($payment->notes, '{');
-                            $end = strrpos($payment->notes, '}');
-                            if ($start !== false && $end !== false) {
-                                $candidate = substr($payment->notes, $start, $end - $start + 1);
-                                $decoded = json_decode($candidate, true);
-                            }
-                        }
-
-                        if (is_array($decoded)) {
-                            $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
-                            if (!empty($uids) && is_array($uids)) {
-                                $uniqueUids = array_unique($uids);
-                                $count = count($uniqueUids);
-                            }
+                    // 1. Try JSON parsing
+                    $decoded = json_decode($payment->notes, true);
+                    // Handle mixed content/json extraction if needed
+                    if (!$decoded && str_contains($payment->notes, '{')) {
+                        $start = strpos($payment->notes, '{');
+                        $end = strrpos($payment->notes, '}');
+                        if ($start !== false && $end !== false) {
+                            $candidate = substr($payment->notes, $start, $end - $start + 1);
+                            $decoded = json_decode($candidate, true);
                         }
                     }
 
-                    if (!isset($registrations[$payment->user_id])) {
-                        $registrations[$payment->user_id] = 0;
+                    if (is_array($decoded)) {
+                        // Extract Committee ID
+                        if (isset($decoded['uploaded_by'])) {
+                            $committeeId = $decoded['uploaded_by'];
+                        }
+                        
+                        // Extract Participants
+                        $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
+                        if (!empty($uids) && is_array($uids)) {
+                            $participantIds = $uids;
+                        }
                     }
-                    $registrations[$payment->user_id] += $count;
+
+                    // 2. Try Regex if JSON didn't yield Committee ID
+                    if (!$committeeId) {
+                        if (preg_match('/by user\s+([A-Z0-9]+)/i', $payment->notes, $matches)) {
+                            $committeeId = $matches[1];
+                        }
+                    }
+
+                    // If we found a committee ID and it's one of our target committee members
+                    if ($committeeId && in_array($committeeId, $committeeIdsArray)) {
+                        if (!isset($committeeCreditedUsers[$committeeId])) {
+                            $committeeCreditedUsers[$committeeId] = [];
+                        }
+
+                        // If we found specific group members in JSON, add them
+                        if (!empty($participantIds)) {
+                            foreach ($participantIds as $uid) {
+                                $committeeCreditedUsers[$committeeId][$uid] = true;
+                            }
+                        } else {
+                            // Otherwise, just credit the payment's owner (single registration)
+                            $committeeCreditedUsers[$committeeId][$payment->user_id] = true;
+                        }
+                    }
                 }
+            }
+
+            // Tambahkan data dari hasil import (manual registration)
+            // Cek ActivityUser yang memiliki custom_data.importer_id
+            if (Schema::hasTable('activity_users')) {
+                $importedUsers = \App\Models\ActivityUser::where('activity_id', $activityId)
+                    ->where('custom_data', 'like', '%"importer_id"%')
+                    ->select('user_id', 'custom_data')
+                    ->get();
+
+                foreach ($importedUsers as $u) {
+                    $data = is_string($u->custom_data) ? json_decode($u->custom_data, true) : $u->custom_data;
+                    $importerId = $data['importer_id'] ?? null;
+                    
+                    if ($importerId && in_array($importerId, $committeeIdsArray)) {
+                        if (!isset($committeeCreditedUsers[$importerId])) {
+                            $committeeCreditedUsers[$importerId] = [];
+                        }
+                        $committeeCreditedUsers[$importerId][$u->user_id] = true;
+                    }
+                }
+            }
+
+            // Calculate final registration counts
+            foreach ($committeeIdsArray as $uid) {
+                $registrations[$uid] = isset($committeeCreditedUsers[$uid]) ? count($committeeCreditedUsers[$uid]) : 0;
             }
 
             // Count validations by user (verified_by from payments table)
@@ -6180,6 +6250,7 @@ class ActivityController extends Controller
         return Inertia::render('Activity/Dashboard', compact(
             'activity',
             'totalPeserta',
+            'totalPesertaWithCommittee',
             'pesertaPending',
             'pesertaAktif',
             'pesertaDitolak',

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
@@ -96,7 +96,7 @@ export default function UserIndex({ activity }) {
 
     return (
         <MainLayout>
-            <Head title={`Chat dengan Panitia - ${activity.name}`} />
+            <Head title={`Chat hubungi panitia - ${activity.name}`} />
             
             <div className="container mx-auto px-4 py-8">
                 <div className="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col h-[600px]">
@@ -110,7 +110,7 @@ export default function UserIndex({ activity }) {
                                 <i className="fas fa-arrow-left"></i>
                             </Link>
                             <div>
-                                <h1 className="text-lg font-bold">Hubungi Panitia</h1>
+                                <h1 className="text-lg font-bold">Chat hubungi panitia</h1>
                                 <p className="text-sm opacity-90">{activity.name}</p>
                             </div>
                         </div>
