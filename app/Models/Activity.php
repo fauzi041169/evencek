@@ -41,10 +41,12 @@ class Activity extends Model
         'column_settings',
         'mandatory_profile_fields',
         'manual_payment_details',
+        'visible_sections',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
+        'visible_sections' => 'array',
         'date' => 'date',
         'end_date' => 'date',
         'start_time' => 'datetime',

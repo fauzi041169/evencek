@@ -106,7 +106,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('activity.participants.rooms.store', activity.uid), {
+        post(route('activity.participants.rooms.store', { activityId: activity.uid || activity.id }), {
             onSuccess: () => {
                 reset();
             }
@@ -115,7 +115,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
     const handleImport = (e) => {
         e.preventDefault();
-        importForm.post(route('activity.participants.rooms.import', activity.uid), {
+        importForm.post(route('activity.participants.rooms.import', { activityId: activity.uid || activity.id }), {
             onSuccess: () => {
                 importForm.reset();
             }
@@ -157,12 +157,12 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
         if (confirm(confirmMsg)) {
             if (action === 'delete') {
-                router.delete(route(routeName, activity.uid), {
+                router.delete(route(routeName, { activityId: activity.uid || activity.id }), {
                     data: { ids: selectedRooms },
                     onSuccess: () => setSelectedRooms([])
                 });
             } else {
-                router.post(route(routeName, activity.uid), {
+                router.post(route(routeName, { activityId: activity.uid || activity.id }), {
                     ids: selectedRooms
                 }, {
                     onSuccess: () => setSelectedRooms([])
@@ -174,7 +174,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     // Simplified room assignment handler (just for demo, in real app might need more complex UI)
     const handleAssignParticipant = (roomId, userId) => {
         if (!userId) return;
-        router.post(route('activity.participants.assign-room', activity.uid), {
+        router.post(route('activity.participants.assign-room', { activityId: activity.uid || activity.id }), {
             room_id: roomId,
             user_id: userId
         }, {
@@ -187,7 +187,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
     const handleRemoveParticipant = (roomId, userId) => {
         if (!confirm('Keluarkan peserta dari kamar ini?')) return;
-        router.post(route('activity.participants.assign-room', activity.uid), {
+        router.post(route('activity.participants.assign-room', { activityId: activity.uid || activity.id }), {
             room_id: '', // Unassign
             user_id: userId
         }, {
@@ -218,241 +218,253 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
                             {/* Add Room Form */}
 
-                        {/* Tabs */}
-                        <div className="flex border-b border-gray-200 mb-4">
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('manual')}
-                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'manual'
-                                    ? 'border-indigo-600 text-indigo-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Plus className="w-4 h-4" />
-                                    Tambah Manual
-                                </div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setActiveTab('import')}
-                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'import'
-                                    ? 'border-indigo-600 text-indigo-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Upload className="w-4 h-4" />
-                                    Import Excel
-                                </div>
-                            </button>
-                        </div>
-
-                        {/* Add Room Form */}
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                            {activeTab === 'manual' ? (
-                                <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-3 items-end">
-                                    <div className="col-span-12 sm:col-span-3">
-                                        <label className="block text-sm text-gray-700 font-medium mb-1">Hotel</label>
-                                        <input
-                                            type="text"
-                                            list="hotel-suggestions"
-                                            value={data.hotel_name}
-                                            onChange={e => setData('hotel_name', e.target.value)}
-                                            className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                            placeholder="Nama/Kode Hotel"
-                                        />
-                                        <datalist id="hotel-suggestions">
-                                            {hotels.map((h, i) => <option key={i} value={h} />)}
-                                        </datalist>
-                                        {errors.hotel_name && <p className="text-red-500 text-xs">{errors.hotel_name}</p>}
-                                    </div>
-                                    <div className="col-span-12 sm:col-span-2">
-                                        <label className="block text-sm text-gray-700 font-medium mb-1">Nomor Kamar</label>
-                                        <input
-                                            type="text"
-                                            value={data.room_number}
-                                            onChange={e => setData('room_number', e.target.value)}
-                                            className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                            required
-                                            placeholder="Contoh: 101"
-                                        />
-                                        {errors.room_number && <p className="text-red-500 text-xs">{errors.room_number}</p>}
-                                    </div>
-                                    <div className="col-span-6 sm:col-span-2">
-                                        <label className="block text-sm text-gray-700 font-medium mb-1">Kapasitas</label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="1000"
-                                            value={data.capacity}
-                                            onChange={e => setData('capacity', e.target.value)}
-                                            className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                        />
-                                    </div>
-                                    <div className="col-span-6 sm:col-span-3">
-                                        <label className="block text-sm text-gray-700 font-medium mb-1">Catatan</label>
-                                        <input
-                                            type="text"
-                                            value={data.notes}
-                                            onChange={e => setData('notes', e.target.value)}
-                                            className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                                            placeholder="Keterangan"
-                                        />
-                                    </div>
-                                    <div className="col-span-12 sm:col-span-2">
-                                        <button
-                                            type="submit"
-                                            disabled={processing}
-                                            className="rounded-lg bg-sky-600 px-4 py-2 text-white text-sm font-semibold hover:bg-sky-700 w-full flex justify-center items-center gap-2"
-                                        >
-                                            <Plus className="w-4 h-4" /> Tambah
-                                        </button>
-                                    </div>
-                                </form>
-                            ) : (
-                                <form onSubmit={handleImport} className="flex flex-col sm:flex-row items-center gap-3 animate-in fade-in">
-                                    <div className="w-full sm:w-auto flex-grow">
-                                        <label className="block text-xs text-gray-500 mb-1">Import Excel (.xlsx, .csv)</label>
-                                        <input
-                                            type="file"
-                                            accept=".xlsx,.xls,.csv"
-                                            onChange={e => importForm.setData('file', e.target.files[0])}
-                                            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-primary/10"
-                                            required
-                                        />
-                                        {importForm.errors.file && <p className="text-red-500 text-xs">{importForm.errors.file}</p>}
-                                    </div>
-                                    <div className="flex gap-2 w-full sm:w-auto mt-auto">
-                                        <a
-                                            href={route('activity.participants.rooms.template', activity.uid)}
-                                            title="Unduh Template"
-                                            className="inline-flex items-center justify-center rounded-lg bg-gray-800 text-white px-4 py-2 text-sm font-semibold h-[38px] hover:bg-gray-900"
-                                        >
-                                            <Download className="w-4 h-4" />
-                                        </a>
-                                        <button
-                                            type="submit"
-                                            disabled={importForm.processing}
-                                            className="rounded-lg bg-primary px-4 py-2 text-white text-sm font-semibold hover:bg-purple-700 h-[38px] flex items-center gap-2"
-                                        >
-                                            <Upload className="w-4 h-4" /> Impor
-                                        </button>
-                                    </div>
-                                </form>
-                            )}
-                        </div>
-
-                        {/* Bulk Actions */}
-                        {selectedRooms.length > 0 && (
-                            <div className="px-4 py-2 border rounded-t-lg flex justify-between items-center mb-2 bg-red-50 border-red-200">
-                                <span className="text-sm font-medium text-red-700">{selectedRooms.length} kamar terpilih</span>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => handleBulkAction('activate')} className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1">
-                                        <CheckCircle className="w-3 h-3" /> Aktifkan
+                            {/* Tabs */}
+                            <div className="flex justify-between items-center border-b border-gray-200 mb-4">
+                                <div className="flex">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('manual')}
+                                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'manual'
+                                            ? 'border-indigo-600 text-indigo-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Plus className="w-4 h-4" />
+                                            Tambah Manual
+                                        </div>
                                     </button>
-                                    <button onClick={() => handleBulkAction('deactivate')} className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1">
-                                        <Ban className="w-3 h-3" /> Nonaktifkan
-                                    </button>
-                                    <button onClick={() => handleBulkAction('delete')} className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1">
-                                        <Trash2 className="w-3 h-3" /> Hapus
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('import')}
+                                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'import'
+                                            ? 'border-indigo-600 text-indigo-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Upload className="w-4 h-4" />
+                                            Import Excel
+                                        </div>
                                     </button>
                                 </div>
+                                {rooms.length > 0 && (
+                                    <button 
+                                        type="button"
+                                        onClick={handleDeleteAll}
+                                        className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-t-lg transition-colors flex items-center gap-2"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Hapus Semua Data
+                                    </button>
+                                )}
                             </div>
-                        )}
 
-                        {/* Rooms List */}
-                        <div className="rounded-lg border border-gray-200">
-                            <table className="min-w-full text-sm divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left w-10">
+                            {/* Add Room Form */}
+                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                                {activeTab === 'manual' ? (
+                                    <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-3 items-end">
+                                        <div className="col-span-12 sm:col-span-3">
+                                            <label className="block text-sm text-gray-700 font-medium mb-1">Hotel</label>
                                             <input
-                                                type="checkbox"
-                                                onChange={toggleSelectAll}
-                                                checked={rooms.length > 0 && selectedRooms.length === rooms.length}
-                                                className="rounded border-gray-300 text-primary focus:ring-indigo-500"
+                                                type="text"
+                                                list="hotel-suggestions"
+                                                value={data.hotel_name}
+                                                onChange={e => setData('hotel_name', e.target.value)}
+                                                className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                                placeholder="Nama/Kode Hotel"
                                             />
-                                        </th>
-                                        <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
-                                        <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Nomor</th>
-                                        <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Kapasitas</th>
-                                        <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Terisi</th>
-                                        <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Catatan</th>
-                                        <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {rooms.length > 0 ? (
-                                        rooms.map((room) => {
-                                            const occupants = roomOccupants[room.id] || [];
-                                            const isFull = room.capacity > 0 && occupants.length >= room.capacity;
+                                            <datalist id="hotel-suggestions">
+                                                {hotels.map((h, i) => <option key={i} value={h} />)}
+                                            </datalist>
+                                            {errors.hotel_name && <p className="text-red-500 text-xs">{errors.hotel_name}</p>}
+                                        </div>
+                                        <div className="col-span-12 sm:col-span-2">
+                                            <label className="block text-sm text-gray-700 font-medium mb-1">Nomor Kamar</label>
+                                            <input
+                                                type="text"
+                                                value={data.room_number}
+                                                onChange={e => setData('room_number', e.target.value)}
+                                                className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                                required
+                                                placeholder="Contoh: 101"
+                                            />
+                                            {errors.room_number && <p className="text-red-500 text-xs">{errors.room_number}</p>}
+                                        </div>
+                                        <div className="col-span-6 sm:col-span-2">
+                                            <label className="block text-sm text-gray-700 font-medium mb-1">Kapasitas</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="1000"
+                                                value={data.capacity}
+                                                onChange={e => setData('capacity', e.target.value)}
+                                                className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                            />
+                                        </div>
+                                        <div className="col-span-6 sm:col-span-3">
+                                            <label className="block text-sm text-gray-700 font-medium mb-1">Catatan</label>
+                                            <input
+                                                type="text"
+                                                value={data.notes}
+                                                onChange={e => setData('notes', e.target.value)}
+                                                className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                                placeholder="Keterangan"
+                                            />
+                                        </div>
+                                        <div className="col-span-12 sm:col-span-2">
+                                            <button
+                                                type="submit"
+                                                disabled={processing}
+                                                className="rounded-lg bg-sky-600 px-4 py-2 text-white text-sm font-semibold hover:bg-sky-700 w-full flex justify-center items-center gap-2"
+                                            >
+                                                <Plus className="w-4 h-4" /> Tambah
+                                            </button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <form onSubmit={handleImport} className="flex flex-col sm:flex-row items-center gap-3 animate-in fade-in">
+                                        <div className="w-full sm:w-auto flex-grow">
+                                            <label className="block text-xs text-gray-500 mb-1">Import Excel (.xlsx, .csv)</label>
+                                            <input
+                                                type="file"
+                                                accept=".xlsx,.xls,.csv"
+                                                onChange={e => importForm.setData('file', e.target.files[0])}
+                                                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-primary/10"
+                                                required
+                                            />
+                                            {importForm.errors.file && <p className="text-red-500 text-xs">{importForm.errors.file}</p>}
+                                        </div>
+                                        <div className="flex gap-2 w-full sm:w-auto mt-auto">
+                                            <a
+                                                href={route('activity.participants.rooms.template', { activityId: activity.uid || activity.id })}
+                                                title="Unduh Template"
+                                                className="inline-flex items-center justify-center rounded-lg bg-gray-800 text-white px-4 py-2 text-sm font-semibold h-[38px] hover:bg-gray-900"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                            </a>
+                                            <button
+                                                type="submit"
+                                                disabled={importForm.processing}
+                                                className="rounded-lg bg-primary px-4 py-2 text-white text-sm font-semibold hover:bg-purple-700 h-[38px] flex items-center gap-2"
+                                            >
+                                                <Upload className="w-4 h-4" /> Impor
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+                            </div>
 
-                                            return (
-                                                <tr key={room.id} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-2 whitespace-nowrap">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedRooms.includes(room.id)}
-                                                            onChange={() => toggleSelectRoom(room.id)}
-                                                            className="rounded border-gray-300 text-primary focus:ring-indigo-500"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-2 whitespace-nowrap">{room.hotel_name || '-'}</td>
-                                                    <td className="px-4 py-2 whitespace-nowrap font-medium">{room.room_number}</td>
-                                                    <td className="px-4 py-2 whitespace-nowrap">{(room.capacity > 0 ? room.capacity : 'Tak terbatas')}</td>
-                                                    <td className="px-4 py-2 whitespace-normal min-w-[200px]">
-                                                        <div className="flex flex-col gap-1">
-                                                            {occupants.map(occ => (
-                                                                <div key={occ.id} className="flex justify-between items-center bg-blue-50 px-2 py-1 rounded text-xs border border-blue-100">
-                                                                    <span className="truncate font-medium text-secondary max-w-[150px]" title={occ.name}>{occ.name}</span>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleRemoveParticipant(room.id, occ.id)}
-                                                                        className="text-red-400 hover:text-red-600 ml-1 p-0.5 rounded hover:bg-red-50"
-                                                                        title="Keluarkan"
-                                                                    >
-                                                                        <X className="w-3 h-3" />
-                                                                    </button>
-                                                                </div>
-                                                            ))}
+                            {/* Bulk Actions */}
+                            {selectedRooms.length > 0 && (
+                                <div className="px-4 py-2 border rounded-t-lg flex justify-between items-center mb-2 bg-red-50 border-red-200">
+                                    <span className="text-sm font-medium text-red-700">{selectedRooms.length} kamar terpilih</span>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => handleBulkAction('activate')} className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1">
+                                            <CheckCircle className="w-3 h-3" /> Aktifkan
+                                        </button>
+                                        <button onClick={() => handleBulkAction('deactivate')} className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1">
+                                            <Ban className="w-3 h-3" /> Nonaktifkan
+                                        </button>
+                                        <button onClick={() => handleBulkAction('delete')} className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1">
+                                            <Trash2 className="w-3 h-3" /> Hapus
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
-                                                            {!isFull && (
-                                                                <SearchableParticipantSelect
-                                                                    participants={unassignedParticipants}
-                                                                    onSelect={(userId) => handleAssignParticipant(room.id, userId)}
-                                                                />
-                                                            )}
-
-                                                            <div className="text-[10px] text-gray-400 text-right mt-0.5">
-                                                                {occupants.length} / {room.capacity > 0 ? room.capacity : '∞'}
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-2 whitespace-nowrap text-gray-500">{room.notes}</td>
-                                                    <td className="px-4 py-2 whitespace-nowrap text-right">
-                                                        <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${room.is_active ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                                            {room.is_active ? 'Aktif' : 'Tidak Aktif'}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    ) : (
+                            {/* Rooms List */}
+                            <div className="rounded-lg border border-gray-200">
+                                <table className="min-w-full text-sm divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
                                         <tr>
-                                            <td colSpan="7" className="px-4 py-8 text-center text-gray-500 italic">
-                                                Belum ada kamar.
-                                            </td>
+                                            <th className="px-4 py-3 text-left w-10">
+                                                <input
+                                                    type="checkbox"
+                                                    onChange={toggleSelectAll}
+                                                    checked={rooms.length > 0 && selectedRooms.length === rooms.length}
+                                                    className="rounded border-gray-300 text-primary focus:ring-indigo-500"
+                                                />
+                                            </th>
+                                            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
+                                            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Nomor</th>
+                                            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Kapasitas</th>
+                                            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Terisi</th>
+                                            <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Catatan</th>
+                                            <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                         </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {rooms.length > 0 ? (
+                                            rooms.map((room) => {
+                                                const occupants = roomOccupants[room.id] || [];
+                                                const isFull = room.capacity > 0 && occupants.length >= room.capacity;
+
+                                                return (
+                                                    <tr key={room.id} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-2 whitespace-nowrap">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedRooms.includes(room.id)}
+                                                                onChange={() => toggleSelectRoom(room.id)}
+                                                                className="rounded border-gray-300 text-primary focus:ring-indigo-500"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-2 whitespace-nowrap">{room.hotel_name || '-'}</td>
+                                                        <td className="px-4 py-2 whitespace-nowrap font-medium">{room.room_number}</td>
+                                                        <td className="px-4 py-2 whitespace-nowrap">{(room.capacity > 0 ? room.capacity : 'Tak terbatas')}</td>
+                                                        <td className="px-4 py-2 whitespace-normal min-w-[200px]">
+                                                            <div className="flex flex-col gap-1">
+                                                                {occupants.map(occ => (
+                                                                    <div key={occ.id} className="flex justify-between items-center bg-blue-50 px-2 py-1 rounded text-xs border border-blue-100">
+                                                                        <span className="truncate font-medium text-secondary max-w-[150px]" title={occ.name}>{occ.name}</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleRemoveParticipant(room.id, occ.id)}
+                                                                            className="text-red-400 hover:text-red-600 ml-1 p-0.5 rounded hover:bg-red-50"
+                                                                            title="Keluarkan"
+                                                                        >
+                                                                            <X className="w-3 h-3" />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+
+                                                                {!isFull && (
+                                                                    <SearchableParticipantSelect
+                                                                        participants={unassignedParticipants}
+                                                                        onSelect={(userId) => handleAssignParticipant(room.id, userId)}
+                                                                    />
+                                                                )}
+
+                                                                <div className="text-[10px] text-gray-400 text-right mt-0.5">
+                                                                    {occupants.length} / {room.capacity > 0 ? room.capacity : '∞'}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-2 whitespace-nowrap text-gray-500">{room.notes}</td>
+                                                        <td className="px-4 py-2 whitespace-nowrap text-right">
+                                                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${room.is_active ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                                {room.is_active ? 'Aktif' : 'Tidak Aktif'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="7" className="px-4 py-8 text-center text-gray-500 italic">
+                                                    Belum ada kamar.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>,
-    document.body
-);
+        </div>,
+        document.body
+    );
 }

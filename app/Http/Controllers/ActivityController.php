@@ -376,6 +376,155 @@ class ActivityController extends Controller
     }
 
 
+
+    public function duplicate(Request $request, Activity $activity)
+    {
+        if (!auth()->check()) {
+            return redirect()->back()->with('error', 'Unauthorized');
+        }
+
+        // Check permission
+        $user = auth()->user();
+        $isOwner = $activity->user_id === $user->id;
+        $isAdditionalOwner = $activity->owners()->where('user_id', $user->id)->exists();
+        $canManage = $user->isSuperAdmin() || $user->isAdmin() || $isOwner || $isAdditionalOwner;
+
+        if (!$canManage) {
+            return redirect()->back()->with('error', 'Unauthorized');
+        }
+
+        DB::beginTransaction();
+        try {
+            // Duplicate Activity
+            $newActivity = $activity->replicate();
+            $newActivity->name = $activity->name . ' (Copy)';
+            $newActivity->status = 'draft';
+            $newActivity->pendaftaran = Activity::REGISTRATION_NOT_OPENED;
+            $newActivity->created_at = now();
+            $newActivity->updated_at = now();
+            $newActivity->uid = null;
+            $newActivity->save();
+
+            // Duplicate Batches and their specific settings
+            foreach ($activity->batches as $batch) {
+                $newBatch = $batch->replicate();
+                $newBatch->activity_id = $newActivity->id;
+                $newBatch->created_at = now();
+                $newBatch->updated_at = now();
+                $newBatch->save();
+
+                // Duplicate Batch Card Settings
+                $batchCardSettings = CardSettings::where('activity_batch_id', $batch->id)->get();
+                foreach ($batchCardSettings as $setting) {
+                    $newSetting = $setting->replicate();
+                    $newSetting->activity_id = $newActivity->id;
+                    $newSetting->activity_batch_id = $newBatch->id;
+                    $newSetting->save();
+                }
+
+                // Duplicate Batch Certificate Settings
+                $batchCertSettings = CertificateSettings::where('activity_batch_id', $batch->id)->get();
+                foreach ($batchCertSettings as $setting) {
+                    $newSetting = $setting->replicate();
+                    $newSetting->activity_id = $newActivity->id;
+                    $newSetting->activity_batch_id = $newBatch->id;
+                    $newSetting->save();
+                }
+            }
+
+            // Duplicate Rundowns
+            foreach ($activity->rundowns as $rundown) {
+                $newRundown = $rundown->replicate();
+                $newRundown->activity_id = $newActivity->id;
+                $newRundown->created_at = now();
+                $newRundown->updated_at = now();
+                $newRundown->save();
+            }
+
+            // Duplicate Materials
+            foreach ($activity->materials as $material) {
+                $newMaterial = $material->replicate();
+                $newMaterial->activity_id = $newActivity->id;
+                $newMaterial->created_at = now();
+                $newMaterial->updated_at = now();
+                $newMaterial->save();
+            }
+
+            // Duplicate Galleries
+            foreach ($activity->galleries as $gallery) {
+                $newGallery = $gallery->replicate();
+                $newGallery->activity_id = $newActivity->id;
+                $newGallery->created_at = now();
+                $newGallery->updated_at = now();
+                $newGallery->save();
+            }
+
+            // Duplicate Speakers
+            foreach ($activity->speakers as $speaker) {
+                $newSpeaker = $speaker->replicate();
+                $newSpeaker->activity_id = $newActivity->id;
+                $newSpeaker->created_at = now();
+                $newSpeaker->updated_at = now();
+                $newSpeaker->save();
+            }
+
+            // Duplicate Participant Groups
+            foreach ($activity->participantGroups as $group) {
+                $newGroup = $group->replicate();
+                $newGroup->activity_id = $newActivity->id;
+                $newGroup->created_at = now();
+                $newGroup->updated_at = now();
+                $newGroup->save();
+            }
+
+            // Duplicate Divisions
+            foreach ($activity->divisions as $division) {
+                $newDivision = $division->replicate();
+                $newDivision->activity_id = $newActivity->id;
+                $newDivision->created_at = now();
+                $newDivision->updated_at = now();
+                $newDivision->save();
+            }
+
+            // Duplicate Committee Structures
+            foreach ($activity->committeeStructures as $committee) {
+                $newCommittee = $committee->replicate();
+                $newCommittee->activity_id = $newActivity->id;
+                $newCommittee->created_at = now();
+                $newCommittee->updated_at = now();
+                $newCommittee->save();
+            }
+
+            // Duplicate Global Card Settings (where batch_id is null)
+            $globalCardSettings = CardSettings::where('activity_id', $activity->id)->whereNull('activity_batch_id')->get();
+            foreach ($globalCardSettings as $setting) {
+                $newSetting = $setting->replicate();
+                $newSetting->activity_id = $newActivity->id;
+                $newSetting->save();
+            }
+
+            // Duplicate Global Certificate Settings
+            $globalCertSettings = CertificateSettings::where('activity_id', $activity->id)->whereNull('activity_batch_id')->get();
+            foreach ($globalCertSettings as $setting) {
+                $newSetting = $setting->replicate();
+                $newSetting->activity_id = $newActivity->id;
+                $newSetting->save();
+            }
+
+            // Owners
+            $newActivity->owners()->sync($activity->owners->pluck('id'));
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Aktivitas berhasil diduplikasi.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Activity duplication failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menduplikasi aktivitas: ' . $e->getMessage());
+        }
+    }
+
     public function show(Activity $activity)
     {
         // Load user relationship for chat widget
@@ -1472,6 +1621,7 @@ class ActivityController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
             'mandatory_profile_fields' => 'nullable|array',
             'manual_payment_details' => 'nullable|array',
+            'visible_sections' => 'nullable|array',
         ]);
 
         // Custom validation for end_time
@@ -2880,6 +3030,41 @@ class ActivityController extends Controller
         return Inertia::render('Activity/Manage', compact('activities'));
     }
 
+    /**
+     * Toggle section visibility
+     */
+    public function toggleSectionVisibility(Request $request, $id)
+    {
+        $activity = Activity::findOrFail($id);
+        $user = auth()->user();
+
+        if ($user->isAdmin() || $user->isSuperAdmin()) {
+            // Allowed
+        } elseif ($user->isCreator()) {
+            $isCreator = $activity->user_id === $user->id;
+            $isOwner = $activity->owners()->where('user_id', $user->id)->exists();
+
+            if (! $isCreator && ! $isOwner) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+        } else {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'section' => 'required|string',
+            'visible' => 'required|boolean',
+        ]);
+
+        $visibleSections = $activity->visible_sections ?? [];
+        $visibleSections[$validated['section']] = $validated['visible'];
+        
+        $activity->visible_sections = $visibleSections;
+        $activity->save();
+
+        return back()->with('success', 'Visibilitas diperbarui');
+    }
+
     public function detail(Activity $activity, Request $request)
     {
         // Load user relationship for chat widget
@@ -2947,7 +3132,8 @@ class ActivityController extends Controller
             },
             'comments.user',
             'comments.children.user',
-            'galleries'
+            'galleries',
+            'materials'
         ]);
 
         if (config('activity.payment_backfill_enabled', false)) {
@@ -3177,6 +3363,7 @@ class ActivityController extends Controller
                                 // Masih menunggu verifikasi: tetap ke detail pembayaran
                                 $completePaymentLabel = 'Lihat Detail Pembayaran';
                                 $completePaymentInfo = 'Pendaftaran Anda sedang diverifikasi';
+                                $completePaymentUrl = null; // Trigger modal instead of redirect
                             }
                         } else {
                             // Belum upload bukti
@@ -4579,6 +4766,119 @@ class ActivityController extends Controller
     /**
      * Show certificates page with list of participants (React).
      */
+    /**
+     * Show certificate design page.
+     */
+    public function designCertificate(Request $request, $id)
+    {
+        if (!auth()->check()) {
+            return redirect()->route('login');
+        }
+
+        $activity = Activity::where('id', $id)->orWhere('uid', $id)->firstOrFail();
+        $id = $activity->id;
+        $user = auth()->user();
+
+        // Check permission (must be able to manage)
+        $isCreator = $activity->user_id === $user->id;
+        $isAdmin = $user->isAdmin() || $user->isSuperAdmin();
+        
+        if (! ($isCreator || $isAdmin)) {
+            if (method_exists($activity, 'canManageRegistration')) {
+                if (!$activity->canManageRegistration($user->id)) {
+                    return redirect()->route('activity.show', $id)->with('error', 'Unauthorized');
+                }
+            } else {
+                return redirect()->route('activity.show', $id)->with('error', 'Unauthorized');
+            }
+        }
+        
+        // Load settings
+        $certificateSettingsModel = CertificateSettings::where('activity_id', $id)->first();
+        $certificateSetting = $certificateSettingsModel ? $certificateSettingsModel->certificate_setting : null;
+
+        // Define available columns
+        $availableColumns = [
+            // Standard User Columns
+            ['key' => 'name', 'label' => 'Nama Lengkap', 'group' => 'User'],
+            ['key' => 'email', 'label' => 'Email', 'group' => 'User'],
+            ['key' => 'certificate_id', 'label' => 'Nomor Sertifikat', 'group' => 'System'],
+            ['key' => 'qr_code', 'label' => 'QR Code', 'group' => 'System'],
+            
+            // Standard Profile Columns
+            ['key' => 'no_hp', 'label' => 'No HP', 'group' => 'Profile'],
+            ['key' => 'nik', 'label' => 'NIK', 'group' => 'Profile'],
+            ['key' => 'pekerjaan', 'label' => 'Pekerjaan', 'group' => 'Profile'],
+            ['key' => 'instansi', 'label' => 'Instansi', 'group' => 'Profile'],
+            ['key' => 'jabatan', 'label' => 'Jabatan', 'group' => 'Profile'],
+            ['key' => 'alamat', 'label' => 'Alamat', 'group' => 'Profile'],
+            ['key' => 'jenis_kelamin', 'label' => 'Jenis Kelamin', 'group' => 'Profile'],
+            ['key' => 'birth_place', 'label' => 'Tempat Lahir', 'group' => 'Profile'],
+            ['key' => 'birth_date', 'label' => 'Tanggal Lahir', 'group' => 'Profile'],
+            ['key' => 'province', 'label' => 'Provinsi', 'group' => 'Region'],
+            ['key' => 'regency', 'label' => 'Kabupaten/Kota', 'group' => 'Region'],
+            ['key' => 'district', 'label' => 'Kecamatan', 'group' => 'Region'],
+        ];
+
+        // Custom Columns from Activity (import_template or column_settings)
+        $customKeys = [];
+        if (!empty($activity->column_settings) && is_array($activity->column_settings)) {
+            foreach ($activity->column_settings as $col) {
+                $key = $col['name'] ?? $col['key'] ?? $col;
+                if (!in_array($key, $customKeys)) {
+                    $availableColumns[] = ['key' => $key, 'label' => ($col['label'] ?? $key), 'group' => 'Activity Custom'];
+                    $customKeys[] = $key;
+                }
+            }
+        } 
+        
+        if (!empty($activity->import_template)) {
+            $cols = explode(',', $activity->import_template);
+            $standardKeys = array_map(function($c) { return $c['key']; }, $availableColumns);
+            // Add some implicit standard keys that might be in template but we already handled
+            $standardKeys = array_merge($standardKeys, ['password']); 
+
+            foreach ($cols as $col) {
+                $col = trim($col);
+                if (str_contains($col, '|')) $col = explode('|', $col)[0];
+                if (str_ends_with($col, '*')) $col = substr($col, 0, -1);
+                
+                // key normalization
+                $key = strtolower($col);
+                if (str_starts_with($key, 'user:')) $key = substr($key, 5);
+                if (str_starts_with($key, 'profile:')) $key = substr($key, 8);
+                
+                // Map common Indonesian terms
+                $map = [
+                    'nama_lengkap' => 'name',
+                    'nama' => 'name',
+                    'ponsel' => 'no_hp',
+                    'hp' => 'no_hp',
+                    'wa' => 'no_hp',
+                    'gender' => 'jenis_kelamin',
+                    'institusi' => 'instansi',
+                    'asal' => 'instansi',
+                ];
+                if (isset($map[$key])) $key = $map[$key];
+
+                if (!in_array($key, $standardKeys) && !in_array($key, $customKeys)) {
+                     // Check if it's not empty
+                     if (!empty($key)) {
+                        $availableColumns[] = ['key' => $key, 'label' => ucfirst($col), 'group' => 'Custom'];
+                        $customKeys[] = $key;
+                     }
+                }
+            }
+        }
+
+        return Inertia::render('Activity/Certificate/Design', [
+            'activity' => $activity,
+            'certificateSetting' => $certificateSetting,
+            'user' => $user->load(['profile']),
+            'availableColumns' => $availableColumns,
+        ]);
+    }
+
     public function showCertificates($id)
     {
         $activity = Activity::where('id', $id)->orWhere('uid', $id)->firstOrFail();

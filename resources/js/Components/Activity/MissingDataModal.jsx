@@ -114,6 +114,7 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
 
                     <form id="missing-data-form" onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
                         {/* Profile Photo Section - Card Style */}
+                        {missingData.some(f => f.key === 'foto' || f.key === 'photo') && (
                         <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                             <label className="block text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <i className="fas fa-camera text-indigo-500"></i>
@@ -162,10 +163,13 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                                 </div>
                             </div>
                         </div>
+                        )}
 
                         {/* Dynamic Fields - Grid Layout */}
                         <div className="grid grid-cols-1 gap-5">
-                            {missingData.map((originalField, index) => {
+                            {missingData
+                                .filter(f => f.key !== 'foto' && f.key !== 'photo')
+                                .map((originalField, index) => {
                                 // Parse Dropdown syntax from label or key
                                 // Format: "Label|Dropdown:Option1~Option2~Option3"
                                 let isDropdown = originalField.type === 'select';

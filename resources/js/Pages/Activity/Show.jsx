@@ -52,6 +52,27 @@ export default function Show({
     const [paymentModalData, setPaymentModalData] = useState(null);
     const [loadingPaymentModal, setLoadingPaymentModal] = useState(false);
 
+    // Visibility Logic
+    const [visibleSections, setVisibleSections] = useState(activity.visible_sections || {});
+    const isVisible = (section) => {
+        // Default visible if not explicitly set to false
+        return visibleSections[section] !== false;
+    };
+
+    const toggleSection = (section) => {
+        const newValue = !isVisible(section);
+        const newSections = { ...visibleSections, [section]: newValue };
+        setVisibleSections(newSections);
+
+        axios.post(route('activity.toggle-section', activity.id), {
+            section: section,
+            visible: newValue
+        }).catch(err => {
+            console.error('Failed to toggle section visibility', err);
+            // Revert local state on error if needed, but for now let's keep it optimistic
+        });
+    };
+
     // Hero Animation Logic
     const heroAnim = appSettings?.hero_animation_style || 'circles';
 
@@ -66,12 +87,13 @@ export default function Show({
                     setPaymentModalData(res.data);
                     setShowPaymentModal(true);
                 } else {
-                    window.location.href = route('payments.create', activity.id);
+                    // Show error in alert instead of redirecting
+                    alert('Gagal memuat form pembayaran. Silakan coba lagi.');
                 }
             })
             .catch(err => {
                 console.error('Error fetching payment data:', err);
-                window.location.href = route('payments.create', activity.id);
+                alert('Terjadi kesalahan saat memuat data pembayaran.');
             })
             .finally(() => setLoadingPaymentModal(false));
     };
@@ -265,289 +287,221 @@ export default function Show({
 
     return (
         <WebLayout>
-            <div className="pt-4 pb-12">
+            <div className="pb-12">
                 <Head title={`Detail - ${activity.name}`} />
 
                 <style>{`
-                    .hero-modern {
+                    .hero-grow {
                         position: relative;
-                        min-height: 600px;
+                        background-color: #1a1b3a; /* Deep Blue */
                         overflow: hidden;
-                        display: flex;
-                        align-items: center;
                         font-family: 'Plus Jakarta Sans', sans-serif;
                     }
-                    
-                    /* Modern Gradient Background */
-                    .hero-modern-bg {
+
+                    /* Top Right White Curve */
+                    .curve-top-right {
                         position: absolute;
-                        inset: 0;
-                        background: radial-gradient(circle at 0% 0%, var(--color-hero-start) 0%, var(--color-hero-end) 50%, #000000 100%);
-                        z-index: 0;
-                    }
-                    
-                    .hero-modern-bg::before {
-                        content: '';
-                        position: absolute;
-                        top: -50%;
-                        right: -20%;
-                        width: 80%;
-                        height: 150%;
-                        background: radial-gradient(circle, var(--color-primary) 0%, rgba(0,0,0,0) 70%);
-                        transform: rotate(-15deg);
-                        filter: blur(60px);
-                        animation: pulse-glow 10s infinite alternate;
-                        opacity: 0.3;
+                        top: 0;
+                        right: 0;
+                        width: 45%;
+                        height: 180px;
+                        background-color: white;
+                        border-bottom-left-radius: 100%;
+                        z-index: 1;
                     }
 
-                    .hero-modern-bg::after {
-                        content: '';
+                    /* Yellow Shape Wrapper (Desktop) */
+                    .yellow-shape-wrapper {
                         position: absolute;
-                        bottom: -30%;
-                        left: -10%;
-                        width: 60%;
+                        bottom: 0;
+                        right: 0;
+                        width: 50%; /* Increased from 45% */
+                        height: 90%; /* Increased height */
+                        max-width: 700px; /* Limit max width */
+                        z-index: 10;
+                    }
+
+                    .yellow-shape {
+                        width: 100%;
                         height: 100%;
-                        background: radial-gradient(circle, var(--color-secondary) 0%, rgba(0,0,0,0) 70%);
-                        filter: blur(60px);
-                        animation: pulse-glow 8s infinite alternate-reverse;
-                        opacity: 0.2;
-                    }
-
-                    @keyframes pulse-glow {
-                        0% { opacity: 0.5; transform: scale(1) rotate(-15deg); }
-                        100% { opacity: 0.8; transform: scale(1.1) rotate(-15deg); }
-                    }
-
-                    /* 3D Poster Card */
-                    .hero-poster-container {
-                        perspective: 1000px;
-                        transform-style: preserve-3d;
-                    }
-                    
-                    .hero-poster-card {
+                        background-color: #FFB800;
+                        border-top-left-radius: 60px; /* Reduced radius for sharper look */
                         position: relative;
-                        transition: transform 0.5s ease;
-                        transform: rotateY(-10deg) rotateX(5deg);
-                        box-shadow: 
-                            20px 20px 50px rgba(0,0,0,0.5), 
-                            0 0 0 1px rgba(255,255,255,0.1);
-                        border-radius: 20px;
+                        box-shadow: -10px -10px 30px rgba(0,0,0,0.1); /* Soft shadow */
+                    }
+
+                    .image-container {
+                        position: absolute;
+                        top: 15px;
+                        left: 15px;
+                        right: 0;
+                        bottom: 0;
+                        background-color: #e5e7eb;
+                        border-top-left-radius: 50px;
                         overflow: hidden;
                     }
                     
-                    .hero-poster-card:hover {
-                        transform: rotateY(0deg) rotateX(0deg) scale(1.02);
-                        box-shadow: 
-                            0 20px 60px rgba(0,0,0,0.6), 
-                            0 0 0 1px rgba(255,255,255,0.2);
+                    /* Mobile Responsive */
+                    @media (max-width: 1024px) {
+                        .curve-top-right {
+                            display: none;
+                        }
+                        .yellow-shape-wrapper {
+                            position: relative;
+                            width: 100%;
+                            height: 300px; /* Fixed height for mobile */
+                            margin-top: 2rem;
+                            border-radius: 20px;
+                            overflow: hidden;
+                            max-width: 100%;
+                        }
+                        .yellow-shape {
+                            border-radius: 20px;
+                        }
+                        .image-container {
+                            top: 10px;
+                            left: 10px;
+                            right: 10px;
+                            bottom: 10px;
+                            width: auto;
+                            height: auto;
+                            border-radius: 15px;
+                        }
                     }
-
-                    .glass-badge {
-                        background: rgba(255, 255, 255, 0.1);
-                        backdrop-filter: blur(10px);
-                        border: 1px solid rgba(255, 255, 255, 0.1);
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                    }
-
-                    .glass-button {
-                        background: rgba(255, 255, 255, 0.1);
-                        backdrop-filter: blur(10px);
-                        border: 1px solid rgba(255, 255, 255, 0.2);
-                        transition: all 0.3s ease;
-                    }
-                    
-                    .glass-button:hover {
-                        background: rgba(255, 255, 255, 0.2);
-                        transform: translateY(-2px);
-                        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-                    }
-
-                    .gradient-text {
-                        background: linear-gradient(to right, #ffffff, var(--color-primary));
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        background-clip: text;
-                    }
-
-                    /* Animations */
-                    @keyframes fadeInUp {
-                        from { opacity: 0; transform: translateY(20px); }
-                        to { opacity: 1; transform: translateY(0); }
-                    }
-                    
-                    .animate-fade-up {
-                        animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-                        opacity: 0;
-                    }
-                    
-                    .delay-100 { animation-delay: 0.1s; }
-                    .delay-200 { animation-delay: 0.2s; }
-                    .delay-300 { animation-delay: 0.3s; }
                 `}</style>
 
                 <div className="bg-gray-50 min-h-screen pb-20">
                     {/* Hero Section */}
-                    <section className="hero-modern relative overflow-hidden">
-                        {/* Unique Animated Background */}
-                        <div className="absolute inset-0 bg-slate-900 z-0">
-                            <div className="absolute inset-0 bg-gradient-to-br from-hero-start/50 via-hero-end/50 to-slate-900/50 z-10"></div>
+                    <section className="hero-grow min-h-[600px] flex items-center">
+                        <div className="curve-top-right hidden lg:block"></div>
 
-                            {/* Animated Blobs */}
-                            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/30 blur-[120px] animate-blob mix-blend-screen"></div>
-                            <div className="absolute top-[20%] right-[-10%] w-[40%] h-[60%] rounded-full bg-secondary/30 blur-[120px] animate-blob animation-delay-2000 mix-blend-screen"></div>
-                            <div className="absolute bottom-[-10%] left-[20%] w-[60%] h-[40%] rounded-full bg-hero-end/30 blur-[120px] animate-blob animation-delay-4000 mix-blend-screen"></div>
+                        <div className="container mx-auto px-4 relative z-20 h-full py-12 lg:py-0">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center h-full">
+                                {/* Left Content */}
+                                <div className="text-white space-y-8 order-2 lg:order-1">
+                                    <div className="space-y-2">
+                                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-4">
+                                            <span className="w-2 h-2 rounded-full bg-[#FFB800]"></span>
+                                            <span className="text-xs font-bold tracking-widest uppercase text-gray-200">EVENT SPESIAL</span>
+                                        </div>
+                                        <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight">
+                                            {activity.name}
+                                        </h1>
+                                    </div>
 
-                            {/* Grid Pattern */}
-                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-                        </div>
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex flex-wrap gap-3">
+                                            <div className="flex items-center gap-3 bg-white/5 px-5 py-3 rounded-2xl border border-white/10 backdrop-blur-sm">
+                                                <div className="w-10 h-10 rounded-full bg-[#FFB800]/20 flex items-center justify-center">
+                                                    <i className="fas fa-calendar-alt text-[#FFB800]"></i>
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs text-gray-400">Tanggal</div>
+                                                    <div className="font-semibold text-white">{dateLabel}</div>
+                                                </div>
+                                            </div>
 
-                        <style>{`
-                        @keyframes blob {
-                            0% { transform: translate(0px, 0px) scale(1); }
-                            33% { transform: translate(30px, -50px) scale(1.1); }
-                            66% { transform: translate(-20px, 20px) scale(0.9); }
-                            100% { transform: translate(0px, 0px) scale(1); }
-                        }
-                        .animate-blob {
-                            animation: blob 10s infinite;
-                        }
-                        .animation-delay-2000 {
-                            animation-delay: 2s;
-                        }
-                        .animation-delay-4000 {
-                            animation-delay: 4s;
-                        }
-                    `}</style>
+                                            {timeLabel && (
+                                                <div className="flex items-center gap-3 bg-white/5 px-5 py-3 rounded-2xl border border-white/10 backdrop-blur-sm">
+                                                    <div className="w-10 h-10 rounded-full bg-[#FFB800]/20 flex items-center justify-center">
+                                                        <i className="fas fa-clock text-[#FFB800]"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs text-gray-400">Waktu</div>
+                                                        <div className="font-semibold text-white">{timeLabel}</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
 
-                        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-
-                                {/* Left Column: Text Content */}
-                                <div className="lg:col-span-7 space-y-6 text-left order-2 lg:order-1">
-                                    <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white leading-tight animate-fade-up">
-                                        <span className="block text-secondary text-lg md:text-xl font-medium tracking-wider uppercase mb-2">Event Spesial</span>
-                                        <span className="gradient-text">{activity.name}</span>
-                                    </h1>
-
-                                    <div className="flex flex-wrap gap-3 animate-fade-up delay-100">
-                                        {dateLabel && (
-                                            <span className="glass-badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-white text-sm">
-                                                <i className="far fa-calendar-alt text-secondary"></i>
-                                                <span>{dateLabel}</span>
-                                            </span>
-                                        )}
-                                        {timeLabel && (
-                                            <span className="glass-badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-white text-sm">
-                                                <i className="fas fa-clock text-secondary"></i>
-                                                <span>{timeLabel}</span>
-                                            </span>
-                                        )}
                                         {activity.location && (
-                                            <span className="glass-badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-white text-sm">
-                                                <i className="fas fa-map-marker-alt text-secondary"></i>
-                                                <span>{activity.location}</span>
-                                            </span>
-                                        )}
-                                        {activity.activity_type !== 'non_batch' && selectedBatchId && batches && (
-                                            <span className="glass-badge inline-flex items-center gap-2 px-3 py-1 rounded-full text-white text-sm">
-                                                <i className="fas fa-layer-group text-secondary"></i>
-                                                <span>{batches.find(b => b.id == selectedBatchId)?.name || 'Sesi'}</span>
-                                            </span>
+                                            <div className="flex items-center gap-3 bg-white/5 px-5 py-3 rounded-2xl border border-white/10 backdrop-blur-sm max-w-xl">
+                                                <div className="w-10 h-10 rounded-full bg-[#FFB800]/20 flex items-center justify-center shrink-0">
+                                                    <i className="fas fa-map-marker-alt text-[#FFB800]"></i>
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="text-xs text-gray-400">Lokasi</div>
+                                                    <div className="font-semibold text-white truncate">{activity.location}</div>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
 
-                                    {/* Price display */}
-                                    {((Number(activity.price) > 0 && (showPrice || canAdminViewButtons)) || Number(activity.price) <= 0) && (
-                                        <div className="py-4 animate-fade-up delay-200">
-                                            <div className="inline-flex items-center gap-3">
-                                                {Number(activity.price) > 0 ? (
-                                                    <>
-                                                        <span className="text-3xl font-bold text-white">
-                                                            <span className={!showPrice && canAdminViewButtons ? 'opacity-50' : ''}>
-                                                                Rp {Number(activity.price).toLocaleString('id-ID')}
-                                                            </span>
-                                                        </span>
-                                                        {canAdminViewButtons && (
-                                                            <button onClick={togglePriceVisibility} className="text-white/60 hover:text-white transition-colors" title={showPrice ? 'Sembunyikan Harga' : 'Tampilkan Harga'}>
-                                                                <i className={`fas ${showPrice ? 'fa-eye' : 'fa-eye-slash'}`}></i>
-                                                            </button>
-                                                        )}
-                                                    </>
-                                                ) : (
-                                                    <span className="text-3xl font-bold text-emerald-400">GRATIS</span>
-                                                )}
-                                            </div>
+                                    {showPrice && (
+                                        <div className="text-4xl font-bold text-[#FFB800] tracking-tight">
+                                            {(Number(activity.price) === 0) ? 'GRATIS' : `Rp ${Number(activity.price).toLocaleString('id-ID')}`}
                                         </div>
                                     )}
 
-                                    {/* Buttons */}
-                                    <div className="flex flex-wrap gap-4 animate-fade-up delay-300">
-                                        {/* Main Action Button */}
+                                    <div className="flex flex-wrap gap-4 pt-2">
                                         {pendingPayment ? (
                                             <button
                                                 onClick={handlePaymentClick}
                                                 disabled={loadingPaymentModal}
-                                                className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold hover:shadow-lg hover:shadow-amber-500/30 transition-all transform hover:-translate-y-1"
+                                                className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-full hover:shadow-lg hover:shadow-amber-500/30 transition-all transform hover:-translate-y-1"
                                             >
                                                 {loadingPaymentModal ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-credit-card"></i>}
                                                 Selesaikan Pembayaran
                                             </button>
                                         ) : isEnrolled ? (
-                                            <a href="#content" className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold hover:shadow-lg hover:shadow-emerald-500/30 transition-all transform hover:-translate-y-1">
-                                                <i className="fas fa-check-circle"></i> Sudah Terdaftar
-                                            </a>
+                                            <button className="px-8 py-4 bg-emerald-500 text-white font-bold rounded-full cursor-default shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+                                                <i className="fas fa-check-circle"></i>
+                                                Terdaftar
+                                            </button>
                                         ) : (
                                             <button
                                                 onClick={() => setRegistrationTypeModalOpen(true)}
-                                                className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-white text-primary font-bold hover:bg-primary/5 hover:shadow-lg hover:shadow-white/20 transition-all transform hover:-translate-y-1"
+                                                className="px-8 py-4 bg-[#FFB800] text-[#1a1b3a] font-bold rounded-full hover:bg-yellow-400 transition-all transform hover:-translate-y-1 shadow-xl shadow-yellow-500/20"
                                             >
-                                                <i className="fas fa-user-plus"></i> Daftar Sekarang
+                                                Daftar Sekarang
                                             </button>
                                         )}
 
-                                        {/* Share Button */}
-                                        <div className="relative">
-                                            <button
-                                                onClick={handleShare}
-                                                className="glass-button inline-flex items-center justify-center w-14 h-14 rounded-full text-white"
-                                                title="Bagikan"
-                                            >
-                                                <i className="fas fa-share-alt text-lg"></i>
-                                            </button>
-                                            {shareMenuOpen && (
-                                                <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 text-left z-50">
-                                                    <button onClick={copyToClipboard} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                        <i className="fas fa-link mr-2"></i> Salin URL
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <button
+                                            onClick={handleShare}
+                                            className="px-8 py-4 bg-transparent border border-white/30 text-white font-bold rounded-full hover:bg-white/10 transition-all"
+                                        >
+                                            Bagikan
+                                        </button>
                                     </div>
                                 </div>
 
-                                {/* Right Column: Poster */}
-                                <div className="hidden lg:block lg:col-span-5 hero-poster-container animate-fade-up delay-200 order-1 lg:order-2">
-                                    <div className="hero-poster-card aspect-[3/4] w-full max-w-md mx-auto bg-gray-900/50 backdrop-blur-sm border border-white/10 relative group">
-                                        <img
-                                            src={heroCoverPath}
-                                            alt={activity.name}
-                                            className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                                e.target.onerror = null;
-                                                e.target.src = '/assets/images/begron/defoult.png';
-                                            }}
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity"></div>
+                                {/* Right Content - Yellow Shape & Image */}
+                                <div className="block lg:hidden order-1">
+                                    <div className="yellow-shape-wrapper">
+                                        <div className="yellow-shape">
+                                            <div className="image-container">
+                                                <img
+                                                    src={heroCoverPath}
+                                                    alt={activity.name}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.target.onerror = null;
+                                                        e.target.src = '/assets/images/begron/defoult.png';
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Wave Separator */}
-                        <div className="absolute -bottom-1 left-0 right-0 z-20 pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 120" className="w-full h-auto text-gray-50 fill-current">
-                                <path d="M0,64L48,80C96,96,192,128,288,128C384,128,480,96,576,80C672,64,768,64,864,80C960,96,1056,128,1152,128C1248,128,1344,96,1392,80L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-                            </svg>
+                        {/* Desktop Yellow Shape (Absolute) */}
+                        <div className="yellow-shape-wrapper hidden lg:block">
+                            <div className="yellow-shape">
+                                <div className="image-container">
+                                    <img
+                                        src={heroCoverPath}
+                                        alt={activity.name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = '/assets/images/begron/defoult.png';
+                                        }}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </section>
 
@@ -617,13 +571,44 @@ export default function Show({
                         </div>
                     )}
 
-                    <div id="content" className="container mx-auto px-4 -mt-8 relative z-10">
+                    <div id="content" className="container mx-auto px-4 pt-12 relative z-10">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             {/* Main Content (Left) */}
                             <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
 
+                                {/* Visibility Controls */}
+                                {canAccessManagement && (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                                        <h3 className="text-sm font-bold text-gray-900 mb-3">Atur Tampilan Halaman (Admin/Creator)</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {[
+                                                { id: 'description', label: 'Deskripsi', icon: 'fa-info-circle' },
+                                                { id: 'materials', label: 'Materi', icon: 'fa-file-alt' },
+                                                { id: 'rundown', label: 'Rundown', icon: 'fa-list-ol' },
+                                                { id: 'speakers', label: 'Narasumber', icon: 'fa-user-tie' },
+                                                { id: 'gallery', label: 'Galeri', icon: 'fa-images' },
+                                                { id: 'participants', label: 'Peserta', icon: 'fa-users' },
+                                            ].map(section => (
+                                                <button
+                                                    key={section.id}
+                                                    onClick={() => toggleSection(section.id)}
+                                                    className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                                        isVisible(section.id)
+                                                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                                            : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
+                                                    }`}
+                                                >
+                                                    <i className={`fas ${section.icon} mr-2 ${isVisible(section.id) ? 'text-indigo-500' : 'text-gray-400'}`}></i>
+                                                    {section.label}
+                                                    <i className={`fas ${isVisible(section.id) ? 'fa-eye' : 'fa-eye-slash'} ml-2 text-xs opacity-70`}></i>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Description */}
-                                {activity.description && (
+                                {isVisible('description') && activity.description && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-info-circle text-primary"></i>
@@ -637,7 +622,7 @@ export default function Show({
                                 )}
 
                                 {/* Materials Section */}
-                                {materials && materials.length > 0 && (
+                                {isVisible('materials') && materials && materials.length > 0 && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-file-alt text-indigo-500"></i>
@@ -670,7 +655,7 @@ export default function Show({
                                 )}
 
                                 {/* Rundown Section */}
-                                {activity.rundowns && activity.rundowns.length > 0 && (
+                                {isVisible('rundown') && activity.rundowns && activity.rundowns.length > 0 && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-list-ol text-indigo-500"></i>
@@ -704,7 +689,7 @@ export default function Show({
                                 )}
 
                                 {/* Speakers Section */}
-                                {activity.speakers && activity.speakers.length > 0 && (
+                                {isVisible('speakers') && activity.speakers && activity.speakers.length > 0 && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-user-tie text-primary"></i>
@@ -733,7 +718,7 @@ export default function Show({
                                 )}
 
                                 {/* Gallery Section */}
-                                {activity.show_gallery && activity.galleries && activity.galleries.length > 0 && (
+                                {isVisible('gallery') && activity.galleries && activity.galleries.length > 0 && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-images text-indigo-500"></i>
@@ -766,6 +751,7 @@ export default function Show({
                                 )}
 
                                 {/* Participants List */}
+                                {isVisible('participants') && (
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                                         <div className="flex items-center gap-2">
@@ -884,8 +870,8 @@ export default function Show({
                                                             key={i}
                                                             href={link.url}
                                                             className={`px-3 py-1 rounded-md text-sm font-medium transition ${link.active
-                                                                    ? 'bg-primary text-white shadow-md'
-                                                                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                                                ? 'bg-primary text-white shadow-md'
+                                                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                                                                 }`}
                                                             dangerouslySetInnerHTML={{ __html: link.label }}
                                                         />
@@ -904,6 +890,7 @@ export default function Show({
                                         </div>
                                     )}
                                 </div>
+                                )}
                             </div>
 
                             {/* Sidebar (Right) */}

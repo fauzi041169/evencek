@@ -2,7 +2,7 @@ import React from 'react';
 import { Head, useForm, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 
-export default function ManualForm({ activity, paymentMethods = [], bulk_import_payment, is_modal, defaultSenderName }) {
+export default function ManualForm({ activity, paymentMethods = [], bulk_import_payment, is_modal, defaultSenderName, onSuccess }) {
     const { flash } = usePage().props;
     const { data, setData, post, processing, errors } = useForm({
         payment_method_id: '',
@@ -13,7 +13,12 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('payments.store', activity.id), { forceFormData: true });
+        post(route('payments.store', activity.id), { 
+            forceFormData: true,
+            onSuccess: () => {
+                if (onSuccess) onSuccess();
+            }
+        });
     };
 
     const totalAmount = bulk_import_payment?.gross_amount || activity?.price || 0;

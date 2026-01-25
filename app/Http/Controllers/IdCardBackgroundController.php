@@ -163,14 +163,16 @@ class IdCardBackgroundController extends Controller
             ->orderBy('created_at', 'desc')
             ->get(['id', 'filename', 'original_name']);
 
+        // Initialize images array
         $images = [];
+
+        // 1. Get uploaded images from DB
         foreach ($items as $it) {
             $url = '';
-            // Handle storage vs legacy path
             if (\Illuminate\Support\Str::startsWith($it->filename, 'id-card-backgrounds/')) {
                 $url = \Illuminate\Support\Facades\Storage::url($it->filename);
             } else {
-                $url = asset('assets/images/card/'.$it->filename);
+                $url = asset('assets/images/card/' . $it->filename);
             }
 
             $images[] = [
@@ -178,7 +180,30 @@ class IdCardBackgroundController extends Controller
                 'filename' => $it->filename,
                 'original_name' => $it->original_name,
                 'url' => $url,
+                'type' => 'uploaded'
             ];
+        }
+
+        // 2. Get Default Images from directory
+        $defaultPath = public_path('assets/images/card/background/default');
+        if (file_exists($defaultPath) && is_dir($defaultPath)) {
+            $files = scandir($defaultPath);
+            foreach ($files as $file) {
+                if ($file === '.' || $file === '..') continue;
+                
+                // Only allow image extensions
+                $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                if (!in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) continue;
+
+                $filename = 'background/default/' . $file;
+                $images[] = [
+                    'id' => 'default_' . $file,
+                    'filename' => $filename,
+                    'original_name' => 'Default ' . $file,
+                    'url' => asset('assets/images/card/' . $filename),
+                    'type' => 'default'
+                ];
+            }
         }
 
         return response()->json([

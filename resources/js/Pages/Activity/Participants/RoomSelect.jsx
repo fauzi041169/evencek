@@ -1,0 +1,158 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { router } from '@inertiajs/react';
+import { ChevronDown, Check, X } from 'lucide-react';
+
+export default function RoomSelect({
+    activity,
+    participant,
+    rooms = [],
+    roomOccupants = []
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const wrapperRef = useRef(null);
+
+    // Close on click outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [wrapperRef]);
+
+    const currentRoom = participant.room;
+
+    // Filter rooms by search only
+    const filteredRooms = rooms.filter(room => {
+        const matchesSearch =
+            (room.room_number && room.room_number.toLowerCase().includes(search.toLowerCase())) ||
+            (room.hotel_name && room.hotel_name.toLowerCase().includes(search.toLowerCase()));
+
+        return matchesSearch;
+    });
+
+    const handleSelect = (room) => {
+        if (currentRoom && currentRoom.id === room.id) {
+            setIsOpen(false);
+            return;
+        }
+
+        if (confirm(`Pindahkan peserta ke kamar ${room.room_number} (${room.hotel_name})?`)) {
+            router.post(route('activity.participants.assign-room', { activityId: activity.uid || activity.id }), {
+                room_id: room.id,
+                user_id: participant.user_id
+            }, {
+                preserveScroll: true,
+                onSuccess: () => setIsOpen(false)
+            });
+        }
+    };
+
+    const handleUnassign = () => {
+        if (confirm(`Keluarkan peserta dari kamar?`)) {
+            router.post(route('activity.participants.assign-room', { activityId: activity.uid || activity.id }), {
+                room_id: '',
+                user_id: participant.user_id
+            }, {
+                preserveScroll: true,
+                onSuccess: () => setIsOpen(false)
+            });
+        }
+    }
+
+    return (
+        <div className="relative" ref={wrapperRef}>
+            <button
+                onClick={() => { setIsOpen(!isOpen); setSearch(''); }}
+                className="flex items-center justify-between w-full min-w-[160px] max-w-[200px] text-left text-sm border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 bg-white transition-colors"
+            >
+                {currentRoom ? (
+                    <div className="flex flex-col overflow-hidden">
+                        <span className="font-medium text-slate-900 truncate">{currentRoom.room_number}</span>
+                        <span className="text-xs text-slate-500 truncate">{currentRoom.hotel_name}</span>
+                    </div>
+                ) : (
+                    <span className="text-slate-400 italic">Pilih Kamar...</span>
+                )}
+                <ChevronDown className="w-4 h-4 text-slate-400 ml-2 flex-shrink-0" />
+            </button>
+
+            {isOpen && (
+                <div className="absolute top-full left-0 z-50 w-80 bg-white shadow-xl rounded-lg border border-slate-100 mt-1 max-h-60 flex flex-col animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                    <div className="p-2 border-b border-slate-100 sticky top-0 bg-white z-10">
+                        <input
+                            type="text"
+                            autoFocus
+                            placeholder="Cari kamar/hotel..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="w-full border border-slate-200 rounded-md px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                        />
+                    </div>
+
+                    <div className="overflow-y-auto overflow-x-hidden flex-1 p-1">
+                        {currentRoom && (
+                            <button
+                                onClick={handleUnassign}
+                                className="w-full text-left px-2 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md mb-1 flex items-center gap-2"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                                <span>Kosongkan Kamar</span>
+                            </button>
+                        )}
+
+                        {filteredRooms.length > 0 ? (
+                            filteredRooms.map(room => {
+                                const occupants = roomOccupants[room.id] || [];
+                                const isCurrent = currentRoom && currentRoom.id === room.id;
+                                const isFull = room.capacity > 0 && occupants.length >= room.capacity;
+                                const isActive = room.is_active !== false && room.is_active !== 0;
+
+                                const canSelect = !isCurrent && isActive && !isFull;
+
+                                return (
+                                    <button
+                                        key={room.id}
+                                        onClick={() => handleSelect(room)}
+                                        disabled={!canSelect}
+                                        className={`w-full text-left px-2 py-2 text-sm rounded-md mb-0.5 transition-colors group ${isCurrent ? 'bg-indigo-50 cursor-default' :
+                                                canSelect ? 'hover:bg-indigo-50 text-slate-700' : 'opacity-50 cursor-not-allowed bg-slate-50'
+                                            }`}
+                                    >
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`font-medium truncate ${isCurrent ? 'text-indigo-700' : 'text-slate-700'}`}>
+                                                        {room.room_number}
+                                                    </div>
+                                                    {!isActive && (
+                                                        <span className="text-[10px] bg-red-100 text-red-600 px-1 rounded">Nonaktif</span>
+                                                    )}
+                                                    {isFull && !isCurrent && (
+                                                        <span className="text-[10px] bg-amber-100 text-amber-600 px-1 rounded">Penuh</span>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs text-slate-500 truncate">{room.hotel_name}</div>
+                                            </div>
+                                            <div className={`text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap flex-shrink-0 ${isFull ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                                                }`}>
+                                                {occupants.length} / {room.capacity > 0 ? room.capacity : '∞'}
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })
+                        ) : (
+                            <div className="px-2 py-4 text-sm text-slate-400 text-center">
+                                Tidak ada kamar tersedia
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

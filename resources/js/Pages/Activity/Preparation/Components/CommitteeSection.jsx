@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 
 export default function CommitteeSection({ activity, committeeStructure, refPositions, divisions, participants = [] }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -11,163 +12,252 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (!data.position || !data.user_id) return;
+
         setProcessing(true);
-        router.post(route('activity.preparation.committee.store', activity.id), data, {
+        router.post(route('activity.preparation.store-committee', activity.uid || activity.id), data, {
             onSuccess: () => {
                 setIsModalOpen(false);
                 setData({ position: '', user_id: '' });
                 setProcessing(false);
+                Swal.fire({
+                    title: 'Berhasil',
+                    text: 'Panitia berhasil ditambahkan.',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
             },
-            onError: () => {
+            onError: (errors) => {
                 setProcessing(false);
+                Swal.fire('Error', 'Gagal menambahkan panitia. Silakan periksa kembali data Anda.', 'error');
+            }
+        });
+    };
+
+    const handleDelete = (id) => {
+        Swal.fire({
+            title: 'Apakah Anda yakin?',
+            text: "Panitia akan dihapus dari susunan.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('activity.preparation.destroy-committee', { activityId: activity.uid || activity.id, id }), {
+                    onSuccess: () => {
+                        Swal.fire('Terhapus!', 'Panitia berhasil dihapus.', 'success');
+                    }
+                });
             }
         });
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900">Susunan Panitia</h3>
-                <div className="flex space-x-2">
+        <div className="p-6 font-primary">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                <div>
+                    <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Susunan Panitia</h3>
+                    <p className="text-sm text-gray-500 font-medium italic mt-1">Struktur organisasi dan penanggung jawab kegiatan</p>
+                </div>
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-primary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
                     >
                         <i className="fas fa-plus mr-2"></i>
                         Tambah Panitia
                     </button>
-                    <a 
-                        href={route('activity.print-cards', { id: activity.id, type: 'committee' })}
+                    <a
+                        href={route('activity.print-cards', { id: activity.uid || activity.id, type: 'committee' })}
                         target="_blank"
-                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-all active:scale-95"
                     >
-                        <i className="fas fa-id-card mr-2"></i>
+                        <i className="fas fa-id-card mr-2 text-primary"></i>
                         Cetak ID Card
                     </a>
                 </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jabatan</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No HP</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Divisi Terkait</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {committeeStructure.map((member) => (
-                            <tr key={member.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {member.position}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <div className="flex items-center">
-                                        {member.user && (
-                                            <img 
-                                                className="h-8 w-8 rounded-full mr-3" 
-                                                src={member.user.profile_photo_url} 
-                                                alt=""
-                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                            />
-                                        )}
-                                        <span>{member.name}</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {member.phone || '-'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {divisions.find(d => d.id === member.activity_division_id)?.name || '-'}
-                                </td>
-                            </tr>
-                        ))}
-                        {committeeStructure.length === 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-100">
+                        <thead className="bg-gray-50/50">
                             <tr>
-                                <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
-                                    Belum ada susunan panitia.
-                                </td>
+                                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Jabatan</th>
+                                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nama / Personel</th>
+                                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">No HP</th>
+                                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Divisi</th>
+                                <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Aksi</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Modal Tambah Panitia */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setIsModalOpen(false)}></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start">
-                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                            Tambah Panitia
-                                        </h3>
-                                        <div className="mt-4 space-y-4">
-                                            <div>
-                                                <label htmlFor="position" className="block text-sm font-medium text-gray-700">Jabatan</label>
-                                                <input
-                                                    type="text"
-                                                    id="position"
-                                                    list="positions-list"
-                                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                                    value={data.position}
-                                                    onChange={(e) => setData({ ...data, position: e.target.value })}
-                                                    placeholder="Contoh: Ketua Panitia"
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-50">
+                            {committeeStructure.map((member) => (
+                                <tr key={member.id} className="hover:bg-gray-50/30 transition-colors group">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-secondary/10 text-secondary">
+                                            {member.position}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex items-center">
+                                            <div className="h-10 w-10 flex-shrink-0">
+                                                <img
+                                                    className="h-10 w-10 rounded-xl object-cover ring-2 ring-white shadow-sm"
+                                                    src={member.user?.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`}
+                                                    alt={member.name}
+                                                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
                                                 />
-                                                <datalist id="positions-list">
-                                                    {refPositions && refPositions.map((pos, idx) => (
-                                                        <option key={idx} value={pos.name || pos} />
-                                                    ))}
-                                                </datalist>
                                             </div>
-                                            <div>
-                                                <label htmlFor="user_id" className="block text-sm font-medium text-gray-700">Peserta</label>
-                                                <select
-                                                    id="user_id"
-                                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                                                    value={data.user_id}
-                                                    onChange={(e) => setData({ ...data, user_id: e.target.value })}
-                                                >
-                                                    <option value="">Pilih Peserta</option>
-                                                    {participants.map((p) => (
-                                                        <option key={p.id} value={p.user_id}>
-                                                            {p.user?.name} {p.user?.email ? `(${p.user.email})` : ''}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                            <div className="ml-4">
+                                                <div className="text-sm font-bold text-gray-900">{member.name}</div>
+                                                <div className="text-xs text-gray-400">{member.user?.email || 'External'}</div>
                                             </div>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <a href={`https://wa.me/${member.phone}`} target="_blank" className="text-sm font-medium text-gray-600 hover:text-green-500 transition-colors flex items-center">
+                                            <i className="fab fa-whatsapp mr-1.5 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                            {member.phone || '-'}
+                                        </a>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className="text-sm text-gray-500 font-medium">
+                                            {divisions.find(d => d.id === member.activity_division_id)?.name || '-'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                                        <button
+                                            onClick={() => handleDelete(member.id)}
+                                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                                            title="Hapus"
+                                        >
+                                            <i className="fas fa-trash-alt text-xs"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {committeeStructure.length === 0 && (
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-12 text-center">
+                                        <div className="flex flex-col items-center">
+                                            <div className="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-200">
+                                                <i className="fas fa-users text-3xl"></i>
+                                            </div>
+                                            <p className="text-sm text-gray-400 font-bold">Belum ada susunan panitia</p>
+                                            <p className="text-xs text-gray-400 mt-1">Klik tombol di atas untuk mulai menyusun kepanitiaan Anda</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Modal Tambah Panitia - Professional Rewrite */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+                        onClick={() => setIsModalOpen(false)}
+                    ></div>
+
+                    <div className="bg-white rounded-[2rem] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+                        <form onSubmit={handleSubmit}>
+                            <div className="p-8">
+                                <div className="flex justify-between items-center mb-8">
+                                    <h3 className="text-2xl font-bold text-gray-900">Tambah Panitia</h3>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsModalOpen(false)}
+                                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-gray-900 transition-colors"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="relative group">
+                                        <label htmlFor="position" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Jabatan / Posisi</label>
+                                        <div className="relative">
+                                            <i className="fas fa-id-card absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
+                                            <input
+                                                type="text"
+                                                id="position"
+                                                list="positions-list"
+                                                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-primary shadow-inner font-medium"
+                                                value={data.position}
+                                                onChange={(e) => setData({ ...data, position: e.target.value })}
+                                                placeholder="Contoh: Ketua Panitia, Bendahara..."
+                                                required
+                                            />
+                                        </div>
+                                        <datalist id="positions-list">
+                                            {refPositions && refPositions.map((pos, idx) => (
+                                                <option key={idx} value={pos.name || pos} />
+                                            ))}
+                                        </datalist>
+                                    </div>
+
+                                    <div className="relative group">
+                                        <label htmlFor="user_id" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Pilih Personel (Peserta Terdaftar)</label>
+                                        <div className="relative">
+                                            <i className="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
+                                            <select
+                                                id="user_id"
+                                                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-primary shadow-inner font-medium appearance-none"
+                                                value={data.user_id}
+                                                onChange={(e) => setData({ ...data, user_id: e.target.value })}
+                                                required
+                                            >
+                                                <option value="">-- Pilih Peserta --</option>
+                                                {participants.map((p) => (
+                                                    <option key={p.id} value={p.user_id}>
+                                                        {p.user?.name || p.name} {p.user?.email ? `(${p.user.email})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none"></i>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-100 flex gap-3">
+                                        <i className="fas fa-info-circle text-yellow-500 mt-1"></i>
+                                        <p className="text-xs text-yellow-700 font-medium">Hanya peserta yang sudah terdaftar yang dapat dipilih menjadi panitia. Jika personel belum ada di daftar, silakan tambahkan sebagai peserta terlebih dahulu.</p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                <button
-                                    type="button"
-                                    onClick={handleSubmit}
-                                    disabled={processing || !data.position || !data.user_id}
-                                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-                                >
-                                    {processing ? 'Menyimpan...' : 'Simpan'}
-                                </button>
+
+                            <div className="p-8 bg-gray-50 flex gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                                    className="flex-1 py-4 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-gray-700 hover:bg-white active:scale-95 transition-all shadow-sm"
                                 >
                                     Batal
                                 </button>
+                                <button
+                                    type="submit"
+                                    disabled={processing || !data.position || !data.user_id}
+                                    className="flex-[2] py-4 bg-primary text-white rounded-2xl text-sm font-bold shadow-lg shadow-primary/25 hover:bg-primary/90 disabled:opacity-50 disabled:shadow-none active:scale-95 transition-all"
+                                >
+                                    {processing ? (
+                                        <span className="flex items-center justify-center">
+                                            <i className="fas fa-circle-notch fa-spin mr-2"></i> Procesing...
+                                        </span>
+                                    ) : (
+                                        'Simpan Panitia'
+                                    )}
+                                </button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
             )}
         </div>
     );
 }
-

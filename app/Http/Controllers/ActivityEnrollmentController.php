@@ -467,18 +467,19 @@ class ActivityEnrollmentController extends Controller
                 $payload['custom_data'] = $request->input('custom_data', []);
             }
 
-            $enrollment = ActivityUser::create($payload);
-
-            $debugValidation['enrollment_created'] = $enrollment->toArray();
-            Log::info('Enrollment Success', $debugValidation);
+            $enrollment = null;
+            
+            // Only create ActivityUser immediately if FREE
+            if ($price == 0) {
+                $enrollment = ActivityUser::create($payload);
+                $debugValidation['enrollment_created'] = $enrollment->toArray();
+                Log::info('Enrollment Success (Free)', $debugValidation);
+            } else {
+                Log::info('Enrollment Pending Payment (Paid) - Skipping ActivityUser creation until payment', $debugValidation);
+            }
 
             $userId = auth()->id();
 
-            $price = $activity->price;
-            if ($activeBatch && $activeBatch->price !== null) {
-                $price = $activeBatch->price;
-            }
-            
             Log::info('Enrollment Price Check - DEBUG', [
                 'activity_price' => $activity->price,
                 'batch_price' => $activeBatch ? $activeBatch->price : 'NO BATCH',
@@ -498,6 +499,16 @@ class ActivityEnrollmentController extends Controller
                     $paymentData['activity_batch_id'] = null;
                 }
 
+                // Prepare notes with custom_data for persistence
+                $notesData = [
+                    'source' => 'enrollment_auto',
+                    'original_notes' => 'Otomatis saat daftar activity'
+                ];
+                
+                if (isset($payload['custom_data'])) {
+                    $notesData['custom_data'] = $payload['custom_data'];
+                }
+
                 $payment = Payment::firstOrCreate(
                     $paymentData,
                     [
@@ -505,11 +516,25 @@ class ActivityEnrollmentController extends Controller
                         'amount' => $price,
                         'proof_of_payment' => 'imported',
                         'status' => 'pending',
-                        'notes' => 'Otomatis saat daftar activity',
+                        'notes' => json_encode($notesData),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]
                 );
+                
+                // If payment existed, update notes to ensure custom_data is saved
+                if ($payment->wasRecentlyCreated === false) {
+                    $currentNotes = json_decode($payment->notes, true);
+                    if (!is_array($currentNotes)) {
+                        $currentNotes = ['original_notes' => $payment->notes];
+                    }
+                    if (isset($payload['custom_data'])) {
+                        $currentNotes['custom_data'] = $payload['custom_data'];
+                    }
+                    $payment->notes = json_encode($currentNotes);
+                    $payment->save();
+                }
+
                 Log::info('Payment record created/checked:', $payment->toArray());
 
                 $routeParams = ['activity' => $activityId];
@@ -539,10 +564,11 @@ class ActivityEnrollmentController extends Controller
                 return response()->json(array_merge([
                     'success' => true,
                     'message' => 'Berhasil mendaftar kegiatan',
+                    'redirect_url' => route('activity.show', $activity->id, false),
                 ], $debugPayload));
             }
 
-            return redirect()->back()->with('success', 'Berhasil mendaftar kegiatan');
+            return redirect()->route('activity.show', $activity->id)->with('success', 'Berhasil mendaftar kegiatan');
 
         } catch (\Throwable $e) {
             // Handle Duplicate Entry specifically

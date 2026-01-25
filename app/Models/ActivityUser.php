@@ -98,6 +98,11 @@ class ActivityUser extends Model
         return $this->hasOne(Payment::class, 'user_id', 'user_id');
     }
 
+    public function roomAssignment()
+    {
+        return $this->hasOne(ActivityHotelRoomAssignment::class, 'user_id', 'user_id');
+    }
+
     public function getAttendanceStatus($attendanceId = null)
     {
         if (! $attendanceId) {

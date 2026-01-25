@@ -117,7 +117,18 @@ export default function CardPreview({ settings, user, activity, scale = 1 }) {
                     height: `${heightPx}px`,
                     transform: `scale(${scale})`,
                     transformOrigin: 'top left',
-                    backgroundImage: settings.card.background ? `url(/assets/images/card/${settings.card.background})` : 'none',
+                    backgroundImage: (() => {
+                        if (!settings.card.background) return 'none';
+                        // Matches logic in Design.jsx
+                        if (settings.card.background.startsWith('id-card-backgrounds/') || settings.card.background.startsWith('http')) {
+                            if (settings.card.background.startsWith('http')) return `url("${settings.card.background}")`;
+                            return `url("/storage/${settings.card.background}")`;
+                        }
+                        if (settings.card.background.startsWith('storage/')) {
+                            return `url("/${settings.card.background}")`;
+                        }
+                        return `url("/assets/images/card/${settings.card.background}")`;
+                    })(),
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                 }}

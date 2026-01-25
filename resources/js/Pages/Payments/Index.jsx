@@ -1,10 +1,37 @@
-﻿import React from 'react';
+import React, { useState } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import ManualPaymentModal from '@/Components/Activity/ManualPaymentModal';
+import axios from 'axios';
 
 export default function Index({ activity, payments, existingPayment }) {
     const { flash } = usePage().props;
     const rows = payments?.data || payments || [];
+    
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentModalData, setPaymentModalData] = useState(null);
+    const [loadingPaymentModal, setLoadingPaymentModal] = useState(false);
+
+    const handlePaymentClick = (e) => {
+        e.preventDefault();
+        setLoadingPaymentModal(true);
+        axios.get(route('payments.create', { activity: activity.id, modal: true }))
+            .then(res => {
+                if (res.data.redirect_url) {
+                    window.location.href = res.data.redirect_url;
+                } else if (res.data.success !== false) {
+                    setPaymentModalData(res.data);
+                    setShowPaymentModal(true);
+                } else {
+                    alert('Gagal memuat form pembayaran. Silakan coba lagi.');
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching payment data:', err);
+                alert('Terjadi kesalahan saat memuat data pembayaran.');
+            })
+            .finally(() => setLoadingPaymentModal(false));
+    };
 
     return (
         <MainLayout>
@@ -101,6 +128,15 @@ export default function Index({ activity, payments, existingPayment }) {
                     </div>
                 </div>
             </div>
+
+            <ManualPaymentModal
+                show={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
+                activity={paymentModalData?.activity || activity}
+                paymentMethods={paymentModalData?.paymentMethods || []}
+                bulk_import_payment={paymentModalData?.bulk_import_payment}
+                defaultSenderName={paymentModalData?.defaultSenderName}
+            />
         </MainLayout>
     );
 }

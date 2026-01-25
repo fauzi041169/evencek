@@ -182,4 +182,69 @@ class CertificateSettingsController extends Controller
             'deleted' => $filename,
         ]);
     }
+    public function getBackgroundImages(Request $request, $activityId)
+    {
+        if (! auth()->check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        $items = \DB::table('certificate_backgrounds')
+            ->where('activity_id', $activityId)
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'filename', 'original_name']);
+
+        $images = [];
+
+        // 1. Uploaded Images
+        foreach ($items as $it) {
+            $url = '';
+            // Handle storage vs legacy path
+            if (\Illuminate\Support\Str::startsWith($it->filename, 'certificate-backgrounds/')) {
+                $url = \Illuminate\Support\Facades\Storage::url($it->filename);
+            } else {
+                $url = asset('assets/images/certificate/'.$it->filename);
+            }
+
+            $images[] = [
+                'id' => $it->id,
+                'filename' => $it->filename,
+                'original_name' => $it->original_name,
+                'url' => $url,
+                'type' => 'uploaded'
+            ];
+        }
+
+        // 2. Default Images
+        // Ideally we check a 'defaults' folder. 
+        // For certificates, let's assume assets/images/certificate/default or similar.
+        $defaultPath = public_path('assets/images/certificate/background/default');
+        
+        // Ensure directory exists
+        if (file_exists($defaultPath) && is_dir($defaultPath)) {
+            $files = scandir($defaultPath);
+            foreach ($files as $file) {
+                if ($file === '.' || $file === '..') continue;
+                
+                $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                if (!in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) continue;
+
+                $filename = 'background/default/' . $file;
+                $images[] = [
+                    'id' => 'default_' . $file,
+                    'filename' => $filename,
+                    'original_name' => 'Default ' . $file,
+                    'url' => asset('assets/images/certificate/' . $filename),
+                    'type' => 'default'
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'images' => $images,
+        ]);
+    }
 }

@@ -268,8 +268,10 @@ Route::get('/c/{id}', [ActivityController::class, 'verifyCertificate'])->name('c
 Route::middleware(['auth', 'activity.logger'])->group(function () {
 
     Route::post('/activity/{activity}/toggle-price', [ActivityController::class, 'togglePriceVisibility'])->name('activity.toggle-price');
+    Route::post('/activity/{activity}/toggle-section', [ActivityController::class, 'toggleSectionVisibility'])->name('activity.toggle-section');
     Route::post('/activity/{activity}/change-status', [ActivityController::class, 'changeStatus'])->name('activity.change-status');
     Route::post('/activity/{activity}/toggle-registration', [ActivityController::class, 'toggleRegistration'])->name('activity.toggle-registration');
+    Route::post('/activity/{activity}/duplicate', [ActivityController::class, 'duplicate'])->name('activity.duplicate');
 
     // Event Activities (Voting, Quiz, Assignment)
     Route::prefix('activity/{activity}/activities')->name('activity.event-activities.')->controller(EventActivityController::class)->group(function () {
@@ -342,6 +344,12 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/owners/search', 'searchUsers')->name('owners.search');
         Route::post('/owners', 'storeOwner')->name('store-owner');
         Route::delete('/owners/{userId}', 'destroyOwner')->name('destroy-owner');
+
+        // Participation Types
+        Route::post('/participation-types', [\App\Http\Controllers\ActivityParticipationTypeController::class, 'store'])->name('participation-types.store');
+        Route::put('/participation-types/{typeId}', [\App\Http\Controllers\ActivityParticipationTypeController::class, 'update'])->name('participation-types.update');
+        Route::delete('/participation-types/{typeId}', [\App\Http\Controllers\ActivityParticipationTypeController::class, 'destroy'])->name('participation-types.destroy');
+
         Route::post('/participants/import', 'importParticipants')->name('import-participants');
         Route::post('/participants/check', 'checkParticipants')->name('check-participants');
         Route::get('/participants/get-import-template', 'getImportTemplate')->name('get-import-template');
@@ -380,6 +388,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/rooms', 'storeRoom')->name('rooms.store');
         Route::put('/rooms/{roomId}', 'updateRoom')->name('rooms.update');
         Route::delete('/rooms/batch', 'destroyRoomsBatch')->name('rooms.destroy-batch');
+        Route::delete('/rooms/destroy-all', 'destroyAllRooms')->name('rooms.destroy-all');
         Route::post('/rooms/batch/activate', 'activateRoomsBatch')->name('rooms.activate-batch');
         Route::post('/rooms/batch/deactivate', 'deactivateRoomsBatch')->name('rooms.deactivate-batch');
         Route::delete('/rooms/{roomId}', 'destroyRoom')->name('rooms.destroy');
@@ -406,6 +415,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/{id}/toggle-hero-pin', 'toggleHeroPin')->name('toggleHeroPin');
         Route::get('/{id}/export/{format}', 'export')->name('export');
         // React pages for printing
+        Route::get('/{id}/custom-certificate', 'designCertificate')->name('custom-certificate')->middleware('auth');
         Route::get('/{id}/certificates', 'showCertificates')->name('certificates')->middleware('auth');
         Route::get('/{id}/idcards', 'showIdCards')->name('idcards')->middleware('auth');
         Route::get('/{id}/idcards/design', 'designIdCard')->name('idcards.design')->middleware('auth');
@@ -547,6 +557,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/save', 'update')->name('save');
         Route::post('/background/upload', 'uploadBackground')->name('background.upload');
         Route::post('/background/delete', 'deleteBackground')->name('background.delete');
+        Route::get('/background/list/{activity}', 'getBackgroundImages')->name('background.list');
     });
 
     // Pengurus Routes

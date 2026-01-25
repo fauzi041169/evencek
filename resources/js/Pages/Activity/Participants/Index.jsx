@@ -18,6 +18,7 @@ import GroupsManageModal from './Modals/GroupsManageModal';
 import RoomsModal from './Modals/RoomsModal';
 import PaymentValidationModal from './Modals/PaymentValidationModal';
 import ColumnFilter from './ColumnFilter';
+import RoomSelect from './RoomSelect';
 
 // Helper for key normalization
 const normalizeCustomKey = (raw) => {
@@ -177,8 +178,11 @@ export default function Index({
         // Try direct match first
         if (participant.custom_data[normalizedKey]) return participant.custom_data[normalizedKey];
 
-        // Try finding a key that normalizes to the requested key
-        const foundKey = Object.keys(participant.custom_data).find(k => normalizeCustomKey(k) === normalizedKey);
+        // Try finding a key that normalizes to the requested key (case-insensitive)
+        const lowerNormalizedKey = normalizedKey.toLowerCase();
+        const foundKey = Object.keys(participant.custom_data).find(k =>
+            normalizeCustomKey(k).toLowerCase() === lowerNormalizedKey
+        );
         return foundKey ? participant.custom_data[foundKey] : '-';
     };
 
@@ -408,7 +412,12 @@ export default function Index({
             router.get(
                 route('activity.participants.index', currentUid),
                 params,
-                { preserveState: true, preserveScroll: true, replace: true }
+                { 
+                    preserveState: true, 
+                    preserveScroll: true, 
+                    replace: true,
+                    only: ['participants', 'filters']
+                }
             );
         }, 300),
         []
@@ -446,7 +455,12 @@ export default function Index({
         router.get(
             route('activity.participants.index', activityIdParam),
             newFilters,
-            { preserveState: true, preserveScroll: true, replace: true }
+            { 
+                preserveState: true, 
+                preserveScroll: true, 
+                replace: true,
+                only: ['participants', 'filters']
+            }
         );
     };
 
@@ -469,6 +483,13 @@ export default function Index({
     const filteredRegencies = selectedProvince
         ? regencies.filter(r => r.province_id === selectedProvince)
         : regencies;
+
+    const localStatusOptions = [
+        { value: '0', label: 'Menunggu Verifikasi' },
+        { value: '1', label: 'Aktif' },
+        { value: '2', label: 'Ditolak' },
+        { value: '3', label: 'Menunggu Pembayaran' },
+    ];
 
     return (
         <AcaraLayout
@@ -1004,12 +1025,12 @@ export default function Index({
                                             )}
                                             {visibleColumns['col-room'] && (
                                                 <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
-                                                    {participant.room ? (
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium text-slate-900">{participant.room.room_number}</span>
-                                                            <span className="text-xs text-slate-500">{participant.room.hotel_name}</span>
-                                                        </div>
-                                                    ) : '-'}
+                                                    <RoomSelect 
+                                                        activity={activity}
+                                                        participant={participant}
+                                                        rooms={rooms}
+                                                        roomOccupants={roomOccupants}
+                                                    />
                                                 </td>
                                             )}
                                             {visibleColumns['col-group'] && (
@@ -1142,8 +1163,11 @@ export default function Index({
 
                     {/* Pagination */}
                     {participants.links && participants.links.length > 3 && (
-                        <div className="p-4 border-t border-slate-100 flex justify-center bg-slate-50/50">
-                            <div className="flex gap-1.5 flex-wrap">
+                        <div className="p-4 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50">
+                            <div className="text-sm text-slate-500">
+                                Menampilkan <span className="font-medium text-slate-900">{participants.from || 0}</span> sampai <span className="font-medium text-slate-900">{participants.to || 0}</span> dari <span className="font-medium text-slate-900">{participants.total || 0}</span> data
+                            </div>
+                            <div className="flex gap-1.5 flex-wrap justify-center">
                                 {participants.links.map((link, i) => (
                                     <Link
                                         key={i}
@@ -1157,6 +1181,7 @@ export default function Index({
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                         preserveState
                                         preserveScroll
+                                        only={['participants', 'filters']}
                                     />
                                 ))}
                             </div>

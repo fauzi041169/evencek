@@ -53,14 +53,14 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
             const currentBg = settings.card.background;
             const exists = backgrounds.find(bg => bg.filename === currentBg);
 
-            if (!exists) {
-                console.warn('Background image not found in server list, resetting...');
-                // Optional: showToast('Background yang digunakan tidak ditemukan (mungkin telah dihapus), telah direset.', 'warning');
-                setSettings(prev => ({
-                    ...prev,
-                    card: { ...prev.card, background: null }
-                }));
-            }
+            // if (!exists) {
+            //     console.warn('Background image not found in server list, resetting...');
+            //     // Optional: showToast('Background yang digunakan tidak ditemukan (mungkin telah dihapus), telah direset.', 'warning');
+            //     setSettings(prev => ({
+            //         ...prev,
+            //         card: { ...prev.card, background: null }
+            //     }));
+            // }
         }
     }, [isBackgroundsLoaded, backgrounds, settings.card?.background]);
 
@@ -583,13 +583,15 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                                                             <i className="fas fa-check text-white drop-shadow-md"></i>
                                                         </div>
                                                     )}
-                                                    <button
-                                                        onClick={(e) => handleDeleteBackground(e, bg.filename)}
-                                                        className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        title="Hapus"
-                                                    >
-                                                        <i className="fas fa-times text-xs"></i>
-                                                    </button>
+                                                    {bg.type !== 'default' && (
+                                                        <button
+                                                            onClick={(e) => handleDeleteBackground(e, bg.filename)}
+                                                            className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            title="Hapus"
+                                                        >
+                                                            <i className="fas fa-times text-xs"></i>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>

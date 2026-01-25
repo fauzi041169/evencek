@@ -1058,13 +1058,23 @@ class PaymentController extends Controller
                         $auMatch['activity_batch_id'] = null;
                     }
 
+                    $auData = [
+                        'status' => ActivityUser::STATUS_VERIFICATION,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+
+                    // Ambil custom_data dari payment notes jika ada (disimpan saat enrollment)
+                    if ($payment->notes) {
+                        $notes = json_decode($payment->notes, true);
+                        if (is_array($notes) && isset($notes['custom_data'])) {
+                            $auData['custom_data'] = $notes['custom_data'];
+                        }
+                    }
+
                     $activityUser = ActivityUser::updateOrCreate(
                         $auMatch,
-                        [
-                            'status' => ActivityUser::STATUS_VERIFICATION,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]
+                        $auData
                     );
                 } else {
                     $uids = (array) data_get($bulk, 'pending_user_ids', []);
@@ -1827,8 +1837,41 @@ class PaymentController extends Controller
                 $updateData['sender_name'] = $validated['sender_name'];
             }
 
+            // Jika ada upload bukti baru dan status bukan approved, kembalikan ke pending
+            if (isset($updateData['proof_of_payment']) && $payment->status !== 'approved') {
+                $updateData['status'] = 'pending';
+            }
+
             if (!empty($updateData)) {
                 $payment->update($updateData);
+            }
+
+            // Jika status kembali ke pending karena upload bukti, pastikan ActivityUser ada (status verifikasi)
+            if (isset($updateData['status']) && $updateData['status'] === 'pending' && isset($updateData['proof_of_payment'])) {
+                $auMatch = [
+                    'user_id' => $payment->user_id,
+                    'activity_id' => $payment->activity_id,
+                ];
+                if ($payment->activity_batch_id) {
+                    $auMatch['activity_batch_id'] = $payment->activity_batch_id;
+                } else {
+                    $auMatch['activity_batch_id'] = null;
+                }
+                
+                $auData = [
+                    'status' => ActivityUser::STATUS_VERIFICATION,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                if ($payment->notes) {
+                    $notes = json_decode($payment->notes, true);
+                    if (is_array($notes) && isset($notes['custom_data'])) {
+                        $auData['custom_data'] = $notes['custom_data'];
+                    }
+                }
+
+                ActivityUser::updateOrCreate($auMatch, $auData);
             }
             
             // CASCADE UPDATE: Sync changes to all group members

@@ -9,6 +9,8 @@ import PaymentDetailModal from '@/Components/Activity/PaymentDetailModal';
 import BulkImportModal from '@/Components/Activity/BulkImportModal';
 import BulkPaymentModal from '@/Components/Activity/BulkPaymentModal';
 import RegistrationTypeModal from '@/Components/Activity/RegistrationTypeModal';
+import ManualForm from '@/Pages/Payments/ManualForm';
+import PaymentModalWrapper from '@/Pages/Payments/PaymentModal';
 import ChatWidget from '@/Components/Activity/ChatWidget';
 import GalleryLightbox from '@/Components/Activity/GalleryLightbox';
 import { format } from 'date-fns';
@@ -46,6 +48,24 @@ export default function Detail({
         : (participants?.data || []);
 
     const [showPrice, setShowPrice] = useState(activity.show_price);
+    const [visibleSections, setVisibleSections] = useState(activity.visible_sections || {});
+    const isVisible = (section) => {
+        return visibleSections[section] !== false;
+    };
+    
+    const toggleSection = (section) => {
+        const newValue = !isVisible(section);
+        const newSections = { ...visibleSections, [section]: newValue };
+        setVisibleSections(newSections);
+        
+        axios.post(route('activity.toggle-section', activity.id), {
+            section: section,
+            visible: newValue
+        }).catch(err => {
+            console.error('Failed to toggle section visibility', err);
+        });
+    };
+
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
     const [isRegistrationTypeModalOpen, setIsRegistrationTypeModalOpen] = useState(false);
@@ -59,6 +79,11 @@ export default function Detail({
     const [bulkImportResult, setBulkImportResult] = useState(null);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
+
+    // Manual Payment Modal State
+    const [isManualPaymentModalOpen, setIsManualPaymentModalOpen] = useState(false);
+    const [manualPaymentData, setManualPaymentData] = useState(null);
+    const [isManualPaymentLoading, setIsManualPaymentLoading] = useState(false);
 
     // Comments & Rating State
     const [rating, setRating] = useState(userRating || 0);
@@ -83,6 +108,7 @@ export default function Detail({
     // Handle Auto Enroll after Profile Update
     useEffect(() => {
         const pendingEnroll = sessionStorage.getItem('pending_enrollment');
+        
         if (pendingEnroll) {
             const { activityId, type } = JSON.parse(pendingEnroll);
             if (activityId === activity.id) {
@@ -97,16 +123,9 @@ export default function Detail({
 
     // Handle Bulk Import Payment Redirect
     useEffect(() => {
-        console.log('[DEBUG] Flash props in Detail:', flash);
         if (flash?.show_import_bulk_payment_once) {
-            // Redirect to payment creation with is_bulk=1
-            // We use window.location to ensure a full refresh and proper session handling if needed,
-            // but router.visit is better for SPA experience.
-            router.visit(route('payments.create', {
-                activity: activity.id,
-                is_bulk: 1,
-                batch_id: activeBatch?.id
-            }));
+            // Open modal for bulk payment
+            openManualPaymentModal({ is_bulk: 1 });
         }
     }, [flash, activity.id, activeBatch]);
 
@@ -190,6 +209,63 @@ export default function Detail({
             });
     };
 
+    const openManualPaymentModal = async (extraParams = {}) => {
+        setIsManualPaymentLoading(true);
+        setIsManualPaymentModalOpen(true);
+        
+        try {
+            const response = await axios.get(route('payments.create', {
+                activity: activity.id,
+                batch_id: activeBatch?.id,
+                ...extraParams
+            }), {
+                params: { modal: 1 }
+            });
+
+            if (response.data.redirect_url) {
+                // Handle Midtrans Snap Redirect
+                const isMidtransUrl = response.data.redirect_url.includes('/midtrans/payment/');
+                if (isMidtransUrl && window.snap) {
+                    try {
+                        const paymentResponse = await axios.get(response.data.redirect_url, {
+                            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                            params: { modal: 'true', is_ajax: 'true' }
+                        });
+
+                        if (paymentResponse.data.snapToken) {
+                            setIsManualPaymentModalOpen(false); // Close the loading modal
+                            window.snap.pay(paymentResponse.data.snapToken, {
+                                onSuccess: () => window.location.reload(),
+                                onPending: () => window.location.reload(),
+                                onError: () => window.location.reload(),
+                                onClose: () => window.location.reload()
+                            });
+                            return;
+                        }
+                    } catch (err) {
+                        console.error("Failed to fetch Snap Token, falling back to redirect", err);
+                    }
+                }
+
+                // Default redirect
+                window.location.href = response.data.redirect_url;
+                return;
+            }
+
+            if (response.data) {
+                setManualPaymentData(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching payment data:', error);
+            // Handle specific error messages if available
+            const msg = error.response?.data?.message || 'Gagal memuat data pembayaran. Silakan coba lagi.';
+            alert(msg);
+            setIsManualPaymentModalOpen(false);
+        } finally {
+            setIsManualPaymentLoading(false);
+        }
+    };
+
     const handleEnroll = async (type = 'mandiri', force = false) => {
         setIsRegistrationTypeModalOpen(false);
 
@@ -209,13 +285,10 @@ export default function Detail({
                 const currentPrice = activeBatch?.price !== undefined && activeBatch?.price !== null
                     ? Number(activeBatch.price)
                     : Number(activity.price);
-
+                
                 // Jika berbayar, arahkan langsung ke form pembayaran
                 if (currentPrice > 0) {
-                    window.location.href = route('payments.create', {
-                        activity: activity.id,
-                        batch_id: activeBatch?.id
-                    });
+                    openManualPaymentModal();
                     return;
                 }
 
@@ -261,8 +334,8 @@ export default function Detail({
                                 }
 
                                 // Jika ada redirect URL (misal ke halaman pembayaran), arahkan user ke sana
-                                // Ini akan membuka halaman pembayaran (yang mungkin berisi Midtrans Snap Popup)
                                 window.location.href = response.data.redirect_url;
+                                return;
                             } else if (response.data.snapToken && window.snap) {
                                 // Jika backend mengembalikan token Snap langsung (opsional)
                                 window.snap.pay(response.data.snapToken, {
@@ -305,7 +378,26 @@ export default function Detail({
 
     const handleMissingDataSuccess = () => {
         setIsMissingDataModalOpen(false);
-        // Enrollment will be handled by useEffect detecting sessionStorage and updated props
+        
+        // Immediate check for pending enrollment to trigger payment modal without reload
+        const pendingEnroll = sessionStorage.getItem('pending_enrollment');
+        if (pendingEnroll) {
+            try {
+                const { activityId, type } = JSON.parse(pendingEnroll);
+                if (activityId === activity.id && type === 'mandiri') {
+                    sessionStorage.removeItem('pending_enrollment');
+                    
+                    // Directly open payment modal since we just saved the profile
+                    openManualPaymentModal();
+                    return;
+                }
+            } catch (e) {
+                console.error('Error parsing pending enrollment', e);
+            }
+        }
+
+        // Fallback for other cases (e.g. non-mandiri or just profile update)
+        window.location.reload();
     };
 
     const togglePriceVisibility = () => {
@@ -513,32 +605,22 @@ export default function Detail({
                         </div>
 
                         {isJoined ? (
-                            <>
-                                <button
-                                    onClick={() => {
-                                        if (showCompletePaymentCTA && completePaymentUrl) {
-                                            router.visit(completePaymentUrl);
-                                        } else {
-                                            openPaymentDetailLookup(activity.id, user?.id);
-                                        }
-                                    }}
-                                    className={`inline-flex items-center gap-2 h-14 px-8 rounded-full text-white font-bold hover:shadow-lg transition-all transform hover:-translate-y-1 ${showCompletePaymentCTA
-                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-orange-500/30'
-                                        : 'bg-gradient-to-r from-primary to-secondary hover:shadow-primary/30'
-                                        }`}
-                                >
-                                    <i className={`fas ${showCompletePaymentCTA ? 'fa-wallet' : 'fa-file-invoice'}`}></i>
-                                    {buttonText || 'Lihat Detail'}
-                                </button>
-
-                                <button
-                                    onClick={() => setIsBulkImportModalOpen(true)}
-                                    className="glass-button inline-flex items-center gap-2 h-14 px-8 rounded-full text-white font-bold"
-                                >
-                                    <i className="fas fa-user-plus"></i>
-                                    Daftarkan Lain
-                                </button>
-                            </>
+                            <button
+                                onClick={() => {
+                                    if (showCompletePaymentCTA && completePaymentUrl) {
+                                        router.visit(completePaymentUrl);
+                                    } else {
+                                        openPaymentDetailLookup(activity.id, user?.id);
+                                    }
+                                }}
+                                className={`inline-flex items-center gap-2 h-14 px-8 rounded-full text-white font-bold hover:shadow-lg transition-all transform hover:-translate-y-1 ${showCompletePaymentCTA
+                                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-orange-500/30'
+                                    : 'bg-gradient-to-r from-primary to-secondary hover:shadow-primary/30'
+                                    }`}
+                            >
+                                <i className={`fas ${showCompletePaymentCTA ? 'fa-wallet' : 'fa-file-invoice'}`}></i>
+                                {buttonText || 'Lihat Detail'}
+                            </button>
                         ) : registrationTarget ? (
                             <>
                                 {registrationTarget.type === 'disabled' ? (
@@ -564,6 +646,16 @@ export default function Detail({
                                 )}
                             </>
                         ) : null}
+
+                        {user && (
+                            <button
+                                onClick={() => setIsBulkImportModalOpen(true)}
+                                className="glass-button inline-flex items-center gap-2 h-14 px-8 rounded-full text-white font-bold"
+                            >
+                                <i className="fas fa-user-plus"></i>
+                                {isJoined ? 'Daftarkan Lain' : 'Daftar Kolektif'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -577,10 +669,40 @@ export default function Detail({
 
             {/* Content Section */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                {/* Admin Controls */}
+                {canEdit && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-8">
+                        <h3 className="text-sm font-bold text-gray-900 mb-3">Atur Tampilan Halaman (Admin/Creator)</h3>
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                { id: 'description', label: 'Deskripsi', icon: 'fa-info-circle' },
+                                { id: 'speakers', label: 'Narasumber', icon: 'fa-user-tie' },
+                                { id: 'gallery', label: 'Galeri', icon: 'fa-images' },
+                                { id: 'participants', label: 'Peserta', icon: 'fa-users' },
+                            ].map(section => (
+                                <button
+                                    key={section.id}
+                                    onClick={() => toggleSection(section.id)}
+                                    className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                        isVisible(section.id)
+                                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                            : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    <i className={`fas ${section.icon} mr-2 ${isVisible(section.id) ? 'text-indigo-500' : 'text-gray-400'}`}></i>
+                                    {section.label}
+                                    <i className={`fas ${isVisible(section.id) ? 'fa-eye' : 'fa-eye-slash'} ml-2 text-xs opacity-70`}></i>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-8">
                         {/* Description */}
+                        {isVisible('description') && (
                         <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
                             <h2 className="text-2xl font-bold text-gray-900 mb-4">Tentang Kegiatan</h2>
                             <div
@@ -589,8 +711,10 @@ export default function Detail({
                                 dangerouslySetInnerHTML={{ __html: activity.description }}
                             />
                         </div>
+                        )}
 
                         {/* Gallery */}
+                        {isVisible('gallery') && (
                         <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-2xl font-bold text-gray-900">Galeri</h2>
@@ -635,7 +759,7 @@ export default function Detail({
                                     {activity.galleries.map((image, index) => (
                                         <div key={image.id} className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                                             <img
-                                                src={`/storage/activities/gallery/${image.image}`}
+                                                src={`/storage/activities/gallery/${image.image.replace('activities/gallery/', '').replace('storage/activities/gallery/', '')}`}
                                                 alt="Gallery"
                                                 className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-105 cursor-zoom-in"
                                                 onClick={() => {
@@ -670,6 +794,7 @@ export default function Detail({
                                 </div>
                             )}
                         </div>
+                        )}
 
                         {/* Rating & Comments */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
@@ -798,7 +923,7 @@ export default function Detail({
                         </div>
 
                         {/* Speakers */}
-                        {activity.speakers && activity.speakers.length > 0 && (
+                        {isVisible('speakers') && activity.speakers && activity.speakers.length > 0 && (
                             <div className="bg-white rounded-2xl shadow-sm p-6">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4">Narasumber</h3>
                                 <div className="space-y-4">
@@ -824,6 +949,7 @@ export default function Detail({
                         )}
 
                         {/* Participants List */}
+                        {isVisible('participants') && (
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[500px] overflow-hidden">
                             <div className="px-6 py-4 border-b flex items-center justify-between bg-amber-50 border-yellow-200">
                                 <h5 className="m-0 font-bold text-yellow-800">Daftar Peserta</h5>
@@ -873,6 +999,7 @@ export default function Detail({
                                 </div>
                             </div>
                         </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -882,6 +1009,35 @@ export default function Detail({
                 isOpen={isLoginModalOpen}
                 onClose={() => setIsLoginModalOpen(false)}
             />
+
+            {/* Manual Payment Modal */}
+            <PaymentModalWrapper
+                open={isManualPaymentModalOpen}
+                onClose={() => setIsManualPaymentModalOpen(false)}
+                title="Pembayaran"
+            >
+                {isManualPaymentLoading ? (
+                    <div className="flex justify-center items-center p-8">
+                        <i className="fas fa-circle-notch fa-spin text-3xl text-gray-400"></i>
+                    </div>
+                ) : manualPaymentData ? (
+                    <ManualForm
+                        activity={manualPaymentData.activity}
+                        paymentMethods={manualPaymentData.paymentMethods}
+                        bulk_import_payment={manualPaymentData.bulk_import_payment}
+                        defaultSenderName={manualPaymentData.defaultSenderName}
+                        is_modal={true}
+                        onSuccess={() => {
+                            setIsManualPaymentModalOpen(false);
+                            window.location.reload();
+                        }}
+                    />
+                ) : (
+                    <div className="p-4 text-center text-gray-500">
+                        Gagal memuat form pembayaran.
+                    </div>
+                )}
+            </PaymentModalWrapper>
 
             <RegistrationTypeModal
                 isOpen={isRegistrationTypeModalOpen}

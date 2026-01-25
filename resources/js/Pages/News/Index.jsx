@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
-import MobileLikeHero from '@/Components/MobileLikeHero';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
@@ -82,7 +81,10 @@ const Reveal = ({ children, className = '', direction = 'up' }) => {
 export default function Index({ featuredNews, allNews, totalNews, categories, latestNews }) {
     // Merge latestNews into allNews if provided (from search method)
     const newsList = latestNews || allNews;
-    const { url } = usePage();
+    const { url, props } = usePage();
+    const { appSettings } = props;
+    const heroAnim = appSettings?.hero_animation_style || 'circles';
+
     const [searchQuery, setSearchQuery] = useState(new URLSearchParams(window.location.search).get('query') || '');
     const [editMode, setEditMode] = useState(false);
 
@@ -135,31 +137,129 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                 .hero-gradient-overlay-top {
                     position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.3), transparent);
                 }
+                .hero-grow {
+                    position: relative;
+                    background-color: #1a1b3a; /* Deep Blue */
+                    overflow: hidden;
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                }
+                .curve-top-right {
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    width: 45%;
+                    height: 180px;
+                    background-color: white;
+                    border-bottom-left-radius: 100%;
+                    z-index: 1;
+                }
+                .yellow-shape-wrapper {
+                    position: absolute;
+                    bottom: 0;
+                    right: 0;
+                    width: 45%;
+                    height: 85%;
+                    z-index: 10;
+                }
+                .yellow-shape {
+                    width: 100%;
+                    height: 100%;
+                    background-color: #FFB800;
+                    border-top-left-radius: 100px;
+                    position: relative;
+                }
+                .image-container {
+                    position: absolute;
+                    top: 25px;
+                    left: 25px;
+                    right: 0;
+                    bottom: 0;
+                    background-color: #e5e7eb;
+                    border-top-left-radius: 80px;
+                    overflow: hidden;
+                }
+                @media (max-width: 1024px) {
+                    .curve-top-right { display: none; }
+                    .yellow-shape-wrapper {
+                        position: relative;
+                        width: 100%;
+                        height: 400px;
+                        margin-top: 2rem;
+                        border-radius: 40px;
+                        overflow: hidden;
+                    }
+                    .yellow-shape { border-radius: 40px; }
+                    .image-container {
+                        top: 15px; left: 15px; right: 15px; bottom: 15px;
+                        width: auto; height: auto; border-radius: 30px;
+                    }
+                }
             `}</style>
 
             <div className="relative" style={{fontFamily: "'Inter','Poppins','Montserrat',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'"}}>
                 
                 {/* Hero Section */}
-                <MobileLikeHero 
-                    title="Berita & Artikel" 
-                    description="Informasi terbaru seputar kegiatan dan event terkini untuk Anda."
-                >
-                    {/* Search Form adapted for Hero */}
-                    <Reveal className="max-w-xl mx-auto relative group mt-8">
-                        <form onSubmit={handleSearch} className="w-full relative">
-                            <input
-                                type="text"
-                                placeholder="Cari berita atau artikel..."
-                                className="w-full pl-6 pr-14 py-4 rounded-2xl border-none focus:ring-4 focus:ring-primary/50 shadow-xl text-gray-800 text-lg placeholder-gray-400 bg-white/95 backdrop-blur-sm transition-all duration-300"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            <button type="submit" className="absolute right-2 top-2 bottom-2 bg-gradient-to-r from-primary to-secondary text-white rounded-xl px-5 hover:shadow-lg hover:scale-105 transition-all duration-300 flex items-center justify-center">
-                                <i className="fas fa-search text-lg"></i>
-                            </button>
-                        </form>
-                    </Reveal>
-                </MobileLikeHero>
+                <div className="relative bg-slate-900 overflow-hidden min-h-[500px] flex items-center">
+                    {/* Background Elements */}
+                    <div className="absolute inset-0">
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 via-slate-900/95 to-slate-900 z-10"></div>
+                        <img
+                            src="/assets/images/begron/bg-pattern.png"
+                            alt="Background Pattern"
+                            className="w-full h-full object-cover opacity-20 mix-blend-overlay"
+                            onError={(e) => e.target.style.display = 'none'}
+                        />
+                        {/* Dynamic Hero Animation based on Settings */}
+                        {heroAnim === 'circles' && (
+                            <div className="hero-circles absolute inset-0 pointer-events-none overflow-hidden">
+                                <div className="hero-circle hero-circle-1"></div>
+                                <div className="hero-circle hero-circle-2"></div>
+                                <div className="hero-circle hero-circle-3"></div>
+                            </div>
+                        )}
+
+                        {heroAnim === 'rain' && <div className="hero-rain-streaks"></div>}
+                        
+                        {heroAnim === 'waves' && <div className="hero-diagonal-waves"></div>}
+                        
+                        {heroAnim === 'particles' && <div className="hero-snow-particles"></div>}
+                    </div>
+
+                    <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                        <div className="text-center max-w-3xl mx-auto">
+                            <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-6 drop-shadow-sm">
+                                Berita & Artikel
+                            </h1>
+                            <p className="text-xl text-slate-300 mb-10 leading-relaxed">
+                                Informasi terbaru seputar kegiatan dan event terkini untuk Anda.
+                            </p>
+                            
+                            {/* Search Box adapted for Hero */}
+                            <div className="max-w-2xl mx-auto relative group">
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl opacity-30 group-hover:opacity-50 transition-opacity blur-md"></div>
+                                <form onSubmit={handleSearch} className="relative bg-white/10 backdrop-blur-md rounded-xl shadow-2xl flex items-center overflow-hidden border border-white/20 focus-within:border-white/40 transition-colors">
+                                    <div className="pl-6 text-indigo-300">
+                                        <i className="fas fa-search text-lg"></i>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        className="w-full px-4 py-4 outline-none text-white bg-transparent placeholder-slate-400 font-medium"
+                                        placeholder="Cari berita atau artikel..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all duration-300 flex items-center gap-2"
+                                    >
+                                        <span>Cari</span>
+                                        <i className="fas fa-arrow-right"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 {/* Stats Section */}
                 <section className="py-10 bg-white relative z-10 -mt-8 mx-4 sm:mx-8 rounded-3xl shadow-xl border border-gray-100 max-w-5xl lg:mx-auto">

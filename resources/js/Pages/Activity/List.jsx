@@ -266,17 +266,21 @@ export default function List({
                                                             </td>
                                                             <td className="px-6 py-2 whitespace-nowrap">
                                                                 {canManage ? (
-                                                                    <select
-                                                                        value={activity.status?.toLowerCase() || 'private'}
-                                                                        onChange={(e) => handleStatusChange(e.target.value)}
-                                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-0 ${isPublic ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-                                                                        style={{ paddingRight: '2rem' }}
-                                                                    >
-                                                                        <option value="public">Public</option>
-                                                                        <option value="private">Private</option>
-                                                                    </select>
+                                                                    <div className="relative w-28">
+                                                                        <select
+                                                                            value={activity.status?.toLowerCase() || 'private'}
+                                                                            onChange={(e) => handleStatusChange(e.target.value)}
+                                                                            className={`appearance-none w-full pl-3 pr-8 py-1 rounded-full text-xs font-semibold cursor-pointer border-none focus:ring-0 text-center ${isPublic ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                                                                        >
+                                                                            <option value="public">Public</option>
+                                                                            <option value="private">Private</option>
+                                                                        </select>
+                                                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                                                            <i className="fas fa-chevron-down text-[10px]"></i>
+                                                                        </div>
+                                                                    </div>
                                                                 ) : (
-                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${isPublic ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                                    <span className={`inline-flex justify-center w-28 py-1 rounded-full text-xs font-semibold ${isPublic ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                                                         {isPublic ? 'Public' : 'Private'}
                                                                     </span>
                                                                 )}

@@ -218,10 +218,22 @@ class ActivityPreparationController extends Controller
                 ->get();
 
             // Get enrolled users with profile and province
-            $participants = ActivityUser::with(['user.profile.province'])
+            $participants = ActivityUser::with([
+                    'user.profile.province',
+                    'roomAssignment' => function($q) use ($activityIdValue) {
+                        $q->where('activity_id', $activityIdValue)->with('room');
+                    }
+                ])
                 ->where('activity_id', $activityIdValue)
                 ->orderBy('created_at', 'desc')
                 ->get();
+
+            // Map roomAssignment.room to room for frontend compatibility
+            $participants->each(function($p) {
+                if ($p->roomAssignment && $p->roomAssignment->room) {
+                    $p->setRelation('room', $p->roomAssignment->room);
+                }
+            });
 
             $owners = $activity->owners ?? collect();
             if ($activity->user) {
@@ -254,7 +266,14 @@ class ActivityPreparationController extends Controller
                 ? (bool) $certSettings->print_settings['download_card_visible']
                 : false;
 
-                return Inertia::render('Activity/Preparation/Index', compact('activity', 'divisions', 'committeeStructure', 'participants', 'rundowns', 'materials', 'owners', 'refPositions'));
+            // Lazy init Participation Types (Default: Panitia, Peserta)
+            if (\App\Models\ActivityParticipationType::where('activity_id', $activityIdValue)->count() === 0) {
+                \App\Models\ActivityParticipationType::create(['activity_id' => $activityIdValue, 'name' => 'Panitia']);
+                \App\Models\ActivityParticipationType::create(['activity_id' => $activityIdValue, 'name' => 'Peserta']);
+            }
+            $participationTypes = \App\Models\ActivityParticipationType::where('activity_id', $activityIdValue)->get();
+
+                return Inertia::render('Activity/Preparation/Index', compact('activity', 'divisions', 'committeeStructure', 'participants', 'rundowns', 'materials', 'owners', 'refPositions', 'participationTypes'));
         } catch (ModelNotFoundException $e) {
             abort(404, 'Aktivitas tidak ditemukan.');
         } catch (Exception $e) {
@@ -457,6 +476,9 @@ class ActivityPreparationController extends Controller
                     'participantGroup', 
                     'creator', 
                     'updater', 
+                    'roomAssignment' => function($q) use ($activityId) {
+                        $q->where('activity_id', $activityId)->with('room');
+                    },
                     'payment' => function($q) use ($activityId) {
                         $q->where('activity_id', $activityId)
                           ->with(['paymentMethod', 'verifier'])
@@ -738,6 +760,13 @@ class ActivityPreparationController extends Controller
                 $perPage = request('per_page', 15);
                 $participants = $query->orderBy($orderColumn, 'desc')->paginate($perPage)->appends(request()->query());
 
+                // Map roomAssignment.room to room for frontend compatibility
+                $participants->getCollection()->each(function($p) {
+                    if ($p->roomAssignment && $p->roomAssignment->room) {
+                        $p->setRelation('room', $p->roomAssignment->room);
+                    }
+                });
+
                 /*
                 if ($searchTerm) {
                     \Log::info('DEBUG SEARCH: Query executed', [
@@ -994,30 +1023,19 @@ class ActivityPreparationController extends Controller
             }
 
 
-            // Occupancy counts per room
-            $occupancy = [];
             $roomOccupants = [];
             try {
-                $occupancyQuery = ActivityHotelRoomAssignment::select('room_id', DB::raw('COUNT(*) as count'))
-                    ->where('activity_id', $activityId);
-
-                if ($selectedBatchId) {
-                    $occupancyQuery->where('activity_batch_id', $selectedBatchId);
-                }
-
-                $occupancy = $occupancyQuery->groupBy('room_id')
+                // 1. Get occupancy counts across ALL batches for capacity check
+                $occupancy = ActivityHotelRoomAssignment::select('room_id', DB::raw('COUNT(*) as count'))
+                    ->where('activity_id', $activityId)
+                    ->groupBy('room_id')
                     ->pluck('count', 'room_id')
                     ->toArray();
 
-                // Load detailed room occupants
-                $assignmentsList = ActivityHotelRoomAssignment::with('user:id,name,email')
-                    ->where('activity_id', $activityId);
-
-                if ($selectedBatchId) {
-                    $assignmentsList->where('activity_batch_id', $selectedBatchId);
-                }
-
-                $assignmentsCollection = $assignmentsList->get();
+                // 2. Load detailed room occupants across ALL batches
+                $assignmentsCollection = ActivityHotelRoomAssignment::with('user:id,name,email')
+                    ->where('activity_id', $activityId)
+                    ->get();
 
                 // Group by room_id
                 foreach ($assignmentsCollection as $assignment) {
@@ -1177,14 +1195,12 @@ class ActivityPreparationController extends Controller
                     ->values();
                     
                 // Status
-                $options['status'] = DB::table('activity_users')
-                    ->where('activity_id', $activityId)
-                    ->whereNotNull('status')
-                    ->select('status')
-                    ->distinct()
-                    ->pluck('status')
-                    ->sort()
-                    ->values();
+                $options['status'] = collect([
+                    ['value' => '0', 'label' => 'Menunggu Verifikasi'],
+                    ['value' => '1', 'label' => 'Aktif'],
+                    ['value' => '2', 'label' => 'Ditolak'],
+                    ['value' => '3', 'label' => 'Menunggu Pembayaran'],
+                ]);
                 
                 return $options;
             });
@@ -1609,6 +1625,29 @@ class ActivityPreparationController extends Controller
         return redirect()->back()->with('success', 'Kamar dihapus');
     }
 
+    public function destroyAllRooms(Request $request, $activityId)
+    {
+        $activity = Activity::findOrFail($activityId);
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
+            if (! $activity->canManageRegistration(auth()->id())) {
+                abort(403);
+            }
+        }
+
+        // Get all room IDs for this activity
+        $roomIds = ActivityHotelRoom::where('activity_id', $activityId)->pluck('id');
+        $count = $roomIds->count();
+
+        if ($count > 0) {
+            // Delete assignments first
+            ActivityHotelRoomAssignment::whereIn('room_id', $roomIds)->delete();
+            // Delete rooms
+            ActivityHotelRoom::whereIn('id', $roomIds)->delete();
+        }
+
+        return redirect()->back()->with('success', 'Semua kamar ('.$count.') berhasil dihapus');
+    }
+
     public function destroyRoomsBatch(Request $request, $activityId)
     {
         $activity = Activity::findOrFail($activityId);
@@ -1946,21 +1985,18 @@ class ActivityPreparationController extends Controller
             }
             $deleteQuery->delete();
 
-            return response()->json(['success' => true, 'cleared' => true]);
+            return redirect()->back()->with('success', 'Peserta berhasil dikeluarkan dari kamar.');
         }
 
         $room = ActivityHotelRoom::where('activity_id', $activityId)->findOrFail($roomId);
 
-        // Check capacity BEFORE modifying existing assignments
-        $capacityQuery = ActivityHotelRoomAssignment::where('activity_id', $activityId)
-            ->where('room_id', $room->id);
-        if ($batchId) {
-            $capacityQuery->where('activity_batch_id', $batchId);
-        }
-        $currentCount = $capacityQuery->count();
+        // Check capacity BEFORE modifying existing assignments (ALWAYS activity-wide)
+        $currentCount = ActivityHotelRoomAssignment::where('activity_id', $activityId)
+            ->where('room_id', $room->id)
+            ->count();
 
         if ((int) $room->capacity > 0 && $currentCount >= (int) $room->capacity && ! $request->boolean('force')) {
-            return response()->json(['success' => false, 'message' => 'Kapasitas kamar penuh'], 422);
+            return redirect()->back()->with('error', 'Kapasitas kamar penuh');
         }
 
         \DB::beginTransaction();
@@ -1984,23 +2020,14 @@ class ActivityPreparationController extends Controller
         } catch (\Throwable $e) {
             \DB::rollBack();
 
-            return response()->json(['success' => false, 'message' => 'Gagal menyimpan: '.$e->getMessage()], 500);
+            return redirect()->back()->with('error', 'Gagal menyimpan: '.$e->getMessage());
         }
 
-        $countQuery = ActivityHotelRoomAssignment::where('activity_id', $activityId)
-            ->where('room_id', $room->id);
-        if ($batchId) {
-            $countQuery->where('activity_batch_id', $batchId);
-        }
-        $updatedCount = $countQuery->count();
+        $updatedCount = ActivityHotelRoomAssignment::where('activity_id', $activityId)
+            ->where('room_id', $room->id)
+            ->count();
 
-        return response()->json([
-            'success' => true,
-            'hotel_name' => $room->hotel_name,
-            'room_number' => $room->room_number,
-            'occupancy' => $updatedCount,
-            'capacity' => (int) $room->capacity,
-        ]);
+        return redirect()->back()->with('success', "Peserta dipindahkan ke kamar {$room->room_number}");
     }
 
     /**
@@ -4158,7 +4185,11 @@ class ActivityPreparationController extends Controller
      */
     public function storeCommittee(Request $request, $activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (!$activity) {
+            $activity = Activity::where('id', $activityId)->firstOrFail();
+        }
+        $activityIdValue = $activity->id;
 
         // Check permission: Admin dan superadmin bisa akses semua, creator dan panitia hanya aktivitas mereka
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
@@ -4168,35 +4199,24 @@ class ActivityPreparationController extends Controller
             }
         }
 
-        // Longgarkan: jangan blokir berdasarkan permission key
-
         $request->validate([
-            'activity_batch_id' => 'nullable|exists:activity_batches,id',
             'user_id' => 'required|exists:users,id',
             'position' => 'required|string|max:255',
-            'order' => 'nullable|integer|min:0',
         ]);
 
-        // Hilangkan batasan langganan untuk penambahan panitia
-
-        // Get user data from database with profile
         $user = User::with('profile')->findOrFail($request->user_id);
 
-        // Determine activity_batch_id if not provided
-        $batchId = $request->activity_batch_id;
-        if (! $batchId) {
-            $activityUser = ActivityUser::where('activity_id', $activityId)
-                ->where('user_id', $request->user_id)
-                ->first();
-            if ($activityUser) {
-                $batchId = $activityUser->activity_batch_id;
-            }
+        // Determine activity_batch_id from activity_users
+        $batchId = null;
+        $activityUser = ActivityUser::where('activity_id', $activityIdValue)
+            ->where('user_id', $request->user_id)
+            ->first();
+        if ($activityUser) {
+            $batchId = $activityUser->activity_batch_id;
         }
 
-        // Get the next order value (max order + 1)
-        $maxOrder = ActivityCommitteeStructure::where('activity_id', $activityId)->max('order') ?? -1;
+        $maxOrder = ActivityCommitteeStructure::where('activity_id', $activityIdValue)->max('order') ?? -1;
 
-        // Ensure position exists in RefPosition
         RefPosition::firstOrCreate(['name' => $request->position]);
 
         $positionName = trim($request->position);
@@ -4205,15 +4225,13 @@ class ActivityPreparationController extends Controller
         $division = null;
 
         if ($isMainPosition) {
-            // Check if position matches an existing division to link it
-            $division = ActivityDivision::where('activity_id', $activityId)
+            $division = ActivityDivision::where('activity_id', $activityIdValue)
                 ->where('name', $request->position)
                 ->first();
 
-            // If division doesn't exist, create it automatically (Auto-sync feature)
             if (! $division) {
                 $division = ActivityDivision::create([
-                    'activity_id' => $activityId,
+                    'activity_id' => $activityIdValue,
                     'activity_batch_id' => $batchId,
                     'name' => $request->position,
                     'description' => 'Jabatan '.$request->position,
@@ -4226,7 +4244,7 @@ class ActivityPreparationController extends Controller
              // Example: "Anggota Acara" -> "Koordinator Acara"
              $suffix = trim(str_ireplace('anggota', '', $lowerPositionName));
              if ($suffix) {
-                 $division = ActivityDivision::where('activity_id', $activityId)
+                 $division = ActivityDivision::where('activity_id', $activityIdValue)
                      ->where('name', 'like', '%Koordinator%')
                      ->where('name', 'like', "%{$suffix}%")
                      ->first();
@@ -4234,7 +4252,7 @@ class ActivityPreparationController extends Controller
         }
 
         ActivityCommitteeStructure::create([
-            'activity_id' => $activityId,
+            'activity_id' => $activityIdValue,
             'activity_batch_id' => $batchId,
             'position' => $request->position,
             'activity_division_id' => $division ? $division->id : null,
@@ -4253,44 +4271,38 @@ class ActivityPreparationController extends Controller
      */
     public function updateCommittee(Request $request, $activityId, $committeeId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (!$activity) {
+            $activity = Activity::where('id', $activityId)->firstOrFail();
+        }
+        $activityIdValue = $activity->id;
 
-        // Check permission: Admin dan superadmin bisa akses semua, creator dan panitia hanya aktivitas mereka
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
-            // Untuk creator dan panitia, check apakah mereka bisa manage registration untuk aktivitas ini
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403, 'Anda tidak memiliki izin untuk mengubah panitia untuk aktivitas ini.');
             }
         }
 
-        // Longgarkan: jangan blokir berdasarkan permission key
-
         $request->validate([
-            'activity_batch_id' => 'nullable|exists:activity_batches,id',
             'user_id' => 'required|exists:users,id',
             'position' => 'required|string|max:255',
-            'order' => 'nullable|integer|min:0',
         ]);
 
-        $committee = ActivityCommitteeStructure::where('activity_id', $activityId)
+        $committee = ActivityCommitteeStructure::where('activity_id', $activityIdValue)
             ->findOrFail($committeeId);
 
-        // Ensure position exists in RefPosition
         RefPosition::firstOrCreate(['name' => $request->position]);
 
-        // Check if position matches an existing division to link it
-        $division = ActivityDivision::where('activity_id', $activityId)
+        $division = ActivityDivision::where('activity_id', $activityIdValue)
             ->where('name', $request->position)
             ->first();
 
-        // Get user data from database with profile
         $user = User::with('profile')->findOrFail($request->user_id);
 
-        // If division doesn't exist, create it automatically (Auto-sync feature)
         if (! $division) {
             $division = ActivityDivision::create([
-                'activity_id' => $activityId,
-                'activity_batch_id' => $request->activity_batch_id,
+                'activity_id' => $activityIdValue,
+                'activity_batch_id' => $committee->activity_batch_id,
                 'name' => $request->position,
                 'description' => 'Jabatan '.$request->position,
                 'leader_name' => $user->name,
@@ -4299,24 +4311,13 @@ class ActivityPreparationController extends Controller
         }
 
         $committee->update([
-            'activity_batch_id' => $request->activity_batch_id,
             'position' => $request->position,
             'activity_division_id' => $division ? $division->id : null,
             'name' => $user->name,
             'user_id' => $request->user_id,
             'phone' => $user->profile->no_hp ?? null,
             'email' => $user->email,
-            'order' => $committee->order, // Keep existing order
         ]);
-
-        // Return JSON response for AJAX requests
-        if ($request->ajax() || $request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Anggota kepanitiaan berhasil diperbarui.',
-                'position' => $committee->position,
-            ]);
-        }
 
         return redirect()->back()->with('success', 'Anggota kepanitiaan berhasil diperbarui.');
     }
@@ -4326,22 +4327,19 @@ class ActivityPreparationController extends Controller
      */
     public function destroyCommittee($activityId, $committeeId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (!$activity) {
+            $activity = Activity::where('id', $activityId)->firstOrFail();
+        }
+        $activityIdValue = $activity->id;
 
-        // Check permission: Admin dan superadmin bisa akses semua, creator dan panitia hanya aktivitas mereka
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
-            // Untuk creator dan panitia, check apakah mereka bisa manage registration untuk aktivitas ini
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403, 'Anda tidak memiliki izin untuk menghapus panitia untuk aktivitas ini.');
             }
         }
 
-        // Check permission menggunakan permission system
-        if (! auth()->user()->hasPermission('manage_activity_preparation')) {
-            abort(403, 'Anda tidak memiliki izin untuk mengelola kepanitiaan.');
-        }
-
-        $committee = ActivityCommitteeStructure::where('activity_id', $activityId)
+        $committee = ActivityCommitteeStructure::where('activity_id', $activityIdValue)
             ->findOrFail($committeeId);
 
         $committee->delete();

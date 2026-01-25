@@ -3,10 +3,12 @@ import { Link } from '@inertiajs/react';
 
 export default function ParticipantsSection({ participants, activity }) {
     // Safety check for activity
-    if (!activity || !activity.uid) {
+    // Relaxed check: use id (which is the uid string per database schema) if uid is null
+    if (!activity || (!activity.uid && !activity.id)) {
         console.error('ParticipantsSection: activity prop is missing or invalid', activity);
         return null;
     }
+    const activityUid = activity.uid || activity.id;
 
     // Show only first 5 or 10 participants
     const displayParticipants = participants.slice(0, 10);
@@ -15,8 +17,8 @@ export default function ParticipantsSection({ participants, activity }) {
         <div className="p-6 bg-white">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Peserta Terdaftar ({participants.length})</h3>
-                <Link 
-                    href={route('activity.participants.index', { activityId: activity.uid })} 
+                <Link
+                    href={route('activity.participants.index', { activityId: activityUid })}
                     className="text-sm text-primary hover:text-indigo-900 font-medium"
                 >
                     Lihat Semua &rarr;

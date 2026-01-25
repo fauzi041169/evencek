@@ -1535,9 +1535,17 @@ class MidtransPaymentController extends Controller
 
                 $au = ActivityUser::firstOrNew($matchAttributes);
                 if (! $au->exists) {
-
                     $au->created_at = now();
                 }
+
+                // Ambil custom_data dari payment notes jika ada
+                if ($payment->notes) {
+                    $notes = json_decode($payment->notes, true);
+                    if (is_array($notes) && isset($notes['custom_data'])) {
+                        $au->custom_data = $notes['custom_data'];
+                    }
+                }
+
                 $au->status = ActivityUser::STATUS_ACTIVE;
                 $au->card_status = 'approved';
                 $au->updated_at = now();

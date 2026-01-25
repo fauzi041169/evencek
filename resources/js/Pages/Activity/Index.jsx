@@ -287,8 +287,19 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-100 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                                             </Link>
 
-                                                            <div className="flex flex-col">
-                                                                <span className="text-sm text-slate-400 font-medium">Harga Tiket</span>
+                                                            <div className="flex flex-col relative group/price">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-sm text-slate-400 font-medium">Harga Tiket</span>
+                                                                    {editMode && (
+                                                                        <Link 
+                                                                            href={route('activity.edit', activity.id)}
+                                                                            className="opacity-0 group-hover/price:opacity-100 transition-opacity text-xs bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-white"
+                                                                            title="Edit Harga"
+                                                                        >
+                                                                            <i className="fas fa-cog"></i>
+                                                                        </Link>
+                                                                    )}
+                                                                </div>
                                                                 <div className="text-2xl font-bold">
                                                                     {activity.price > 0 ? (
                                                                         activity.show_price !== false ? (
@@ -312,28 +323,14 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                 <img
                                                                     src={getImageUrl(activity)}
                                                                     alt={activity.name}
-                                                                    className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105"
+                                                                    className="w-full h-full object-contain transform transition-transform duration-700 group-hover:scale-105"
                                                                     onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
                                                                 />
-                                                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
+                                                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent pointer-events-none"></div>
                                                             </div>
 
-                                                            {/* Floating Card Element */}
-                                                            <div className="absolute -bottom-6 -right-6 bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl shadow-xl hidden xl:block animate-float">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="flex -space-x-3">
-                                                                        {[1, 2, 3].map(i => (
-                                                                            <div key={i} className="w-8 h-8 rounded-full bg-slate-300 border-2 border-slate-800 flex items-center justify-center text-[10px] text-slate-600 font-bold">
-                                                                                <i className="fas fa-user"></i>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                    <div className="text-xs text-white font-medium">
-                                                                        <span className="block font-bold text-lg leading-none">{Math.floor(Math.random() * 50) + 10}+</span>
-                                                                        Pendaftar
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                                                            {/* Floating Card Element Removed */}
+
                                                         </div>
                                                     </div>
                                                 </div>
@@ -342,39 +339,6 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                     })}
                                 </div>
 
-                                {/* Slider Navigation */}
-                                {sliderActivities.length > 1 && (
-                                    <div className="absolute bottom-0 left-0 right-0 flex justify-between items-center z-30 pointer-events-none">
-                                        <div className="flex gap-2 pointer-events-auto">
-                                            {sliderActivities.map((_, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => goToSlide(idx)}
-                                                    className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide
-                                                        ? 'bg-white w-8'
-                                                        : 'bg-white/30 w-4 hover:bg-white/50'
-                                                        }`}
-                                                    aria-label={`Go to slide ${idx + 1}`}
-                                                ></button>
-                                            ))}
-                                        </div>
-
-                                        <div className="flex gap-3 pointer-events-auto">
-                                            <button
-                                                onClick={() => changeSlide(-1)}
-                                                className="w-12 h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group"
-                                            >
-                                                <i className="fas fa-arrow-left transition-transform group-hover:-translate-x-1"></i>
-                                            </button>
-                                            <button
-                                                onClick={() => changeSlide(1)}
-                                                className="w-12 h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group"
-                                            >
-                                                <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         ) : (
                             // Fallback State when no activities
@@ -397,6 +361,39 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                             </div>
                         )}
                     </div>
+
+                    {/* Slider Navigation (Absolute to Hero) */}
+                    {sliderActivities && sliderActivities.length > 1 && (
+                        <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-8 z-30 pointer-events-none">
+                            <button
+                                onClick={() => changeSlide(-1)}
+                                className="w-12 h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group pointer-events-auto"
+                            >
+                                <i className="fas fa-arrow-left transition-transform group-hover:-translate-x-1"></i>
+                            </button>
+
+                            <div className="flex gap-2 pointer-events-auto">
+                                {sliderActivities.map((_, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => goToSlide(idx)}
+                                        className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide
+                                            ? 'bg-white w-8'
+                                            : 'bg-white/30 w-4 hover:bg-white/50'
+                                            }`}
+                                        aria-label={`Go to slide ${idx + 1}`}
+                                    ></button>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={() => changeSlide(1)}
+                                className="w-12 h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group pointer-events-auto"
+                            >
+                                <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1"></i>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Latest Activities Section */}
