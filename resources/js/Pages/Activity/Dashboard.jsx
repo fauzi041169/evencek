@@ -589,62 +589,54 @@ export default function Dashboard({
                         </div>
                     </div>
 
-                    {/* Ringkasan Peserta */}
+                    {/* Top 3 Panitia */}
                     <div className="group relative bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
                         <div className="relative p-6">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-xl shadow-lg animate-pulse">
-                                    <i className="fas fa-chart-line"></i>
+                                    <i className="fas fa-trophy"></i>
                                 </div>
-                                <span className="text-yellow-100 text-sm font-bold uppercase tracking-wider">Statistik Peserta</span>
+                                <span className="text-yellow-100 text-sm font-bold uppercase tracking-wider">Top 3 Panitia</span>
                             </div>
                             <div className="space-y-3">
-                                {/* Total Pendaftaran */}
-                                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-white/20 text-white">
-                                            <i className="fas fa-users"></i>
+                                {committee_stats && committee_stats.slice(0, 3).map((member, index) => (
+                                    <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20 flex items-center justify-between">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="relative">
+                                                <img 
+                                                    src={member.profile_photo_url} 
+                                                    alt={member.name}
+                                                    className={`w-10 h-10 rounded-full object-cover border-2 ${
+                                                        index === 0 ? 'border-yellow-400' : 
+                                                        index === 1 ? 'border-gray-300' : 
+                                                        'border-orange-600'
+                                                    }`}
+                                                />
+                                                <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${
+                                                    index === 0 ? 'bg-yellow-500' : 
+                                                    index === 1 ? 'bg-gray-400' : 
+                                                    'bg-orange-700'
+                                                }`}>
+                                                    {index + 1}
+                                                </div>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="text-white font-semibold text-sm truncate max-w-[120px]">{member.name}</div>
+                                                <div className="text-yellow-100 text-xs truncate">{member.position || 'Panitia'}</div>
+                                            </div>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-white font-semibold text-sm">Total Pendaftaran</div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-white font-bold text-lg">{totalPeserta || 0}</div>
-                                            <div className="text-yellow-100 text-xs">peserta</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Total Validasi */}
-                                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-white/20 text-white">
-                                            <i className="fas fa-check-circle"></i>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-white font-semibold text-sm">Total Validasi</div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-white font-bold text-lg">{pesertaAktif || 0}</div>
-                                            <div className="text-yellow-100 text-xs">tervalidasi</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Total Akses */}
-                                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm bg-white/20 text-white">
-                                            <i className="fas fa-id-card-clip"></i>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-white font-semibold text-sm">Total Akses</div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-white font-bold text-lg">{pesertaHadir || 0}</div>
-                                            <div className="text-yellow-100 text-xs">hadir</div>
+                                        <div className="text-right pl-2">
+                                            <div className="text-white font-bold text-lg">{member.total_actions}</div>
+                                            <div className="text-yellow-100 text-xs">poin</div>
                                         </div>
                                     </div>
-                                </div>
+                                ))}
+                                {(!committee_stats || committee_stats.length === 0) && (
+                                    <div className="text-center text-white/80 text-sm py-4">
+                                        Belum ada data panitia
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

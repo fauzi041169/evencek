@@ -1140,7 +1140,7 @@ class DashboardController extends Controller
         // Daftar pendaftaran kegiatan per batch (tampil terpisah jika batch berbeda)
         // Limit to 50 latest activities to prevent overload
         $joinedActivityUsers = Cache::remember('user_dashboard_activities_' . $userId, 600, function() use ($userId) {
-            return ActivityUser::where('user_id', $userId)
+            $results = ActivityUser::where('user_id', $userId)
                 ->with(['activity' => function ($query) {
                     $query->select('id', 'name', 'category_id', 'date', 'start_time', 'end_time', 'location', 'image', 'status')
                           ->with('category:id,name')
@@ -1149,6 +1149,15 @@ class DashboardController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->limit(50) 
                 ->get();
+
+            $results->transform(function ($item) {
+                if ($item->activity) {
+                    $item->activity->image = ImageHelper::getImageUrl($item->activity->image, asset('assets/images/hero/defoult.webp'), 'activities');
+                }
+                return $item;
+            });
+
+            return $results;
         });
 
         // Status langganan (unused in current view but kept for safety/layout)

@@ -1,246 +1,205 @@
 import React, { useState, useEffect } from 'react';
 import { Head, usePage, Link } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
-import MobileLikeHero from '@/Components/MobileLikeHero';
 
-export default function About({ heroAnim = 'circles' }) {
-    const { flash, errors } = usePage().props;
-    const [editMode, setEditMode] = useState(false);
+export default function About() {
+    const { flash } = usePage().props;
+    const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
-        // Initial check
-        const storedMode = localStorage.getItem('editMode') === 'true';
-        setEditMode(storedMode);
-
-        // Listen for changes
-        const handleEditModeChange = () => {
-            const newMode = localStorage.getItem('editMode') === 'true';
-            setEditMode(newMode);
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 50);
         };
-
-        window.addEventListener('editModeChanged', handleEditModeChange);
-        return () => window.removeEventListener('editModeChanged', handleEditModeChange);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     return (
         <WebLayout hasHeaderSpacer={false}>
-            <div className="min-h-screen bg-white">
-                <Head title="Tentang Kami" />
+            <Head title="Tentang Kami - Solusi Enterprise" />
+            
+            <div className="bg-white font-sans text-slate-800">
+                
+                {/* HERO SECTION */}
+                <div className="relative overflow-hidden bg-slate-900 pt-32 pb-20 lg:pt-48 lg:pb-32">
+                    {/* Background Pattern */}
+                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-primary/20 rounded-full blur-[120px] opacity-30 mix-blend-screen"></div>
+                        <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-indigo-600/20 rounded-full blur-[100px] opacity-20"></div>
+                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+                    </div>
 
-                <MobileLikeHero
-                    title="Tentang Kami"
-                    description="Perusahaan Pengembangan Teknologi dan Aplikasi Sistem Manajemen Iven"
-                    animStyle={heroAnim}
-                />
-
-                {/* Section: Profil Perusahaan */}
-                <section className="py-12 px-4 sm:px-6 lg:px-8 bg-white">
-                    <div className="max-w-7xl mx-auto">
-                        {/* Header Section */}
-                        <div className="mb-8">
-                            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Profil Perusahaan</h2>
-                            <p className="text-gray-600">Solusi teknologi inovatif untuk manajemen inventaris modern</p>
-                            <div className="mt-4 h-1 w-24 bg-primary rounded"></div>
+                    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-slate-700/50 backdrop-blur-md mb-8 animate-fade-in-up">
+                            <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                            <span className="text-sm font-medium text-slate-300 tracking-wide">LEADING INNOVATION</span>
+                        </div>
+                        
+                        <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-tight mb-8 leading-tight max-w-5xl mx-auto">
+                            Membangun Masa Depan <br/>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Manajemen Event</span>
+                        </h1>
+                        
+                        <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed">
+                            Kami menghadirkan solusi teknologi enterprise untuk mengoptimalkan setiap aspek penyelenggaraan acara Anda. Dari registrasi hingga analitik mendalam.
+                        </p>
+                        
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                            <Link href="/register" className="w-full sm:w-auto px-8 py-4 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all transform hover:-translate-y-1">
+                                Mulai Sekarang
+                                <i className="fas fa-arrow-right ml-2"></i>
+                            </Link>
+                            <a href="#contact" className="w-full sm:w-auto px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl font-bold transition-all hover:bg-slate-700/80">
+                                Hubungi Tim Kami
+                            </a>
                         </div>
 
-                        {/* Alert Messages are handled globally */}
+                        {/* Abstract 3D Elements Placeholder */}
+                        <div className="mt-20 relative hidden lg:block">
+                             <div className="absolute left-1/2 -translate-x-1/2 top-0 w-3/4 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
+                        </div>
+                    </div>
+                </div>
 
+                {/* STATS SECTION */}
+                <div className="relative z-20 -mt-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 lg:p-12 grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+                        <div className="space-y-2">
+                            <h3 className="text-4xl font-bold text-slate-900">100+</h3>
+                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Project Selesai</p>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-4xl font-bold text-slate-900">500+</h3>
+                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Klien Enterprise</p>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-4xl font-bold text-slate-900">99%</h3>
+                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Kepuasan Klien</p>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-4xl font-bold text-slate-900">24/7</h3>
+                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Support Aktif</p>
+                        </div>
+                    </div>
+                </div>
 
-                        {/* Deskripsi Perusahaan */}
-                        <div className="mb-12 relative group">
-                            {editMode && (
-                                <div className="absolute top-4 right-4 z-10">
-                                    <button className="bg-warning text-white p-2 rounded-lg shadow-lg hover:bg-warning/90 transition-all transform hover:scale-110" onClick={() => alert('Fitur edit teks statis akan segera hadir!')}>
-                                        <i className="fas fa-edit"></i> Edit Profil
-                                    </button>
+                {/* ABOUT CONTENT */}
+                <section className="py-24 bg-white">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="grid lg:grid-cols-2 gap-16 items-center">
+                            <div className="relative">
+                                <div className="absolute -top-4 -left-4 w-24 h-24 bg-primary/10 rounded-tl-3xl -z-10"></div>
+                                <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-secondary/10 rounded-br-3xl -z-10"></div>
+                                <img 
+                                    src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                                    alt="Team working" 
+                                    className="rounded-2xl shadow-2xl w-full object-cover h-[500px]"
+                                />
+                                <div className="absolute bottom-8 left-8 right-8 bg-white/90 backdrop-blur p-6 rounded-xl shadow-lg border border-white/50">
+                                    <p className="text-slate-800 font-medium italic">"Inovasi adalah jantung dari setiap solusi yang kami bangun. Kami tidak hanya membuat software, kami menciptakan ekosistem."</p>
                                 </div>
-                            )}
-                            <div className={`bg-gradient-to-br from-primary/5 to-secondary/5 rounded-xl shadow-lg p-8 mb-8 ${editMode ? 'border-2 border-warning ring-2 ring-warning ring-offset-2' : ''}`}>
-                                <p className="text-lg text-gray-700 leading-relaxed mb-4">
-                                    Kami adalah perusahaan yang berdedikasi untuk mengembangkan teknologi dan aplikasi sistem manajemen inventaris yang modern, efisien, dan mudah digunakan. Dengan pengalaman bertahun-tahun di bidang pengembangan perangkat lunak, kami telah membantu berbagai organisasi dan perusahaan dalam mengoptimalkan proses manajemen inventaris mereka melalui solusi teknologi terkini.
+                            </div>
+                            
+                            <div>
+                                <h2 className="text-primary font-bold tracking-wider uppercase text-sm mb-3">Tentang Perusahaan</h2>
+                                <h3 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-6 leading-tight">Partner Teknologi Terpercaya Anda</h3>
+                                <p className="text-lg text-slate-600 mb-6 leading-relaxed">
+                                    Kami adalah perusahaan teknologi yang berfokus pada pengembangan sistem manajemen event terintegrasi. Dengan pengalaman bertahun-tahun, kami memahami kompleksitas penyelenggaraan acara dan menghadirkan solusi yang menyederhanakan proses tersebut.
                                 </p>
-                                <p className="text-lg text-gray-700 leading-relaxed">
-                                    Sistem Manajemen Iven Hub adalah platform komprehensif yang dirancang khusus untuk mempermudah pengelolaan inventaris, mulai dari pencatatan, pelacakan, hingga pelaporan. Dengan antarmuka yang intuitif dan fitur-fitur canggih, kami memastikan setiap pengguna dapat mengoptimalkan efisiensi operasional mereka.
+                                <p className="text-lg text-slate-600 mb-8 leading-relaxed">
+                                    Platform kami dirancang untuk skalabilitas, keamanan, dan kemudahan penggunaan, memastikan setiap stakeholder - dari panitia hingga peserta - mendapatkan pengalaman terbaik.
                                 </p>
-                            </div>
-                        </div>
-
-                        {/* Stats Section */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-                            <div className="bg-gradient-to-br from-primary to-secondary rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-all duration-300">
-                                <i className="fas fa-code text-4xl text-white mb-3"></i>
-                                <div className="text-3xl font-bold text-white mb-2">100+</div>
-                                <div className="text-white text-sm font-medium">Aplikasi Dikembangkan</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-success to-success/80 rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-all duration-300">
-                                <i className="fas fa-users text-4xl text-white mb-3"></i>
-                                <div className="text-3xl font-bold text-white mb-2">500+</div>
-                                <div className="text-white text-sm font-medium">Klien Puas</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-warning to-warning/80 rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-all duration-300">
-                                <i className="fas fa-server text-4xl text-white mb-3"></i>
-                                <div className="text-3xl font-bold text-white mb-2">99.9%</div>
-                                <div className="text-white text-sm font-medium">Uptime</div>
-                            </div>
-                            <div className="bg-gradient-to-br from-danger to-danger/80 rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-all duration-300">
-                                <i className="fas fa-award text-4xl text-white mb-3"></i>
-                                <div className="text-3xl font-bold text-white mb-2">10+</div>
-                                <div className="text-white text-sm font-medium">Tahun Pengalaman</div>
-                            </div>
-                        </div>
-
-                        {/* Visi & Misi */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-primary hover:shadow-xl transition-all duration-300">
-                                <div className="flex items-center mb-4">
-                                    <div className="bg-primary/10 rounded-full p-3 mr-4">
-                                        <i className="fas fa-eye text-primary text-xl"></i>
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-gray-900">Visi</h3>
-                                </div>
-                                <p className="text-gray-600 leading-relaxed">
-                                    Menjadi perusahaan teknologi terdepan di Indonesia yang menghadirkan solusi sistem manajemen inventaris yang inovatif, terpercaya, dan berkelanjutan untuk mendukung efisiensi operasional berbagai sektor bisnis.
-                                </p>
-                            </div>
-                            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-secondary hover:shadow-xl transition-all duration-300">
-                                <div className="flex items-center mb-4">
-                                    <div className="bg-secondary/10 rounded-full p-3 mr-4">
-                                        <i className="fas fa-bullseye text-secondary text-xl"></i>
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-gray-900">Misi</h3>
-                                </div>
-                                <ul className="space-y-3 text-gray-600">
-                                    <li className="flex items-start">
-                                        <i className="fas fa-check-circle text-success mr-3 mt-1"></i>
-                                        <span>Mengembangkan aplikasi sistem manajemen inventaris yang modern dan user-friendly</span>
-                                    </li>
-                                    <li className="flex items-start">
-                                        <i className="fas fa-check-circle text-success mr-3 mt-1"></i>
-                                        <span>Memberikan layanan teknologi berkualitas tinggi dengan dukungan penuh</span>
-                                    </li>
-                                    <li className="flex items-start">
-                                        <i className="fas fa-check-circle text-success mr-3 mt-1"></i>
-                                        <span>Terus berinovasi dalam teknologi untuk memenuhi kebutuhan klien</span>
-                                    </li>
-                                    <li className="flex items-start">
-                                        <i className="fas fa-check-circle text-success mr-3 mt-1"></i>
-                                        <span>Membangun kemitraan jangka panjang dengan berbagai organisasi</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        {/* Fitur Unggulan */}
-                        <div className="mb-12">
-                            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Fitur Unggulan</h2>
-                            <p className="text-gray-600 mb-6">Teknologi dan layanan terbaik yang kami tawarkan</p>
-                            <div className="mt-4 h-1 w-24 bg-primary rounded mb-8"></div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {[
-                                    {
-                                        title: 'Manajemen Inventaris',
-                                        desc: 'Sistem lengkap untuk pengelolaan inventaris dengan fitur pencatatan, pelacakan, dan monitoring real-time yang akurat.',
-                                        icon: 'fa-boxes',
-                                        gradient: 'from-primary to-secondary'
-                                    },
-                                    {
-                                        title: 'Analitik & Laporan',
-                                        desc: 'Dashboard analitik canggih dengan berbagai jenis laporan yang dapat disesuaikan untuk mendukung pengambilan keputusan.',
-                                        icon: 'fa-chart-line',
-                                        gradient: 'from-success to-success/80'
-                                    },
-                                    {
-                                        title: 'Akses Multi-Platform',
-                                        desc: 'Aplikasi yang dapat diakses melalui berbagai perangkat dengan desain responsif dan kompatibel dengan berbagai sistem operasi.',
-                                        icon: 'fa-mobile-alt',
-                                        gradient: 'from-warning to-warning/80'
-                                    }
-                                ].map((feature, index) => (
-                                    <div key={index} className={`bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden group hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 relative ${editMode ? 'border-2 border-warning ring-2 ring-warning ring-offset-2' : ''}`}>
-                                        {editMode && (
-                                            <div className="absolute top-4 right-4 z-10">
-                                                <button className="bg-warning text-white p-2 rounded-lg shadow-lg hover:bg-warning/90 transition-all transform hover:scale-110" onClick={() => alert(`Edit fitur: ${feature.title}`)}>
-                                                    <i className="fas fa-edit"></i>
-                                                </button>
-                                            </div>
-                                        )}
-                                        <div className={`bg-gradient-to-br ${feature.gradient} p-8 text-center`}>
-                                            <i className={`fas ${feature.icon} text-5xl text-white`}></i>
-                                        </div>
-                                        <div className="p-6">
-                                            <h4 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h4>
-                                            <p className="text-gray-600">
-                                                {feature.desc}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Keunggulan */}
-                        <div className="mb-12">
-                            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Keunggulan Kami</h2>
-                            <p className="text-gray-600 mb-6">Apa yang membuat kami berbeda</p>
-                            <div className="mt-4 h-1 w-24 bg-primary rounded mb-8"></div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {[
-                                    {
-                                        title: 'Keamanan Data Terjamin',
-                                        desc: 'Sistem keamanan tingkat enterprise dengan enkripsi data dan backup otomatis untuk melindungi informasi penting Anda.',
-                                        icon: 'fa-shield-alt',
-                                        iconBg: 'bg-secondary/10',
-                                        iconColor: 'text-secondary'
-                                    },
-                                    {
-                                        title: 'Dukungan 24/7',
-                                        desc: 'Tim support profesional yang siap membantu Anda kapan saja dengan respons cepat dan solusi yang tepat.',
-                                        icon: 'fa-headset',
-                                        iconBg: 'bg-green-100',
-                                        iconColor: 'text-green-600'
-                                    },
-                                    {
-                                        title: 'Update Berkala',
-                                        desc: 'Pembaruan fitur dan perbaikan sistem secara rutin untuk memastikan performa optimal dan keamanan terbaru.',
-                                        icon: 'fa-sync-alt',
-                                        iconBg: 'bg-primary/10',
-                                        iconColor: 'text-primary'
-                                    },
-                                    {
-                                        title: 'Kustomisasi Fleksibel',
-                                        desc: 'Solusi yang dapat disesuaikan dengan kebutuhan spesifik organisasi Anda untuk memaksimalkan efisiensi.',
-                                        icon: 'fa-cogs',
-                                        iconBg: 'bg-orange-100',
-                                        iconColor: 'text-orange-600'
-                                    }
-                                ].map((item, index) => (
-                                    <div key={index} className={`flex items-start space-x-4 p-6 bg-white rounded-xl shadow-md border border-gray-50 hover:border-primary/20 hover:shadow-xl hover:-translate-y-1 transition-all duration-500 relative ${editMode ? 'border-2 border-warning ring-2 ring-warning ring-offset-2' : ''}`}>
-                                        {editMode && (
-                                            <div className="absolute top-2 right-2 z-10">
-                                                <button className="bg-yellow-400 text-white p-1.5 rounded-lg shadow-lg hover:bg-yellow-500 transition-all transform hover:scale-110" onClick={() => alert(`Edit keunggulan: ${item.title}`)}>
-                                                    <i className="fas fa-edit text-xs"></i>
-                                                </button>
-                                            </div>
-                                        )}
-                                        <div className="flex-shrink-0">
-                                            <div className={`${item.iconBg} rounded-full p-3`}>
-                                                <i className={`fas ${item.icon} ${item.iconColor} text-xl`}></i>
-                                            </div>
+                                
+                                <div className="grid sm:grid-cols-2 gap-6">
+                                    <div className="flex gap-4">
+                                        <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                                            <i className="fas fa-shield-alt text-xl"></i>
                                         </div>
                                         <div>
-                                            <h4 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h4>
-                                            <p className="text-gray-600">{item.desc}</p>
+                                            <h4 className="font-bold text-slate-900 text-lg">Keamanan Data</h4>
+                                            <p className="text-sm text-slate-500 mt-1">Standar keamanan enterprise grade untuk melindungi data Anda.</p>
                                         </div>
                                     </div>
-                                ))}
+                                    <div className="flex gap-4">
+                                        <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                            <i className="fas fa-rocket text-xl"></i>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-900 text-lg">Performa Tinggi</h4>
+                                            <p className="text-sm text-slate-500 mt-1">Infrastruktur cloud yang dioptimalkan untuk kecepatan akses.</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
+
+                {/* FEATURES GRID */}
+                <section className="py-24 bg-slate-50">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="text-center max-w-3xl mx-auto mb-16">
+                            <h2 className="text-primary font-bold tracking-wider uppercase text-sm mb-3">Fitur Unggulan</h2>
+                            <h3 className="text-4xl font-bold text-slate-900 mb-6">Solusi Lengkap End-to-End</h3>
+                            <p className="text-lg text-slate-600">Platform kami menyediakan semua alat yang Anda butuhkan untuk menyukseskan acara Anda.</p>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {[
+                                { title: 'Manajemen Peserta', desc: 'Sistem registrasi online yang mulus dengan validasi otomatis.', icon: 'fa-users', color: 'bg-blue-500' },
+                                { title: 'Analitik Real-time', desc: 'Dashboard data komprehensif untuk memantau performa event.', icon: 'fa-chart-pie', color: 'bg-indigo-500' },
+                                { title: 'Sistem Pembayaran', desc: 'Integrasi payment gateway aman untuk transaksi tiket.', icon: 'fa-credit-card', color: 'bg-violet-500' },
+                                { title: 'Sertifikat Digital', desc: 'Generate sertifikat otomatis dengan QR code verifikasi.', icon: 'fa-certificate', color: 'bg-purple-500' },
+                                { title: 'Absensi QR', desc: 'Check-in cepat dan akurat menggunakan teknologi QR Code.', icon: 'fa-qrcode', color: 'bg-fuchsia-500' },
+                                { title: 'Laporan Otomatis', desc: 'Export data laporan lengkap dalam berbagai format.', icon: 'fa-file-alt', color: 'bg-pink-500' },
+                            ].map((item, idx) => (
+                                <div key={idx} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 group">
+                                    <div className={`w-14 h-14 rounded-2xl ${item.color} flex items-center justify-center text-white text-2xl mb-6 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform`}>
+                                        <i className={`fas ${item.icon}`}></i>
+                                    </div>
+                                    <h4 className="text-xl font-bold text-slate-900 mb-3">{item.title}</h4>
+                                    <p className="text-slate-600 leading-relaxed">{item.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* CALL TO ACTION */}
+                <section className="py-20 bg-slate-900 relative overflow-hidden" id="contact">
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
+                    <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-primary/10 to-transparent"></div>
+                    
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Siap Mengubah Cara Anda Mengelola Event?</h2>
+                        <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">Bergabunglah dengan ratusan organisasi yang telah mempercayakan manajemen event mereka kepada kami.</p>
+                        
+                        <div className="flex flex-col sm:flex-row justify-center gap-4">
+                            <a href="mailto:contact@eventcek.com" className="px-8 py-4 bg-white text-slate-900 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-lg">
+                                Hubungi Sales
+                            </a>
+                            <Link href="/register" className="px-8 py-4 bg-transparent border border-slate-600 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors">
+                                Coba Gratis Demo
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+                
+                {/* FOOTER SIMPLE */}
+                <footer className="bg-slate-950 py-12 border-t border-slate-800">
+                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div className="text-slate-400 text-sm">
+                            &copy; {new Date().getFullYear()} EventCek Management System. All rights reserved.
+                        </div>
+                        <div className="flex gap-6">
+                            <a href="#" className="text-slate-500 hover:text-white transition-colors"><i className="fab fa-facebook text-xl"></i></a>
+                            <a href="#" className="text-slate-500 hover:text-white transition-colors"><i className="fab fa-twitter text-xl"></i></a>
+                            <a href="#" className="text-slate-500 hover:text-white transition-colors"><i className="fab fa-instagram text-xl"></i></a>
+                            <a href="#" className="text-slate-500 hover:text-white transition-colors"><i className="fab fa-linkedin text-xl"></i></a>
+                        </div>
+                     </div>
+                </footer>
             </div>
         </WebLayout>
     );
 }
-

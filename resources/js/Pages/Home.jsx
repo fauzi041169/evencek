@@ -181,7 +181,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     };
 
     return (
-        <WebLayout hasHeaderSpacer={false} transparentNavbar={true}>
+        <WebLayout hasHeaderSpacer={false}>
             <Head title="Home" />
             
             <style dangerouslySetInnerHTML={{ __html: `
@@ -219,67 +219,97 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
             <div className="min-h-screen bg-gradient-to-br from-white via-white to-white relative overflow-hidden font-sans">
                 
                 {/* Hero Section */}
-                <section className="relative min-h-[80vh] overflow-hidden flex items-center">
-                    {processedSlides.map((slide, index) => (
-                        <div 
-                            key={index}
-                            className={`hero-slide absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
-                            style={{ 
-                                backgroundImage: `url('${slide.image}')`, 
-                                backgroundSize: 'cover', 
-                                backgroundPosition: 'center' 
-                            }}
-                        >
-                            <div className="hero-gradient-overlay"></div>
-                            <div className="hero-gradient-overlay-top"></div>
-                        </div>
-                    ))}
+                <section className="relative min-h-[85vh] flex items-center overflow-hidden">
+                    {/* Background Slider */}
+                    <div className="absolute inset-0 z-0">
+                        {processedSlides.map((slide, index) => (
+                            <div 
+                                key={index}
+                                className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
+                            >
+                                <div 
+                                    className="absolute inset-0 bg-cover bg-center animate-slow-zoom"
+                                    style={{ backgroundImage: `url('${slide.image}')` }}
+                                />
+                                {/* Gradient Overlay - Professional Split Look */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-900/20"></div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
+                            </div>
+                        ))}
+                    </div>
 
-                    <div className="relative z-10 flex items-center justify-center h-full px-4 sm:px-6 lg:px-8 w-full">
-                        <div id="heroContent" className="hero-content text-center max-w-5xl mx-auto bg-white/10 backdrop-blur-md rounded-3xl px-6 py-8 ring-1 ring-white/20 reveal show">
-                            <h1 id="heroTitle" className="hero-title text-4xl sm:text-5xl lg:text-6xl font-black mb-6 leading-tight tracking-tight text-white">
-                                Platform Manajemen Event Digital Profesional
+                    {/* Content */}
+                    <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+                        <div className="max-w-3xl">
+                            {/* Badge */}
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md mb-8 reveal-left shadow-lg">
+                                <span className="flex h-2.5 w-2.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.5)]"></span>
+                                <span className="text-sm font-bold text-white tracking-wide uppercase">Official Event Platform</span>
+                            </div>
+
+                            {/* Headline */}
+                            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-6 reveal-left drop-shadow-lg" style={{transitionDelay: '100ms'}}>
+                                Kelola Event Anda <br/>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Lebih Profesional</span>
                             </h1>
-                            <p className="text-lg sm:text-xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed">
-                                Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.
+
+                            {/* Subheadline */}
+                            <p className="text-lg md:text-xl text-gray-300 mb-10 leading-relaxed max-w-2xl reveal-left font-medium" style={{transitionDelay: '200ms'}}>
+                                Satu platform terintegrasi untuk pendaftaran, pembayaran, absensi, hingga sertifikat digital. Hemat waktu, data akurat, dan pengalaman peserta yang lebih baik.
                             </p>
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+
+                            {/* CTAs */}
+                            <div className="flex flex-wrap gap-5 reveal-left" style={{transitionDelay: '300ms'}}>
                                 <Link href={route('activity.index')} 
-                                   className="group cta-primary cta-shimmer inline-flex items-center px-8 py-4 bg-gradient-to-r from-[#7c3aed] to-[#3b82f6] text-white font-bold text-lg rounded-2xl transition-all duration-300 hover:shadow-2xl">
-                                    <i className="fas fa-rocket text-white text-lg mr-3"></i>
-                                    <span>Mulai Kelola Event</span>
+                                    className="group relative px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold text-lg shadow-[0_10px_20px_rgba(79,70,229,0.3)] hover:shadow-[0_15px_30px_rgba(79,70,229,0.4)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
+                                    <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 skew-x-12 -ml-4"></div>
+                                    <span className="relative flex items-center gap-3">
+                                        <i className="fas fa-rocket"></i>
+                                        Mulai Sekarang
+                                    </span>
                                 </Link>
                                 
-                                {/* Guest Check */}
                                 {!auth?.user && (
                                     <button 
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             if (window.toggleLoginDropdown) window.toggleLoginDropdown();
                                         }}
-                                        className="group cta-secondary cta-shimmer inline-flex items-center px-8 py-4 bg-white/15 text-white font-bold text-lg rounded-2xl transition-all duration-300 hover:bg-white/25 ring-1 ring-white/30"
+                                        className="group px-8 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-lg border border-white/10 backdrop-blur-md transition-all duration-300 flex items-center gap-3 hover:border-white/30"
                                     >
-                                        <i className="fas fa-user-plus text-white text-lg mr-3"></i>
-                                        <span>Daftar Sekarang</span>
+                                        <i className="fas fa-user-plus text-blue-400 group-hover:text-white transition-colors"></i>
+                                        Daftar Akun
                                     </button>
                                 )}
+                            </div>
 
-                                <a href="#fitur" className="group cta-tertiary cta-shimmer inline-flex items-center px-8 py-4 bg-white/10 text-white font-bold text-lg rounded-2xl transition-all duration-300 hover:bg-white/20 ring-1 ring-white/20">
-                                    <i className="fas fa-layer-group text-white text-lg mr-3"></i>
-                                    <span>Jelajahi Fitur</span>
-                                </a>
+                            {/* Trust Signals */}
+                            <div className="mt-14 flex flex-wrap items-center gap-x-8 gap-y-4 text-white/60 text-sm font-semibold tracking-wide uppercase reveal-left border-t border-white/10 pt-8" style={{transitionDelay: '400ms'}}>
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-1.5 rounded-full bg-green-500/20 text-green-400"><i className="fas fa-check"></i></div>
+                                    <span>Terpercaya</span>
+                                </div>
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-1.5 rounded-full bg-blue-500/20 text-blue-400"><i className="fas fa-shield-alt"></i></div>
+                                    <span>Data Aman</span>
+                                </div>
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-1.5 rounded-full bg-purple-500/20 text-purple-400"><i className="fas fa-bolt"></i></div>
+                                    <span>Real-time</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Slider Dots */}
-                    <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-3 z-20">
+                    {/* Slider Indicators */}
+                    <div className="absolute bottom-10 right-10 flex gap-3 z-20">
                         {processedSlides.map((_, i) => (
                             <button 
                                 key={i}
-                                className={`slider-dot w-3 h-3 rounded-full transition-all duration-300 ${i === currentSlide ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/75'}`}
                                 onClick={() => setCurrentSlide(i)}
-                            ></button>
+                                className={`h-1.5 rounded-full transition-all duration-500 ${i === currentSlide ? 'w-10 bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'w-2 bg-white/20 hover:bg-white/40'}`}
+                                aria-label={`Go to slide ${i + 1}`}
+                            />
                         ))}
                     </div>
                 </section>

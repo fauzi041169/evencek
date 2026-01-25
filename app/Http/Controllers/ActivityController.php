@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\GenericArrayExport;
+use App\Helpers\ImageHelper;
 use App\Http\Controllers\MidtransPaymentController;
 use App\Models\Activity;
 use App\Models\ActivityBatch;
@@ -322,7 +323,19 @@ class ActivityController extends Controller
             $sliderActivities = Activity::where('status', 'public')->orderBy('date', 'desc')->take(5)->get();
         }
 
+        // Transform images for sliderActivities using ImageHelper
+        $sliderActivities->transform(function ($activity) {
+            $activity->image = ImageHelper::getImageUrl($activity->image, asset('assets/images/hero/defoult.webp'), 'activities');
+            return $activity;
+        });
+
         $latestActivities = $query->with(['activeBatch', 'batches', 'category', 'owners'])->latest()->paginate(12);
+
+        // Transform images for latestActivities using ImageHelper
+        $latestActivities->getCollection()->transform(function ($activity) {
+            $activity->image = ImageHelper::getImageUrl($activity->image, asset('assets/images/hero/defoult.webp'), 'activities');
+            return $activity;
+        });
 
         $enrolledActivityIds = [];
         $enrolledActivityBatches = [];
@@ -527,6 +540,9 @@ class ActivityController extends Controller
 
     public function show(Activity $activity)
     {
+        // Resolve image URL using ImageHelper
+        $activity->image = ImageHelper::getImageUrl($activity->image, asset('assets/images/hero/defoult.webp'), 'activities');
+
         // Load user relationship for chat widget
         $activity->load('user', 'owners');
 
@@ -2464,6 +2480,80 @@ class ActivityController extends Controller
         }
     }
 
+    private function buildParticipantQuery(Request $request, Activity $activity)
+    {
+        $query = $activity->users();
+
+        // Filter out committee members
+        try {
+            $committeeUserIds = ActivityCommitteeStructure::where('activity_id', $activity->id)
+                ->whereNotNull('user_id')
+                ->pluck('user_id')
+                ->toArray();
+            
+            if (!empty($committeeUserIds)) {
+                $query->whereNotIn('users.id', $committeeUserIds);
+            }
+        } catch (\Throwable $e) {}
+
+        // Filter only active participants
+        $query->wherePivot('status', ActivityUser::STATUS_ACTIVE);
+
+        // Filter by batch
+        $batchId = $request->input('batch_id');
+        if ($batchId) {
+            $query->wherePivot('activity_batch_id', $batchId);
+        }
+
+        // Filter by search
+        $search = $request->input('search');
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhereHas('profile', function ($pq) use ($search) {
+                        $pq->where('province_id', 'like', "%{$search}%")
+                            ->orWhereHas('province', function ($qq) use ($search) {
+                                $qq->where('name', 'like', "%{$search}%");
+                            });
+                    });
+            });
+        }
+        
+        return $query;
+    }
+
+    public function verifyEmailBulk(Request $request, Activity $activity)
+    {
+        if (! auth()->check()) {
+            return redirect()->back()->with('error', 'Unauthorized');
+        }
+        $actor = auth()->user();
+        $isAdmin = $actor->isAdmin() || $actor->isSuperAdmin();
+        $isCreator = $activity->user_id === $actor->id && $actor->isCreator();
+        $isCommittee = method_exists($activity, 'canManageRegistration') ? $activity->canManageRegistration($actor->id) : false;
+        
+        if (! ($isAdmin || $isCreator || $isCommittee)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk memverifikasi peserta.');
+        }
+
+        $userIds = [];
+
+        if ($request->boolean('select_all')) {
+            $userIds = $this->buildParticipantQuery($request, $activity)->pluck('users.id')->toArray();
+        } else {
+            $userIds = $request->input('user_ids', []);
+        }
+
+        if (empty($userIds)) {
+            return redirect()->back()->with('error', 'Tidak ada peserta yang dipilih.');
+        }
+
+        User::whereIn('id', $userIds)->update(['email_verified_at' => now()]);
+
+        return redirect()->back()->with('success', count($userIds) . ' email peserta berhasil diverifikasi.');
+    }
+
     // Remove multiple participants from activity
     public function removeParticipants(Request $request, Activity $activity)
     {
@@ -2478,59 +2568,63 @@ class ActivityController extends Controller
             return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk menghapus peserta.');
         }
 
-        // Normalisasi ID yang dikirim dari form (bisa berisi user_id atau activity_user.id)
-        $rawIds = array_values(array_filter($request->input('user_ids', []), function ($id) {
-            return $id !== null && $id !== '';
-        }));
-
-        if (empty($rawIds)) {
-            return redirect()->back()->with('error', 'Tidak ada peserta yang dipilih untuk dihapus.');
-        }
-
-        // Pisahkan sebagai berikut:
-        // - ID yang ditemukan di tabel users => diperlakukan sebagai user_id
-        // - ID numeric yang tidak ada di tabel users => diperlakukan sebagai activity_users.id (orphaned record)
         $userIds = [];
         $activityUserIds = [];
 
-        $allIds = array_map('strval', $rawIds);
+        if ($request->boolean('select_all')) {
+            $userIds = $this->buildParticipantQuery($request, $activity)
+                ->pluck('users.id')
+                ->map(fn($id) => (string) $id)
+                ->toArray();
+        } else {
+            // Normalisasi ID yang dikirim dari form (bisa berisi user_id atau activity_user.id)
+            $rawIds = array_values(array_filter($request->input('user_ids', []), function ($id) {
+                return $id !== null && $id !== '';
+            }));
 
-        // Cari ID yang benar-benar ada di tabel users
-        $existingUserIds = User::whereIn('id', $allIds)
-            ->pluck('id')
-            ->map(function ($id) {
-                return (string) $id;
-            })
-            ->toArray();
-
-        if (! empty($existingUserIds)) {
-            $userIds = $existingUserIds;
-        }
-
-        // ID yang tidak ditemukan di tabel users diasumsikan sebagai activity_user.id
-        $candidateActivityUserIds = array_diff($allIds, $existingUserIds);
-        if (! empty($candidateActivityUserIds)) {
-            // Cari record activity_user yang sesuai dengan ID tersebut
-            $activityUsers = ActivityUser::where('activity_id', $activity->id)
-                ->whereIn('id', $candidateActivityUserIds)
-                ->get();
-
-            // Ambil user_id dari record tersebut dan tambahkan ke userIds
-            $additionalUserIds = $activityUsers->pluck('user_id')->filter()->map(function ($id) {
-                return (string) $id;
-            })->toArray();
-
-            if (! empty($additionalUserIds)) {
-                $userIds = array_unique(array_merge($userIds, $additionalUserIds));
+            if (empty($rawIds)) {
+                return redirect()->back()->with('error', 'Tidak ada peserta yang dipilih untuk dihapus.');
             }
 
-            // Sisa ID yang benar-benar orphan (tidak punya user_id valid atau record activity_user tanpa user)
-            // Kita ambil ID activity_user yang TIDAK memiliki user_id (jika ada)
-            $orphanActivityUsers = $activityUsers->whereNull('user_id');
-            if ($orphanActivityUsers->isNotEmpty()) {
-                $activityUserIds = $orphanActivityUsers->pluck('id')->map(function ($id) {
+            $allIds = array_map('strval', $rawIds);
+
+            // Cari ID yang benar-benar ada di tabel users
+            $existingUserIds = User::whereIn('id', $allIds)
+                ->pluck('id')
+                ->map(function ($id) {
+                    return (string) $id;
+                })
+                ->toArray();
+
+            if (! empty($existingUserIds)) {
+                $userIds = $existingUserIds;
+            }
+
+            // ID yang tidak ditemukan di tabel users diasumsikan sebagai activity_user.id
+            $candidateActivityUserIds = array_diff($allIds, $existingUserIds);
+            if (! empty($candidateActivityUserIds)) {
+                // Cari record activity_user yang sesuai dengan ID tersebut
+                $activityUsers = ActivityUser::where('activity_id', $activity->id)
+                    ->whereIn('id', $candidateActivityUserIds)
+                    ->get();
+
+                // Ambil user_id dari record tersebut dan tambahkan ke userIds
+                $additionalUserIds = $activityUsers->pluck('user_id')->filter()->map(function ($id) {
                     return (string) $id;
                 })->toArray();
+
+                if (! empty($additionalUserIds)) {
+                    $userIds = array_unique(array_merge($userIds, $additionalUserIds));
+                }
+
+                // Sisa ID yang benar-benar orphan (tidak punya user_id valid atau record activity_user tanpa user)
+                // Kita ambil ID activity_user yang TIDAK memiliki user_id (jika ada)
+                $orphanActivityUsers = $activityUsers->whereNull('user_id');
+                if ($orphanActivityUsers->isNotEmpty()) {
+                    $activityUserIds = $orphanActivityUsers->pluck('id')->map(function ($id) {
+                        return (string) $id;
+                    })->toArray();
+                }
             }
         }
 
@@ -2555,6 +2649,7 @@ class ActivityController extends Controller
                 'activity_user_ids' => $activityUserIds,
                 'batch_id' => $batchId,
                 'actor_id' => $actor->id,
+                'select_all' => $request->boolean('select_all')
             ]);
 
             // Delete by user IDs
@@ -3706,6 +3801,21 @@ class ActivityController extends Controller
 
         $provinces = Province::orderBy('name')->get();
 
+        // Prepare Contact Persons (Narahubung)
+        $contactPersons = $activity->committeeStructures->map(function ($committee) {
+            $user = $committee->user;
+            return [
+                'id' => $committee->id,
+                'name' => $committee->name ?: ($user ? $user->name : 'Panitia'),
+                'email' => $committee->email ?: ($user ? $user->email : null),
+                'phone' => $committee->phone ?: ($user && $user->profile ? $user->profile->no_hp : null),
+                'avatar' => $user ? $user->profile_photo_url : asset('assets/images/profilefoto/default-profile.png'),
+                'position' => $committee->position ?: 'Panitia',
+            ];
+        })->filter(function ($person) {
+            return stripos($person['position'], 'PIC') !== false;
+        })->values();
+
         return Inertia::render('Activity/Detail', compact(
             'activity',
             'activeBatch',
@@ -3724,7 +3834,8 @@ class ActivityController extends Controller
             'showCompletePaymentCTA',
             'completePaymentUrl',
             'completePaymentLabel',
-            'completePaymentInfo'
+            'completePaymentInfo',
+            'contactPersons'
         ));
     }
 
@@ -5939,7 +6050,7 @@ class ActivityController extends Controller
         $committee_stats = [];
         if (Schema::hasTable('activity_committee_structures')) {
             $committees = \App\Models\ActivityCommitteeStructure::where('activity_id', $activityId)
-                ->with(['user'])
+                ->with(['user.profile'])
                 ->get();
 
             $userIds = $committees->pluck('user_id')->filter()->unique();
@@ -6040,6 +6151,23 @@ class ActivityController extends Controller
                 $registrations[$uid] = isset($committeeCreditedUsers[$uid]) ? count($committeeCreditedUsers[$uid]) : 0;
             }
 
+            // Count registrations by payment sender_name (NEW LOGIC)
+            $paymentCounts = [];
+            if (Schema::hasTable('payments') && Schema::hasColumn('payments', 'sender_name')) {
+                $committeeNames = $committees->map(function($member) {
+                    return strtolower(trim((string)($member->user ? $member->user->name : $member->name)));
+                })->filter()->unique()->values();
+
+                $paymentCounts = DB::table('payments')
+                    ->where('activity_id', $activityId)
+                    ->where('status', 'success')
+                    ->whereIn(DB::raw('LOWER(sender_name)'), $committeeNames)
+                    ->select(DB::raw('LOWER(sender_name) as name'), DB::raw('count(*) as total'))
+                    ->groupBy(DB::raw('LOWER(sender_name)'))
+                    ->pluck('total', 'name')
+                    ->toArray();
+            }
+
             // Count validations by user (verified_by from payments table)
             // Validasi diambil dari total banyak bukti transfer yang divalidasi oleh user tersebut
             $validations = [];
@@ -6054,19 +6182,44 @@ class ActivityController extends Controller
             }
 
             // Map to committee members
-            $committee_stats = $committees->map(function ($member) use ($registrations, $validations) {
+            $committee_stats = $committees->map(function ($member) use ($registrations, $validations, $paymentCounts) {
                 $userId = $member->user_id;
+                $name = $member->user ? $member->user->name : $member->name;
+                $normalizedName = strtolower(trim((string)$name));
+                
+                $regCount = ($registrations[$userId] ?? 0);
+                $payCount = ($paymentCounts[$normalizedName] ?? 0);
+                $totalReg = $regCount + $payCount;
+                $valCount = $validations[$userId] ?? 0;
+                $aksesCount = $member->lama_akses ?? 0; // Using lama_akses as the value for AKSES
+
+                // Determine profile photo URL
+                $profilePhotoUrl = null;
+                if ($member->user) {
+                    if ($member->user->profile && $member->user->profile->foto_url) {
+                        $profilePhotoUrl = $member->user->profile->foto_url;
+                    } elseif ($member->user->avatar) {
+                        $profilePhotoUrl = $member->user->avatar;
+                    } else {
+                         // Default avatar or null
+                         $profilePhotoUrl = 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
+                    }
+                } else {
+                     $profilePhotoUrl = 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
+                }
+
                 return [
                     'id' => $member->id,
                     'user_id' => $userId,
-                    'name' => $member->user ? $member->user->name : $member->name,
+                    'name' => $name,
                     'position' => $member->position,
-                    'registrations' => $registrations[$userId] ?? 0,
-                    'validations' => $validations[$userId] ?? 0,
-                    'total_actions' => ($registrations[$userId] ?? 0) + ($validations[$userId] ?? 0),
-                    'akses' => ($member->jumlah_akses ?? 0) * ($member->lama_akses ?? 0),
+                    'registrations' => $totalReg,
+                    'validations' => $valCount,
+                    'akses' => $aksesCount,
+                    'total_actions' => $totalReg + $valCount + $aksesCount,
+                    'profile_photo_url' => $profilePhotoUrl,
                 ];
-            })->sortByDesc('akses')->values()->take(10);
+            })->sortByDesc('total_actions')->values()->take(10);
         }
 
         // Statistik rundown

@@ -130,7 +130,9 @@ class User extends Authenticatable
                         break;
                     }
                     $foto = trim((string) $profile->foto);
-                    if ($foto === '' || $foto === 'default-profile.png') {
+                    // Only mark absolute missing if empty/null
+                    // Frontend has stricter logic to force update if default-profile
+                    if ($foto === '') {
                         $isMissing = true;
                     }
                     break;
@@ -151,9 +153,14 @@ class User extends Authenticatable
                         if (isset($profile->additional_data[$effectiveKey])) {
                             $val = $profile->additional_data[$effectiveKey];
                         }
+
                         // Check lowercase key (frontend normalizes to lowercase)
                         elseif (isset($profile->additional_data[strtolower($effectiveKey)])) {
                             $val = $profile->additional_data[strtolower($effectiveKey)];
+                        }
+                        // Check original full key (modifier included)
+                        elseif (isset($profile->additional_data[$field])) {
+                            $val = $profile->additional_data[$field];
                         }
                     }
 
@@ -164,7 +171,13 @@ class User extends Authenticatable
             }
 
             if ($isMissing) {
-                $config = $fieldConfig[$field] ?? ['label' => ucwords(str_replace('_', ' ', $field)), 'type' => 'text'];
+                $label = $field;
+                if (str_contains($label, '|')) {
+                    $label = explode('|', $label)[0];
+                } elseif (str_contains($label, ':')) {
+                    $label = explode(':', $label)[0];
+                }
+                $config = $fieldConfig[$field] ?? ['label' => ucwords(str_replace('_', ' ', $label)), 'type' => 'text'];
                 $missing[] = array_merge(['key' => $field], $config);
             }
         }

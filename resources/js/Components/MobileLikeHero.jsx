@@ -6,7 +6,8 @@ export default function MobileLikeHero({
     children,
     className = '',
     hideIcon = false,
-    animStyle = 'circles'
+    animStyle = 'circles',
+    centered = false
 }) {
     // Helper to get animation elements based on style
     const renderAnimationParts = () => {
@@ -124,10 +125,10 @@ export default function MobileLikeHero({
                 <div className="absolute inset-0 bg-white/5 pointer-events-none"></div>
 
                 {/* Content Container */}
-                <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-28 pb-16 text-center md:text-left">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-12">
+                <div className={`relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-28 pb-16 ${centered ? 'text-center' : 'text-center md:text-left'}`}>
+                    <div className={`flex flex-col ${centered ? 'items-center justify-center' : 'md:flex-row items-center justify-between'} gap-12`}>
                         {/* Text Content */}
-                        <div className="flex-1 text-white w-full">
+                        <div className={`flex-1 text-white w-full ${centered ? 'max-w-4xl mx-auto' : ''}`}>
                             <div className="inline-block px-3 py-1 rounded-full bg-white/10 text-white/80 text-xs font-bold uppercase tracking-widest mb-4 backdrop-blur-sm border border-white/20 animate-hero-fade-in">
                                 {animStyle !== 'clean' ? animStyle : 'Official Platform'}
                             </div>
@@ -135,7 +136,7 @@ export default function MobileLikeHero({
                                 {title}
                             </h1>
                             {description && (
-                                <p className="text-lg md:text-xl text-white/80 font-medium max-w-2xl leading-relaxed mx-auto md:mx-0 drop-shadow-md animate-hero-slide-up" style={{ animationDelay: '0.4s' }}>
+                                <p className={`text-lg md:text-xl text-white/80 font-medium max-w-2xl leading-relaxed mx-auto ${centered ? '' : 'md:mx-0'} drop-shadow-md animate-hero-slide-up`} style={{ animationDelay: '0.4s' }}>
                                     {description}
                                 </p>
                             )}
@@ -144,7 +145,7 @@ export default function MobileLikeHero({
 
                         {/* Right Side Icon */}
                         {!hideIcon && (
-                            <div className="hidden md:block opacity-30 transform rotate-12 hover:rotate-0 transition-transform duration-500 scale-110">
+                            <div className={`${centered ? 'block mt-8' : 'hidden md:block'} opacity-30 transform ${centered ? 'rotate-0' : 'rotate-12'} hover:rotate-0 transition-transform duration-500 scale-110`}>
                                 <i className={`fas ${animStyle === 'waves' ? 'fa-water' : 'fa-mobile-alt'} text-[12rem] text-white drop-shadow-2xl`}></i>
                             </div>
                         )}

@@ -93,12 +93,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
 
     const getImageUrl = (activity) => {
         if (!activity.image) return '/assets/images/begron/defoult.png';
-        if (activity.image.startsWith('http')) return activity.image;
-        const cleanImagePath = activity.image.replace('activities/', '');
-        // Note: In React we can't check file existence on server easily without prop data.
-        // We assume the URL provided by backend is correct or fallback to default on error.
-        // However, for now we mimic the path construction:
-        return `/storage/activities/${cleanImagePath}`;
+        return activity.image;
     };
 
     // Helper to determine link destination

@@ -52,17 +52,30 @@ class ActivityUser extends Model
         'custom_data',
         'image_path',
         'card_status',
+        'print_count',
         'certificate_id',
         'activity_participant_group_id',
         'activity_participation_type_id',
         'created_by',
         'updated_by',
+        'jumlah_akses',
+        'lama_akses',
+        'last_access_at',
     ];
 
     protected $casts = [
         'status' => 'integer',
+        'print_count' => 'integer',
         'custom_data' => 'array',
+        'jumlah_akses' => 'integer',
+        'lama_akses' => 'integer',
+        'last_access_at' => 'datetime',
     ];
+
+    public function incrementPrintCount()
+    {
+        $this->increment('print_count');
+    }
 
     public function user()
     {

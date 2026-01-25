@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\ActivityCommitteeStructure;
+use App\Models\ActivityUser;
 use Illuminate\Support\Facades\Auth;
 
 class TrackActivityAccess
@@ -32,31 +33,44 @@ class TrackActivityAccess
             }
 
             if ($activityId) {
-                // Find committee record
+                $now = now();
+
+                // 1. Track Committee Access
                 $committee = ActivityCommitteeStructure::where('user_id', $user->id)
                     ->where('activity_id', $activityId)
                     ->first();
 
                 if ($committee) {
-                    $now = now();
-                    
-                    // Increment access count
                     $committee->jumlah_akses = ($committee->jumlah_akses ?? 0) + 1;
                     
-                    // Calculate duration
                     if ($committee->last_access_at) {
                         $diffInMinutes = $committee->last_access_at->diffInMinutes($now);
-                        
-                        // If last access was less than 30 minutes ago, add the difference
                         if ($diffInMinutes < 30 && $diffInMinutes > 0) {
                              $committee->lama_akses = ($committee->lama_akses ?? 0) + $diffInMinutes;
                         }
-                    } else {
-                        // First access, maybe init with 0 or 1? Leave as is.
                     }
                     
                     $committee->last_access_at = $now;
                     $committee->save();
+                }
+
+                // 2. Track Participant Access
+                $participant = ActivityUser::where('user_id', $user->id)
+                    ->where('activity_id', $activityId)
+                    ->first();
+
+                if ($participant) {
+                    $participant->jumlah_akses = ($participant->jumlah_akses ?? 0) + 1;
+                    
+                    if ($participant->last_access_at) {
+                        $diffInMinutes = $participant->last_access_at->diffInMinutes($now);
+                        if ($diffInMinutes < 30 && $diffInMinutes > 0) {
+                             $participant->lama_akses = ($participant->lama_akses ?? 0) + $diffInMinutes;
+                        }
+                    }
+                    
+                    $participant->last_access_at = $now;
+                    $participant->save();
                 }
             }
         }

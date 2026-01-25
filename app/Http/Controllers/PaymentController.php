@@ -212,14 +212,29 @@ class PaymentController extends Controller
 
             // CHECK FREE ACTIVITY / BATCH
             // Calculate effective price
-            $effectivePrice = (int) $activity->price;
-            if ($targetBatchId) {
-                $targetBatch = ActivityBatch::find($targetBatchId);
-                // Only use batch price if it is NOT NULL. If it is 0, it overrides activity price.
-                if ($targetBatch && $targetBatch->price !== null) {
-                    $effectivePrice = (int) $targetBatch->price;
+            // Fix: If activity price is explicitly 0, treat as free (Master Override) regardless of batch price
+            if ((int)$activity->price === 0) {
+                $effectivePrice = 0;
+            } else {
+                $effectivePrice = (int) $activity->price;
+                if ($targetBatchId) {
+                    $targetBatch = ActivityBatch::find($targetBatchId);
+                    // Only use batch price if it is NOT NULL. If it is 0, it overrides activity price.
+                    if ($targetBatch && $targetBatch->price !== null) {
+                        $effectivePrice = (int) $targetBatch->price;
+                    }
                 }
             }
+
+            // Update activity object with effective price for view display
+            $activity->price = $effectivePrice;
+
+            Log::info('DEBUG PAYMENT CREATE', [
+                'activity_id' => $activity->id,
+                'effective_price' => $effectivePrice,
+                'is_less_equal_zero' => ($effectivePrice <= 0),
+                'target_batch_id' => $targetBatchId,
+            ]);
 
             // If price is 0, skip payment and ensure enrollment is active
             if ($effectivePrice <= 0) {
@@ -231,7 +246,15 @@ class PaymentController extends Controller
                     })
                     ->first();
 
-                 if ($enrollment && $enrollment->status != ActivityUser::STATUS_ACTIVE) {
+                 if (! $enrollment) {
+                     // Fix: Create enrollment if missing (e.g. skipped by EnrollmentController logic)
+                     $enrollment = ActivityUser::create([
+                         'user_id' => auth()->id(),
+                         'activity_id' => $activity->id,
+                         'activity_batch_id' => $targetBatchId,
+                         'status' => ActivityUser::STATUS_ACTIVE,
+                     ]);
+                 } elseif ($enrollment->status != ActivityUser::STATUS_ACTIVE) {
                      $enrollment->status = ActivityUser::STATUS_ACTIVE;
                      $enrollment->save();
                  }

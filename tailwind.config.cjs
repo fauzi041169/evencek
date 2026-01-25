@@ -29,6 +29,42 @@ module.exports = {
         'card-pink': 'var(--color-card-pink)',
         'card-green': 'var(--color-card-green)',
       },
+      keyframes: {
+        'fade-in-up': {
+          '0%': {
+            opacity: '0',
+            transform: 'translateY(10px)'
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateY(0)'
+          },
+        },
+        'fade-in': {
+          '0%': {
+            opacity: '0'
+          },
+          '100%': {
+            opacity: '1'
+          },
+        },
+        'scan-line': {
+            '0%': {
+                top: '0%'
+            },
+            '50%': {
+                top: '100%'
+            },
+            '100%': {
+                top: '0%'
+            }
+        }
+      },
+      animation: {
+        'fade-in-up': 'fade-in-up 0.5s ease-out',
+        'fade-in': 'fade-in 0.3s ease-out',
+        'scan-line': 'scan-line 3s linear infinite',
+      },
     },
   },
 }

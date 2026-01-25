@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
@@ -49,11 +49,7 @@ export default function DashboardUser({ auth, stats = {}, joinedActivityUsers = 
     };
 
     const getActivityImage = (activity) => {
-        if (activity?.image) {
-            const cleanPath = activity.image.replace('activities/', '');
-            return `/storage/activities/${cleanPath}`;
-        }
-        return '/assets/images/begron/defoult.png';
+        return activity?.image || '/assets/images/begron/defoult.png';
     };
 
     return (

@@ -1,11 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, usePage } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '@/Utils/canvasUtils';
 
 export default function MissingDataModal({ show, onClose, missingData = [], onSuccess }) {
     const { auth } = usePage().props;
     const [previewUrl, setPreviewUrl] = useState(auth?.user?.profile_photo_url || null);
-    
+
+    // Cropper State
+    const [imageSrc, setImageSrc] = useState(null);
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+    const [showCropper, setShowCropper] = useState(false);
+
     // Icon map matching the blade file
     const iconMap = {
         'name': 'fa-user',
@@ -33,21 +42,45 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
     };
 
     const { data, setData, post, processing, errors, reset } = useForm({
-        _method: 'PUT',
+        _method: 'POST',
         foto_file: null,
         // Dynamic fields will be added here
     });
 
+    // Check for default photo indicators
+    const hasDefaultPhoto = useMemo(() => {
+        const photoUrl = auth?.user?.profile_photo_url || '';
+        return photoUrl.includes('default-profile.png') ||
+            photoUrl.includes('ui-avatars.com') ||
+            photoUrl.includes('default') ||
+            !photoUrl;
+    }, [auth?.user?.profile_photo_url]);
+
+    // Calculate effective missing data (always include photo for visibility)
+    const effectiveMissingData = useMemo(() => {
+        let newData = [...missingData];
+        const hasFoto = newData.some(f => f.key === 'foto' || f.key === 'photo');
+
+        // Always add foto if not present in the list from backend
+        if (!hasFoto) {
+            newData = [{ key: 'foto', label: 'Foto Profil', type: 'file' }, ...newData];
+        }
+        return newData;
+    }, [missingData]);
+
     // Initialize form data based on missing fields
     useEffect(() => {
-        if (show && missingData.length > 0) {
-            const initialData = { _method: 'PUT' };
-            missingData.forEach(field => {
+        if (show && effectiveMissingData.length > 0) {
+            const initialData = {
+                _method: 'POST',
+                foto_file: null
+            };
+            effectiveMissingData.forEach(field => {
                 initialData[field.key] = field.value || '';
             });
             setData(initialData);
         }
-    }, [show, missingData]);
+    }, [show, effectiveMissingData]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -59,18 +92,64 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                     onClose();
                 }
             },
-            preserveScroll: true
+            onError: (err) => {
+                console.error('Profile update failed', err);
+            },
+            preserveScroll: true,
+            forceFormData: true,
         });
     };
+
+    const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    }, []);
 
     const handlePhotoChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            setData('foto_file', file);
-            const url = URL.createObjectURL(file);
-            setPreviewUrl(url);
+            const reader = new FileReader();
+            reader.addEventListener('load', () => {
+                setImageSrc(reader.result);
+                setShowCropper(true);
+                // Reset file input value to allow re-selecting same file
+                e.target.value = null;
+            });
+            reader.readAsDataURL(file);
         }
     };
+
+    const handleCropSave = async () => {
+        try {
+            const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+            // Create a File object from the Blob
+            const file = new File([croppedImageBlob], "profile_photo.jpg", { type: "image/jpeg" });
+
+            setData('foto_file', file);
+            setPreviewUrl(URL.createObjectURL(croppedImageBlob));
+            setShowCropper(false);
+        } catch (e) {
+            console.error(e);
+            alert('Gagal memproses gambar');
+        }
+    };
+
+    const handleCropCancel = () => {
+        setShowCropper(false);
+        setImageSrc(null);
+    };
+
+    // Check valid status
+    const isFormValid = React.useMemo(() => {
+        return effectiveMissingData.every(field => {
+            if (field.key === 'foto' || field.key === 'photo') {
+                // If photo is missing, we need a new file to be uploaded by user
+                // UNLESS they already have a non-default photo
+                return !!data.foto_file || !hasDefaultPhoto;
+            }
+            const val = data[field.key];
+            return val !== null && val !== undefined && String(val).trim() !== '';
+        });
+    }, [data, effectiveMissingData]);
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="lg">
@@ -86,16 +165,62 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                         </h6>
                         <p className="text-xs text-gray-500 mt-1 ml-10">Data ini diperlukan untuk melanjutkan</p>
                     </div>
-                    <button 
-                        onClick={onClose} 
+                    <button
+                        onClick={onClose}
                         className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200 focus:outline-none"
                     >
                         <i className="fas fa-times text-lg"></i>
                     </button>
                 </div>
-                
+
                 {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50/50 p-6">
+                <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50/50 p-6 relative">
+
+                    {/* Cropper Overlay */}
+                    {showCropper && imageSrc && (
+                        <div className="absolute inset-0 z-50 bg-white flex flex-col">
+                            <div className="flex-1 relative bg-slate-900">
+                                <Cropper
+                                    image={imageSrc}
+                                    crop={crop}
+                                    zoom={zoom}
+                                    aspect={1}
+                                    onCropChange={setCrop}
+                                    onCropComplete={onCropComplete}
+                                    onZoomChange={setZoom}
+                                />
+                            </div>
+                            <div className="p-4 bg-white border-t border-gray-200 flex flex-col gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Zoom</label>
+                                    <input
+                                        type="range"
+                                        value={zoom}
+                                        min={1}
+                                        max={3}
+                                        step={0.1}
+                                        aria-labelledby="Zoom"
+                                        onChange={(e) => setZoom(e.target.value)}
+                                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-3">
+                                    <button
+                                        onClick={handleCropCancel}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        onClick={handleCropSave}
+                                        className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+                                    >
+                                        Terapkan Foto
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     {/* Modern Alert Box */}
                     <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 p-4 mb-6 shadow-sm">
                         <div className="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 bg-amber-100 rounded-full opacity-50 blur-xl"></div>
@@ -114,132 +239,138 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
 
                     <form id="missing-data-form" onSubmit={handleSubmit} className="space-y-6" encType="multipart/form-data">
                         {/* Profile Photo Section - Card Style */}
-                        {missingData.some(f => f.key === 'foto' || f.key === 'photo') && (
-                        <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                            <label className="block text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                <i className="fas fa-camera text-indigo-500"></i>
-                                Foto Profil
-                            </label>
-                            
-                            <div className="flex flex-col sm:flex-row items-center gap-6">
-                                <div className="relative group cursor-pointer">
-                                    <div className="w-24 h-24 rounded-full p-1 bg-white border-2 border-indigo-100 shadow-md">
-                                        <img 
-                                            src={previewUrl || '/assets/images/profilefoto/default-profile.png'} 
-                                            alt="Foto Profil" 
-                                            className="w-full h-full rounded-full object-cover"
-                                            onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                        {effectiveMissingData.some(f => f.key === 'foto' || f.key === 'photo') && (
+                            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                                <label className="block text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <i className="fas fa-camera text-indigo-500"></i>
+                                    <i className="fas fa-camera text-indigo-500"></i>
+                                    Foto Profil {hasDefaultPhoto ? '(Wajib)' : ''}
+                                </label>
+
+                                <div className="flex flex-col sm:flex-row items-center gap-6">
+                                    <div className="relative group cursor-pointer">
+                                        <div className="w-24 h-24 rounded-full p-1 bg-white border-2 border-indigo-100 shadow-md">
+                                            <img
+                                                src={previewUrl || '/assets/images/profilefoto/default-profile.png'}
+                                                alt="Foto Profil"
+                                                className="w-full h-full rounded-full object-cover"
+                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                            />
+                                        </div>
+                                        <label htmlFor="fotoProfileInput" className="absolute bottom-0 right-0 bg-indigo-600 hover:bg-indigo-700 text-white w-8 h-8 flex items-center justify-center rounded-full cursor-pointer shadow-lg transition-transform hover:scale-110 border-2 border-white">
+                                            <i className="fas fa-camera text-xs"></i>
+                                        </label>
+                                    </div>
+
+                                    <div className="flex-1 text-center sm:text-left w-full">
+                                        <input
+                                            type="file"
+                                            id="fotoProfileInput"
+                                            name="foto_file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handlePhotoChange}
                                         />
+                                        <label
+                                            htmlFor="fotoProfileInput"
+                                            className="inline-block sm:hidden mb-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium"
+                                        >
+                                            Ubah Foto
+                                        </label>
+                                        <div className="text-sm text-gray-500 space-y-1 bg-gray-50 p-3 rounded-lg border border-dashed border-gray-300">
+                                            <p className="font-medium text-gray-700">Ketentuan Foto:</p>
+                                            <ul className="list-disc list-inside text-xs text-gray-500 ml-1">
+                                                <li>Wajah terlihat jelas</li>
+                                                <li>Format JPG/PNG (Max 20MB)</li>
+                                                <li>Disarankan rasio 1:1 (Persegi)</li>
+                                                <li>Anda akan diminta menyesuaikan (crop) foto setelah dipilih.</li>
+                                            </ul>
+                                        </div>
+                                        {errors.foto_file && <p className="text-red-500 text-xs mt-2 font-medium"><i className="fas fa-exclamation-circle mr-1"></i>{errors.foto_file}</p>}
                                     </div>
-                                    <label htmlFor="fotoProfileInput" className="absolute bottom-0 right-0 bg-indigo-600 hover:bg-indigo-700 text-white w-8 h-8 flex items-center justify-center rounded-full cursor-pointer shadow-lg transition-transform hover:scale-110 border-2 border-white">
-                                        <i className="fas fa-camera text-xs"></i>
-                                    </label>
-                                </div>
-                                
-                                <div className="flex-1 text-center sm:text-left w-full">
-                                    <input 
-                                        type="file" 
-                                        id="fotoProfileInput" 
-                                        name="foto_file" 
-                                        accept="image/*" 
-                                        className="hidden" 
-                                        onChange={handlePhotoChange}
-                                    />
-                                    <label 
-                                        htmlFor="fotoProfileInput"
-                                        className="inline-block sm:hidden mb-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium"
-                                    >
-                                        Ubah Foto
-                                    </label>
-                                    <div className="text-sm text-gray-500 space-y-1 bg-gray-50 p-3 rounded-lg border border-dashed border-gray-300">
-                                        <p className="font-medium text-gray-700">Ketentuan Foto:</p>
-                                        <ul className="list-disc list-inside text-xs text-gray-500 ml-1">
-                                            <li>Wajah terlihat jelas</li>
-                                            <li>Format JPG/PNG (Max 20MB)</li>
-                                            <li>Disarankan rasio 1:1 (Persegi)</li>
-                                        </ul>
-                                    </div>
-                                    {errors.foto_file && <p className="text-red-500 text-xs mt-2 font-medium"><i className="fas fa-exclamation-circle mr-1"></i>{errors.foto_file}</p>}
                                 </div>
                             </div>
-                        </div>
                         )}
 
                         {/* Dynamic Fields - Grid Layout */}
                         <div className="grid grid-cols-1 gap-5">
-                            {missingData
+                            {effectiveMissingData
                                 .filter(f => f.key !== 'foto' && f.key !== 'photo')
                                 .map((originalField, index) => {
-                                // Parse Dropdown syntax from label or key
-                                // Format: "Label|Dropdown:Option1~Option2~Option3"
-                                let isDropdown = originalField.type === 'select';
-                                let options = originalField.options || [];
-                                let label = originalField.label || originalField.key.replace(/_/g, ' ');
-                                
-                                // Check for custom dropdown syntax
-                                // Look for |Dropdown: pattern
-                                const dropdownMatch = label.match(/\|Dropdown:(.*)/i) || (originalField.key && originalField.key.match(/\|Dropdown:(.*)/i));
-                                
-                                if (dropdownMatch) {
-                                    isDropdown = true;
-                                    const optionsStr = dropdownMatch[1]; // Get "Option1~Option2"
-                                    // Parse options separated by ~
-                                    const parsedOptions = optionsStr.split('~').map(opt => {
-                                        const cleanOpt = opt.trim();
-                                        return { id: cleanOpt, name: cleanOpt };
-                                    });
-                                    options = parsedOptions;
-                                    
-                                    // Clean up the label for display
-                                    // Remove the |Dropdown:... part
-                                    label = label.replace(/\|Dropdown:.*/i, '').trim();
-                                }
+                                    // Parse Dropdown syntax from label or key
+                                    // Format: "Label|Dropdown:Option1~Option2~Option3"
+                                    let isDropdown = originalField.type === 'select';
+                                    let options = originalField.options || [];
+                                    let label = originalField.label || originalField.key.replace(/_/g, ' ');
 
-                                return (
-                                <div key={index} className="relative group">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2 capitalize flex items-center gap-2">
-                                        <span className="w-6 h-6 rounded-md bg-gray-100 text-gray-500 flex items-center justify-center text-xs group-focus-within:bg-indigo-50 group-focus-within:text-indigo-600 transition-colors">
-                                            <i className={`fas ${iconMap[originalField.key] || 'fa-pen'}`}></i>
-                                        </span>
-                                        {label} <span className="text-red-500">*</span>
-                                    </label>
-                                    
-                                    {isDropdown ? (
-                                        <div className="relative">
-                                            <select
-                                                value={data[originalField.key] || ''}
-                                                onChange={(e) => setData(originalField.key, e.target.value)}
-                                                className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:ring-opacity-50 sm:text-sm transition-all outline-none appearance-none"
-                                                required
-                                            >
-                                                <option value="" disabled>Pilih {label}</option>
-                                                {options.map((opt) => (
-                                                    <option key={opt.id || opt} value={opt.id || opt}>
-                                                        {opt.name || opt}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
-                                                <i className="fas fa-chevron-down text-xs"></i>
-                                            </div>
+                                    // Check for custom dropdown syntax
+                                    // Look for |Dropdown: pattern
+                                    const dropdownMatch = label.match(/\|Dropdown:(.*)/i) || (originalField.key && originalField.key.match(/\|Dropdown:(.*)/i));
+
+                                    if (dropdownMatch) {
+                                        isDropdown = true;
+                                        const optionsStr = dropdownMatch[1]; // Get "Option1~Option2"
+                                        // Parse options separated by ~
+                                        const parsedOptions = optionsStr.split('~').map(opt => {
+                                            const cleanOpt = opt.trim();
+                                            return { id: cleanOpt, name: cleanOpt };
+                                        });
+                                        options = parsedOptions;
+
+                                        // Clean up the label for display (remove generic modifiers)
+                                        // Remove |Dropdown:..., |Text, etc.
+                                        label = label.replace(/\|.*/, '').trim();
+                                    } else {
+                                        // Also clean up label if it wasn't a dropdown but has modifiers
+                                        label = label.replace(/\|.*/, '').trim();
+                                    }
+
+                                    return (
+                                        <div key={index} className="relative group">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2 capitalize flex items-center gap-2">
+                                                <span className="w-6 h-6 rounded-md bg-gray-100 text-gray-500 flex items-center justify-center text-xs group-focus-within:bg-indigo-50 group-focus-within:text-indigo-600 transition-colors">
+                                                    <i className={`fas ${iconMap[originalField.key] || 'fa-pen'}`}></i>
+                                                </span>
+                                                {label} <span className="text-red-500">*</span>
+                                            </label>
+
+                                            {isDropdown ? (
+                                                <div className="relative">
+                                                    <select
+                                                        value={data[originalField.key] || ''}
+                                                        onChange={(e) => setData(originalField.key, e.target.value)}
+                                                        className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:ring-opacity-50 sm:text-sm transition-all outline-none appearance-none"
+                                                        required
+                                                    >
+                                                        <option value="" disabled>Pilih {label}</option>
+                                                        {options.map((opt) => (
+                                                            <option key={opt.id || opt} value={opt.id || opt}>
+                                                                {opt.name || opt}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+                                                        <i className="fas fa-chevron-down text-xs"></i>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <input
+                                                    type={originalField.type || 'text'}
+                                                    value={data[originalField.key] || ''}
+                                                    onChange={(e) => setData(originalField.key, e.target.value)}
+                                                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:ring-opacity-50 sm:text-sm transition-all outline-none placeholder-gray-400"
+                                                    placeholder={`Masukkan ${label}`}
+                                                    required
+                                                />
+                                            )}
+                                            {errors[originalField.key] && (
+                                                <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1 animate-pulse">
+                                                    <i className="fas fa-exclamation-circle"></i> {errors[originalField.key]}
+                                                </p>
+                                            )}
                                         </div>
-                                    ) : (
-                                        <input
-                                            type={originalField.type || 'text'}
-                                            value={data[originalField.key] || ''}
-                                            onChange={(e) => setData(originalField.key, e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:ring-opacity-50 sm:text-sm transition-all outline-none placeholder-gray-400"
-                                            placeholder={`Masukkan ${label}`}
-                                            required
-                                        />
-                                    )}
-                                    {errors[originalField.key] && (
-                                        <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1 animate-pulse">
-                                            <i className="fas fa-exclamation-circle"></i> {errors[originalField.key]}
-                                        </p>
-                                    )}
-                                </div>
-                            )})}
+                                    )
+                                })}
                         </div>
                     </form>
                 </div>
@@ -256,7 +387,7 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                     <button
                         type="submit"
                         form="missing-data-form"
-                        disabled={processing}
+                        disabled={processing || !isFormValid}
                         className="inline-flex justify-center items-center rounded-xl border border-transparent shadow-md px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-sm font-bold text-white hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95"
                     >
                         {processing ? (

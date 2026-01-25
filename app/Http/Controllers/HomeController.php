@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Helpers\ImageHelper;
 use App\Models\Setting;
 
 class HomeController extends Controller
@@ -21,30 +22,6 @@ class HomeController extends Controller
     public function index(Request $request)
     {
         try {
-            $resolvePublicImage = function (?string $path, string $fallback, ?string $defaultFolder = null): string {
-                if (! $path) {
-                    return $fallback;
-                }
-
-                if (str_starts_with($path, 'http')) {
-                    return $path;
-                }
-
-                $normalized = ltrim($path, '/');
-                if (str_starts_with($normalized, 'storage/')) {
-                    $normalized = substr($normalized, 8);
-                }
-                if (str_starts_with($normalized, 'public/')) {
-                    $normalized = substr($normalized, 7);
-                }
-                if ($defaultFolder && ! str_contains($normalized, '/')) {
-                    $normalized = $defaultFolder . '/' . $normalized;
-                }
-
-                // Simply return the storage URL without checking existence to avoid permission/symlink issues
-                return asset('storage/' . $normalized);
-            };
-
             // Get activities with private status for the slider (legacy logic kept for fallback)
             $specialActivities = Activity::where('status', 'private')
                 ->latest()
@@ -57,8 +34,8 @@ class HomeController extends Controller
                 ->latest()
                 ->take(6)
                 ->get()
-                ->map(function ($activity) use ($resolvePublicImage) {
-                    $activity->image = $resolvePublicImage($activity->image, asset('assets/images/hero/defoult.webp'), 'activities');
+                ->map(function ($activity) {
+                    $activity->image = ImageHelper::getImageUrl($activity->image, asset('assets/images/hero/defoult.webp'), 'activities');
                     return $activity;
                 });
 
@@ -72,15 +49,15 @@ class HomeController extends Controller
                 ->latest()
                 ->take(4)
                 ->get()
-                ->map(function ($news) use ($resolvePublicImage) {
-                    $news->image = $resolvePublicImage($news->image, asset('assets/images/hero/defoult.webp'));
+                ->map(function ($news) {
+                    $news->image = ImageHelper::getImageUrl($news->image, asset('assets/images/hero/defoult.webp'));
                     return $news;
                 });
 
             // Get partner list for homepage section
             $partners = Partner::latest()->take(20)->get()
-                ->map(function ($partner) use ($resolvePublicImage) {
-                    $partner->logo = $resolvePublicImage($partner->logo, asset('assets/images/logo.png'));
+                ->map(function ($partner) {
+                    $partner->logo = ImageHelper::getImageUrl($partner->logo, asset('assets/images/logo.png'));
                     return $partner;
                 });
 
@@ -113,7 +90,7 @@ class HomeController extends Controller
                 foreach ($pinnedActivities as $activity) {
                     $heroSlides[] = [
                         'type' => 'activity',
-                        'image' => $resolvePublicImage($activity->image, $defaultHero, 'activities'),
+                        'image' => ImageHelper::getImageUrl($activity->image, $defaultHero, 'activities'),
                         'title' => $activity->name,
                         'description' => Str::limit(strip_tags($activity->description), 150),
                         'id' => $activity->id,
@@ -151,7 +128,7 @@ class HomeController extends Controller
                         foreach ($specialActivities as $activity) {
                              $heroSlides[] = [
                                 'type' => 'activity',
-                                'image' => $resolvePublicImage($activity->image, $defaultHero, 'activities'),
+                                'image' => ImageHelper::getImageUrl($activity->image, $defaultHero, 'activities'),
                                 'title' => $activity->name,
                                 'description' => Str::limit(strip_tags($activity->description), 150),
                                 'id' => $activity->id

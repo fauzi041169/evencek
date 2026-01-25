@@ -390,6 +390,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     // Activity Participants Routes
     Route::prefix('activity/{activityId}/participants')->name('activity.participants.')->middleware('auth')->controller(ActivityPreparationController::class)->group(function () {
         Route::get('/', 'participants')->name('index');
+        Route::get('/get-all-ids', 'getAllParticipantIds')->name('get-all-ids');
         Route::post('/rooms', 'storeRoom')->name('rooms.store');
         Route::put('/rooms/{roomId}', 'updateRoom')->name('rooms.update');
         Route::delete('/rooms/batch', 'destroyRoomsBatch')->name('rooms.destroy-batch');
@@ -495,7 +496,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     // User Profile Routes
     Route::prefix('profile')->name('profile.')->controller(ProfileController::class)->group(function () {
         Route::get('/', 'index')->name('index');
-        Route::put('/update', 'update')->name('update');
+        Route::match(['put', 'post'], '/update', 'update')->name('update');
         Route::put('/password/update', 'updatePassword')->name('update-password');
         Route::post('/upgrade-to-creator', 'upgradeToCreator')->name('upgrade-to-creator');
         Route::post('/subdomain', 'updateSubdomain')->name('update-subdomain');
@@ -521,6 +522,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     });
     // Attendance Routes (auth required)
     Route::prefix('attendance')->name('attendance.')->middleware('auth')->controller(AttendanceController::class)->group(function () {
+        Route::post('/scan/store', 'storeScan')->name('scan.store');
         Route::post('/store-attendance', 'storeAttendance')->name('store.attendance');
         Route::post('/check-user', 'checkUser')->name('check.user');
         Route::post('/check-status', 'checkAttendanceStatus')->name('check.status');
@@ -534,7 +536,6 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/results/{attendance}', 'showResults')->name('results');
         Route::delete('/{attendance}', 'destroy')->name('destroy');
         Route::get('/check-attendance', 'checkAttendance')->name('check.attendance');
-        Route::post('/scan/store', 'storeScan')->name('scan.store');
         Route::get('/check-new/{activity_id}/{attendance_id}', 'checkNewData')->name('check-new');
         Route::post('/toggle', 'toggleAttendance')->name('toggle');
         Route::post('/toggle-mandiri', 'toggleMandiri')->name('toggle.mandiri');

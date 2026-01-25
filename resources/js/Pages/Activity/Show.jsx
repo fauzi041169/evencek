@@ -80,7 +80,11 @@ export default function Show({
     const handlePaymentClick = (e) => {
         e.preventDefault();
         setLoadingPaymentModal(true);
-        axios.get(route('payments.create', { activity: activity.id, modal: true }))
+        axios.get(route('payments.create', {
+            activity: activity.id,
+            modal: true,
+            batch_id: filterBatch || selectedBatchId
+        }))
             .then(res => {
                 if (res.data.redirect_url) {
                     window.location.href = res.data.redirect_url;
@@ -233,7 +237,7 @@ export default function Show({
     const participantsList = participants.data || participants;
 
     const heroCoverPath = activity.image
-        ? `/storage/activities/${activity.image}`
+        ? activity.image
         : '/assets/images/begron/defoult.png';
 
     const [showPrice, setShowPrice] = useState(activity.show_price);
@@ -563,7 +567,10 @@ export default function Show({
 
                                                 <div className="mt-6 grid grid-cols-1 gap-4">
                                                     <Link
-                                                        href={route('activity.enroll', activity.id)}
+                                                        href={route('activity.enroll', {
+                                                            activity: activity.id,
+                                                            batch_id: filterBatch || selectedBatchId
+                                                        })}
                                                         className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-gray-100 hover:border-primary hover:bg-primary/5 transition-all group w-full"
                                                     >
                                                         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">

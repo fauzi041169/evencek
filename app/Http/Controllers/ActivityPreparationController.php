@@ -5330,6 +5330,106 @@ class ActivityPreparationController extends Controller
     /**
      * Verifikasi email peserta (bulk)
      */
+    private function buildParticipantQuery(Request $request, $activityId)
+    {
+        $query = ActivityUser::where('activity_id', $activityId);
+
+        // Batch Filter
+        if ($request->filled('batch_id')) {
+            $query->where('activity_batch_id', $request->batch_id);
+        }
+
+        // Role & Status Filter
+        $committeeUserIds = ActivityCommitteeStructure::where('activity_id', $activityId)
+            ->whereNotNull('user_id')
+            ->pluck('user_id')
+            ->toArray();
+
+        $combinedFilter = $request->status_role_filter;
+        $roleFilter = $request->role_filter;
+        $participantStatusFilter = $request->participant_status;
+
+        if ($combinedFilter) {
+            if ($combinedFilter === 'role_panitia') {
+                $roleFilter = 'panitia';
+            } elseif ($combinedFilter === 'role_peserta') {
+                $roleFilter = 'peserta';
+            } elseif (in_array($combinedFilter, ['status_active', 'status_verification', 'status_pending', 'status_rejected'])) {
+                 $statusMap = [
+                     'status_active' => ActivityUser::STATUS_ACTIVE,
+                     'status_verification' => ActivityUser::STATUS_VERIFICATION,
+                     'status_pending' => ActivityUser::STATUS_PENDING,
+                     'status_rejected' => ActivityUser::STATUS_REJECTED
+                 ];
+                 $participantStatusFilter = $statusMap[$combinedFilter] ?? null;
+            } elseif ($combinedFilter === 'email_unverified') {
+                $query->whereHas('user', function ($q) {
+                    $q->whereNull('email_verified_at');
+                });
+            }
+        }
+
+        if ($roleFilter === 'panitia') {
+            $query->whereIn('user_id', $committeeUserIds);
+        } elseif ($roleFilter === 'peserta' || empty($roleFilter)) {
+            $query->whereNotIn('user_id', $committeeUserIds);
+        }
+
+        if ($participantStatusFilter !== null && $participantStatusFilter !== '') {
+            $query->where('status', (int) $participantStatusFilter);
+        }
+
+        // Location Filters
+        if ($request->filled('province_id')) {
+            $query->whereHas('user.profile', fn($q) => $q->where('province_id', $request->province_id));
+        }
+        if ($request->filled('regency_id')) {
+            $query->whereHas('user.profile', fn($q) => $q->where('regency_id', $request->regency_id));
+        }
+        if ($request->filled('district_id')) {
+             if (str_starts_with($request->district_id, 'other:')) {
+                $otherVal = substr($request->district_id, 6);
+                $query->whereHas('user.profile', fn($q) => $q->where('other_district', $otherVal));
+            } else {
+                $query->whereHas('user.profile', fn($q) => $q->where('district_id', $request->district_id));
+            }
+        }
+
+        // Search
+        if ($searchTerm = trim($request->search)) {
+            $query->where(function ($q) use ($searchTerm) {
+                // User fields
+                $q->orWhereHas('user', function ($u) use ($searchTerm) {
+                    $u->where('name', 'like', "%{$searchTerm}%")
+                      ->orWhere('email', 'like', "%{$searchTerm}%");
+                });
+
+                // Profile fields
+                $profileMap = ['no_hp', 'nik', 'instansi', 'pekerjaan', 'jabatan', 'alamat', 'jenis_kelamin', 'birth_place'];
+                $q->orWhereHas('user.profile', function ($p) use ($searchTerm, $profileMap) {
+                    foreach ($profileMap as $field) {
+                        $p->orWhere($field, 'like', "%{$searchTerm}%");
+                    }
+                    $p->orWhereHas('province', fn ($loc) => $loc->where('name', 'like', "%{$searchTerm}%"));
+                    $p->orWhereHas('regency', fn ($loc) => $loc->where('name', 'like', "%{$searchTerm}%"));
+                    $p->orWhereHas('district', fn ($loc) => $loc->where('name', 'like', "%{$searchTerm}%"));
+                });
+
+                 // Custom Data
+                if (Schema::hasColumn('activity_users', 'custom_data')) {
+                    $q->orWhere('custom_data', 'like', "%{$searchTerm}%");
+                }
+                
+                 // Participant Group
+                $q->orWhereHas('participantGroup', function ($g) use ($searchTerm) {
+                    $g->where('name', 'like', "%{$searchTerm}%");
+                });
+            });
+        }
+
+        return $query;
+    }
+
     public function verifyEmailBulk(Request $request, $activityId)
     {
         $activity = Activity::findOrFail($activityId);
@@ -5342,12 +5442,24 @@ class ActivityPreparationController extends Controller
         }
 
         $request->validate([
-            'user_ids' => 'required|array',
-            'user_ids.*' => 'required|exists:users,id',
+            'user_ids' => 'nullable|array',
+            'user_ids.*' => 'nullable|exists:users,id',
             'batch_id' => 'nullable|string',
+            'select_all' => 'nullable|boolean',
         ]);
 
-        $userIds = $request->user_ids;
+        $userIds = [];
+
+        if ($request->boolean('select_all')) {
+            $userIds = $this->buildParticipantQuery($request, $activityId)->pluck('user_id')->toArray();
+        } else {
+            $userIds = $request->input('user_ids', []);
+        }
+
+        if (empty($userIds)) {
+            return redirect()->back()->with('error', 'Tidak ada peserta yang dipilih.');
+        }
+
         $batchId = $request->batch_id;
         $verifiedCount = 0;
 

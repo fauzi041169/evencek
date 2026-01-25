@@ -219,7 +219,9 @@ class ActivityEnrollmentController extends Controller
             $user->refresh(); // Refresh to get updated data
 
             if (! $user->relationLoaded('profile')) {
-                $user->load('profile');
+                $user->unsetRelation('profile')->load('profile');
+            } else {
+                 $user->refresh();
             }
 
             $debugValidation['user_after_update'] = $user->toArray();
@@ -325,6 +327,7 @@ class ActivityEnrollmentController extends Controller
             $allRequiredKeys = array_unique(array_merge($defaultRequired, $mandatoryFields, $customKeys));
             
             // Use unified method from User model
+            $user->load('profile');
             $missingProfileData = $user->getIncompleteProfileData($allRequiredKeys);
             $missingFields = array_column($missingProfileData, 'label');
             $missingFieldKeys = array_column($missingProfileData, 'key');
@@ -340,7 +343,8 @@ class ActivityEnrollmentController extends Controller
                     return response()->json(array_merge([
                         'success' => false,
                         'message' => $msg,
-                        'missing_fields' => $missingFields,
+                        'missing_fields' => $missingFields, // Labels for display
+                        'missing_data' => $missingProfileData, // Full structure for frontend logic
                     ], $debugPayload), 422);
                 }
 
@@ -366,9 +370,14 @@ class ActivityEnrollmentController extends Controller
                 if (in_array((int)$enrollment->status, [ActivityUser::STATUS_PENDING, ActivityUser::STATUS_VERIFICATION])) {
                     
                     // RECOVERY: Ensure payment record exists if missing
-                    $price = $activity->price;
-                    if ($activeBatch && $activeBatch->price !== null) {
-                        $price = $activeBatch->price;
+                    // Fix: If activity price is explicitly 0, treat as free (Master Override)
+                    if ((int)$activity->price === 0) {
+                        $price = 0;
+                    } else {
+                        $price = $activity->price;
+                        if ($activeBatch && $activeBatch->price !== null) {
+                            $price = $activeBatch->price;
+                        }
                     }
 
                     if ($price > 0) {
@@ -454,9 +463,14 @@ class ActivityEnrollmentController extends Controller
             $tableName = $activityUser->getTable();
 
             // Calculate price first to determine status
-            $price = $activity->price;
-            if ($activeBatch && $activeBatch->price !== null) {
-                $price = $activeBatch->price;
+            // Fix: If activity price is explicitly 0, treat as free (Master Override)
+            if ((int)$activity->price === 0) {
+                $price = 0;
+            } else {
+                $price = $activity->price;
+                if ($activeBatch && $activeBatch->price !== null) {
+                    $price = $activeBatch->price;
+                }
             }
 
             $payload = [

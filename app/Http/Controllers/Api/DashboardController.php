@@ -47,13 +47,29 @@ class DashboardController extends Controller
 
         // Statistik absensi
         $pesertaHadir = 0;
+        $recordUserIds = [];
+        
         if (Schema::hasTable('activity_records')) {
-            $pesertaHadir = DB::table('activity_records')
+            $recordUserIds = DB::table('activity_records')
                 ->where('activity_id', $activityId)
                 ->where('status', 1)
                 ->distinct('user_id')
-                ->count('user_id');
+                ->pluck('user_id')
+                ->toArray();
         }
+
+        // Include users who have accessed the system (implicit attendance)
+        $accessUserIds = [];
+        if (Schema::hasColumn($tableName, 'jumlah_akses')) {
+            $accessUserIds = DB::table($tableName)
+                ->where('activity_id', $activityId)
+                ->where('jumlah_akses', '>', 0)
+                ->pluck('user_id')
+                ->toArray();
+        }
+
+        // Combine both sources
+        $pesertaHadir = count(array_unique(array_merge($recordUserIds, $accessUserIds)));
 
         $persentaseKehadiran = $totalPeserta > 0 ? round(($pesertaHadir / $totalPeserta) * 100, 1) : 0;
 
@@ -102,6 +118,23 @@ class DashboardController extends Controller
                     ->pluck('total', 'created_by')
                     ->toArray();
             }
+
+            // Count registrations by payment sender_name
+            $paymentCounts = [];
+            if (Schema::hasTable('payments') && Schema::hasColumn('payments', 'sender_name')) {
+                $committeeNames = $committees->map(function($member) {
+                    return strtolower(trim((string)($member->user ? $member->user->name : $member->name)));
+                })->filter()->unique()->values();
+
+                $paymentCounts = DB::table('payments')
+                    ->where('activity_id', $activityId)
+                    ->where('status', 'success')
+                    ->whereIn(DB::raw('LOWER(sender_name)'), $committeeNames)
+                    ->select(DB::raw('LOWER(sender_name) as name'), DB::raw('count(*) as total'))
+                    ->groupBy(DB::raw('LOWER(sender_name)'))
+                    ->pluck('total', 'name')
+                    ->toArray();
+            }
                 
             // Count validations by user (updated_by)
             $validations = [];
@@ -117,16 +150,26 @@ class DashboardController extends Controller
             }
             
             // Map to committee members
-            $committeeStats = $committees->map(function ($member) use ($registrations, $validations) {
+            $committeeStats = $committees->map(function ($member) use ($registrations, $validations, $paymentCounts) {
                 $userId = $member->user_id;
+                $name = $member->user ? $member->user->name : $member->name;
+                $normalizedName = strtolower(trim((string)$name));
+                
+                $regCount = ($registrations[$userId] ?? 0);
+                $payCount = ($paymentCounts[$normalizedName] ?? 0);
+                $totalReg = $regCount + $payCount;
+                $valCount = $validations[$userId] ?? 0;
+                $aksesCount = $member->lama_akses ?? 0; // Menggunakan lama_akses sebagai nilai AKSES
+
                 return [
                     'id' => $member->id,
                     'user_id' => $userId,
-                    'name' => $member->user ? $member->user->name : $member->name,
+                    'name' => $name,
                     'position' => $member->position,
-                    'registrations' => $registrations[$userId] ?? 0,
-                    'validations' => $validations[$userId] ?? 0,
-                    'total_actions' => ($registrations[$userId] ?? 0) + ($validations[$userId] ?? 0),
+                    'registrations' => $totalReg,
+                    'validations' => $valCount,
+                    'akses' => $aksesCount,
+                    'total_actions' => $totalReg + $valCount + $aksesCount,
                 ];
             })->sortByDesc('total_actions')->values();
         }

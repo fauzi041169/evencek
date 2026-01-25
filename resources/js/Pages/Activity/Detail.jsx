@@ -37,7 +37,8 @@ export default function Detail({
     heroCoverPath, // We will calculate this in controller
     heroAnimationStyle,
     buttonText,
-    flash
+    flash,
+    contactPersons = []
 }) {
     const { auth } = usePage().props;
     const user = auth?.user;
@@ -66,6 +67,16 @@ export default function Detail({
             console.error('Failed to toggle section visibility', err);
         });
     };
+
+    // Fix: Use local state for missing data to allow updates without reload
+    const [localMissingProfileData, setLocalMissingProfileData] = useState(missingProfileData || []);
+
+    // Sync props to state if props change (e.g. after reload)
+    useEffect(() => {
+        if (missingProfileData) {
+            setLocalMissingProfileData(missingProfileData);
+        }
+    }, [missingProfileData]);
 
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
@@ -283,7 +294,10 @@ export default function Detail({
 
         setTimeout(async () => {
             if (type === 'mandiri') {
-                if (!force && missingProfileFields && missingProfileFields.length > 0) {
+                const hasDefaultPhoto = auth?.user?.profile_photo_url?.includes('default-profile.png') ||
+                    auth?.user?.profile_photo_url?.includes('ui-avatars.com');
+
+                if (!force && ((missingProfileFields && missingProfileFields.length > 0) || hasDefaultPhoto)) {
                     // Save intent for auto-enroll after profile update
                     sessionStorage.setItem('pending_enrollment', JSON.stringify({
                         activityId: activity.id,
@@ -370,6 +384,22 @@ export default function Detail({
                         }
                     } catch (error) {
                         if (error.response && error.response.status === 422) {
+                            // Fix: Handle verification loop by updating modal state directly
+                            if (error.response.data.missing_data) {
+                                setLocalMissingProfileData(error.response.data.missing_data);
+                                setIsMissingDataModalOpen(true);
+
+                                // Save intent again
+                                sessionStorage.setItem('pending_enrollment', JSON.stringify({
+                                    activityId: activity.id,
+                                    type: type
+                                }));
+
+                                // Optional: Show toast instead of blocking alert
+                                // Swal.fire({ ... });
+                                return;
+                            }
+
                             // Jika error validasi (misal data belum lengkap yang terlewat), refresh atau tampilkan pesan
                             if (error.response.data.missing_fields) {
                                 // Harusnya sudah dicek di awal, tapi untuk jaga-jaga
@@ -415,8 +445,8 @@ export default function Detail({
                 if (activityId === activity.id && type === 'mandiri') {
                     sessionStorage.removeItem('pending_enrollment');
 
-                    // Directly open payment modal since we just saved the profile
-                    openManualPaymentModal();
+                    // Re-trigger enroll flow which handles price check (paid vs free)
+                    handleEnroll(type, true);
                     return;
                 }
             } catch (e) {
@@ -974,19 +1004,42 @@ export default function Detail({
                         {/* Contact Person */}
                         <div className="bg-white rounded-2xl shadow-sm p-6">
                             <h3 className="text-lg font-bold text-gray-900 mb-4">Narahubung</h3>
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden">
-                                    <img
-                                        src={activity.creator?.avatar || '/assets/images/profilefoto/default-profile.png'}
-                                        alt={activity.creator?.name}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
-                                    />
-                                </div>
-                                <div>
-                                    <p className="font-medium text-gray-900">{activity.creator?.name}</p>
-                                    <p className="text-sm text-gray-500">{activity.creator?.email}</p>
-                                </div>
+                            <div className="space-y-4">
+                                {contactPersons && contactPersons.length > 0 ? (
+                                    contactPersons.map((person, idx) => (
+                                        <div key={person.id || idx} className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                                                <img
+                                                    src={person.avatar || '/assets/images/profilefoto/default-profile.png'}
+                                                    alt={person.name}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-900">{person.name}</p>
+                                                <p className="text-xs text-indigo-600 font-medium">{person.position}</p>
+                                                {person.email && <p className="text-sm text-gray-500">{person.email}</p>}
+                                                {person.phone && <p className="text-sm text-gray-500">{person.phone}</p>}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                                            <img
+                                                src={activity.user?.profile_photo_url || activity.creator?.avatar || '/assets/images/profilefoto/default-profile.png'}
+                                                alt={activity.user?.name || activity.creator?.name}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
+                                            />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-gray-900">{activity.user?.name || activity.creator?.name}</p>
+                                            <p className="text-sm text-gray-500">{activity.user?.email || activity.creator?.email}</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -1123,7 +1176,7 @@ export default function Detail({
                 show={isMissingDataModalOpen}
                 onClose={() => setIsMissingDataModalOpen(false)}
                 missingFields={missingProfileFields}
-                missingData={missingProfileData}
+                missingData={localMissingProfileData}
                 userId={user?.id}
                 onSuccess={handleMissingDataSuccess}
             />

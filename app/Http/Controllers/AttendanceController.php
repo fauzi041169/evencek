@@ -873,11 +873,31 @@ class AttendanceController extends Controller
             ]);
             $this->authorizeActivityAccess($validated['activity_id']);
 
+            $scannedId = $validated['scanned_id'];
+            $finalUserId = null;
+
+            // 1. Cek apakah scanned_id adalah ActivityUser ID (Participant ID) - Prioritas Utama
+            $activityUser = ActivityUser::find($scannedId);
+            if ($activityUser) {
+                $finalUserId = $activityUser->user_id;
+            } 
+            // 2. Jika bukan ActivityUser ID, cek apakah User ID valid
+            elseif (User::where('id', $scannedId)->exists()) {
+                $finalUserId = $scannedId;
+            }
+
+            if (!$finalUserId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User tidak ditemukan (Invalid ID)',
+                ], 404);
+            }
+
             $attendance = Attendance::findOrFail($validated['attendance_id']);
 
             // Validasi batch: jika attendance terikat batch, pastikan user terdaftar di batch tersebut
             if ($attendance->activity_batch_id) {
-                $isEnrolledInBatch = ActivityUser::where('user_id', $validated['scanned_id'])
+                $isEnrolledInBatch = ActivityUser::where('user_id', $finalUserId)
                     ->where('activity_id', $validated['activity_id'])
                     ->where(function ($q) use ($attendance) {
                         $q->where('activity_batch_id', $attendance->activity_batch_id)
@@ -895,25 +915,32 @@ class AttendanceController extends Controller
 
             // Cek duplikasi absensi
             $existingAttendance = ActivityRecord::where([
-                'user_id' => $validated['scanned_id'],
+                'user_id' => $finalUserId,
                 'activity_id' => $validated['activity_id'],
                 'attendance_id' => $validated['attendance_id'],
                 'status' => 1,
             ])->first();
 
             if ($existingAttendance) {
+                $existingUser = User::with(['profile.province'])->find($finalUserId);
                 return response()->json([
                     'success' => false,
                     'message' => 'User sudah melakukan absensi',
                     'already_scanned' => true,
                     'scanned_at' => $existingAttendance->created_at,
+                    'user_name' => $existingUser ? $existingUser->name : 'Peserta',
+                    'user_profile_url' => optional($existingUser->profile)->foto_url,
+                    'user_instansi' => optional($existingUser->profile)->instansi,
+                    'user_province' => optional(optional($existingUser->profile)->province)->name,
+                    'attendance_name' => $attendance->name,
+                    'first_scan_time' => $existingAttendance->created_at->format('H:i'),
                 ]);
             }
 
             // Simpan absensi
             DB::table('activity_records')->insert([
                 'id' => $this->generateCustomUid(),
-                'user_id' => $validated['scanned_id'],
+                'user_id' => $finalUserId,
                 'activity_id' => $validated['activity_id'],
                 'activity_batch_id' => $attendance->activity_batch_id,
                 'attendance_id' => $validated['attendance_id'],
@@ -927,7 +954,7 @@ class AttendanceController extends Controller
             ]);
 
             // Ambil data user untuk ditampilkan
-            $user = User::with('profile')->find($validated['scanned_id']);
+            $user = User::with(['profile.province', 'profile.regency'])->find($finalUserId);
 
             return response()->json([
                 'success' => true,

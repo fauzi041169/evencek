@@ -4,35 +4,79 @@ import Swal from 'sweetalert2';
 
 export default function CommitteeSection({ activity, committeeStructure, refPositions, divisions, participants = [] }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingMember, setEditingMember] = useState(null);
     const [data, setData] = useState({
         position: '',
         user_id: ''
     });
     const [processing, setProcessing] = useState(false);
 
+    const openModal = (member = null) => {
+        if (member) {
+            setEditingMember(member);
+            setData({
+                position: member.position,
+                user_id: member.user_id
+            });
+        } else {
+            setEditingMember(null);
+            setData({
+                position: '',
+                user_id: ''
+            });
+        }
+        setIsModalOpen(true);
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!data.position || !data.user_id) return;
 
         setProcessing(true);
-        router.post(route('activity.preparation.store-committee', activity.uid || activity.id), data, {
-            onSuccess: () => {
-                setIsModalOpen(false);
-                setData({ position: '', user_id: '' });
-                setProcessing(false);
-                Swal.fire({
-                    title: 'Berhasil',
-                    text: 'Panitia berhasil ditambahkan.',
-                    icon: 'success',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-            },
-            onError: (errors) => {
-                setProcessing(false);
-                Swal.fire('Error', 'Gagal menambahkan panitia. Silakan periksa kembali data Anda.', 'error');
-            }
-        });
+        
+        if (editingMember) {
+            router.put(route('activity.preparation.update-committee', { 
+                activityId: activity.uid || activity.id, 
+                committeeId: editingMember.id 
+            }), data, {
+                onSuccess: () => {
+                    setIsModalOpen(false);
+                    setEditingMember(null);
+                    setData({ position: '', user_id: '' });
+                    setProcessing(false);
+                    Swal.fire({
+                        title: 'Berhasil',
+                        text: 'Data panitia berhasil diperbarui.',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (errors) => {
+                    setProcessing(false);
+                    Swal.fire('Error', 'Gagal memperbarui panitia. Silakan periksa kembali data Anda.', 'error');
+                }
+            });
+        } else {
+            router.post(route('activity.preparation.store-committee', activity.uid || activity.id), data, {
+                onSuccess: () => {
+                    setIsModalOpen(false);
+                    setData({ position: '', user_id: '' });
+                    setProcessing(false);
+                    Swal.fire({
+                        title: 'Berhasil',
+                        text: 'Panitia berhasil ditambahkan.',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (errors) => {
+                    setProcessing(false);
+                    Swal.fire('Error', 'Gagal menambahkan panitia. Silakan periksa kembali data Anda.', 'error');
+                }
+            });
+        }
     };
 
     const handleDelete = (id) => {
@@ -66,7 +110,7 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                     </div>
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                         <button
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={() => openModal()}
                             className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
                         >
                             <i className="fas fa-plus mr-2"></i>
@@ -132,6 +176,13 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                         <button
+                                            onClick={() => openModal(member)}
+                                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-all opacity-0 group-hover:opacity-100 mr-1"
+                                            title="Edit"
+                                        >
+                                            <i className="fas fa-edit text-xs"></i>
+                                        </button>
+                                        <button
                                             onClick={() => handleDelete(member.id)}
                                             className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
                                             title="Hapus"
@@ -172,7 +223,7 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                         <form onSubmit={handleSubmit}>
                             <div className="p-8">
                                 <div className="flex justify-between items-center mb-8">
-                                    <h3 className="text-2xl font-bold text-gray-900">Tambah Panitia</h3>
+                                    <h3 className="text-2xl font-bold text-gray-900">{editingMember ? 'Edit Panitia' : 'Tambah Panitia'}</h3>
                                     <button
                                         type="button"
                                         onClick={() => setIsModalOpen(false)}
@@ -187,22 +238,22 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                         <label htmlFor="position" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Jabatan / Posisi</label>
                                         <div className="relative">
                                             <i className="fas fa-id-card absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
-                                            <input
-                                                type="text"
+                                            <select
                                                 id="position"
-                                                list="positions-list"
-                                                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-primary shadow-inner font-medium"
+                                                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-primary shadow-inner font-medium appearance-none"
                                                 value={data.position}
                                                 onChange={(e) => setData({ ...data, position: e.target.value })}
-                                                placeholder="Contoh: Ketua Panitia, Bendahara..."
                                                 required
-                                            />
+                                            >
+                                                <option value="">-- Pilih Jabatan --</option>
+                                                {refPositions && refPositions.map((pos, idx) => (
+                                                    <option key={idx} value={pos.name || pos}>
+                                                        {pos.name || pos}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none"></i>
                                         </div>
-                                        <datalist id="positions-list">
-                                            {refPositions && refPositions.map((pos, idx) => (
-                                                <option key={idx} value={pos.name || pos} />
-                                            ))}
-                                        </datalist>
                                     </div>
 
                                     <div className="relative group">
@@ -211,10 +262,11 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                             <i className="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
                                             <select
                                                 id="user_id"
-                                                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-primary shadow-inner font-medium appearance-none"
+                                                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-primary shadow-inner font-medium appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
                                                 value={data.user_id}
                                                 onChange={(e) => setData({ ...data, user_id: e.target.value })}
                                                 required
+                                                disabled={!!editingMember}
                                             >
                                                 <option value="">-- Pilih Peserta --</option>
                                                 {participants.map((p) => (
@@ -223,7 +275,9 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                                     </option>
                                                 ))}
                                             </select>
-                                            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none"></i>
+                                            {!editingMember && (
+                                                <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none"></i>
+                                            )}
                                         </div>
                                     </div>
 
@@ -252,7 +306,7 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                             <i className="fas fa-circle-notch fa-spin mr-2"></i> Procesing...
                                         </span>
                                     ) : (
-                                        'Simpan Panitia'
+                                        editingMember ? 'Simpan Perubahan' : 'Simpan Panitia'
                                     )}
                                 </button>
                             </div>

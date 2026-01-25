@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Transition } from '@headlessui/react';
 import axios from 'axios';
 import MainLayout from '@/Layouts/MainLayout';
@@ -7,11 +7,12 @@ import AcaraLayout from '@/Layouts/AcaraLayout';
 import {
     Search, Filter, Download, Trash2, CheckCircle, UserPlus,
     MoreHorizontal, ChevronDown, ChevronUp, X, FileSpreadsheet,
-    Users, MapPin, Building
+    Users, MapPin, Building, UserCog
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 import kebabCase from 'lodash/kebabCase';
 import ImportModals from './Modals/ImportModals';
+import ParticipantEditModal from './Modals/ParticipantEditModal';
 import RegionLookupModal from './Modals/RegionLookupModal';
 import GroupAssignModal from './Modals/GroupAssignModal';
 import GroupsManageModal from './Modals/GroupsManageModal';
@@ -115,8 +116,13 @@ export default function Index({
     totalDistricts = 0,
     unverifiedEmailCount = 0
 }) {
+    const { auth } = usePage().props;
+    const currentUser = auth?.user;
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+
     const [search, setSearch] = useState(filters.search || '');
     const [selectedIds, setSelectedIds] = useState([]);
+    const [selectAllMatching, setSelectAllMatching] = useState(false);
     const [showFilters, setShowFilters] = useState(false);
 
     // Modal states
@@ -127,6 +133,8 @@ export default function Index({
     const [showRoomsModal, setShowRoomsModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedPaymentParticipant, setSelectedPaymentParticipant] = useState(null);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingParticipant, setEditingParticipant] = useState(null);
 
     // Filter states
     const [selectedBatch, setSelectedBatch] = useState(filters.batch_id || '');
@@ -134,6 +142,21 @@ export default function Index({
     const [selectedRegency, setSelectedRegency] = useState(filters.regency_id || '');
     const [selectedStatus, setSelectedStatus] = useState(filters.participant_status || '');
     const [perPage, setPerPage] = useState(filters.per_page || 15);
+
+    // Calculate selected unverified count
+    const selectedUnverifiedCount = React.useMemo(() => {
+        if (!participants?.data) return 0;
+        return participants.data.filter(p => selectedIds.includes(p.id) && !p.user?.email_verified_at).length;
+    }, [selectedIds, participants]);
+
+    // Get Selected User IDs (mapped from ActivityUser IDs)
+    const selectedUserIds = React.useMemo(() => {
+        if (!participants?.data) return [];
+        return participants.data
+            .filter(p => selectedIds.includes(p.id))
+            .map(p => p.user?.id || p.user_id)
+            .filter(id => id); // Remove null/undefined
+    }, [selectedIds, participants]);
 
     // Derived custom keys
     const [availableCustomKeys] = useState(() => {
@@ -340,34 +363,54 @@ export default function Index({
         };
     }, []);
 
+    const openEditModal = (participant) => {
+        setEditingParticipant(participant.user);
+        setShowEditModal(true);
+    };
+
     // Bulk actions
     const handleBulkVerify = () => {
-        if (!selectedIds.length) return;
+            if (!selectedIds.length) return;
 
-        const activityId = activity?.uid || activity?.id;
+            const activityId = activity?.uid || activity?.id;
 
-        Swal.fire({
-            title: 'Verifikasi Email?',
-            text: `Apakah Anda yakin ingin memverifikasi email ${selectedIds.length} peserta terpilih?`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Ya, Verifikasi',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                router.post(route('activity.participants.verify-email-bulk', { activityId }), {
-                    user_ids: selectedIds,
-                    batch_id: filters.batch_id
-                }, {
-                    preserveScroll: true,
-                    onSuccess: () => {
-                        setSelectedIds([]);
-                        Swal.fire('Berhasil!', 'Email peserta telah diverifikasi.', 'success');
-                    }
-                });
+            // Map selected ActivityUser IDs to User IDs
+            const userIdsToVerify = participants.data
+                .filter(p => selectedIds.includes(p.id))
+                .map(p => p.user?.id || p.user_id)
+                .filter(id => id); // Remove null/undefined
+
+            if (!selectAllMatching && userIdsToVerify.length === 0) {
+                 Swal.fire('Info', 'Tidak ada peserta terpilih yang dapat diverifikasi atau data user tidak ditemukan.', 'info');
+                 return;
             }
-        });
-    };
+
+            Swal.fire({
+                title: 'Verifikasi Email?',
+                text: selectAllMatching 
+                    ? `Apakah Anda yakin ingin memverifikasi SEMUA ${participants.total} peserta?`
+                    : `Apakah Anda yakin ingin memverifikasi email ${userIdsToVerify.length} peserta terpilih?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Verifikasi',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    router.post(route('activity.participants.verify-email-bulk', { activityId }), {
+                        user_ids: selectAllMatching ? [] : userIdsToVerify,
+                        select_all: selectAllMatching,
+                        batch_id: filters.batch_id
+                    }, {
+                        preserveScroll: true,
+                        onSuccess: () => {
+                            setSelectedIds([]);
+                            setSelectAllMatching(false);
+                            Swal.fire('Berhasil!', 'Email peserta telah diverifikasi.', 'success');
+                        }
+                    });
+                }
+            });
+        };
 
     const handleBulkDelete = () => {
         if (!selectedIds.length) return;
@@ -382,7 +425,9 @@ export default function Index({
 
         Swal.fire({
             title: 'Hapus Peserta?',
-            text: `Apakah Anda yakin ingin menghapus ${selectedIds.length} peserta terpilih? Data yang dihapus tidak dapat dikembalikan.`,
+            text: selectAllMatching
+                ? `Apakah Anda yakin ingin menghapus SEMUA ${participants.total} peserta? Data yang dihapus tidak dapat dikembalikan.`
+                : `Apakah Anda yakin ingin menghapus ${selectedIds.length} peserta terpilih? Data yang dihapus tidak dapat dikembalikan.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -391,12 +436,15 @@ export default function Index({
         }).then((result) => {
             if (result.isConfirmed) {
                 router.post(route('activity.removeParticipants', { activity: activityId }), {
-                    user_ids: selectedIds,
+                    ...filters,
+                    user_ids: selectAllMatching ? [] : selectedIds,
+                    select_all: selectAllMatching,
                     batch_id: filters.batch_id
                 }, {
                     preserveScroll: true,
                     onSuccess: () => {
                         setSelectedIds([]);
+                        setSelectAllMatching(false);
                         Swal.fire('Terhapus!', 'Peserta berhasil dihapus.', 'success');
                     }
                 });
@@ -550,19 +598,36 @@ export default function Index({
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
+            // Select ALL matching data (across all pages) unconditionally
+            setSelectAllMatching(true);
             setSelectedIds(participants.data.map(p => p.id));
         } else {
             setSelectedIds([]);
+            setSelectAllMatching(false);
         }
     };
 
     const handleSelectOne = (id) => {
         if (selectedIds.includes(id)) {
             setSelectedIds(selectedIds.filter(i => i !== id));
+            setSelectAllMatching(false); // Deselecting one breaks the "Select All Matching" state
         } else {
-            setSelectedIds([...selectedIds, id]);
+            const newSelected = [...selectedIds, id];
+            setSelectedIds(newSelected);
+            
+            // If all items on the current page are selected, and there's only 1 page, we are "All Matching"
+            if (participants.total <= participants.per_page && newSelected.length === participants.total) {
+                setSelectAllMatching(true);
+            }
         }
     };
+
+    // Auto-select items on page change if selectAllMatching is active
+    useEffect(() => {
+        if (selectAllMatching && participants.data) {
+             setSelectedIds(participants.data.map(p => p.id));
+        }
+    }, [participants.data, selectAllMatching]);
 
     const filteredRegencies = selectedProvince
         ? regencies.filter(r => r.province_id === selectedProvince)
@@ -709,7 +774,9 @@ export default function Index({
                                         onClick={() => setShowBulkMenu(!showBulkMenu)}
                                         className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg active:scale-95 animate-in fade-in zoom-in-95 duration-200"
                                     >
-                                        <span className="hidden md:inline">{selectedIds.length} Terpilih</span>
+                                        <span className="hidden md:inline">
+                                            {selectAllMatching ? `${participants.total} Terpilih (Semua)` : `${selectedIds.length} Terpilih`}
+                                        </span>
                                         <ChevronDown className="w-3 h-3 ml-1" />
                                     </button>
 
@@ -737,9 +804,9 @@ export default function Index({
                                                     <div className="flex items-center gap-3">
                                                         <CheckCircle className="w-4 h-4 text-emerald-600" /> Verifikasi Email
                                                     </div>
-                                                    {unverifiedEmailCount > 0 && (
-                                                        <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm group-hover:bg-red-600 transition-colors" title="Total peserta belum verifikasi email">
-                                                            {unverifiedEmailCount}
+                                                    {selectedUnverifiedCount > 0 && (
+                                                        <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm group-hover:bg-red-600 transition-colors" title="Peserta terpilih belum verifikasi email">
+                                                            {selectedUnverifiedCount}
                                                         </span>
                                                     )}
                                                 </button>
@@ -797,13 +864,15 @@ export default function Index({
                         <table className="w-full min-w-max text-sm text-left">
                             <thead className="bg-slate-50/80 backdrop-blur border-b border-slate-200">
                                 <tr>
-                                    {visibleColumns['col-index'] && <th className="px-6 py-4 font-semibold text-slate-700 uppercase tracking-wider text-xs whitespace-nowrap w-10">
-                                        <input
-                                            type="checkbox"
-                                            onChange={handleSelectAll}
-                                            checked={selectedIds.length > 0 && selectedIds.length === participants.data.length}
-                                            className="rounded border-slate-300 text-primary focus:ring-indigo-500 w-4 h-4"
-                                        />
+                                    {visibleColumns['col-index'] && <th className="px-4 py-4 font-semibold text-slate-700 uppercase tracking-wider text-xs whitespace-nowrap w-12">
+                                        <div className="flex items-center justify-center">
+                                            <input
+                                                type="checkbox"
+                                                onChange={handleSelectAll}
+                                                checked={selectAllMatching || (participants.data.length > 0 && selectedIds.length === participants.data.length)}
+                                                className="rounded border-slate-300 text-primary focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                            />
+                                        </div>
                                     </th>}
                                     {visibleColumns['col-name'] && (
                                         <th className="px-6 py-4 whitespace-nowrap">
@@ -1023,13 +1092,15 @@ export default function Index({
                                     participants.data.map((participant) => (
                                         <tr key={participant.id} className="hover:bg-slate-50/80 transition-colors group">
                                             {visibleColumns['col-index'] && (
-                                                <td className="px-6 py-4">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedIds.includes(participant.id)}
-                                                        onChange={() => handleSelectOne(participant.id)}
-                                                        className="rounded border-slate-300 text-primary focus:ring-indigo-500 w-4 h-4"
-                                                    />
+                                                <td className="px-4 py-4">
+                                                    <div className="flex items-center justify-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedIds.includes(participant.id)}
+                                                            onChange={() => handleSelectOne(participant.id)}
+                                                            className="rounded border-slate-300 text-primary focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                                        />
+                                                    </div>
                                                 </td>
                                             )}
                                             {visibleColumns['col-name'] && (
@@ -1229,12 +1300,15 @@ export default function Index({
                                             {visibleColumns['col-action'] && (
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Link
-                                                            href="#" // To be implemented
-                                                            className="p-2 hover:bg-indigo-50 rounded-lg text-slate-400 hover:text-primary transition-colors"
-                                                        >
-                                                            <MoreHorizontal className="w-5 h-5" />
-                                                        </Link>
+                                                        {isAdmin && (
+                                                            <button
+                                                                onClick={() => openEditModal(participant)}
+                                                                className="p-2 hover:bg-indigo-50 rounded-lg text-slate-400 hover:text-primary transition-colors"
+                                                                title="Edit Profil Peserta"
+                                                            >
+                                                                <UserCog className="w-5 h-5" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             )}
@@ -1338,6 +1412,17 @@ export default function Index({
                 participant={selectedPaymentParticipant?.participant}
                 activity={activity}
                 paymentMethods={paymentMethodOptions}
+            />
+
+            <ParticipantEditModal
+                show={showEditModal}
+                onClose={() => {
+                    setShowEditModal(false);
+                    setEditingParticipant(null);
+                }}
+                user={editingParticipant}
+                activity={activity}
+                provinces={provinces}
             />
         </AcaraLayout>
     );
