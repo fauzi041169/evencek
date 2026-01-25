@@ -112,7 +112,8 @@ export default function Index({
     roomOccupants = [],
     totalProvinces = 0,
     totalRegencies = 0,
-    totalDistricts = 0
+    totalDistricts = 0,
+    unverifiedEmailCount = 0
 }) {
     const [search, setSearch] = useState(filters.search || '');
     const [selectedIds, setSelectedIds] = useState([]);
@@ -343,6 +344,8 @@ export default function Index({
     const handleBulkVerify = () => {
         if (!selectedIds.length) return;
 
+        const activityId = activity?.uid || activity?.id;
+
         Swal.fire({
             title: 'Verifikasi Email?',
             text: `Apakah Anda yakin ingin memverifikasi email ${selectedIds.length} peserta terpilih?`,
@@ -352,7 +355,7 @@ export default function Index({
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                router.post(route('activity.participants.verify-email-bulk', activity.uid), {
+                router.post(route('activity.participants.verify-email-bulk', { activityId }), {
                     user_ids: selectedIds,
                     batch_id: filters.batch_id
                 }, {

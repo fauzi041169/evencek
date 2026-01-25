@@ -56,6 +56,12 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
             : 'navbar-gradient shadow-md bg-gradient-to-r from-primary to-secondary backdrop-blur-md bg-opacity-95'
     }`;
 
+    // Helper untuk warna text navbar
+    const getNavbarTextColor = () => {
+        if (transparentNavbar && !scrolled) return 'text-white hover:bg-white/10 border-white/20';
+        return 'text-navbar-link-text hover:bg-navbar-link-hover-bg border-white/10';
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Flash Messages */}

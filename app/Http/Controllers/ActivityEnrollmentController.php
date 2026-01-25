@@ -395,27 +395,43 @@ class ActivityEnrollmentController extends Controller
                                 'updated_at' => now(),
                             ]
                         );
-                    }
 
-                    $routeParams = ['activity' => $activityId];
-                    if ($activeBatch) {
-                        $routeParams['batch_id'] = $activeBatch->id;
-                    }
+                        $routeParams = ['activity' => $activityId];
+                        if ($activeBatch) {
+                            $routeParams['batch_id'] = $activeBatch->id;
+                        }
 
-                    $redirectUrl = route('payments.create', $routeParams);
-                    if (method_exists($activity, 'hasAutomaticPayment') && $activity->hasAutomaticPayment()) {
-                        $redirectUrl = route('midtrans.payment.create', $routeParams);
-                    }
-                    
-                    if ($wantsJson) {
-                        return response()->json(array_merge([
-                            'success' => true,
-                            'message' => 'Melanjutkan ke pembayaran...',
-                            'redirect_url' => $redirectUrl,
-                        ], $debugPayload));
-                    }
+                        $redirectUrl = route('payments.create', $routeParams);
+                        if (method_exists($activity, 'hasAutomaticPayment') && $activity->hasAutomaticPayment()) {
+                            $redirectUrl = route('midtrans.payment.create', $routeParams);
+                        }
+                        
+                        if ($wantsJson) {
+                            return response()->json(array_merge([
+                                'success' => true,
+                                'message' => 'Melanjutkan ke pembayaran...',
+                                'redirect_url' => $redirectUrl,
+                            ], $debugPayload));
+                        }
 
-                    return redirect($redirectUrl);
+                        return redirect($redirectUrl);
+                    } else {
+                        // Free activity - Ensure status is ACTIVE
+                        if ($enrollment->status != ActivityUser::STATUS_ACTIVE) {
+                            $enrollment->status = ActivityUser::STATUS_ACTIVE;
+                            $enrollment->save();
+                        }
+                        
+                        $msg = 'Anda sudah terdaftar dalam kegiatan ini';
+                        if ($wantsJson) {
+                            return response()->json(array_merge([
+                                'success' => true,
+                                'message' => $msg,
+                                'redirect_url' => route('activity.show', $activity->id, false),
+                            ], $debugPayload));
+                        }
+                        return redirect()->route('activity.show', $activity->id)->with('success', $msg);
+                    }
                 }
 
                 $msg = isset($batchCount) && $batchCount > 1 

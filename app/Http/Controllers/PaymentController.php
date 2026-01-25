@@ -210,6 +210,43 @@ class PaymentController extends Controller
                 $targetBatchId = $activeBatch->id;
             }
 
+            // CHECK FREE ACTIVITY / BATCH
+            // Calculate effective price
+            $effectivePrice = (int) $activity->price;
+            if ($targetBatchId) {
+                $targetBatch = ActivityBatch::find($targetBatchId);
+                // Only use batch price if it is NOT NULL. If it is 0, it overrides activity price.
+                if ($targetBatch && $targetBatch->price !== null) {
+                    $effectivePrice = (int) $targetBatch->price;
+                }
+            }
+
+            // If price is 0, skip payment and ensure enrollment is active
+            if ($effectivePrice <= 0) {
+                 // Check/Update Enrollment
+                 $enrollment = ActivityUser::where('user_id', auth()->id())
+                    ->where('activity_id', $activity->id)
+                    ->when($targetBatchId, function($q) use ($targetBatchId) {
+                        return $q->where('activity_batch_id', $targetBatchId);
+                    })
+                    ->first();
+
+                 if ($enrollment && $enrollment->status != ActivityUser::STATUS_ACTIVE) {
+                     $enrollment->status = ActivityUser::STATUS_ACTIVE;
+                     $enrollment->save();
+                 }
+
+                 if (request()->expectsJson() || request()->boolean('modal')) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Kegiatan gratis, tidak memerlukan pembayaran.',
+                        'redirect_url' => route('activity.show', $activity->id)
+                    ]);
+                }
+                return redirect()->route('activity.show', $activity->id)
+                    ->with('info', 'Kegiatan gratis, tidak memerlukan pembayaran.');
+            }
+
 
 
             if ($activity->user && $activity->user->isCreator() && ! $activity->user->hasActiveSubscription()) {

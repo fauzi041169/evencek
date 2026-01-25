@@ -1491,8 +1491,16 @@ class ActivityPreparationController extends Controller
                 }
             }
 
+            // Count unverified emails
+            $unverifiedEmailCount = ActivityUser::where('activity_id', $activityId)
+                ->whereHas('user', function ($q) {
+                    $q->whereNull('email_verified_at');
+                })
+                ->count();
+
             return Inertia::render('Activity/Participants/Index', [
                 'activity' => $activity,
+                'unverifiedEmailCount' => $unverifiedEmailCount,
                 'participants' => $participants,
                 'rooms' => $rooms,
                 'assignments' => $assignments,
