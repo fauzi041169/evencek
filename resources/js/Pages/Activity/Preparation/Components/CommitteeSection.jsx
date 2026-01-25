@@ -54,7 +54,8 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                 },
                 onError: (errors) => {
                     setProcessing(false);
-                    Swal.fire('Error', 'Gagal memperbarui panitia. Silakan periksa kembali data Anda.', 'error');
+                    const errorMessage = errors.user_id || errors.position || 'Gagal memperbarui panitia. Silakan periksa kembali data Anda.';
+                    Swal.fire('Error', errorMessage, 'error');
                 }
             });
         } else {
@@ -73,7 +74,8 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                 },
                 onError: (errors) => {
                     setProcessing(false);
-                    Swal.fire('Error', 'Gagal menambahkan panitia. Silakan periksa kembali data Anda.', 'error');
+                    const errorMessage = errors.user_id || errors.position || 'Gagal menambahkan panitia. Silakan periksa kembali data Anda.';
+                    Swal.fire('Error', errorMessage, 'error');
                 }
             });
         }

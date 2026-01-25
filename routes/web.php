@@ -357,7 +357,6 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
 
         Route::post('/participants/import', 'importParticipants')->name('import-participants');
         Route::post('/participants/check', 'checkParticipants')->name('check-participants');
-        Route::post('/participants/change-role-bulk', 'changeRoleBulk')->name('change-role-bulk');
         Route::get('/participants/get-import-template', 'getImportTemplate')->name('get-import-template');
         Route::post('/participants/save-import-template', 'saveImportTemplate')->name('save-import-template');
         Route::get('/participants/import', 'importParticipantsGet')->name('import-participants.get');
@@ -391,6 +390,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     // Activity Participants Routes
     Route::prefix('activity/{activityId}/participants')->name('activity.participants.')->middleware('auth')->controller(ActivityPreparationController::class)->group(function () {
         Route::get('/', 'participants')->name('index');
+        Route::post('/change-role-bulk', 'changeRoleBulk')->name('change-role-bulk');
         Route::get('/get-all-ids', 'getAllParticipantIds')->name('get-all-ids');
         Route::post('/rooms', 'storeRoom')->name('rooms.store');
         Route::put('/rooms/{roomId}', 'updateRoom')->name('rooms.update');

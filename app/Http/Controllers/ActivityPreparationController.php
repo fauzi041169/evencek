@@ -395,30 +395,73 @@ class ActivityPreparationController extends Controller
         $targetTypeId = $request->participation_type_id;
         
         // Verify the type belongs to this activity
-        $exists = \App\Models\ActivityParticipationType::where('activity_id', $activity->id)
+        $targetType = \App\Models\ActivityParticipationType::where('activity_id', $activity->id)
             ->where('id', $targetTypeId)
-            ->exists();
+            ->first();
             
-        if (!$exists) {
+        if (!$targetType) {
             return redirect()->back()->with('error', 'Tipe kepesertaan tidak valid.');
         }
 
         $query = ActivityUser::where('activity_id', $activity->id);
 
         if ($request->boolean('select_all')) {
-            // Apply filters similar to participants method
-            // Note: For simplicity, we might need to replicate the filter logic or refactor it.
-            // For now, let's assume we use the basic filters passed from frontend or just user_ids if select_all is false.
-            // If select_all is true, we need to apply the same filters as the list view.
-            
-            // Re-applying filters is complex. 
-            // Alternative: The frontend usually passes current filters.
             $this->applyFilters($query, $request);
         } else {
             $query->whereIn('id', $request->user_ids);
         }
 
+        // Get affected user IDs before update
+        $affectedUserIds = $query->pluck('user_id')->toArray();
+
+        // Update participation type
         $count = $query->update(['activity_participation_type_id' => $targetTypeId]);
+
+        // Sync with Committee Structure
+        $isPanitia = stripos($targetType->name, 'Panitia') !== false;
+        $isPeserta = stripos($targetType->name, 'Peserta') !== false;
+
+        if ($isPanitia && count($affectedUserIds) > 0) {
+            // Find default committee type (e.g., Panitia Seksi or just first one)
+            $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)
+                ->where('name', 'like', '%Seksi%')
+                ->first();
+            
+            if (!$defaultCommitteeType) {
+                $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)->first();
+            }
+
+            // Find default division if needed (optional)
+            // For now, we leave division_id null or try to find "Anggota" division? 
+            // Better to leave it null or let user assign later.
+
+            $users = User::with('profile')->whereIn('id', $affectedUserIds)->get();
+
+            foreach ($users as $user) {
+                // Check if already in committee
+                $exists = ActivityCommitteeStructure::where('activity_id', $activity->id)
+                    ->where('user_id', $user->id)
+                    ->exists();
+
+                if (!$exists) {
+                    ActivityCommitteeStructure::create([
+                        'activity_id' => $activity->id,
+                        'user_id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'phone' => $user->profile->no_hp ?? null,
+                        'position' => 'Anggota Panitia', // Default position
+                        'committee_type_id' => $defaultCommitteeType ? $defaultCommitteeType->id : null,
+                        'order' => 99, // Put at the end
+                    ]);
+                }
+            }
+        } elseif ($isPeserta && count($affectedUserIds) > 0) {
+            // Remove from committee structure if changed back to Peserta
+            ActivityCommitteeStructure::where('activity_id', $activity->id)
+                ->whereIn('user_id', $affectedUserIds)
+                ->delete();
+        }
 
         return redirect()->back()->with('success', "Berhasil mengubah peran {$count} peserta.");
     }
@@ -4395,6 +4438,15 @@ class ActivityPreparationController extends Controller
             'position' => 'required|string|max:255',
         ]);
 
+        // Check for duplicates
+        $isDuplicate = ActivityCommitteeStructure::where('activity_id', $activityIdValue)
+            ->where('user_id', $request->user_id)
+            ->exists();
+            
+        if ($isDuplicate) {
+            return redirect()->back()->withErrors(['user_id' => 'Peserta ini sudah terdaftar sebagai panitia.']);
+        }
+
         $user = User::with('profile')->findOrFail($request->user_id);
 
         // Determine activity_batch_id from activity_users
@@ -4479,6 +4531,16 @@ class ActivityPreparationController extends Controller
             'user_id' => 'required|exists:users,id',
             'position' => 'required|string|max:255',
         ]);
+
+        // Check for duplicates (excluding current record)
+        $isDuplicate = ActivityCommitteeStructure::where('activity_id', $activityIdValue)
+            ->where('user_id', $request->user_id)
+            ->where('id', '!=', $committeeId)
+            ->exists();
+            
+        if ($isDuplicate) {
+            return redirect()->back()->withErrors(['user_id' => 'Peserta ini sudah terdaftar sebagai panitia.']);
+        }
 
         $committee = ActivityCommitteeStructure::where('activity_id', $activityIdValue)
             ->findOrFail($committeeId);
