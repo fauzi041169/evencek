@@ -193,7 +193,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], lates
                                 className={`hero-slide absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
                             >
                                 <div
-                                    className={`absolute inset-0 bg-cover bg-center ${isActivity ? 'blur-sm scale-110' : ''}`}
+                                    className={`absolute inset-0 bg-cover bg-center transition-transform duration-[10000ms] ease-linear ${index === currentSlide ? 'scale-110' : 'scale-100'} ${isActivity ? 'blur-sm' : ''}`}
                                     style={{
                                         backgroundImage: `url('${typeof slide === 'string' ? slide : slide.image}')`,
                                     }}
@@ -221,51 +221,51 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], lates
                                         {/* Left Column: Text Info */}
                                         <div className="lg:col-span-7 text-left space-y-8 order-2 lg:order-1">
                                             <div>
-                                                <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-primary/20 to-transparent border-l-4 border-primary px-4 py-2 rounded-r-xl mb-6 backdrop-blur-md">
-                                                    <span className="flex h-2 w-2 rounded-full bg-green-400 animate-pulse"></span>
-                                                    <span className="text-primary-300 font-bold tracking-widest text-sm uppercase">Sedang Berlangsung</span>
+                                                <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md border border-white/10 px-4 py-1.5 rounded-full mb-6">
+                                                    <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                                                    <span className="text-green-300 font-semibold tracking-wide text-xs uppercase">Sedang Berlangsung</span>
                                                 </div>
-                                                <h1 className="hero-title text-4xl sm:text-5xl lg:text-7xl font-black text-white leading-tight drop-shadow-2xl mb-4">
+                                                <h1 className="hero-title text-4xl sm:text-5xl lg:text-7xl font-black text-white leading-tight drop-shadow-2xl mb-6">
                                                     {slide.title}
                                                 </h1>
-                                                <div className="h-1 w-32 bg-gradient-to-r from-primary to-secondary rounded-full"></div>
+                                                <div className="h-1.5 w-24 bg-gradient-to-r from-primary to-secondary rounded-full"></div>
                                             </div>
 
-                                            <p className="text-lg text-gray-300 leading-relaxed max-w-2xl border-l-2 border-white/10 pl-6">
+                                            <p className="text-lg text-gray-300 leading-relaxed max-w-2xl">
                                                 {slide.description}
                                             </p>
 
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 {slide.date && (
-                                                    <div className="flex items-center space-x-4 bg-white/5 p-4 rounded-xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
-                                                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                                                    <div className="flex items-center space-x-4 bg-white/5 p-4 rounded-2xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors group">
+                                                        <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
                                                             <i className="fas fa-calendar-alt text-xl"></i>
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs text-gray-400 uppercase tracking-wider">Tanggal</p>
-                                                            <p className="text-white font-semibold">{slide.date}</p>
+                                                            <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Tanggal</p>
+                                                            <p className="text-white font-bold">{slide.date}</p>
                                                         </div>
                                                     </div>
                                                 )}
                                                 {slide.price && (
-                                                    <div className="flex items-center space-x-4 bg-white/5 p-4 rounded-xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors">
-                                                        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">
+                                                    <div className="flex items-center space-x-4 bg-white/5 p-4 rounded-2xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors group">
+                                                        <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400 group-hover:scale-110 transition-transform">
                                                             <i className="fas fa-tag text-xl"></i>
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs text-gray-400 uppercase tracking-wider">Harga Tiket</p>
-                                                            <p className="text-white font-semibold">{slide.price}</p>
+                                                            <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Harga Tiket</p>
+                                                            <p className="text-white font-bold">{slide.price}</p>
                                                         </div>
                                                     </div>
                                                 )}
                                                 {slide.location && (
-                                                    <div className="flex items-center space-x-4 bg-white/5 p-4 rounded-xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors sm:col-span-2">
-                                                        <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 flex-shrink-0">
+                                                    <div className="flex items-center space-x-4 bg-white/5 p-4 rounded-2xl backdrop-blur-sm border border-white/10 hover:bg-white/10 transition-colors sm:col-span-2 group">
+                                                        <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center text-red-400 flex-shrink-0 group-hover:scale-110 transition-transform">
                                                             <i className="fas fa-map-marker-alt text-xl"></i>
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs text-gray-400 uppercase tracking-wider">Lokasi</p>
-                                                            <p className="text-white font-semibold line-clamp-1">{slide.location}</p>
+                                                            <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Lokasi</p>
+                                                            <p className="text-white font-bold line-clamp-1">{slide.location}</p>
                                                         </div>
                                                     </div>
                                                 )}
@@ -273,7 +273,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], lates
 
                                             <div className="flex flex-wrap gap-4 pt-4">
                                                 <Link href={`/activity/${slide.id}`}
-                                                    className="group relative px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white font-bold text-lg rounded-2xl shadow-xl shadow-primary/30 hover:shadow-primary/50 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
+                                                    className="group relative px-8 py-4 bg-primary text-white font-bold text-lg rounded-2xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
                                                     <span className="relative z-10 flex items-center">
                                                         Daftar Sekarang <i className="fas fa-arrow-right ml-3 group-hover:translate-x-1 transition-transform"></i>
                                                     </span>
@@ -287,22 +287,32 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], lates
                                         </div>
 
                                         {/* Right Column: 3D Image */}
-                                        <div className="lg:col-span-5 perspective-container order-1 lg:order-2 mb-10 lg:mb-0">
-                                            <div className="relative w-full max-w-sm lg:max-w-md mx-auto group perspective-1000">
+                                        <div className="lg:col-span-5 perspective-container order-1 lg:order-2 mb-10 lg:mb-0 hidden lg:block">
+                                            <div className="relative w-full max-w-md mx-auto group perspective-1000">
                                                 {/* Glow Effects */}
-                                                <div className="absolute -inset-4 bg-gradient-to-tr from-primary via-purple-500 to-pink-500 rounded-[2rem] blur-2xl opacity-40 group-hover:opacity-60 transition-opacity duration-500 animate-pulse-slow"></div>
+                                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-purple-600 rounded-[2rem] blur-2xl opacity-50 group-hover:opacity-70 transition-opacity duration-500 animate-pulse-slow"></div>
 
                                                 {/* 3D Card Container */}
-                                                <div className="relative transform transition-all duration-500 hover:scale-105 hover:rotate-2 shadow-2xl rounded-[1.5rem] overflow-hidden bg-gray-800 border-4 border-gray-700/50 float-animation">
+                                                <div className="relative transform transition-all duration-500 hover:scale-105 hover:rotate-1 shadow-2xl rounded-[2rem] overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm float-animation">
                                                     <img
                                                         src={slide.image}
                                                         alt={slide.title}
-                                                        className="w-full h-auto object-contain bg-gray-900"
-                                                        style={{ maxHeight: '600px' }}
+                                                        className="w-full h-auto object-cover"
+                                                        style={{ aspectRatio: '3/4' }}
                                                     />
-
-                                                    {/* Glass Reflection */}
-                                                    <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                                                    
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                                                    
+                                                    {/* Badge on Image */}
+                                                    <div className="absolute bottom-6 left-6 right-6">
+                                                        <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl">
+                                                            <p className="text-white font-bold text-lg line-clamp-1">{slide.title}</p>
+                                                            <div className="flex items-center mt-2 text-sm text-gray-300">
+                                                                <i className="fas fa-calendar-alt mr-2"></i>
+                                                                {slide.date}
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -312,30 +322,34 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], lates
 
                             // Default/Static Slide Layout
                             return (
-                                <div key={currentSlide} className="text-center animate-fade-in-up px-4">
-                                    <div className="inline-block p-4 rounded-full bg-white/5 backdrop-blur-md border border-white/10 mb-8 shadow-2xl">
-                                        <div className="flex items-center gap-2 px-2">
-                                            <span className="w-3 h-3 rounded-full bg-green-500 animate-ping"></span>
-                                            <span className="text-white font-medium tracking-wide text-sm">Official Event Platform</span>
+                                <div key={currentSlide} className="text-center animate-fade-in-up px-4 max-w-5xl mx-auto">
+                                    <div className="inline-block px-6 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-8 shadow-xl">
+                                        <div className="flex items-center gap-3">
+                                            <span className="relative flex h-3 w-3">
+                                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                                              <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-500"></span>
+                                            </span>
+                                            <span className="text-white font-semibold tracking-wide text-sm uppercase">Official Event Platform</span>
                                         </div>
                                     </div>
                                     <h1 className="hero-title text-5xl sm:text-6xl lg:text-8xl font-black mb-8 leading-tight tracking-tight text-white drop-shadow-2xl">
-                                        {isStatic ? slide.title : 'Platform Manajemen Event Digital Profesional'}
+                                        {isStatic ? slide.title : <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-200 to-gray-400">Platform Manajemen Event Digital Profesional</span>}
                                     </h1>
-                                    <p className="text-xl sm:text-2xl text-gray-200 mb-10 max-w-4xl mx-auto leading-relaxed drop-shadow-lg font-light">
+                                    <p className="text-xl sm:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
                                         {isStatic ? slide.description : 'Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.'}
                                     </p>
 
-                                    <div className="flex flex-col sm:flex-row gap-6 justify-center">
+                                    <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
                                         <Link href={isStatic && slide.link ? slide.link : '/activity'}
-                                            className="group relative px-10 py-5 bg-white text-gray-900 font-bold text-xl rounded-full shadow-2xl hover:shadow-white/20 transition-all duration-300 transform hover:-translate-y-1 items-center flex justify-center overflow-hidden">
-                                            <span className="relative z-10">{isStatic && slide.link_text ? slide.link_text : 'Mulai Sekarang'}</span>
-                                            <div className="absolute inset-0 bg-gray-100 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                                            className="group relative px-12 py-5 bg-white text-gray-900 font-bold text-xl rounded-full shadow-2xl hover:shadow-white/20 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-[200px]">
+                                            <span className="relative z-10 flex items-center justify-center">
+                                                {isStatic && slide.link_text ? slide.link_text : 'Mulai Sekarang'}
+                                                <i className="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                                            </span>
                                         </Link>
 
-                                        <a href="#fitur" className="group px-10 py-5 bg-transparent text-white font-semibold text-xl rounded-full border-2 border-white/30 hover:bg-white/10 hover:border-white transition-all duration-300 flex items-center justify-center">
+                                        <a href="#fitur" className="group px-12 py-5 bg-white/5 text-white font-semibold text-xl rounded-full border border-white/10 hover:bg-white/10 hover:border-white/30 transition-all duration-300 flex items-center justify-center min-w-[200px] backdrop-blur-sm">
                                             <span>Pelajari Lebih Lanjut</span>
-                                            <i className="fas fa-arrow-down ml-3 group-hover:translate-y-1 transition-transform"></i>
                                         </a>
                                     </div>
                                 </div>
@@ -350,7 +364,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], lates
                         {heroSlides.map((_, i) => (
                             <button
                                 key={i}
-                                className={`relative h-2 rounded-full transition-all duration-300 ${i === currentSlide ? 'w-12 bg-primary' : 'w-2 bg-white/40 hover:bg-white/80'}`}
+                                className={`h-1.5 rounded-full transition-all duration-300 ${i === currentSlide ? 'w-8 bg-white' : 'w-2 bg-white/30 hover:bg-white/50'}`}
                                 onClick={() => setCurrentSlide(i)}
                                 aria-label={`Go to slide ${i + 1}`}
                             ></button>

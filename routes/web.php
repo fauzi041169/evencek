@@ -350,6 +350,11 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::put('/participation-types/{typeId}', [\App\Http\Controllers\ActivityParticipationTypeController::class, 'update'])->name('participation-types.update');
         Route::delete('/participation-types/{typeId}', [\App\Http\Controllers\ActivityParticipationTypeController::class, 'destroy'])->name('participation-types.destroy');
 
+        // Committee Types
+        Route::post('/committee-types', [\App\Http\Controllers\ActivityCommitteeTypeController::class, 'store'])->name('committee-types.store');
+        Route::put('/committee-types/{typeId}', [\App\Http\Controllers\ActivityCommitteeTypeController::class, 'update'])->name('committee-types.update');
+        Route::delete('/committee-types/{typeId}', [\App\Http\Controllers\ActivityCommitteeTypeController::class, 'destroy'])->name('committee-types.destroy');
+
         Route::post('/participants/import', 'importParticipants')->name('import-participants');
         Route::post('/participants/check', 'checkParticipants')->name('check-participants');
         Route::get('/participants/get-import-template', 'getImportTemplate')->name('get-import-template');
@@ -400,6 +405,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/verify-email-bulk', 'verifyEmailBulk')->name('verify-email-bulk');
         Route::post('/toggle-status/{userId}', 'toggleParticipantStatus')->name('toggle-status');
         Route::post('/save-column-settings', 'saveColumnSettings')->name('save-column-settings');
+        Route::post('/fill-gender', 'fillGender')->name('fill-gender');
     });
 
     // Activity Management Routes

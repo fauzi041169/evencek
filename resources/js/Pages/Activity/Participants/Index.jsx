@@ -21,60 +21,60 @@ import ColumnFilter from './ColumnFilter';
 import RoomSelect from './RoomSelect';
 
 // Helper for key normalization
-    const normalizeCustomKey = (raw) => {
-        let key = String(raw).replace(/^\d+\./, '').trim();
-        key = key.replace(/\{[^}]*\}/, '').trim();
+const normalizeCustomKey = (raw) => {
+    let key = String(raw).replace(/^\d+\./, '').trim();
+    key = key.replace(/\{[^}]*\}/, '').trim();
 
-        if (key !== '' && key.endsWith('*')) {
-            key = key.substring(0, key.length - 1).trim();
-        }
-        if (key !== '' && key.includes('|')) {
-            key = key.split('|')[0].trim();
-        }
+    if (key !== '' && key.endsWith('*')) {
+        key = key.substring(0, key.length - 1).trim();
+    }
+    if (key !== '' && key.includes('|')) {
+        key = key.split('|')[0].trim();
+    }
 
-        let lower = key.toLowerCase();
-        if (lower.startsWith('user:')) {
-            key = key.substring(5).trim();
-            lower = key.toLowerCase();
-        }
-        if (lower.startsWith('profile:')) {
-            key = key.substring(8).trim();
-        }
+    let lower = key.toLowerCase();
+    if (lower.startsWith('user:')) {
+        key = key.substring(5).trim();
+        lower = key.toLowerCase();
+    }
+    if (lower.startsWith('profile:')) {
+        key = key.substring(8).trim();
+    }
 
-        return key.trim();
-    };
+    return key.trim();
+};
 
-    const columnLabels = {
-        'col-index': 'No',
-        'col-name': 'Nama Lengkap',
-        'col-email': 'Email',
-        'col-hp': 'No. HP',
-        'col-nik': 'NIK',
-        'col-instansi': 'Instansi',
-        'col-pekerjaan': 'Pekerjaan',
-        'col-jabatan': 'Jabatan',
-        'col-prov': 'Provinsi',
-        'col-regency': 'Kabupaten/Kota',
-        'col-district': 'Kecamatan',
-        'col-alamat': 'Alamat',
-        'col-gender': 'Jenis Kelamin',
-        'col-birthplace': 'Tempat Lahir',
-        'col-birthdate': 'Tanggal Lahir',
-        'col-status': 'Status',
-        'col-payment-method': 'Metode Pembayaran',
-        'col-registration-method': 'Metode Daftar',
-        'col-action': 'Aksi',
-        'col-room': 'Kamar',
-        'col-group': 'Kelompok',
-        'col-created-at': 'Tanggal Daftar',
-        'col-updated-at': 'Terakhir Update',
-        'col-batch': 'Batch',
-        'col-card-status': 'Status Kartu',
-        'col-certificate-id': 'ID Sertifikat',
-        'col-print-count': 'Jml Cetak',
-        'col-created-by': 'Dibuat Oleh',
-        'col-updated-by': 'Diupdate Oleh'
-    };
+const columnLabels = {
+    'col-index': 'No',
+    'col-name': 'Nama Lengkap',
+    'col-email': 'Email',
+    'col-hp': 'No. HP',
+    'col-nik': 'NIK',
+    'col-instansi': 'Instansi',
+    'col-pekerjaan': 'Pekerjaan',
+    'col-jabatan': 'Jabatan',
+    'col-prov': 'Provinsi',
+    'col-regency': 'Kabupaten/Kota',
+    'col-district': 'Kecamatan',
+    'col-alamat': 'Alamat',
+    'col-gender': 'Jenis Kelamin',
+    'col-birthplace': 'Tempat Lahir',
+    'col-birthdate': 'Tanggal Lahir',
+    'col-status': 'Status',
+    'col-payment-method': 'Metode Pembayaran',
+    'col-registration-method': 'Metode Daftar',
+    'col-action': 'Aksi',
+    'col-room': 'Kamar',
+    'col-group': 'Kelompok',
+    'col-created-at': 'Tanggal Daftar',
+    'col-updated-at': 'Terakhir Update',
+    'col-batch': 'Batch',
+    'col-card-status': 'Status Kartu',
+    'col-certificate-id': 'ID Sertifikat',
+    'col-print-count': 'Jml Cetak',
+    'col-created-by': 'Dibuat Oleh',
+    'col-updated-by': 'Diupdate Oleh'
+};
 
 export default function Index({
     activity,
@@ -152,6 +152,43 @@ export default function Index({
         }
         return Array.from(extracted.values()).sort((a, b) => a.localeCompare(b));
     });
+
+    // Calculate custom options for filters
+    const customOptions = React.useMemo(() => {
+        const options = {};
+        if (availableCustomKeys.length === 0) return options;
+
+        // Initialize all keys with empty Sets
+        availableCustomKeys.forEach(key => {
+            options[key] = new Set();
+        });
+
+        if (participants && participants.data) {
+            participants.data.forEach(p => {
+                if (p.custom_data) {
+                    Object.keys(p.custom_data).forEach(dataKey => {
+                        const normalizedDataKey = normalizeCustomKey(dataKey);
+                        const matchedKey = availableCustomKeys.find(k => k.toLowerCase() === normalizedDataKey.toLowerCase());
+
+                        if (matchedKey) {
+                            const val = p.custom_data[dataKey];
+                            if (val) {
+                                options[matchedKey].add(val);
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Convert Sets to Arrays and ensure all keys are present
+        const result = {};
+        availableCustomKeys.forEach(key => {
+            result[key] = options[key] ? Array.from(options[key]).sort((a, b) => String(a).localeCompare(String(b))) : [];
+        });
+
+        return result;
+    }, [participants, availableCustomKeys]);
 
     const handleStatusClick = (participant) => {
         // Prioritize the directly loaded payment for this activity
@@ -435,9 +472,9 @@ export default function Index({
             router.get(
                 route('activity.participants.index', currentUid),
                 params,
-                { 
-                    preserveState: true, 
-                    preserveScroll: true, 
+                {
+                    preserveState: true,
+                    preserveScroll: true,
                     replace: true,
                     only: ['participants', 'filters']
                 }
@@ -478,9 +515,9 @@ export default function Index({
         router.get(
             route('activity.participants.index', activityIdParam),
             newFilters,
-            { 
-                preserveState: true, 
-                preserveScroll: true, 
+            {
+                preserveState: true,
+                preserveScroll: true,
                 replace: true,
                 only: ['participants', 'filters']
             }
@@ -671,9 +708,16 @@ export default function Index({
                                                 </button>
                                                 <button
                                                     onClick={handleBulkVerify}
-                                                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-3 transition-colors"
+                                                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg flex items-center justify-between gap-3 transition-colors group"
                                                 >
-                                                    <CheckCircle className="w-4 h-4 text-emerald-600" /> Verifikasi Email
+                                                    <div className="flex items-center gap-3">
+                                                        <CheckCircle className="w-4 h-4 text-emerald-600" /> Verifikasi Email
+                                                    </div>
+                                                    {unverifiedEmailCount > 0 && (
+                                                        <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full shadow-sm group-hover:bg-red-600 transition-colors" title="Total peserta belum verifikasi email">
+                                                            {unverifiedEmailCount}
+                                                        </span>
+                                                    )}
                                                 </button>
                                                 <div className="border-t border-slate-100 my-1"></div>
                                                 <button
@@ -907,8 +951,13 @@ export default function Index({
                                     {visibleColumns['col-updated-by'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Diupdate Oleh</th>}
                                     {availableCustomKeys.map(key => (
                                         visibleColumns[`col-custom-${kebabCase(key)}`] && (
-                                            <th key={key} className="px-6 py-4 font-semibold text-slate-700 uppercase tracking-wider text-xs whitespace-nowrap">
-                                                {key.replace(/_/g, ' ')}
+                                            <th key={key} className="px-6 py-4 whitespace-nowrap">
+                                                <ColumnFilter
+                                                    label={key.replace(/_/g, ' ')}
+                                                    options={customOptions[key] || []}
+                                                    value={filters[`custom_${key}`]}
+                                                    onChange={(val) => handleFilterChange(`custom_${key}`, val)}
+                                                />
                                             </th>
                                         )
                                     ))}
@@ -1045,7 +1094,7 @@ export default function Index({
                                             )}
                                             {visibleColumns['col-room'] && (
                                                 <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
-                                                    <RoomSelect 
+                                                    <RoomSelect
                                                         activity={activity}
                                                         participant={participant}
                                                         rooms={rooms}

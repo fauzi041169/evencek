@@ -18,6 +18,7 @@ class ActivityCommitteeStructure extends Model
         'activity_batch_id',
         'position',
         'activity_division_id',
+        'committee_type_id',
         'name',
         'user_id',
         'phone',
@@ -42,5 +43,15 @@ class ActivityCommitteeStructure extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function committeeType()
+    {
+        return $this->belongsTo(ActivityCommitteeType::class, 'committee_type_id');
+    }
+
+    public function division()
+    {
+        return $this->belongsTo(ActivityDivision::class, 'activity_division_id');
     }
 }

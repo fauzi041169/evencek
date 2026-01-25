@@ -4826,9 +4826,16 @@ class ActivityController extends Controller
         $customKeys = [];
         if (!empty($activity->column_settings) && is_array($activity->column_settings)) {
             foreach ($activity->column_settings as $col) {
-                $key = $col['name'] ?? $col['key'] ?? $col;
+                // Ignore boolean toggles or invalid data commonly found in column_settings for standard fields
+                if (is_bool($col) || is_numeric($col) || $col === null) continue;
+
+                $key = is_array($col) ? ($col['name'] ?? $col['key'] ?? null) : $col;
+                
+                if (empty($key) || !is_string($key)) continue;
+
                 if (!in_array($key, $customKeys)) {
-                    $availableColumns[] = ['key' => $key, 'label' => ($col['label'] ?? $key), 'group' => 'Activity Custom'];
+                    $label = is_array($col) ? ($col['label'] ?? $key) : $key;
+                    $availableColumns[] = ['key' => $key, 'label' => $label, 'group' => 'Activity Custom'];
                     $customKeys[] = $key;
                 }
             }
@@ -5083,9 +5090,17 @@ class ActivityController extends Controller
         $customKeys = [];
         if (!empty($activity->column_settings) && is_array($activity->column_settings)) {
             foreach ($activity->column_settings as $col) {
-                $key = $col['name'] ?? $col['key'] ?? $col;
+                // Ignore boolean toggles or invalid data commonly found in column_settings for standard fields
+                if (is_bool($col) || is_numeric($col) || $col === null) continue;
+
+                $key = is_array($col) ? ($col['name'] ?? $col['key'] ?? null) : $col;
+                
+                if (empty($key) || !is_string($key)) continue;
+
                 if (!in_array($key, $customKeys)) {
-                    $availableColumns[] = ['key' => $key, 'label' => ($col['label'] ?? $key), 'group' => 'Activity Custom'];
+                    $label = is_array($col) ? ($col['label'] ?? $key) : $key;
+                    if (empty($label)) $label = $key; // Ensure label is not empty
+                    $availableColumns[] = ['key' => $key, 'label' => $label, 'group' => 'Activity Custom'];
                     $customKeys[] = $key;
                 }
             }
@@ -5112,9 +5127,12 @@ class ActivityController extends Controller
                 $cleanCol = str_replace(['user:', 'profile:'], '', $cleanCol);
                 $cleanCol = str_replace('*', '', $cleanCol);
                 
-                if (!in_array($cleanCol, $standardKeys) && $cleanCol !== '' && !in_array($cleanCol, $customKeys)) {
-                    $availableColumns[] = ['key' => $cleanCol, 'label' => $cleanCol, 'group' => 'Activity Custom'];
-                    $customKeys[] = $cleanCol;
+                // Normalize key to lowercase to match stored custom_data
+                $key = strtolower($cleanCol);
+                
+                if (!in_array($key, $standardKeys) && $key !== '' && !in_array($key, $customKeys)) {
+                    $availableColumns[] = ['key' => $key, 'label' => $cleanCol ?: 'Custom', 'group' => 'Activity Custom'];
+                    $customKeys[] = $key;
                 }
             }
         }
@@ -5190,11 +5208,25 @@ class ActivityController extends Controller
             'committee' => $sampleCommittee
         ];
 
+        // Prepare User object with Custom Data merged for Preview
+        $previewUser = $sampleParticipant->user;
+        // Ensure profile is loaded
+        if (!$previewUser->relationLoaded('profile')) {
+             $previewUser->load('profile.province', 'profile.regency', 'profile.district');
+        }
+        
+        $userData = $previewUser->toArray();
+        
+        // Merge custom data if available
+        if (!empty($sampleParticipant->custom_data) && is_array($sampleParticipant->custom_data)) {
+            $userData = array_merge($userData, $sampleParticipant->custom_data);
+        }
+
         return Inertia::render('Activity/IdCards/Design', [
             'activity' => $activity,
             'cardSettings' => $participantSettings,
             'committeeSettings' => $committeeSettings,
-            'user' => $user->load('profile.province', 'profile.regency', 'profile.district'),
+            'user' => $userData,
             'backgrounds' => $backgrounds,
             'availableColumns' => $availableColumns,
             'sampleParticipant' => $sampleParticipant, // Backward compat
@@ -5689,22 +5721,43 @@ class ActivityController extends Controller
         $activity = Activity::with(['category', 'divisions', 'divisions.requirements', 'committeeStructures.user.profile', 'rundowns'])
             ->findOrFail($activityId);
 
-        // Total peserta terdaftar (status = 1 = aktif)
+        // Get committee user IDs to exclude them from participants
+        $committeeUserIds = DB::table('activity_committee_structures')
+            ->where('activity_id', $activityId)
+            ->whereNotNull('user_id')
+            ->pluck('user_id');
+
+        // Total peserta terdaftar (status = 1 = aktif) - EXCLUDING COMMITTEE
         $tableName = Schema::hasTable('activity_users') ? 'activity_users' : 'activity_users';
         $totalPeserta = DB::table($tableName)
             ->where('activity_id', $activityId)
-            ->where('status', 1)
+            ->whereNotIn('user_id', $committeeUserIds)
             ->count();
 
-        // Status peserta
+        // Status peserta - EXCLUDING COMMITTEE
         $pesertaPending = DB::table($tableName)
             ->where('activity_id', $activityId)
             ->where('status', 0)
+            ->whereNotIn('user_id', $committeeUserIds)
             ->count();
 
         $pesertaAktif = DB::table($tableName)
             ->where('activity_id', $activityId)
             ->where('status', 1)
+            ->whereNotIn('user_id', $committeeUserIds)
+            ->count();
+
+        // Status panitia (based on activity_users status)
+        $panitiaAktif = DB::table($tableName)
+            ->where('activity_id', $activityId)
+            ->where('status', 1)
+            ->whereIn('user_id', $committeeUserIds)
+            ->count();
+
+        $panitiaPending = DB::table($tableName)
+            ->where('activity_id', $activityId)
+            ->where('status', 0)
+            ->whereIn('user_id', $committeeUserIds)
             ->count();
 
         // Statistik absensi
@@ -5723,7 +5776,7 @@ class ActivityController extends Controller
                 ->distinct('user_id')
                 ->count('user_id');
 
-            $pesertaTidakHadir = $totalPeserta > 0 ? max(0, $totalPeserta - $pesertaHadir) : 0;
+            $pesertaTidakHadir = $pesertaAktif > 0 ? max(0, $pesertaAktif - $pesertaHadir) : 0;
         }
 
         // Statistik Chat
@@ -5815,7 +5868,11 @@ class ActivityController extends Controller
         }
 
         // Statistik kepanitiaan
-        $totalPanitia = $activity->committeeStructures->count();
+        // $totalPanitia = $activity->committeeStructures->count();
+        $totalPanitia = DB::table($tableName)
+            ->where('activity_id', $activityId)
+            ->whereIn('user_id', $committeeUserIds)
+            ->count();
 
         // Committee Stats (Best PIC & Action Graphs)
         $committee_stats = [];
@@ -5875,6 +5932,7 @@ class ActivityController extends Controller
             $date = now()->subDays($i);
             $count = DB::table($tableName)
                 ->where('activity_id', $activityId)
+                ->whereNotIn('user_id', $committeeUserIds)
                 ->whereDate('created_at', $date->format('Y-m-d'))
                 ->count();
 
@@ -5916,6 +5974,7 @@ class ActivityController extends Controller
                         ->where('activity_id', $activityId)
                         ->where('activity_batch_id', $batch->id)
                         ->where('status', 1)
+                        ->whereNotIn('user_id', $committeeUserIds)
                         ->count();
                     $batchStats[] = [
                         'name' => $batch->name,
@@ -5949,6 +6008,7 @@ class ActivityController extends Controller
                         })
                         ->where('a.activity_id', $activityId)
                         ->where('au.status', 1)
+                        ->whereNotIn('au.user_id', $committeeUserIds)
                         ->distinct()
                         ->count('a.user_id');
                 }
@@ -5959,6 +6019,9 @@ class ActivityController extends Controller
                             ->on('au.activity_id', '=', 'a.activity_id');
                     })
                     ->where('r.activity_id', $activityId)
+                    ->where(function($q) use ($committeeUserIds) {
+                        $q->whereNotIn('a.user_id', $committeeUserIds)->orWhereNull('a.user_id');
+                    })
                     ->select(
                         'r.id',
                         'r.hotel_name',
@@ -5997,6 +6060,7 @@ class ActivityController extends Controller
                 ->leftJoin('activity_participant_groups as g', 'au.activity_participant_group_id', '=', 'g.id')
                 ->where('au.activity_id', $activityId)
                 ->where('au.status', 1)
+                ->whereNotIn('au.user_id', $committeeUserIds)
                 ->select(\DB::raw('COALESCE(g.name, "Tanpa Kelompok") as name'), \DB::raw('COUNT(au.user_id) as total'))
                 ->groupBy('name')
                 ->orderByDesc('total')
@@ -6014,8 +6078,27 @@ class ActivityController extends Controller
             ];
         }
 
+        // Statistik Jenis Kepesertaan
+        $participationTypeStats = [
+            'labels' => [],
+            'data' => []
+        ];
+
+        if (Schema::hasColumn($tableName, 'activity_participation_type_id') && Schema::hasTable('activity_participation_types')) {
+             $ptStats = \DB::table($tableName . ' as au')
+                ->join('activity_participation_types as pt', 'au.activity_participation_type_id', '=', 'pt.id')
+                ->where('au.activity_id', $activityId)
+                ->where('au.status', 1)
+                ->select('pt.name', \DB::raw('count(au.id) as total'))
+                ->groupBy('pt.name')
+                ->get();
+
+             $participationTypeStats['labels'] = $ptStats->pluck('name')->toArray();
+             $participationTypeStats['data'] = $ptStats->pluck('total')->toArray();
+        }
+
         // Persentase
-        $persentaseKehadiran = $totalPeserta > 0 ? round(($pesertaHadir / $totalPeserta) * 100, 1) : 0;
+        $persentaseKehadiran = $pesertaAktif > 0 ? round(($pesertaHadir / $pesertaAktif) * 100, 1) : 0;
         $persentaseTugasSelesai = $totalTugas > 0 ? round(($tugasSelesai / $totalTugas) * 100, 1) : 0;
 
         return Inertia::render('Activity/Dashboard', compact(
@@ -6049,7 +6132,10 @@ class ActivityController extends Controller
             'roomStats',
             'groupStats',
             'totalChats',
-            'committee_stats'
+            'committee_stats',
+            'panitiaAktif',
+            'panitiaPending',
+            'participationTypeStats'
         ));
     }
 

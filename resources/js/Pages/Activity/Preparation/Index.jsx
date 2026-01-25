@@ -22,7 +22,8 @@ export default function PreparationIndex({
     materials,
     owners,
     refPositions,
-    participationTypes
+    participationTypes,
+    committeeTypes
 }) {
     const { auth } = usePage().props;
     const divisionsList = Array.isArray(divisions) ? divisions : (divisions ? Object.values(divisions) : []);
@@ -62,35 +63,27 @@ export default function PreparationIndex({
                     <CorePreparationSection
                         owners={owners}
                         participationTypes={participationTypes}
+                        committeeTypes={committeeTypes}
                         activity={activity}
                     />
 
-                    {/* main content grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                        {/* left column: participants and committee */}
-                        <div className="lg:col-span-8 space-y-10">
-
-                            <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-2 overflow-hidden">
-                                <CommitteeSection
-                                    activity={activity}
-                                    committeeStructure={committeeStructure}
-                                    refPositions={refPositions}
-                                    divisions={divisionsList}
-                                    participants={participants}
-                                />
-                            </div>
-
-                            <SectionContainer title="Rundown Acara" activity={activity}>
-                                <RundownSection activity={activity} rundowns={rundowns} />
-                            </SectionContainer>
+                    {/* main content sections */}
+                    <div className="space-y-10">
+                        {/* Committee */}
+                        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-2 overflow-hidden">
+                            <CommitteeSection
+                                activity={activity}
+                                committeeStructure={committeeStructure}
+                                refPositions={refPositions}
+                                divisions={divisionsList}
+                                participants={participants}
+                            />
                         </div>
 
-                        {/* right column: gallery and others */}
-                        <div className="lg:col-span-4 space-y-10">
-                            <SectionContainer title="Galeri & Materi" activity={activity}>
-                                <GallerySection activity={activity} materials={materials} />
-                            </SectionContainer>
-                        </div>
+                        {/* Rundown */}
+                        <SectionContainer title="Rundown Acara" activity={activity}>
+                            <RundownSection activity={activity} rundowns={rundowns} />
+                        </SectionContainer>
                     </div>
 
                     {/* Requirements section - wider at bottom */}
@@ -129,6 +122,13 @@ export default function PreparationIndex({
                                 )}
                             </div>
                         </div>
+                    </div>
+
+                    {/* Gallery Section - Moved to bottom */}
+                    <div className="mt-10">
+                        <SectionContainer title="Galeri & Materi" activity={activity}>
+                            <GallerySection activity={activity} materials={materials} />
+                        </SectionContainer>
                     </div>
                 </div>
             </div>

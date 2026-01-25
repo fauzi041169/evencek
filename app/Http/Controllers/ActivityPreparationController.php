@@ -273,7 +273,15 @@ class ActivityPreparationController extends Controller
             }
             $participationTypes = \App\Models\ActivityParticipationType::where('activity_id', $activityIdValue)->get();
 
-                return Inertia::render('Activity/Preparation/Index', compact('activity', 'divisions', 'committeeStructure', 'participants', 'rundowns', 'materials', 'owners', 'refPositions', 'participationTypes'));
+            // Lazy init Committee Types (Default: Inti, Harian, Seksi)
+            if (\App\Models\ActivityCommitteeType::where('activity_id', $activityIdValue)->count() === 0) {
+                \App\Models\ActivityCommitteeType::create(['activity_id' => $activityIdValue, 'name' => 'Panitia Inti', 'description' => 'Panitia inti/pengarah kegiatan']);
+                \App\Models\ActivityCommitteeType::create(['activity_id' => $activityIdValue, 'name' => 'Panitia Harian', 'description' => 'Panitia pelaksana harian']);
+                \App\Models\ActivityCommitteeType::create(['activity_id' => $activityIdValue, 'name' => 'Panitia Seksi', 'description' => 'Panitia per seksi/bidang']);
+            }
+            $committeeTypes = \App\Models\ActivityCommitteeType::where('activity_id', $activityIdValue)->get();
+
+                return Inertia::render('Activity/Preparation/Index', compact('activity', 'divisions', 'committeeStructure', 'participants', 'rundowns', 'materials', 'owners', 'refPositions', 'participationTypes', 'committeeTypes'));
         } catch (ModelNotFoundException $e) {
             abort(404, 'Aktivitas tidak ditemukan.');
         } catch (Exception $e) {
@@ -527,7 +535,7 @@ class ActivityPreparationController extends Controller
 
             if ($roleFilter === 'panitia') {
                 $query->whereIn('user_id', $committeeUserIds);
-            } elseif ($roleFilter === 'peserta') {
+            } elseif ($roleFilter === 'peserta' || empty($roleFilter)) {
                 $query->whereNotIn('user_id', $committeeUserIds);
             }
 
@@ -739,6 +747,22 @@ class ActivityPreparationController extends Controller
                     if (!empty($bulkGroupUserIds)) {
                         $query->whereNotIn('user_id', $bulkGroupUserIds);
                     }
+                }
+            }
+
+            // Custom Column Filtering
+            foreach (request()->all() as $reqKey => $reqVal) {
+                if (str_starts_with($reqKey, 'custom_') && !empty($reqVal)) {
+                    $jsonKey = substr($reqKey, 7); // Remove 'custom_' prefix
+                    // Ensure we are not susceptible to SQL injection via column name, 
+                    // although Laravel bindings handle values, the column name "custom_data->key" is somewhat dynamic.
+                    // But here $jsonKey comes from request key.
+                    // To be safe, maybe we should verify it against known custom keys?
+                    // For now, let's trust the request or sanitize the key.
+                    // A simple str_replace to remove dangerous chars might be enough if needed, 
+                    // but Laravel's -> syntax usually wraps the key in quotes.
+                    
+                    $query->where("custom_data->{$jsonKey}", (string)$reqVal);
                 }
             }
 
@@ -1071,9 +1095,99 @@ class ActivityPreparationController extends Controller
                 \Log::warning('Failed to load unassigned participants', ['error' => $e->getMessage()]);
             }
 
+            // 1. Extract Custom Keys (Moved here so they can be used for filter options)
+            $customKeys = [];
+            $baseKeys = [];
+
+            $builtinTemplateKeys = array_fill_keys([
+                'email',
+                'name',
+                'password',
+                'no_hp',
+                'nik',
+                'gender',
+                'birth_place',
+                'birth_date',
+                'address',
+                'province_id',
+                'regency_id',
+                'district_id',
+                'institution',
+                'occupation',
+                'category',
+                'position',
+            ], true);
+
+            if (Schema::hasTable('activities') && Schema::hasColumn('activities', 'import_template')) {
+                try {
+                    Activity::query()
+                        ->whereNotNull('import_template')
+                        ->select('id', 'import_template')
+                        ->chunkById(200, function ($activities) use (&$baseKeys, $builtinTemplateKeys) {
+                            foreach ($activities as $act) {
+                                $template = (string) ($act->import_template ?? '');
+                                if ($template === '') {
+                                    continue;
+                                }
+                                $columns = array_values(array_filter(array_map('trim', explode(',', $template))));
+                                foreach ($columns as $col) {
+                                    $key = $this->normalizeImportKey($col);
+                                    if ($key === '') {
+                                        continue;
+                                    }
+                                    $lower = strtolower($key);
+                                    if (isset($builtinTemplateKeys[$lower])) {
+                                        continue;
+                                    }
+                                    $baseKeys[$lower] = $baseKeys[$lower] ?? $key;
+                                }
+                            }
+                        });
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to load custom keys from activities', ['error' => $e->getMessage()]);
+                }
+            }
+
+            if (Schema::hasTable($activityUserTable) && Schema::hasColumn($activityUserTable, 'custom_data')) {
+                try {
+                    ActivityUser::query()
+                        ->from($activityUserTable)
+                        ->whereNotNull('custom_data')
+                        ->select('id', 'custom_data')
+                        ->chunkById(500, function ($chunk) use (&$baseKeys) {
+                            foreach ($chunk as $row) {
+                                $data = $row->custom_data;
+                                if (is_string($data)) {
+                                    $decoded = json_decode($data, true);
+                                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                        $data = $decoded;
+                                    }
+                                }
+                                if (is_array($data)) {
+                                    foreach (array_keys($data) as $key) {
+                                        $base = $this->normalizeImportKey($key);
+                                        if ($base === '') {
+                                            continue;
+                                        }
+                                        $baseLower = strtolower($base);
+                                        $baseKeys[$baseLower] = $baseKeys[$baseLower] ?? $base;
+                                    }
+                                }
+                            }
+                        });
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to load custom keys from activity users', ['error' => $e->getMessage()]);
+                }
+            }
+
+            if (! empty($baseKeys)) {
+                $customKeys = array_values($baseKeys);
+                sort($customKeys, SORT_NATURAL | SORT_FLAG_CASE);
+            }
+
             // OPTIMIZED: Cache Filter Options to avoid heavy queries on every request
-            $filterOptionsCacheKey = "activity_participant_filter_options_{$activityId}_v4";
-            $filterOptions = Cache::remember($filterOptionsCacheKey, 3600, function () use ($activityId) {
+            $filterOptionsCacheKey = "activity_participant_filter_options_{$activityId}_v5";
+            $filterOptions = Cache::remember($filterOptionsCacheKey, 3600, function () use ($activityId, $customKeys) {
                 $options = [];
                 
                 // Helper to get distinct profile fields
@@ -1194,6 +1308,46 @@ class ActivityPreparationController extends Controller
                     ['value' => '2', 'label' => 'Ditolak'],
                     ['value' => '3', 'label' => 'Menunggu Pembayaran'],
                 ]);
+
+                // Custom Columns Options
+                if (!empty($customKeys)) {
+                    $customValues = [];
+                    foreach ($customKeys as $key) {
+                        $customValues[$key] = [];
+                    }
+
+                    // Process in chunks to save memory
+                    ActivityUser::where('activity_id', $activityId)
+                        ->whereNotNull('custom_data')
+                        ->select('custom_data')
+                        ->chunk(500, function($users) use (&$customValues, $customKeys) {
+                            foreach ($users as $user) {
+                                $data = $user->custom_data; // Casted to array by model
+                                if (is_array($data)) {
+                                    foreach ($customKeys as $key) {
+                                        // Try direct key or normalized variants if needed
+                                        // The keys in $customKeys are from import_template or existing data keys
+                                        // We assume exact match for now as they come from the same source
+                                        if (isset($data[$key])) {
+                                            $val = $data[$key];
+                                            if (is_string($val) || is_numeric($val)) {
+                                                $valStr = trim((string)$val);
+                                                if ($valStr !== '') {
+                                                    $customValues[$key][$valStr] = true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    
+                    foreach ($customKeys as $key) {
+                         $options["custom_{$key}"] = collect(array_keys($customValues[$key]))
+                            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+                            ->values();
+                    }
+                }
                 
                 return $options;
             });
@@ -1215,6 +1369,13 @@ class ActivityPreparationController extends Controller
             $provinceOptions = $filterOptions['province_name'];
             $regencyNameOptions = $filterOptions['regency_name'];
             $districtNameOptions = $filterOptions['district_name'];
+            
+            $customOptions = [];
+            if (!empty($customKeys)) {
+                foreach ($customKeys as $key) {
+                    $customOptions[$key] = $filterOptions["custom_{$key}"] ?? [];
+                }
+            }
             
             // Empty flags for UI (simplified)
             $hasUnspecifiedGender = true; 
@@ -1245,94 +1406,7 @@ class ActivityPreparationController extends Controller
             });
 
 
-            $customKeys = [];
-            $baseKeys = [];
-
-            $builtinTemplateKeys = array_fill_keys([
-                'email',
-                'name',
-                'password',
-                'no_hp',
-                'nik',
-                'gender',
-                'birth_place',
-                'birth_date',
-                'address',
-                'province_id',
-                'regency_id',
-                'district_id',
-                'institution',
-                'occupation',
-                'category',
-                'position',
-            ], true);
-
-            if (Schema::hasTable('activities') && Schema::hasColumn('activities', 'import_template')) {
-                try {
-                    Activity::query()
-                        ->whereNotNull('import_template')
-                        ->select('id', 'import_template')
-                        ->chunkById(200, function ($activities) use (&$baseKeys, $builtinTemplateKeys) {
-                            foreach ($activities as $act) {
-                                $template = (string) ($act->import_template ?? '');
-                                if ($template === '') {
-                                    continue;
-                                }
-                                $columns = array_values(array_filter(array_map('trim', explode(',', $template))));
-                                foreach ($columns as $col) {
-                                    $key = $this->normalizeImportKey($col);
-                                    if ($key === '') {
-                                        continue;
-                                    }
-                                    $lower = strtolower($key);
-                                    if (isset($builtinTemplateKeys[$lower])) {
-                                        continue;
-                                    }
-                                    $baseKeys[$lower] = $baseKeys[$lower] ?? $key;
-                                }
-                            }
-                        });
-                } catch (\Throwable $e) {
-                    \Log::warning('Failed to load custom keys from activities', ['error' => $e->getMessage()]);
-                }
-            }
-
-            if (Schema::hasTable($activityUserTable) && Schema::hasColumn($activityUserTable, 'custom_data')) {
-                try {
-                    ActivityUser::query()
-                        ->from($activityUserTable)
-                        ->whereNotNull('custom_data')
-                        ->select('id', 'custom_data')
-                        ->chunkById(500, function ($chunk) use (&$baseKeys) {
-                            foreach ($chunk as $row) {
-                                $data = $row->custom_data;
-                                if (is_string($data)) {
-                                    $decoded = json_decode($data, true);
-                                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                                        $data = $decoded;
-                                    }
-                                }
-                                if (is_array($data)) {
-                                    foreach (array_keys($data) as $key) {
-                                        $base = $this->normalizeImportKey($key);
-                                        if ($base === '') {
-                                            continue;
-                                        }
-                                        $baseLower = strtolower($base);
-                                        $baseKeys[$baseLower] = $baseKeys[$baseLower] ?? $base;
-                                    }
-                                }
-                            }
-                        });
-                } catch (\Throwable $e) {
-                    \Log::warning('Failed to load custom keys from activity users', ['error' => $e->getMessage()]);
-                }
-            }
-
-            if (! empty($baseKeys)) {
-                $customKeys = array_values($baseKeys);
-                sort($customKeys, SORT_NATURAL | SORT_FLAG_CASE);
-            }
+            // Custom Keys already loaded above
 
             $templateOptions = [
                 ['value' => 'user:name', 'label' => 'Nama Lengkap'],
@@ -1439,6 +1513,7 @@ class ActivityPreparationController extends Controller
                 'templateOptions' => $templateOptions,
                 'columnSettings' => $columnSettings,
                 'customKeys' => $customKeys,
+                'customOptions' => $customOptions,
                 'participantGroups' => $participantGroups,
                 'committeeUserIds' => $committeeUserIds,
                 'instansiOptions' => $instansiOptions,
@@ -1520,6 +1595,7 @@ class ActivityPreparationController extends Controller
                 'registrationMethodOptions' => collect(),
                 'hasUnspecifiedBirthYear' => false,
                 'bulkGroupUserIds' => [],
+                'unverifiedEmailCount' => 0,
                 'filters' => request()->all()
             ])->with('error', 'Terjadi kesalahan saat memuat data peserta. Silakan refresh halaman.');
         }
@@ -4249,6 +4325,7 @@ class ActivityPreparationController extends Controller
             'activity_batch_id' => $batchId,
             'position' => $request->position,
             'activity_division_id' => $division ? $division->id : null,
+            'committee_type_id' => $request->committee_type_id,
             'name' => $user->name,
             'user_id' => $request->user_id,
             'phone' => $user->profile->no_hp ?? null,
@@ -4306,6 +4383,7 @@ class ActivityPreparationController extends Controller
         $committee->update([
             'position' => $request->position,
             'activity_division_id' => $division ? $division->id : null,
+            'committee_type_id' => $request->committee_type_id,
             'name' => $user->name,
             'user_id' => $request->user_id,
             'phone' => $user->profile->no_hp ?? null,
@@ -5521,6 +5599,98 @@ class ActivityPreparationController extends Controller
             ]);
 
             return response()->json(['success' => false, 'message' => 'Gagal menyimpan pengaturan: '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Fill empty gender fields for participants based on their names using AI
+     */
+    public function fillGender(Request $request, $activityId)
+    {
+        try {
+            $activity = Activity::where('uid', $activityId)->first();
+            if (!$activity) {
+                $activity = Activity::findOrFail($activityId);
+            }
+
+            $actor = auth()->user();
+            if (!$actor) {
+                return response()->json(['success' => false, 'message' => 'Silakan login terlebih dahulu.'], 403);
+            }
+
+            // Check permission
+            if (!$actor->isAdmin() && !$actor->isSuperAdmin() && $activity->user_id !== $actor->id) {
+                if (!$activity->canManageRegistration($actor->id)) {
+                    return response()->json(['success' => false, 'message' => 'Anda tidak memiliki izin untuk melakukan ini.'], 403);
+                }
+            }
+
+            // Get participants with empty gender
+            $participants = ActivityUser::where('activity_id', $activity->id)
+                ->with('user.profile')
+                ->get();
+
+            $stats = [
+                'success' => 0,
+                'failed' => 0,
+                'skipped' => 0,
+                'total' => 0,
+            ];
+
+            foreach ($participants as $participant) {
+                $profile = $participant->user->profile ?? null;
+                
+                // Skip if profile doesn't exist or gender is already filled
+                if (!$profile || (!empty($profile->jenis_kelamin) && $profile->jenis_kelamin !== '-')) {
+                    $stats['skipped']++;
+                    continue;
+                }
+
+                $stats['total']++;
+
+                $userName = $participant->user->name ?? null;
+                if (!$userName) {
+                    $stats['failed']++;
+                    continue;
+                }
+
+                // Predict gender using GenderHelper (which uses AI if enabled)
+                $predictedGender = \App\Helpers\GenderHelper::predict($userName);
+
+                if ($predictedGender && in_array($predictedGender, ['L', 'P'])) {
+                    try {
+                        $profile->jenis_kelamin = $predictedGender;
+                        $profile->save();
+                        $stats['success']++;
+                    } catch (\Exception $e) {
+                        \Log::error('Error updating gender for profile', [
+                            'profile_id' => $profile->id,
+                            'error' => $e->getMessage()
+                        ]);
+                        $stats['failed']++;
+                    }
+                } else {
+                    $stats['failed']++;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil mengisi {$stats['success']} jenis kelamin dari {$stats['total']} peserta yang kosong.",
+                'stats' => $stats
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error filling gender', [
+                'activity_id' => $activityId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

@@ -147,9 +147,9 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
 
         // Handle other keys from user/profile if available
         if (!previewText && dataKey) {
-            if (user[dataKey]) previewText = user[dataKey];
-            else if (user.profile && user.profile[dataKey]) previewText = user.profile[dataKey];
-            else previewText = label;
+            if (user[dataKey] !== undefined && user[dataKey] !== null) previewText = user[dataKey];
+            else if (user.profile && user.profile[dataKey] !== undefined && user.profile[dataKey] !== null) previewText = user.profile[dataKey];
+            else previewText = '-';
         }
 
         setSettings(prev => ({
@@ -449,8 +449,8 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
 
             // General lookup
             if (config.data_key) {
-                if (user[config.data_key]) return user[config.data_key];
-                if (p[config.data_key]) return p[config.data_key];
+                if (user[config.data_key] !== undefined && user[config.data_key] !== null) return user[config.data_key];
+                if (p[config.data_key] !== undefined && p[config.data_key] !== null) return p[config.data_key];
             }
         }
 

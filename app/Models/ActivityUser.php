@@ -54,6 +54,7 @@ class ActivityUser extends Model
         'card_status',
         'certificate_id',
         'activity_participant_group_id',
+        'activity_participation_type_id',
         'created_by',
         'updated_by',
     ];
@@ -81,6 +82,11 @@ class ActivityUser extends Model
     public function participantGroup()
     {
         return $this->belongsTo(ActivityParticipantGroup::class, 'activity_participant_group_id');
+    }
+
+    public function participationType()
+    {
+        return $this->belongsTo(ActivityParticipationType::class, 'activity_participation_type_id');
     }
 
     public function creator()

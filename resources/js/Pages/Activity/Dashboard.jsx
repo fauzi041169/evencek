@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 import {
@@ -60,7 +60,10 @@ export default function Dashboard({
     roomStats,
     groupStats,
     totalChats,
-    committee_stats
+    committee_stats,
+    panitiaAktif,
+    panitiaPending,
+    participationTypeStats
 }) {
     const { auth } = usePage().props;
 
@@ -118,8 +121,13 @@ export default function Dashboard({
         labels: genderLabels,
         datasets: [{
             data: genderData,
-            backgroundColor: ['#696cff', '#ffab00', '#a1acb8'],
+            backgroundColor: [
+                'rgba(59, 130, 246, 0.8)',  // Blue for Male
+                'rgba(236, 72, 153, 0.8)',   // Pink for Female
+                'rgba(156, 163, 175, 0.8)'   // Gray for Others
+            ],
             borderWidth: 0,
+            hoverOffset: 8
         }],
     };
 
@@ -131,19 +139,23 @@ export default function Dashboard({
                 position: 'bottom',
                 labels: {
                     usePointStyle: true,
-                    boxWidth: 6,
-                    padding: 10,
-                    font: { size: 10 }
+                    boxWidth: 8,
+                    padding: 12,
+                    font: { size: 11, weight: '500' }
                 }
             },
             tooltip: {
                 callbacks: {
-                    label: function(context) {
+                    label: function (context) {
                         const total = context.dataset.data.reduce((a, b) => a + b, 0);
                         const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
                         return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
                     }
-                }
+                },
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: { size: 13, weight: 'bold' },
+                bodyFont: { size: 12 }
             }
         }
     };
@@ -153,8 +165,12 @@ export default function Dashboard({
         labels: statusPesertaData.labels,
         datasets: [{
             data: statusPesertaData.data,
-            backgroundColor: ['#71dd37', '#ffab00'],
+            backgroundColor: [
+                'rgba(16, 185, 129, 0.8)',   // Emerald for Active
+                'rgba(251, 191, 36, 0.8)'    // Amber for Pending
+            ],
             borderWidth: 0,
+            hoverOffset: 8
         }],
     };
 
@@ -166,19 +182,70 @@ export default function Dashboard({
                 position: 'bottom',
                 labels: {
                     usePointStyle: true,
-                    boxWidth: 6,
-                    padding: 10,
-                    font: { size: 10 }
+                    boxWidth: 8,
+                    padding: 12,
+                    font: { size: 11, weight: '500' }
                 }
             },
             tooltip: {
                 callbacks: {
-                    label: function(context) {
+                    label: function (context) {
                         const total = context.dataset.data.reduce((a, b) => a + b, 0);
                         const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
                         return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
                     }
+                },
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: { size: 13, weight: 'bold' },
+                bodyFont: { size: 12 }
+            }
+        }
+    };
+
+    // Participation Type Chart
+    const participationTypeChartData = {
+        labels: participationTypeStats?.labels || [],
+        datasets: [{
+            data: participationTypeStats?.data || [],
+            backgroundColor: [
+                'rgba(139, 92, 246, 0.8)',   // Purple
+                'rgba(251, 146, 60, 0.8)',   // Orange
+                'rgba(34, 197, 94, 0.8)',    // Green
+                'rgba(59, 130, 246, 0.8)',   // Blue
+                'rgba(236, 72, 153, 0.8)',   // Pink
+                'rgba(14, 165, 233, 0.8)'    // Cyan
+            ],
+            borderWidth: 0,
+            hoverOffset: 8
+        }],
+    };
+
+    const participationTypeChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    usePointStyle: true,
+                    boxWidth: 8,
+                    padding: 12,
+                    font: { size: 11, weight: '500' }
                 }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function (context) {
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                        return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                    }
+                },
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: { size: 13, weight: 'bold' },
+                bodyFont: { size: 12 }
             }
         }
     };
@@ -189,13 +256,19 @@ export default function Dashboard({
         datasets: [{
             label: 'Pendaftar',
             data: registrationTrend.map(item => item.count),
-            borderColor: '#7c3aed',
-            backgroundColor: 'rgba(124, 58, 237, 0.12)',
-            borderWidth: 2,
+            borderColor: 'rgba(139, 92, 246, 1)',
+            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+            borderWidth: 3,
             fill: true,
             tension: 0.4,
-            pointRadius: 3,
-            pointHoverRadius: 5
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: 'rgba(139, 92, 246, 1)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgba(139, 92, 246, 1)',
+            pointHoverBorderWidth: 3
         }]
     };
 
@@ -203,18 +276,43 @@ export default function Dashboard({
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { display: false }
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: { size: 13, weight: 'bold' },
+                bodyFont: { size: 12 },
+                displayColors: false
+            }
         },
         scales: {
             y: {
                 beginAtZero: true,
-                ticks: { stepSize: 1, font: { size: 10 } },
-                grid: { color: '#e7eaf3' }
+                ticks: {
+                    stepSize: 1,
+                    font: { size: 11 },
+                    color: '#64748b'
+                },
+                grid: {
+                    color: 'rgba(148, 163, 184, 0.1)',
+                    drawBorder: false
+                },
+                border: { display: false }
             },
             x: {
-                ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 45 },
-                grid: { display: false }
+                ticks: {
+                    font: { size: 10 },
+                    maxRotation: 45,
+                    minRotation: 45,
+                    color: '#64748b'
+                },
+                grid: { display: false },
+                border: { display: false }
             }
+        },
+        interaction: {
+            intersect: false,
+            mode: 'index'
         }
     };
 
@@ -302,7 +400,7 @@ export default function Dashboard({
         } else {
             data = districtStats; // Or limited district stats?
         }
-        
+
         // Note: The original blade might have had logic to filter regencies by province on click.
         // Here we just show the top stats for the selected level for simplicity as per props available.
         // If drill-down is required, we would need to fetch data or filter from full lists. 
@@ -315,12 +413,12 @@ export default function Dashboard({
         // Blade initialized with `topProvinceStats`.
         // It had a dropdown `regionLevelSelect`.
         // We will implement similar logic.
-        
+
         // However, `topRegencyStats` might be "Top Regencies Global" or "Top Regencies for this Activity".
         // Let's assume they are ready to display.
 
         if (data) {
-             setRegionChartDataState({
+            setRegionChartDataState({
                 labels: data.map(item => item.name),
                 datasets: [{
                     label: 'User',
@@ -331,7 +429,7 @@ export default function Dashboard({
                 }]
             });
         }
-       
+
     }, [regionLevel, topProvinceStats, topRegencyStats, districtStats]);
 
     const regionChartOptions = {
@@ -341,8 +439,8 @@ export default function Dashboard({
             legend: { display: false },
             tooltip: {
                 callbacks: {
-                    label: function(context) {
-                         return context.parsed.y;
+                    label: function (context) {
+                        return context.parsed.y;
                     }
                 }
             }
@@ -367,7 +465,7 @@ export default function Dashboard({
             title={`Dashboard - ${activity.name}`}
         >
             {/* Chart Configurations are defined above but rendered here */}
-            
+
             <div className="min-h-screen bg-gray-50/50 pb-20">
                 {/* Header */}
                 <div className="bg-white rounded-lg sm:rounded-xl shadow-md p-4 sm:p-6 mb-4 sm:mb-6 transform transition-all hover:translate-y-[-2px] hover:shadow-lg">
@@ -391,81 +489,168 @@ export default function Dashboard({
                 </div>
 
                 {/* Statistik Utama */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                     {/* Total Peserta */}
-                    <div className="bg-white rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-5 border-l-4 border-primary hover:shadow-md transition duration-300">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary to-blue-500 rounded-lg flex items-center justify-center text-white text-lg sm:text-xl mb-3 sm:mb-4">
-                            <i className="fas fa-users"></i>
-                        </div>
-                        <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Peserta</div>
-                        <div className="text-2xl sm:text-3xl font-bold text-gray-700 mb-1">{totalPeserta.toLocaleString()}</div>
-                        <div className="text-xs text-green-600">
-                            <i className="fas fa-check-circle"></i> Aktif: {pesertaAktif}
+                    <div className="group relative bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div className="relative p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
+                                    <i className="fas fa-users"></i>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-purple-100 text-xs font-medium uppercase tracking-wider">Total Peserta</span>
+                                </div>
+                            </div>
+                            <div className="text-4xl font-bold text-white mb-2">{totalPeserta.toLocaleString()}</div>
+                            <div className="flex items-center gap-3 pt-3 border-t border-white/20">
+                                <div className="flex items-center gap-1.5 text-emerald-200">
+                                    <i className="fas fa-check-circle text-sm"></i>
+                                    <span className="text-xs font-medium">Aktif: {pesertaAktif}</span>
+                                </div>
+                                {pesertaPending > 0 && (
+                                    <div className="flex items-center gap-1.5 text-amber-200">
+                                        <i className="fas fa-clock text-sm"></i>
+                                        <span className="text-xs font-medium">Pending: {pesertaPending}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
                     {/* Kehadiran */}
-                    <div className="bg-white rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-5 border-l-4 border-primary hover:shadow-md transition duration-300">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary to-blue-500 rounded-lg flex items-center justify-center text-white text-lg sm:text-xl mb-3 sm:mb-4">
-                            <i className="fas fa-check-circle"></i>
+                    <div className="group relative bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div className="relative p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
+                                    <i className="fas fa-user-check"></i>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-emerald-100 text-xs font-medium uppercase tracking-wider">Kehadiran</span>
+                                </div>
+                            </div>
+                            <div className="text-4xl font-bold text-white mb-2">{pesertaHadir.toLocaleString()}</div>
+                            <div className="pt-3 border-t border-white/20">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-emerald-100 text-sm">{persentaseKehadiran}% dari total</span>
+                                    <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
+                                        <div className="h-full bg-white rounded-full" style={{ width: `${persentaseKehadiran}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Kehadiran</div>
-                        <div className="text-2xl sm:text-3xl font-bold text-gray-700 mb-1">{pesertaHadir.toLocaleString()}</div>
-                        <div className="text-xs text-gray-500">{persentaseKehadiran}% dari total</div>
                     </div>
 
                     {/* Total Tugas */}
-                    <div className="bg-white rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-5 border-l-4 border-primary hover:shadow-md transition duration-300">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary to-blue-500 rounded-lg flex items-center justify-center text-white text-lg sm:text-xl mb-3 sm:mb-4">
-                            <i className="fas fa-tasks"></i>
+                    <div className="group relative bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div className="relative p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
+                                    <i className="fas fa-tasks"></i>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-amber-100 text-xs font-medium uppercase tracking-wider">Total Tugas</span>
+                                </div>
+                            </div>
+                            <div className="text-4xl font-bold text-white mb-2">{totalTugas.toLocaleString()}</div>
+                            <div className="pt-3 border-t border-white/20">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-amber-100 text-sm">{persentaseTugasSelesai}% selesai</span>
+                                    <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
+                                        <div className="h-full bg-white rounded-full" style={{ width: `${persentaseTugasSelesai}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Tugas</div>
-                        <div className="text-2xl sm:text-3xl font-bold text-gray-700 mb-1">{totalTugas.toLocaleString()}</div>
-                        <div className="text-xs text-gray-500">{persentaseTugasSelesai}% selesai</div>
                     </div>
 
                     {/* Panitia */}
-                    <div className="bg-white rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-5 border-l-4 border-primary hover:shadow-md transition duration-300">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary to-blue-500 rounded-lg flex items-center justify-center text-white text-lg sm:text-xl mb-3 sm:mb-4">
-                            <i className="fas fa-user-tie"></i>
+                    <div className="group relative bg-gradient-to-br from-pink-500 via-rose-600 to-red-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div className="relative p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
+                                    <i className="fas fa-user-tie"></i>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-pink-100 text-xs font-medium uppercase tracking-wider">Panitia</span>
+                                </div>
+                            </div>
+                            <div className="text-4xl font-bold text-white mb-2">{totalPanitia.toLocaleString()}</div>
+                            <div className="flex items-center gap-3 pt-3 border-t border-white/20">
+                                <div className="flex items-center gap-1.5 text-emerald-200">
+                                    <i className="fas fa-check-circle text-sm"></i>
+                                    <span className="text-xs font-medium">Aktif: {panitiaAktif}</span>
+                                </div>
+                                {panitiaPending > 0 && (
+                                    <div className="flex items-center gap-1.5 text-amber-200">
+                                        <i className="fas fa-clock text-sm"></i>
+                                        <span className="text-xs font-medium">Pending: {panitiaPending}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Panitia</div>
-                        <div className="text-2xl sm:text-3xl font-bold text-gray-700 mb-1">{totalPanitia.toLocaleString()}</div>
-                        <div className="text-xs text-gray-500">Anggota kepanitiaan</div>
                     </div>
 
                     {/* Best PIC */}
                     {committee_stats && committee_stats.length > 0 && (
-                        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-5 border-l-4 border-yellow-500 hover:shadow-md transition duration-300 sm:col-span-2 lg:col-span-1">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center text-white text-lg sm:text-xl mb-3 sm:mb-4">
-                                <i className="fas fa-trophy"></i>
-                            </div>
-                            <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Best Performance</div>
-                            <div className="text-lg sm:text-xl font-bold text-gray-700 truncate" title={committee_stats[0].name}>{committee_stats[0].name}</div>
-                            <div className="text-xs text-gray-500">
-                                {committee_stats[0].total_actions} Aksi â€¢ {committee_stats[0].position}
+                        <div className="group relative bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                            <div className="relative p-6">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg animate-pulse">
+                                        <i className="fas fa-trophy"></i>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-yellow-100 text-xs font-medium uppercase tracking-wider">Best Performer</span>
+                                    </div>
+                                </div>
+                                <div className="text-2xl font-bold text-white mb-1 truncate" title={committee_stats[0].name}>{committee_stats[0].name}</div>
+                                <div className="text-sm text-yellow-100 mb-2">{committee_stats[0].position}</div>
+                                <div className="pt-3 border-t border-white/20">
+                                    <div className="flex items-center justify-between text-white">
+                                        <span className="text-xs font-medium">Total Aktivitas</span>
+                                        <span className="text-2xl font-bold">{committee_stats[0].total_actions}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                     {/* Total Pesan (Optional based on blade) */}
-                     <div className="bg-white rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-5 border-l-4 border-primary hover:shadow-md transition duration-300 sm:col-span-2 lg:col-span-1">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary to-blue-500 rounded-lg flex items-center justify-center text-white text-lg sm:text-xl mb-3 sm:mb-4">
-                            <i className="fas fa-comments"></i>
+                    {/* Total Pesan */}
+                    <div className="group relative bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div className="relative p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
+                                    <i className="fas fa-comments"></i>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-cyan-100 text-xs font-medium uppercase tracking-wider">Total Pesan</span>
+                                </div>
+                            </div>
+                            <div className="text-4xl font-bold text-white mb-2">{totalChats.toLocaleString()}</div>
+                            <div className="pt-3 border-t border-white/20">
+                                <span className="text-cyan-100 text-sm">Pesan dalam obrolan</span>
+                            </div>
                         </div>
-                        <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Pesan</div>
-                        <div className="text-2xl sm:text-3xl font-bold text-gray-700 mb-1">{totalChats.toLocaleString()}</div>
-                        <div className="text-xs text-gray-500">Pesan dalam obrolan</div>
                     </div>
                 </div>
 
                 {/* Grafik Utama */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
                     {/* Trend Pendaftaran (Left Side) */}
-                    <div className="lg:col-span-3 bg-white rounded-xl shadow-md p-6 flex flex-col">
-                        <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-                            <h5 className="text-base font-semibold text-gray-700">Trend Pendaftaran</h5>
-                            <span className="text-xs text-gray-500">30 hari terakhir</span>
+                    <div className="lg:col-span-3 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100 flex flex-col">
+                        <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-purple-500 to-indigo-500">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md">
+                                    <i className="fas fa-chart-line"></i>
+                                </div>
+                                <h5 className="text-lg font-bold text-gray-800">Trend Pendaftaran</h5>
+                            </div>
+                            <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">30 hari terakhir</span>
                         </div>
                         <div className="relative flex-1 h-64 sm:h-80">
                             <Line data={registrationChartData} options={registrationChartOptions} />
@@ -475,9 +660,14 @@ export default function Dashboard({
                     {/* Right Side (Stacked) */}
                     <div className="flex flex-col gap-6">
                         {/* Distribusi Jenis Kelamin */}
-                        <div className="bg-white rounded-xl shadow-md p-6">
-                            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-                                <h5 className="text-base font-semibold text-gray-700">Distribusi Jenis Kelamin</h5>
+                        <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
+                            <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-blue-500 to-pink-500">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-pink-500 rounded-lg flex items-center justify-center text-white shadow-md">
+                                        <i className="fas fa-venus-mars"></i>
+                                    </div>
+                                    <h5 className="text-base font-bold text-gray-800">Jenis Kelamin</h5>
+                                </div>
                             </div>
                             <div className="relative h-40">
                                 <Doughnut data={genderChartData} options={genderChartOptions} />
@@ -485,14 +675,36 @@ export default function Dashboard({
                         </div>
 
                         {/* Status Peserta */}
-                        <div className="bg-white rounded-xl shadow-md p-6">
-                            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-                                <h5 className="text-base font-semibold text-gray-700">Status Peserta</h5>
+                        <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
+                            <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-emerald-500 to-teal-500">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center text-white shadow-md">
+                                        <i className="fas fa-user-check"></i>
+                                    </div>
+                                    <h5 className="text-base font-bold text-gray-800">Status Peserta</h5>
+                                </div>
                             </div>
                             <div className="relative h-40">
                                 <Pie data={statusPesertaChartData} options={statusPesertaChartOptions} />
                             </div>
                         </div>
+
+                        {/* Jenis Kepesertaan */}
+                        {participationTypeStats && participationTypeStats.data && participationTypeStats.data.length > 0 && (
+                            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
+                                <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-amber-500 to-orange-500">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center text-white shadow-md">
+                                            <i className="fas fa-users-cog"></i>
+                                        </div>
+                                        <h5 className="text-base font-bold text-gray-800">Jenis Kepesertaan</h5>
+                                    </div>
+                                </div>
+                                <div className="relative h-40">
+                                    <Doughnut data={participationTypeChartData} options={participationTypeChartOptions} />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -521,7 +733,7 @@ export default function Dashboard({
                                 </h5>
                             </div>
                             <div className="flex items-center gap-2">
-                                <select 
+                                <select
                                     value={regionLevel}
                                     onChange={(e) => setRegionLevel(e.target.value)}
                                     className="text-xs border border-gray-300 rounded px-2 py-1 max-w-[150px] focus:ring-blue-500 focus:border-blue-500"
@@ -540,22 +752,22 @@ export default function Dashboard({
 
                 {/* Statistik Batch (jika ada) */}
                 {batchStats && Object.keys(batchStats).length > 1 && activity.activity_type === 'batch' && (
-                     // Note: We need chart data for batches if we want to display it. 
-                     // The blade used `batchChart` but didn't show the data source in the snippet I read.
-                     // Assuming we might need to construct it or it's passed.
-                     // For now, I'll omit the chart if data isn't readily available in props in a format for Chart.js, 
-                     // or I can try to infer it. The prop `batchStats` is passed.
-                     // Let's assume `batchStats` is an object/array we can use.
-                     // Blade snippet: <canvas id="batchChart"></canvas>
-                     // I'll skip implementation details of batchChart for now unless I see the data structure.
-                     // I will just show a placeholder or basic list if needed, or hide it.
-                     // Given the user wants "same functionality", I should probably try.
-                     // But I don't have the `batchStats` structure from the controller read.
-                     // Let's check the controller read again.
-                     // Ah, I missed reading the `batchStats` construction in controller.
-                     // It's likely similar to others.
-                     // For safety, I will render a simple list or just the container.
-                     <div className="mb-6">
+                    // Note: We need chart data for batches if we want to display it. 
+                    // The blade used `batchChart` but didn't show the data source in the snippet I read.
+                    // Assuming we might need to construct it or it's passed.
+                    // For now, I'll omit the chart if data isn't readily available in props in a format for Chart.js, 
+                    // or I can try to infer it. The prop `batchStats` is passed.
+                    // Let's assume `batchStats` is an object/array we can use.
+                    // Blade snippet: <canvas id="batchChart"></canvas>
+                    // I'll skip implementation details of batchChart for now unless I see the data structure.
+                    // I will just show a placeholder or basic list if needed, or hide it.
+                    // Given the user wants "same functionality", I should probably try.
+                    // But I don't have the `batchStats` structure from the controller read.
+                    // Let's check the controller read again.
+                    // Ah, I missed reading the `batchStats` construction in controller.
+                    // It's likely similar to others.
+                    // For safety, I will render a simple list or just the container.
+                    <div className="mb-6">
                         <div className="bg-white rounded-xl shadow-md p-6">
                             <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
                                 <h5 className="text-base font-semibold text-gray-700">Peserta per Batch</h5>

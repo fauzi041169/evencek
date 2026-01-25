@@ -79,7 +79,13 @@ export default function CardPreview({ settings, user, activity, scale = 1 }) {
                     // If we have a specific data_key but it didn't match above, keep text.
                     // If we fell back to 'id' and it didn't match, keep text.
                     if (config.data_key) {
-                        text = config.text || '-';
+                        if (user[config.data_key] !== undefined && user[config.data_key] !== null) {
+                            text = user[config.data_key];
+                        } else if (p[config.data_key] !== undefined && p[config.data_key] !== null) {
+                            text = p[config.data_key];
+                        } else {
+                            text = config.text || '-';
+                        }
                     }
             }
         }
