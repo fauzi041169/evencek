@@ -24,10 +24,16 @@ class ActivityCommitteeStructure extends Model
         'phone',
         'email',
         'order',
+        'jumlah_akses',
+        'lama_akses',
+        'last_access_at',
     ];
 
     protected $casts = [
         'order' => 'integer',
+        'jumlah_akses' => 'integer',
+        'lama_akses' => 'integer',
+        'last_access_at' => 'datetime',
     ];
 
     public function activity()

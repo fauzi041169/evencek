@@ -409,7 +409,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     });
 
     // Activity Management Routes
-    Route::prefix('activity')->name('activity.')->controller(ActivityController::class)->group(function () {
+    Route::prefix('activity')->name('activity.')->controller(ActivityController::class)->middleware(['track.activity.access'])->group(function () {
         // Note: /list, /search, /create, /manage are defined in public routes above to avoid wildcard conflicts
         Route::post('/', 'store')->name('store');
         Route::get('/{activity}/dashboard', 'dashboard')->name('dashboard');

@@ -34,6 +34,8 @@ export default function Dashboard({
     totalPeserta,
     pesertaPending,
     pesertaAktif,
+    pesertaDitolak,
+    pesertaMenungguPembayaran,
     totalAbsensi,
     pesertaHadir,
     pesertaTidakHadir,
@@ -60,6 +62,8 @@ export default function Dashboard({
     roomStats,
     groupStats,
     totalChats,
+    totalChatHubungiPanitia,
+    totalUserKomentar,
     committee_stats,
     panitiaAktif,
     panitiaPending,
@@ -487,9 +491,9 @@ export default function Dashboard({
                         </div>
                     </div>
                 </div>
-
                 {/* Statistik Utama */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                {/* Baris 1: Total Peserta + Status Peserta Bar Chart + Top 3 Performa */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
                     {/* Total Peserta */}
                     <div className="group relative bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
@@ -518,55 +522,164 @@ export default function Dashboard({
                         </div>
                     </div>
 
-                    {/* Kehadiran */}
+                    {/* Status Peserta Bar Chart */}
+                    <div className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1 lg:col-span-2">
+                        <div className="relative p-6">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-md">
+                                    <i className="fas fa-chart-bar"></i>
+                                </div>
+                                <h5 className="text-lg font-bold text-gray-800">Status Peserta</h5>
+                            </div>
+                            <div className="space-y-4">
+                                {/* Aktif */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-700">Aktif</span>
+                                        <span className="text-sm font-bold text-emerald-600">{pesertaAktif}</span>
+                                    </div>
+                                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all duration-500"
+                                            style={{ width: `${totalPeserta > 0 ? (pesertaAktif / totalPeserta * 100) : 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                {/* Menunggu Verifikasi */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-700">Menunggu Verifikasi</span>
+                                        <span className="text-sm font-bold text-amber-600">{pesertaPending}</span>
+                                    </div>
+                                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-amber-500 to-amber-600 rounded-full transition-all duration-500"
+                                            style={{ width: `${totalPeserta > 0 ? (pesertaPending / totalPeserta * 100) : 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                {/* Menunggu Pembayaran */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-700">Menunggu Pembayaran</span>
+                                        <span className="text-sm font-bold text-blue-600">{pesertaMenungguPembayaran || 0}</span>
+                                    </div>
+                                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                                            style={{ width: `${totalPeserta > 0 ? ((pesertaMenungguPembayaran || 0) / totalPeserta * 100) : 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                {/* Ditolak */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-700">Ditolak</span>
+                                        <span className="text-sm font-bold text-red-600">{pesertaDitolak || 0}</span>
+                                    </div>
+                                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all duration-500"
+                                            style={{ width: `${totalPeserta > 0 ? ((pesertaDitolak || 0) / totalPeserta * 100) : 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Top 3 Panitia Performa Tertinggi */}
+                    {committee_stats && committee_stats.length > 0 && (
+                        <div className="group relative bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                            <div className="relative p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-xl shadow-lg animate-pulse">
+                                        <i className="fas fa-trophy"></i>
+                                    </div>
+                                    <span className="text-yellow-100 text-sm font-bold uppercase tracking-wider">Top 3 Performa</span>
+                                </div>
+                                <div className="space-y-3">
+                                    {committee_stats.slice(0, 3).map((member, index) => (
+                                        <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-yellow-300 text-yellow-900' :
+                                                    index === 1 ? 'bg-gray-300 text-gray-900' :
+                                                        'bg-amber-700 text-white'
+                                                    }`}>
+                                                    {index + 1}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-white font-semibold text-sm truncate" title={member.name}>
+                                                        {member.name}
+                                                    </div>
+                                                    <div className="text-yellow-100 text-xs">{member.position}</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-white font-bold text-lg">{member.total_actions}</div>
+                                                    <div className="text-yellow-100 text-xs">aktivitas</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Baris 2: Total Pesan + Peserta Murni + Total Panitia */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                    {/* Total Pesan */}
+                    <div className="group relative bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div className="relative p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
+                                    <i className="fas fa-comments"></i>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-cyan-100 text-xs font-medium uppercase tracking-wider">Total Pesan</span>
+                                </div>
+                            </div>
+                            <div className="text-4xl font-bold text-white mb-2">{totalChats.toLocaleString()}</div>
+                            <div className="space-y-2 pt-3 border-t border-white/20">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-cyan-100 text-xs">Pesan dalam obrolan</span>
+                                    <span className="text-white text-sm font-semibold">{totalChats.toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-cyan-100 text-xs">Chat Hubungi Panitia</span>
+                                    <span className="text-white text-sm font-semibold">{(totalChatHubungiPanitia || 0).toLocaleString()}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-cyan-100 text-xs">User Beri Komentar</span>
+                                    <span className="text-white text-sm font-semibold">{(totalUserKomentar || 0).toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Total Peserta Tanpa Panitia */}
                     <div className="group relative bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
                         <div className="relative p-6">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
-                                    <i className="fas fa-user-check"></i>
+                                    <i className="fas fa-user-friends"></i>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-emerald-100 text-xs font-medium uppercase tracking-wider">Kehadiran</span>
+                                    <span className="text-emerald-100 text-xs font-medium uppercase tracking-wider">Peserta Murni</span>
                                 </div>
                             </div>
-                            <div className="text-4xl font-bold text-white mb-2">{pesertaHadir.toLocaleString()}</div>
+                            <div className="text-4xl font-bold text-white mb-2">{totalPeserta.toLocaleString()}</div>
                             <div className="pt-3 border-t border-white/20">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-emerald-100 text-sm">{persentaseKehadiran}% dari total</span>
-                                    <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
-                                        <div className="h-full bg-white rounded-full" style={{ width: `${persentaseKehadiran}%` }}></div>
-                                    </div>
-                                </div>
+                                <span className="text-emerald-100 text-sm">Tanpa Panitia</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Total Tugas */}
-                    <div className="group relative bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                        <div className="relative p-6">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
-                                    <i className="fas fa-tasks"></i>
-                                </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-amber-100 text-xs font-medium uppercase tracking-wider">Total Tugas</span>
-                                </div>
-                            </div>
-                            <div className="text-4xl font-bold text-white mb-2">{totalTugas.toLocaleString()}</div>
-                            <div className="pt-3 border-t border-white/20">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-amber-100 text-sm">{persentaseTugasSelesai}% selesai</span>
-                                    <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
-                                        <div className="h-full bg-white rounded-full" style={{ width: `${persentaseTugasSelesai}%` }}></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Panitia */}
+                    {/* Total Panitia */}
                     <div className="group relative bg-gradient-to-br from-pink-500 via-rose-600 to-red-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
                         <div className="relative p-6">
@@ -575,7 +688,7 @@ export default function Dashboard({
                                     <i className="fas fa-user-tie"></i>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-pink-100 text-xs font-medium uppercase tracking-wider">Panitia</span>
+                                    <span className="text-pink-100 text-xs font-medium uppercase tracking-wider">Total Panitia</span>
                                 </div>
                             </div>
                             <div className="text-4xl font-bold text-white mb-2">{totalPanitia.toLocaleString()}</div>
@@ -593,292 +706,311 @@ export default function Dashboard({
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {/* Best PIC */}
-                    {committee_stats && committee_stats.length > 0 && (
-                        <div className="group relative bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                            <div className="relative p-6">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg animate-pulse">
-                                        <i className="fas fa-trophy"></i>
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-yellow-100 text-xs font-medium uppercase tracking-wider">Best Performer</span>
-                                    </div>
-                                </div>
-                                <div className="text-2xl font-bold text-white mb-1 truncate" title={committee_stats[0].name}>{committee_stats[0].name}</div>
-                                <div className="text-sm text-yellow-100 mb-2">{committee_stats[0].position}</div>
-                                <div className="pt-3 border-t border-white/20">
-                                    <div className="flex items-center justify-between text-white">
-                                        <span className="text-xs font-medium">Total Aktivitas</span>
-                                        <span className="text-2xl font-bold">{committee_stats[0].total_actions}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Total Pesan */}
-                    <div className="group relative bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                {/* Baris 3: Statistik Wilayah */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                    {/* Total Provinsi */}
+                    <div className="group relative bg-gradient-to-br from-emerald-400 via-teal-500 to-green-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
                         <div className="relative p-6">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
-                                    <i className="fas fa-comments"></i>
+                                    <i className="fas fa-map-marked-alt"></i>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-cyan-100 text-xs font-medium uppercase tracking-wider">Total Pesan</span>
+                                    <span className="text-emerald-100 text-xs font-medium uppercase tracking-wider">Total Provinsi</span>
                                 </div>
                             </div>
-                            <div className="text-4xl font-bold text-white mb-2">{totalChats.toLocaleString()}</div>
+                            <div className="text-4xl font-bold text-white mb-2">{provinceStats?.length || 0}</div>
                             <div className="pt-3 border-t border-white/20">
-                                <span className="text-cyan-100 text-sm">Pesan dalam obrolan</span>
+                                <span className="text-emerald-100 text-sm">Sebaran wilayah</span>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Grafik Utama */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-                    {/* Trend Pendaftaran (Left Side) */}
-                    <div className="lg:col-span-3 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100 flex flex-col">
-                        <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-purple-500 to-indigo-500">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md">
-                                    <i className="fas fa-chart-line"></i>
+                    {/* Total Kab/Kota */}
+                    <div className="group relative bg-gradient-to-br from-amber-400 via-orange-500 to-yellow-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div className="relative p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
+                                    <i className="fas fa-city"></i>
                                 </div>
-                                <h5 className="text-lg font-bold text-gray-800">Trend Pendaftaran</h5>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-amber-100 text-xs font-medium uppercase tracking-wider">Total Kab/Kota</span>
+                                </div>
                             </div>
-                            <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">30 hari terakhir</span>
-                        </div>
-                        <div className="relative flex-1 h-64 sm:h-80">
-                            <Line data={registrationChartData} options={registrationChartOptions} />
+                            <div className="text-4xl font-bold text-white mb-2">{regencyStats?.length || 0}</div>
+                            <div className="pt-3 border-t border-white/20">
+                                <span className="text-amber-100 text-sm">Kabupaten & Kota</span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Right Side (Stacked) */}
-                    <div className="flex flex-col gap-6">
-                        {/* Distribusi Jenis Kelamin */}
-                        <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
-                            <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-blue-500 to-pink-500">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-pink-500 rounded-lg flex items-center justify-center text-white shadow-md">
-                                        <i className="fas fa-venus-mars"></i>
-                                    </div>
-                                    <h5 className="text-base font-bold text-gray-800">Jenis Kelamin</h5>
+                    {/* Total Kecamatan */}
+                    <div className="group relative bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div className="relative p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
+                                    <i className="fas fa-map-marker-alt"></i>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-pink-100 text-xs font-medium uppercase tracking-wider">Total Kecamatan</span>
                                 </div>
                             </div>
-                            <div className="relative h-40">
-                                <Doughnut data={genderChartData} options={genderChartOptions} />
+                            <div className="text-4xl font-bold text-white mb-2">{districtStats?.length || 0}</div>
+                            <div className="pt-3 border-t border-white/20">
+                                <span className="text-pink-100 text-sm">Sebaran kecamatan</span>
                             </div>
                         </div>
-
-                        {/* Status Peserta */}
-                        <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
-                            <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-emerald-500 to-teal-500">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center text-white shadow-md">
-                                        <i className="fas fa-user-check"></i>
-                                    </div>
-                                    <h5 className="text-base font-bold text-gray-800">Status Peserta</h5>
-                                </div>
-                            </div>
-                            <div className="relative h-40">
-                                <Pie data={statusPesertaChartData} options={statusPesertaChartOptions} />
-                            </div>
-                        </div>
-
-                        {/* Jenis Kepesertaan */}
-                        {participationTypeStats && participationTypeStats.data && participationTypeStats.data.length > 0 && (
-                            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
-                                <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-amber-500 to-orange-500">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center text-white shadow-md">
-                                            <i className="fas fa-users-cog"></i>
-                                        </div>
-                                        <h5 className="text-base font-bold text-gray-800">Jenis Kepesertaan</h5>
-                                    </div>
-                                </div>
-                                <div className="relative h-40">
-                                    <Doughnut data={participationTypeChartData} options={participationTypeChartOptions} />
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
 
                 {/* Grafik Performa Panitia */}
 
 
-                {/* Grafik Tugas per Divisi */}
+                {/* Grafik Utama */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+                        {/* Trend Pendaftaran (Left Side) */}
+                        <div className="lg:col-span-3 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100 flex flex-col">
+                            <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-purple-500 to-indigo-500">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md">
+                                        <i className="fas fa-chart-line"></i>
+                                    </div>
+                                    <h5 className="text-lg font-bold text-gray-800">Trend Pendaftaran</h5>
+                                </div>
+                                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">30 hari terakhir</span>
+                            </div>
+                            <div className="relative flex-1 h-64 sm:h-80">
+                                <Line data={registrationChartData} options={registrationChartOptions} />
+                            </div>
+                        </div>
+
+                        {/* Right Side (Stacked) */}
+                        <div className="flex flex-col gap-6">
+                            {/* Distribusi Jenis Kelamin */}
+                            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
+                                <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-blue-500 to-pink-500">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-pink-500 rounded-lg flex items-center justify-center text-white shadow-md">
+                                            <i className="fas fa-venus-mars"></i>
+                                        </div>
+                                        <h5 className="text-base font-bold text-gray-800">Jenis Kelamin</h5>
+                                    </div>
+                                </div>
+                                <div className="relative h-40">
+                                    <Doughnut data={genderChartData} options={genderChartOptions} />
+                                </div>
+                            </div>
+
+                            {/* Status Peserta */}
+                            <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
+                                <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-emerald-500 to-teal-500">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center text-white shadow-md">
+                                            <i className="fas fa-user-check"></i>
+                                        </div>
+                                        <h5 className="text-base font-bold text-gray-800">Status Peserta</h5>
+                                    </div>
+                                </div>
+                                <div className="relative h-40">
+                                    <Pie data={statusPesertaChartData} options={statusPesertaChartOptions} />
+                                </div>
+                            </div>
+
+                            {/* Jenis Kepesertaan */}
+                            {participationTypeStats && participationTypeStats.data && participationTypeStats.data.length > 0 && (
+                                <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
+                                    <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-amber-500 to-orange-500">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center text-white shadow-md">
+                                                <i className="fas fa-users-cog"></i>
+                                            </div>
+                                            <h5 className="text-base font-bold text-gray-800">Jenis Kepesertaan</h5>
+                                        </div>
+                                    </div>
+                                    <div className="relative h-40">
+                                        <Doughnut data={participationTypeChartData} options={participationTypeChartOptions} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+            {/* Grafik Performa Panitia */}
+
+
+            {/* Grafik Tugas per Divisi */}
+            <div className="mb-6">
+                <div className="bg-white rounded-xl shadow-md p-6">
+                    <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+                        <h5 className="text-base font-semibold text-gray-700">Status Tugas per Divisi</h5>
+                    </div>
+                    <div className="relative h-80">
+                        <Bar data={divisionTaskChartData} options={divisionTaskChartOptions} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Grafik Daerah (Filter) */}
+            <div className="mb-6">
+                <div className="bg-white rounded-xl shadow-md p-6">
+                    <div className="flex flex-wrap justify-between items-center mb-4 pb-4 border-b border-gray-200 gap-2">
+                        <div className="flex items-center gap-2">
+                            <h5 className="text-base font-semibold text-gray-700 uppercase">
+                                USER BERDASARKAN {regionLevel === 'province' ? 'PROVINSI' : regionLevel === 'regency' ? 'KABUPATEN/KOTA' : 'KECAMATAN'}
+                            </h5>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={regionLevel}
+                                onChange={(e) => setRegionLevel(e.target.value)}
+                                className="text-xs border border-gray-300 rounded px-2 py-1 max-w-[150px] focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="province">Provinsi</option>
+                                <option value="regency">Kabupaten/Kota</option>
+                                <option value="district">Kecamatan</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className="relative h-80">
+                        <Bar data={regionChartDataState} options={regionChartOptions} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Statistik Batch (jika ada) */}
+            {batchStats && Object.keys(batchStats).length > 1 && activity.activity_type === 'batch' && (
+                // Note: We need chart data for batches if we want to display it. 
+                // The blade used `batchChart` but didn't show the data source in the snippet I read.
+                // Assuming we might need to construct it or it's passed.
+                // For now, I'll omit the chart if data isn't readily available in props in a format for Chart.js, 
+                // or I can try to infer it. The prop `batchStats` is passed.
+                // Let's assume `batchStats` is an object/array we can use.
+                // Blade snippet: <canvas id="batchChart"></canvas>
+                // I'll skip implementation details of batchChart for now unless I see the data structure.
+                // I will just show a placeholder or basic list if needed, or hide it.
+                // Given the user wants "same functionality", I should probably try.
+                // But I don't have the `batchStats` structure from the controller read.
+                // Let's check the controller read again.
+                // Ah, I missed reading the `batchStats` construction in controller.
+                // It's likely similar to others.
+                // For safety, I will render a simple list or just the container.
                 <div className="mb-6">
                     <div className="bg-white rounded-xl shadow-md p-6">
                         <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-                            <h5 className="text-base font-semibold text-gray-700">Status Tugas per Divisi</h5>
+                            <h5 className="text-base font-semibold text-gray-700">Peserta per Batch</h5>
                         </div>
-                        <div className="relative h-80">
-                            <Bar data={divisionTaskChartData} options={divisionTaskChartOptions} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            {Object.entries(batchStats).map(([name, count], index) => (
+                                <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                                    <div className="text-sm font-medium text-gray-500">{name}</div>
+                                    <div className="text-2xl font-bold text-gray-800">{count}</div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
+            )}
 
-                {/* Grafik Daerah (Filter) */}
+            {/* Statistik Kamar (jika ada data kamar) */}
+            {roomStats && (
                 <div className="mb-6">
                     <div className="bg-white rounded-xl shadow-md p-6">
-                        <div className="flex flex-wrap justify-between items-center mb-4 pb-4 border-b border-gray-200 gap-2">
-                            <div className="flex items-center gap-2">
-                                <h5 className="text-base font-semibold text-gray-700 uppercase">
-                                    USER BERDASARKAN {regionLevel === 'province' ? 'PROVINSI' : regionLevel === 'regency' ? 'KABUPATEN/KOTA' : 'KECAMATAN'}
-                                </h5>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <select
-                                    value={regionLevel}
-                                    onChange={(e) => setRegionLevel(e.target.value)}
-                                    className="text-xs border border-gray-300 rounded px-2 py-1 max-w-[150px] focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="province">Provinsi</option>
-                                    <option value="regency">Kabupaten/Kota</option>
-                                    <option value="district">Kecamatan</option>
-                                </select>
-                            </div>
+                        <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+                            <h5 className="text-base font-semibold text-gray-700">Statistik Kamar</h5>
                         </div>
-                        <div className="relative h-80">
-                            <Bar data={regionChartDataState} options={regionChartOptions} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kamar</div>
+                                <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.total_rooms?.toLocaleString() || 0}</div>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kapasitas</div>
+                                <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.total_capacity?.toLocaleString() || 0}</div>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Terisi</div>
+                                <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.assigned?.toLocaleString() || 0}</div>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Belum Dapat Kamar</div>
+                                <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.unassigned?.toLocaleString() || 0}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
+            )}
 
-                {/* Statistik Batch (jika ada) */}
-                {batchStats && Object.keys(batchStats).length > 1 && activity.activity_type === 'batch' && (
-                    // Note: We need chart data for batches if we want to display it. 
-                    // The blade used `batchChart` but didn't show the data source in the snippet I read.
-                    // Assuming we might need to construct it or it's passed.
-                    // For now, I'll omit the chart if data isn't readily available in props in a format for Chart.js, 
-                    // or I can try to infer it. The prop `batchStats` is passed.
-                    // Let's assume `batchStats` is an object/array we can use.
-                    // Blade snippet: <canvas id="batchChart"></canvas>
-                    // I'll skip implementation details of batchChart for now unless I see the data structure.
-                    // I will just show a placeholder or basic list if needed, or hide it.
-                    // Given the user wants "same functionality", I should probably try.
-                    // But I don't have the `batchStats` structure from the controller read.
-                    // Let's check the controller read again.
-                    // Ah, I missed reading the `batchStats` construction in controller.
-                    // It's likely similar to others.
-                    // For safety, I will render a simple list or just the container.
-                    <div className="mb-6">
-                        <div className="bg-white rounded-xl shadow-md p-6">
-                            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-                                <h5 className="text-base font-semibold text-gray-700">Peserta per Batch</h5>
+            {/* Statistik Kelompok (jika ada data kelompok) */}
+            {groupStats && (
+                <div className="mb-6">
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                        <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+                            <h5 className="text-base font-semibold text-gray-700">Statistik Kelompok Peserta</h5>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kelompok</div>
+                                <div className="text-2xl sm:text-3xl font-bold text-gray-700">{groupStats.total_groups?.toLocaleString() || 0}</div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                {Object.entries(batchStats).map(([name, count], index) => (
-                                    <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                                        <div className="text-sm font-medium text-gray-500">{name}</div>
-                                        <div className="text-2xl font-bold text-gray-800">{count}</div>
-                                    </div>
-                                ))}
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Tanpa Kelompok</div>
+                                <div className="text-2xl sm:text-3xl font-bold text-gray-700">{groupStats.ungrouped?.toLocaleString() || 0}</div>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Peserta Aktif</div>
+                                <div className="text-2xl sm:text-3xl font-bold text-gray-700">{pesertaAktif.toLocaleString()}</div>
                             </div>
                         </div>
+                        {/* Chart for groups could go here if data structure allows */}
                     </div>
-                )}
+                </div>
+            )}
 
-                {/* Statistik Kamar (jika ada data kamar) */}
-                {roomStats && (
-                    <div className="mb-6">
-                        <div className="bg-white rounded-xl shadow-md p-6">
-                            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-                                <h5 className="text-base font-semibold text-gray-700">Statistik Kamar</h5>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kamar</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.total_rooms?.toLocaleString() || 0}</div>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kapasitas</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.total_capacity?.toLocaleString() || 0}</div>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Terisi</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.assigned?.toLocaleString() || 0}</div>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Belum Dapat Kamar</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.unassigned?.toLocaleString() || 0}</div>
-                                </div>
-                            </div>
+            {/* Aktivitas Panitia (Pendaftaran & Validasi) */}
+            {committee_stats && committee_stats.length > 0 && (
+                <div className="mb-6">
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                        <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+                            <h5 className="text-base font-semibold text-gray-700">10 Panitia Teraktif (Top 10)</h5>
                         </div>
-                    </div>
-                )}
-
-                {/* Statistik Kelompok (jika ada data kelompok) */}
-                {groupStats && (
-                    <div className="mb-6">
-                        <div className="bg-white rounded-xl shadow-md p-6">
-                            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-                                <h5 className="text-base font-semibold text-gray-700">Statistik Kelompok Peserta</h5>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kelompok</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{groupStats.total_groups?.toLocaleString() || 0}</div>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Tanpa Kelompok</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{groupStats.ungrouped?.toLocaleString() || 0}</div>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Peserta Aktif</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{pesertaAktif.toLocaleString()}</div>
-                                </div>
-                            </div>
-                            {/* Chart for groups could go here if data structure allows */}
-                        </div>
-                    </div>
-                )}
-
-                {/* Aktivitas Panitia (Pendaftaran & Validasi) */}
-                {committee_stats && committee_stats.length > 0 && (
-                    <div className="mb-6">
-                        <div className="bg-white rounded-xl shadow-md p-6">
-                            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-                                <h5 className="text-base font-semibold text-gray-700">10 Panitia Teraktif (Top 10)</h5>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left text-gray-500">
-                                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-3">#</th>
-                                            <th className="px-4 py-3">Nama</th>
-                                            <th className="px-4 py-3 text-center">Pendaftaran</th>
-                                            <th className="px-4 py-3 text-center">Validasi</th>
-                                            <th className="px-4 py-3 text-center">Total Aktivitas</th>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-3">#</th>
+                                        <th className="px-4 py-3">Nama</th>
+                                        <th className="px-4 py-3 text-center">Pendaftaran</th>
+                                        <th className="px-4 py-3 text-center">Validasi</th>
+                                        <th className="px-4 py-3 text-center">AKSES</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {committee_stats.map((member, index) => (
+                                        <tr key={index} className="bg-white border-b hover:bg-gray-50">
+                                            <td className="px-4 py-3 font-medium text-gray-900">{index + 1}</td>
+                                            <td className="px-4 py-3 font-medium text-gray-900">
+                                                {member.name}
+                                                <div className="text-xs text-gray-500">{member.position || 'Panitia'}</div>
+                                            </td>
+                                            <td className="px-4 py-3 text-center text-secondary font-semibold">{member.registrations}</td>
+                                            <td className="px-4 py-3 text-center text-orange-500 font-semibold">{member.validations}</td>
+                                            <td className="px-4 py-3 text-center text-green-600 font-bold text-base">{member.akses}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {committee_stats.map((member, index) => (
-                                            <tr key={index} className="bg-white border-b hover:bg-gray-50">
-                                                <td className="px-4 py-3 font-medium text-gray-900">{index + 1}</td>
-                                                <td className="px-4 py-3 font-medium text-gray-900">
-                                                    {member.name}
-                                                    <div className="text-xs text-gray-500">{member.position || 'Panitia'}</div>
-                                                </td>
-                                                <td className="px-4 py-3 text-center text-secondary font-semibold">{member.registrations}</td>
-                                                <td className="px-4 py-3 text-center text-orange-500 font-semibold">{member.validations}</td>
-                                                <td className="px-4 py-3 text-center text-green-600 font-bold text-base">{member.total_actions}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                )}
+                </div>
+            )}
 
-            </div>
-        </AcaraLayout>
+        </div>
+        </AcaraLayout >
     );
 }
 
