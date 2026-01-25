@@ -38,12 +38,13 @@ class ImportSqlDump extends Command
             $chunk = 100;
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
-
+        // Use PDO directly to ensure session state persists
+        $pdo = DB::connection()->getPdo();
+        $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+        
         $file = new SplFileObject($path);
         $statement = '';
         $executed = 0;
-        $truncated = [];
 
         while (! $file->eof()) {
             $line = $file->fgets();
@@ -58,13 +59,9 @@ class ImportSqlDump extends Command
             }
 
             if (strpos($trimmed, '/*') === 0 || strpos($trimmed, '*/') === 0 || strpos($trimmed, '/*!') === 0) {
-                continue;
+               // checking for mysql directives
             }
-
-            if (stripos($trimmed, 'DELIMITER ') === 0) {
-                continue;
-            }
-
+            
             $statement .= $line;
 
             if (substr(rtrim($trimmed), -1) !== ';') {
@@ -77,57 +74,34 @@ class ImportSqlDump extends Command
             if ($sql === '') {
                 continue;
             }
-
-            $prefix = strtoupper(substr(ltrim($sql), 0, 20));
-
-            if (strpos($prefix, 'SET ') === 0) {
-                continue;
-            }
-
-            if (strpos($prefix, 'START TRANSACTION') === 0) {
-                continue;
-            }
-
-            if (strpos($prefix, 'COMMIT') === 0) {
-                continue;
-            }
-
-            if (strpos($prefix, 'LOCK TABLES') === 0 || strpos($prefix, 'UNLOCK TABLES') === 0) {
-                continue;
-            }
-
-            if (strpos($prefix, 'CREATE TABLE') === 0 || strpos($prefix, 'DROP TABLE') === 0 || strpos($prefix, 'ALTER TABLE') === 0) {
-                continue;
-            }
-
-            if (stripos($sql, 'INSERT INTO') === 0) {
-                if (preg_match('/^INSERT INTO\s+`?([A-Za-z0-9_]+)`?/i', $sql, $matches)) {
-                    $table = $matches[1];
-                    $logicalTable = $table === 'activity_users' ? 'activity_users' : $table;
-                    if ($table === 'activity_users') {
-                        $sql = preg_replace('/^INSERT INTO\s+`?activity_users`?/i', 'INSERT INTO `activity_users`', $sql, 1);
-                    }
-                    if (! isset($truncated[$logicalTable])) {
-                        if (Schema::hasTable($logicalTable)) {
-                            DB::statement('TRUNCATE TABLE `'.$logicalTable.'`');
-                            $this->info('Truncated table '.$logicalTable);
-                        } else {
-                            $this->warn('Table '.$logicalTable.' does not exist, skipping truncate.');
-                        }
-                        $truncated[$logicalTable] = true;
-                    }
-                }
+            
+            // Debug logging for activities
+            if (str_contains($sql, 'INSERT INTO `activities`')) {
+                $this->info('Attempting to insert into activities table...');
+                Log::info('ImportSqlDump: Attempting to insert into activities table.');
             }
 
             try {
                 DB::unprepared($sql);
                 $executed++;
+                
+                if (str_contains($sql, 'INSERT INTO `activities`')) {
+                     $this->info('Successfully inserted into activities table.');
+                     Log::info('ImportSqlDump: Successfully inserted into activities table.');
+                }
             } catch (QueryException $e) {
                 $errorInfo = $e->errorInfo ?? [];
                 $sqlState = $errorInfo[0] ?? null;
                 $driverCode = $errorInfo[1] ?? null;
 
-                if ($sqlState === '01000' && (int) $driverCode === 1265) {
+                // 1061: Duplicate key name
+                // 1050: Table already exists
+                // 1091: Can't drop x
+                // 1068: Multiple primary key defined
+                // 1826: Duplicate foreign key constraint name
+                if (in_array($driverCode, [1061, 1050, 1091, 1068, 1826])) {
+                     $this->warn('Notice: '.$e->getMessage());
+                } elseif ($sqlState === '01000' && (int) $driverCode === 1265) {
                     $this->warn('Warning while executing statement: '.$e->getMessage());
                     $executed++;
                 } else {
@@ -139,8 +113,6 @@ class ImportSqlDump extends Command
                         'executed' => $executed,
                     ]);
                     $this->error('Error while executing statement: '.$e->getMessage());
-
-                    return self::FAILURE;
                 }
             }
 
@@ -149,12 +121,10 @@ class ImportSqlDump extends Command
             }
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
 
         $this->info('Finished importing. Total statements executed: '.$executed);
 
         return self::SUCCESS;
     }
 }
-
-
