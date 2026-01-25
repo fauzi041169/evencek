@@ -83,10 +83,13 @@ export default function About() {
                     {/* Background Pattern */}
                     <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
                         {appSettings?.hero_background_1 && (
-                            <div 
-                                className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay"
-                                style={{ backgroundImage: `url('${getStorageUrl(appSettings.hero_background_1)}')` }}
-                            />
+                            <>
+                                <div 
+                                    className="absolute inset-0 bg-cover bg-center"
+                                    style={{ backgroundImage: `url('${getStorageUrl(appSettings.hero_background_1)}')` }}
+                                />
+                                <div className="absolute inset-0 bg-slate-900/75"></div>
+                            </>
                         )}
                         {!appSettings?.hero_background_1 && (
                              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
