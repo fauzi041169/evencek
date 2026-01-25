@@ -596,6 +596,19 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                     </div>
                                                 )}
 
+                                                {/* Download Credentials Button */}
+                                                <div className="mt-6 flex justify-center">
+                                                    <a 
+                                                        href={route('activity.preparation.download-import-result-excel', activityId)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 text-white px-5 py-2.5 text-sm font-bold hover:bg-emerald-700 transition-colors shadow-lg hover:shadow-emerald-500/30 border border-emerald-400"
+                                                    >
+                                                        <FileSpreadsheet className="w-5 h-5" />
+                                                        Unduh Hasil & Akun Peserta (.xlsx)
+                                                    </a>
+                                                </div>
+
                                                 {importResult.bulk_payment_available && (
                                                     <div className="mt-6 p-4 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-700 text-sm">
                                                         <p className="font-bold text-lg mb-1">Pembayaran Diperlukan</p>

@@ -181,7 +181,16 @@ class ActivitySpeakerController extends Controller
 
         $speakers = $activity->speakers()->orderBy('order')->get();
 
-        return \Inertia\Inertia::render('Activity/Speakers/Index', compact('activity', 'speakers'));
+        $isCommittee = $activity->canManageRegistration(auth()->id());
+        $activityData = array_merge($activity->toArray(), [
+             'is_committee' => $isCommittee,
+             'can_manage_registration' => $isCommittee,
+        ]);
+
+        return \Inertia\Inertia::render('Activity/Speakers/Index', [
+            'activity' => $activityData,
+            'speakers' => $speakers
+        ]);
     }
 
     public function store(Request $request, Activity $activity)

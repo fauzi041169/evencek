@@ -18,6 +18,22 @@ class ActivityScanController extends Controller
                 'status' => 'required',
             ]);
 
+            // Authorization Check
+            $activity = \App\Models\Activity::find($request->activity_id);
+            if (!$activity) {
+                 return response()->json([
+                    'success' => false,
+                    'message' => 'Kegiatan tidak ditemukan',
+                ], 404);
+            }
+
+            if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+                 return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki izin untuk melakukan scan pada kegiatan ini.',
+                ], 403);
+            }
+
             // Ambil data sesi absensi
             $attendanceSession = \App\Models\Attendance::find($request->attendance_id);
             if (! $attendanceSession) {

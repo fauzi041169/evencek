@@ -26,7 +26,7 @@ class ActivityBatchController extends Controller
             abort(403);
         }
 
-        if ($user->id !== $activity->user_id && ! $user->isAdmin()) {
+        if (! $activity->canManageRegistration($user->id)) {
             abort(403);
         }
 
@@ -65,7 +65,16 @@ class ActivityBatchController extends Controller
 
         $batches = $activity->batches()->withCount('users')->orderBy('created_at', 'desc')->get();
 
-        return Inertia::render('Activity/Batches/Index', compact('activity', 'batches'));
+        $isCommittee = $activity->canManageRegistration($user->id);
+        $activityData = array_merge($activity->toArray(), [
+             'is_committee' => $isCommittee,
+             'can_manage_registration' => $isCommittee,
+        ]);
+
+        return Inertia::render('Activity/Batches/Index', [
+            'activity' => $activityData,
+            'batches' => $batches
+        ]);
     }
 
     // Store a new batch
@@ -76,7 +85,7 @@ class ActivityBatchController extends Controller
             abort(403);
         }
 
-        if ($user->id !== $activity->user_id && ! $user->isAdmin()) {
+        if (! $activity->canManageRegistration($user->id)) {
             abort(403);
         }
 
@@ -122,7 +131,7 @@ class ActivityBatchController extends Controller
             abort(403);
         }
 
-        if ($user->id !== $activity->user_id && ! $user->isAdmin()) {
+        if (! $activity->canManageRegistration($user->id)) {
             abort(403);
         }
 
@@ -167,7 +176,7 @@ class ActivityBatchController extends Controller
             abort(403);
         }
 
-        if ($user->id !== $activity->user_id && ! $user->isAdmin()) {
+        if (! $activity->canManageRegistration($user->id)) {
             abort(403);
         }
 
@@ -193,7 +202,7 @@ class ActivityBatchController extends Controller
             abort(403);
         }
 
-        if ($user->id !== $activity->user_id && ! $user->isAdmin()) {
+        if (! $activity->canManageRegistration($user->id)) {
             abort(403);
         }
 
@@ -211,4 +220,3 @@ class ActivityBatchController extends Controller
         }
     }
 }
-

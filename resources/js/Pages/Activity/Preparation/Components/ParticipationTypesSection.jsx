@@ -42,10 +42,12 @@ export default function ParticipationTypesSection({ participationTypes, activity
 
             <div className="space-y-2">
                 {participationTypes.map((type) => (
-                    <div key={type.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                        <span className="text-sm font-bold">{type.name}</span>
-                        <div className="flex gap-2">
-                            <button onClick={() => openModal(type)} className="text-blue-500 hover:text-blue-700"><i className="fas fa-edit"></i></button>
+                    <div key={type.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors">
+                        <span className="text-sm font-bold truncate pr-2 flex-1 min-w-0">{type.name}</span>
+                        <div className="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => openModal(type)} className="text-blue-500 hover:text-blue-700 bg-white p-1.5 rounded-lg shadow-sm">
+                                <i className="fas fa-edit"></i>
+                            </button>
                         </div>
                     </div>
                 ))}

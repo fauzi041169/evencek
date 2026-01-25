@@ -127,88 +127,67 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-gray-100">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-100">
-                        <thead className="bg-gray-50/50">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Jabatan</th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Nama / Personel</th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">No HP</th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Divisi</th>
-                                <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-50">
-                            {committeeStructure.map((member) => (
-                                <tr key={member.id} className="hover:bg-gray-50/30 transition-colors group">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-secondary/10 text-secondary">
-                                            {member.position}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <div className="h-10 w-10 flex-shrink-0">
-                                                <img
-                                                    className="h-10 w-10 rounded-xl object-cover ring-2 ring-white shadow-sm"
-                                                    src={member.user?.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`}
-                                                    alt={member.name}
-                                                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                                />
-                                            </div>
-                                            <div className="ml-4">
-                                                <div className="text-sm font-bold text-gray-900">{member.name}</div>
-                                                <div className="text-xs text-gray-400">{member.user?.email || 'External'}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <a href={`https://wa.me/${member.phone}`} target="_blank" className="text-sm font-medium text-gray-600 hover:text-green-500 transition-colors flex items-center">
-                                            <i className="fab fa-whatsapp mr-1.5 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                                            {member.phone || '-'}
-                                        </a>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="text-sm text-gray-500 font-medium">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {committeeStructure.map((member) => (
+                        <div key={member.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                <button
+                                    onClick={() => openModal(member)}
+                                    className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-white/90 text-gray-400 hover:text-blue-500 hover:bg-blue-50 shadow-sm border border-gray-100 transition-all"
+                                    title="Edit"
+                                >
+                                    <i className="fas fa-edit text-xs"></i>
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(member.id)}
+                                    className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-white/90 text-gray-400 hover:text-red-500 hover:bg-red-50 shadow-sm border border-gray-100 transition-all"
+                                    title="Hapus"
+                                >
+                                    <i className="fas fa-trash-alt text-xs"></i>
+                                </button>
+                            </div>
+
+                            <div className="flex items-start gap-4 mb-4">
+                                <div className="relative">
+                                    <img
+                                        className="h-16 w-16 rounded-2xl object-cover ring-4 ring-gray-50 shadow-sm"
+                                        src={member.user?.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`}
+                                        alt={member.name}
+                                        onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                    />
+                                    <div className="absolute -bottom-2 -right-2 bg-white rounded-lg px-2 py-0.5 border border-gray-100 shadow-sm">
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                                             {divisions.find(d => d.id === member.activity_division_id)?.name || '-'}
                                         </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <button
-                                            onClick={() => openModal(member)}
-                                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-blue-500 hover:bg-blue-50 transition-all opacity-0 group-hover:opacity-100 mr-1"
-                                            title="Edit"
-                                        >
-                                            <i className="fas fa-edit text-xs"></i>
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(member.id)}
-                                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                                            title="Hapus"
-                                        >
-                                            <i className="fas fa-trash-alt text-xs"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {committeeStructure.length === 0 && (
-                                <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center">
-                                        <div className="flex flex-col items-center">
-                                            <div className="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-200">
-                                                <i className="fas fa-users text-3xl"></i>
-                                            </div>
-                                            <p className="text-sm text-gray-400 font-bold">Belum ada susunan panitia</p>
-                                            <p className="text-xs text-gray-400 mt-1">Klik tombol di atas untuk mulai menyusun kepanitiaan Anda</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                    </div>
+                                </div>
+                                <div className="flex-1 min-w-0 pt-1">
+                                    <h4 className="text-base font-bold text-gray-900 truncate pr-6">{member.name}</h4>
+                                    <p className="text-xs text-gray-400 truncate mb-2">{member.user?.email || 'External'}</p>
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-secondary/10 text-secondary border border-secondary/20">
+                                        {member.position}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 mt-2 border-t border-gray-50 flex justify-between items-center">
+                                <a href={`https://wa.me/${member.phone}`} target="_blank" className="text-sm font-medium text-gray-500 hover:text-green-500 transition-colors flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-green-50">
+                                    <i className="fab fa-whatsapp text-lg"></i>
+                                    <span>{member.phone || '-'}</span>
+                                </a>
+                            </div>
+                        </div>
+                    ))}
+                    {committeeStructure.length === 0 && (
+                        <div className="col-span-full flex flex-col items-center justify-center py-12 bg-gray-50 rounded-2xl border border-gray-100 border-dashed">
+                            <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center mb-4 text-gray-200 shadow-sm">
+                                <i className="fas fa-users text-3xl"></i>
+                            </div>
+                            <p className="text-sm text-gray-400 font-bold">Belum ada susunan panitia</p>
+                            <p className="text-xs text-gray-400 mt-1">Klik tombol di atas untuk mulai menyusun kepanitiaan Anda</p>
+                        </div>
+                    )}
                 </div>
-            </div>
             </div>
 
             {/* Modal Tambah Panitia - Professional Rewrite */}

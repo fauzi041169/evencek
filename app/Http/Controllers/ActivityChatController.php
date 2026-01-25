@@ -29,10 +29,15 @@ class ActivityChatController extends Controller
         $user = Auth::user();
         $isCommittee = $activity->canManageRegistration($user->id);
 
+        $activityData = array_merge($activity->toArray(), [
+             'is_committee' => $isCommittee,
+             'can_manage_registration' => $isCommittee,
+        ]);
+
         if ($isCommittee) {
-            return Inertia::render('Activity/Chat/CommitteeIndex', compact('activity'));
+            return Inertia::render('Activity/Chat/CommitteeIndex', ['activity' => $activityData]);
         } else {
-            return Inertia::render('Activity/Chat/UserIndex', compact('activity'));
+            return Inertia::render('Activity/Chat/UserIndex', ['activity' => $activityData]);
         }
     }
 

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { usePage } from '@inertiajs/react';
 
 export default function OwnerSection({ owners, activity, isEmbedded = false }) {
@@ -24,16 +24,16 @@ export default function OwnerSection({ owners, activity, isEmbedded = false }) {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {owners.map((owner) => (
                     <div key={owner.id} className="flex items-center p-3 bg-gray-50 rounded-2xl border border-gray-100 group hover:shadow-md transition-all">
                         <img
-                            className="h-10 w-10 rounded-xl object-cover"
+                            className="h-10 w-10 rounded-xl object-cover shrink-0"
                             src={owner.profile_photo_url}
                             alt={owner.name}
                             onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(owner.name)}`; }}
                         />
-                        <div className="ml-3 truncate">
+                        <div className="ml-3 min-w-0 flex-1">
                             <div className="text-sm font-bold truncate">{owner.name}</div>
                             <div className="text-xs text-gray-500 truncate">{owner.email}</div>
                         </div>

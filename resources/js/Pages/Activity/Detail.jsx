@@ -520,11 +520,11 @@ export default function Detail({
     const shouldShowPrice = showPrice;
 
     return (
-        <WebLayout hasHeaderSpacer={false}>
+        <WebLayout hasHeaderSpacer={false} transparentNavbar={true}>
             <Head title={activity.title || activity.name} />
 
             {/* Hero Section */}
-            <div className="relative bg-slate-900 overflow-hidden min-h-[700px] flex items-center">
+            <div className="relative bg-slate-900 overflow-hidden min-h-[500px] lg:min-h-[600px] flex items-center pt-16">
                 <style>{`
                     @keyframes fade-up {
                         from { opacity: 0; transform: translateY(20px); }
@@ -588,154 +588,211 @@ export default function Detail({
                 `}</style>
 
                 {/* Background Elements */}
-                <div className="absolute inset-0">
-                    {/* Simple Blue/Purple Gradient Background */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 z-10"></div>
-
-                    {/* Optional: Very subtle pattern or noise if desired, but user said 'simple' */}
-                    {/* <div className="absolute inset-0 bg-[url('/assets/images/begron/bg-pattern.png')] opacity-5 mix-blend-overlay"></div> */}
+                <div className="absolute inset-0 pointer-events-none">
+                    {/* Dark Background */}
+                    <div className="absolute inset-0 bg-slate-900 z-0"></div>
+                    
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-900/20 to-slate-900 z-10"></div>
+                    
+                    {/* Animated Blobs */}
+                    <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-purple-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob z-10"></div>
+                    <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10"></div>
                 </div>
 
                 {/* Content Container */}
-                <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-48 flex flex-col items-center justify-center text-center">
+                <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                    
+                    {/* Left Column: Text & Actions */}
+                    <div className="w-full lg:w-1/2 text-center lg:text-left space-y-8 animate-fade-up">
+                        
+                        {/* Badges Row */}
+                        <div className="flex flex-wrap justify-center lg:justify-start gap-3">
+                            {activity.activity_type !== 'non_batch' && activeBatch && activeBatch.name && (
+                                <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
+                                    <i className="fas fa-layer-group text-cyan-300"></i>
+                                    <span>{activeBatch.name}</span>
+                                </span>
+                            )}
+                            {(activity.date || activity.start_date) && (
+                                <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
+                                    <i className="far fa-calendar-alt text-cyan-300"></i>
+                                    <span>{formatDateRange(activity.date || activity.start_date, activity.end_date)}</span>
+                                </span>
+                            )}
+                        </div>
 
-                    {/* Title */}
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight animate-fade-up max-w-4xl mb-6">
-                        {activity.title || activity.name}
-                    </h1>
+                        {/* Title */}
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                            {activity.title || activity.name}
+                        </h1>
 
-                    {/* Meta Info Row */}
-                    <div className="flex flex-wrap justify-center gap-3 animate-fade-up delay-100 mb-8">
-                        {(activity.date || activity.start_date) && (
-                            <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
-                                <i className="far fa-calendar-alt text-cyan-300"></i>
-                                <span>{formatDateRange(activity.date || activity.start_date, activity.end_date)}</span>
-                            </span>
-                        )}
-                        {(activity.time || activity.start_time) && (
-                            <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
-                                <i className="fas fa-clock text-cyan-300"></i>
-                                <span>{formatTimeRange(activity.time || activity.start_time, activity.end_time)}</span>
-                            </span>
-                        )}
-                        {activity.activity_type !== 'non_batch' && activeBatch && activeBatch.name && (
-                            <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
-                                <i className="fas fa-layer-group text-cyan-300"></i>
-                                <span>{activeBatch.name}</span>
-                            </span>
-                        )}
-                        {activity.location && (
-                            <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
-                                <i className="fas fa-map-marker-alt text-cyan-300"></i>
-                                <span>{activity.location}</span>
-                            </span>
-                        )}
-
-                        {/* Price Pill */}
-                        {activity.price !== null && (
-                            <>
-                                {Number(activity.price) > 0 ? (
-                                    (showPrice || canEdit) && (
-                                        <div className={`glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default ${!showPrice ? 'opacity-50' : ''}`}>
-                                            <i className="fas fa-tag text-cyan-300"></i>
-                                            <span>Rp {new Intl.NumberFormat('id-ID').format(activity.price)}</span>
-                                            {canEdit && (
-                                                <button
-                                                    onClick={(e) => { e.preventDefault(); togglePriceVisibility(); }}
-                                                    className="ml-2 p-1 rounded-full hover:bg-white/10 transition-colors"
-                                                    title={showPrice ? 'Sembunyikan Harga' : 'Tampilkan Harga'}
-                                                >
-                                                    <i className={`fas ${showPrice ? 'fa-eye' : 'fa-eye-slash'} text-xs`}></i>
-                                                </button>
-                                            )}
-                                        </div>
-                                    )
-                                ) : (
-                                    <div className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
-                                        <span className="text-emerald-300 font-bold">GRATIS</span>
+                        {/* Additional Info (Location & Time) */}
+                        <div className="flex flex-col sm:flex-row items-center lg:items-start gap-4 text-gray-300">
+                             {(activity.time || activity.start_time) && (
+                                <div className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-xl backdrop-blur-sm border border-white/10 w-full sm:w-auto">
+                                    <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                                        <i className="fas fa-clock"></i>
                                     </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap justify-center gap-4 relative z-30">
-                        {/* Share Button */}
-                        <div className="relative">
-                            <button
-                                type="button"
-                                onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
-                                className="glass-button inline-flex items-center justify-center w-12 h-12 rounded-full text-white hover:bg-white/20"
-                                title="Bagikan"
-                            >
-                                <i className="fas fa-share-alt"></i>
-                            </button>
-                            {isShareMenuOpen && (
-                                <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 text-left text-gray-800 animate-fade-up" style={{ zIndex: 50 }}>
-                                    <button type="button" onClick={copyShareLink} className="flex items-center w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors">
-                                        <i className="fas fa-link text-gray-500 mr-3"></i> Salin URL
-                                    </button>
-                                    <button type="button" onClick={shareNative} className="flex items-center w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors">
-                                        <i className="fas fa-share text-gray-600 mr-3"></i> Bagikan Perangkat
-                                    </button>
+                                    <div className="text-left">
+                                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Waktu</p>
+                                        <p className="text-sm font-semibold text-white">{formatTimeRange(activity.time || activity.start_time, activity.end_time)}</p>
+                                    </div>
+                                </div>
+                            )}
+                            {activity.location && (
+                                <div className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-xl backdrop-blur-sm border border-white/10 w-full sm:w-auto">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                        <i className="fas fa-map-marker-alt"></i>
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Lokasi</p>
+                                        <p className="text-sm font-semibold text-white line-clamp-1 max-w-[200px]" title={activity.location}>{activity.location}</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
 
-                        {isJoined ? (
-                            <button
-                                onClick={() => {
-                                    if (showCompletePaymentCTA && completePaymentUrl) {
-                                        router.visit(completePaymentUrl);
-                                    } else {
-                                        openPaymentDetailLookup(activity.id, user?.id);
-                                    }
-                                }}
-                                className={`inline-flex items-center gap-2 h-14 px-8 rounded-full text-white font-bold hover:shadow-lg transition-all transform hover:-translate-y-1 ${showCompletePaymentCTA
-                                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-orange-500/30'
-                                    : 'bg-gradient-to-r from-primary to-secondary hover:shadow-primary/30'
-                                    }`}
-                            >
-                                <i className={`fas ${showCompletePaymentCTA ? 'fa-wallet' : 'fa-file-invoice'}`}></i>
-                                {buttonText || 'Lihat Detail'}
-                            </button>
-                        ) : registrationTarget ? (
-                            <>
-                                {registrationTarget.type === 'disabled' ? (
-                                    <span className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gray-500/50 backdrop-blur-sm text-white font-bold cursor-not-allowed border border-white/10">
-                                        <i className="fas fa-ban"></i>
-                                        {registrationTarget.label}
-                                    </span>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            if (registrationTarget.type === 'login_modal') {
-                                                setIsLoginModalOpen(true);
-                                            } else {
-                                                setIsRegistrationTypeModalOpen(true);
-                                            }
-                                        }}
-                                        className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-white text-primary font-bold hover:bg-secondary/5 hover:shadow-lg hover:shadow-white/20 transition-all transform hover:-translate-y-1"
-                                    >
-                                        <i className="fas fa-user-plus"></i>
-                                        {registrationTarget.label}
-                                    </button>
-                                )}
-                            </>
-                        ) : null}
+                        {/* Action Buttons Row */}
+                        <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-4">
+                            {isJoined ? (
+                                <button
+                                    onClick={() => {
+                                        if (showCompletePaymentCTA && completePaymentUrl) {
+                                            router.visit(completePaymentUrl);
+                                        } else {
+                                            openPaymentDetailLookup(activity.id, user?.id);
+                                        }
+                                    }}
+                                    className={`inline-flex items-center gap-3 h-14 px-8 rounded-full text-white font-bold hover:shadow-lg transition-all transform hover:-translate-y-1 ${showCompletePaymentCTA
+                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-orange-500/30'
+                                        : 'bg-gradient-to-r from-primary to-secondary hover:shadow-primary/30'
+                                        }`}
+                                >
+                                    <i className={`fas ${showCompletePaymentCTA ? 'fa-wallet' : 'fa-file-invoice'} text-xl`}></i>
+                                    <span>{buttonText || 'Lihat Detail'}</span>
+                                </button>
+                            ) : registrationTarget ? (
+                                <>
+                                    {registrationTarget.type === 'disabled' ? (
+                                        <span className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gray-500/50 backdrop-blur-sm text-white font-bold cursor-not-allowed border border-white/10">
+                                            <i className="fas fa-ban"></i>
+                                            {registrationTarget.label}
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (registrationTarget.type === 'login_modal') {
+                                                    setIsLoginModalOpen(true);
+                                                } else {
+                                                    setIsRegistrationTypeModalOpen(true);
+                                                }
+                                            }}
+                                            className="inline-flex items-center gap-3 h-14 px-8 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold hover:shadow-lg hover:shadow-orange-500/30 transition-all transform hover:-translate-y-1"
+                                        >
+                                            <i className="fas fa-user-plus text-xl"></i>
+                                            <span>{registrationTarget.label}</span>
+                                        </button>
+                                    )}
+                                </>
+                            ) : null}
 
-                        {user && (
+                            {/* Share Button */}
                             <button
-                                onClick={() => setIsBulkImportModalOpen(true)}
-                                className="glass-button inline-flex items-center gap-2 h-14 px-8 rounded-full text-white font-bold"
+                                type="button"
+                                onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
+                                className="h-14 px-6 rounded-full glass-button text-white font-medium hover:bg-white/20 inline-flex items-center gap-2 relative"
                             >
-                                <i className="fas fa-user-plus"></i>
-                                {isJoined ? 'Daftarkan Lain' : 'Daftar Kolektif'}
+                                <i className="fas fa-share-alt"></i>
+                                <span className="hidden sm:inline">Bagikan</span>
+                                {isShareMenuOpen && (
+                                    <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 text-left text-gray-800 animate-fade-up z-50 overflow-hidden">
+                                        <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                            Bagikan ke
+                                        </div>
+                                        <button type="button" onClick={copyShareLink} className="flex items-center w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors text-gray-700">
+                                            <i className="fas fa-link text-gray-400 mr-3 w-4 text-center"></i> Salin Link
+                                        </button>
+                                        <button type="button" onClick={shareNative} className="flex items-center w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors text-gray-700">
+                                            <i className="fas fa-mobile-alt text-gray-400 mr-3 w-4 text-center"></i> Aplikasi Lain
+                                        </button>
+                                    </div>
+                                )}
                             </button>
-                        )}
+                            
+                            {user && (
+                                <button
+                                    onClick={() => setIsBulkImportModalOpen(true)}
+                                    className="h-14 px-6 rounded-full glass-button text-white font-medium hover:bg-white/20 inline-flex items-center gap-2"
+                                    title={isJoined ? 'Daftarkan Lain' : 'Daftar Kolektif'}
+                                >
+                                    <i className="fas fa-users"></i>
+                                </button>
+                            )}
+                        </div>
+
                     </div>
+
+                    {/* Right Column: Image/Hero Visual */}
+                    <div className="w-full lg:w-1/2 relative animate-fade-up delay-200">
+                        <div className="relative rounded-3xl overflow-hidden shadow-2xl border-[6px] border-white/20 group transform transition-transform hover:scale-[1.01] duration-500">
+                            <div className="aspect-[4/3] w-full bg-slate-800 relative overflow-hidden">
+                                {/* Blurred Background to fill space */}
+                                <div 
+                                    className="absolute inset-0 bg-cover bg-center blur-xl opacity-50 scale-110 transition-opacity duration-700"
+                                    style={{ backgroundImage: `url(${heroCoverPath})` }}
+                                ></div>
+                                
+                                {/* Main Image - Object Contain to prevent cropping */}
+                                <img 
+                                    src={heroCoverPath} 
+                                    alt={activity.name}
+                                    className="relative w-full h-full object-contain z-10 drop-shadow-xl"
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = '/assets/images/hero/defoult.webp';
+                                        e.target.className = "w-full h-full object-cover"; // Fallback to cover for default placeholder
+                                    }}
+                                />
+                                
+                                {/* Overlay Gradient for text readability if needed, but we keep it clean */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 z-20 pointer-events-none"></div>
+                                
+                                {/* Price Badge Floating */}
+                                {activity.price !== null && (
+                                    <div className="absolute top-6 right-6">
+                                        {Number(activity.price) > 0 ? (
+                                            (showPrice || canEdit) && (
+                                                <div className={`bg-white/90 backdrop-blur-md text-slate-900 px-5 py-2.5 rounded-full font-bold shadow-lg flex items-center gap-2 transform transition-all ${!showPrice ? 'opacity-75' : ''}`}>
+                                                    <span className="text-sm font-medium text-slate-500">HTM</span>
+                                                    <span className="text-lg">Rp {new Intl.NumberFormat('id-ID').format(activity.price)}</span>
+                                                    {canEdit && (
+                                                        <button
+                                                            onClick={(e) => { e.preventDefault(); togglePriceVisibility(); }}
+                                                            className="ml-2 w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+                                                            title={showPrice ? 'Sembunyikan Harga' : 'Tampilkan Harga'}
+                                                        >
+                                                            <i className={`fas ${showPrice ? 'fa-eye' : 'fa-eye-slash'} text-xs text-slate-500`}></i>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )
+                                        ) : (
+                                            <div className="bg-emerald-500 text-white px-6 py-2.5 rounded-full font-bold shadow-lg flex items-center gap-2">
+                                                <i className="fas fa-check-circle"></i>
+                                                <span>GRATIS</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* Decorative Back Glow */}
+                        <div className="absolute -inset-4 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-[2.5rem] blur-2xl opacity-40 -z-10 animate-pulse"></div>
+                    </div>
+
                 </div>
 
                 {/* Wave Separator */}

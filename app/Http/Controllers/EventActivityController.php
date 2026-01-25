@@ -20,12 +20,22 @@ class EventActivityController extends Controller
     {
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
         
+        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Unauthorized');
+        }
+
         $eventActivities = EventActivity::where('activity_id', $activity->id)
             ->orderBy('created_at', 'desc')
             ->get();
 
+        $isCommittee = $activity->canManageRegistration(auth()->id());
+        $activityData = array_merge($activity->toArray(), [
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
+        ]);
+
         return Inertia::render('Activity/EventActivities/Index', [
-            'activity' => $activity,
+            'activity' => $activityData,
             'eventActivities' => $eventActivities
         ]);
     }
@@ -34,11 +44,21 @@ class EventActivityController extends Controller
     {
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
         
+        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Unauthorized');
+        }
+
         // Check if we need to pass a type
         $type = request()->query('type', 'other');
         
+        $isCommittee = $activity->canManageRegistration(auth()->id());
+        $activityData = array_merge($activity->toArray(), [
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
+        ]);
+
         return Inertia::render('Activity/EventActivities/Create', [
-            'activity' => $activity,
+            'activity' => $activityData,
             'initialType' => $type
         ]);
     }
@@ -46,6 +66,10 @@ class EventActivityController extends Controller
     public function store(Request $request, $activityId)
     {
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
+
+        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Unauthorized');
+        }
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -129,10 +153,21 @@ class EventActivityController extends Controller
     public function edit($activityId, $eventActivityId)
     {
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
+        
+        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Unauthorized');
+        }
+
         $eventActivity = EventActivity::where('id', $eventActivityId)->with(['questions.activityOptions'])->firstOrFail();
 
+        $isCommittee = $activity->canManageRegistration(auth()->id());
+        $activityData = array_merge($activity->toArray(), [
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
+        ]);
+
         return Inertia::render('Activity/EventActivities/Edit', [
-            'activity' => $activity,
+            'activity' => $activityData,
             'eventActivity' => $eventActivity
         ]);
     }
@@ -140,6 +175,11 @@ class EventActivityController extends Controller
     public function update(Request $request, $activityId, $eventActivityId)
     {
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
+        
+        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Unauthorized');
+        }
+
         $eventActivity = EventActivity::where('id', $eventActivityId)->firstOrFail();
 
         $request->validate([
@@ -223,6 +263,13 @@ class EventActivityController extends Controller
 
     public function destroy($activityId, $eventActivityId)
     {
+        // Add activity check for authorization
+        $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
+        
+        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Unauthorized');
+        }
+
         $eventActivity = EventActivity::where('id', $eventActivityId)->firstOrFail();
         $eventActivity->delete();
         return back()->with('success', 'Kegiatan berhasil dihapus.');
@@ -241,8 +288,14 @@ class EventActivityController extends Controller
                 ->first();
         }
 
+        $isCommittee = $user && $activity->canManageRegistration($user->id);
+        $activityData = array_merge($activity->toArray(), [
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
+        ]);
+
         return Inertia::render('Activity/EventActivities/Show', [
-            'activity' => $activity,
+            'activity' => $activityData,
             'eventActivity' => $eventActivity,
             'existingResponse' => $existingResponse
         ]);

@@ -63,18 +63,18 @@ export default function CommitteeTypesSection({ committeeTypes, activity, isEmbe
 
             <div className="space-y-2">
                 {committeeTypes.map((type) => (
-                    <div key={type.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                        <div className="flex-1">
-                            <span className="text-sm font-bold block">{type.name}</span>
+                    <div key={type.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors">
+                        <div className="flex-1 min-w-0 pr-2">
+                            <span className="text-sm font-bold block truncate">{type.name}</span>
                             {type.description && (
-                                <span className="text-xs text-gray-500">{type.description}</span>
+                                <span className="text-xs text-gray-500 truncate block">{type.description}</span>
                             )}
                         </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => openModal(type)} className="text-blue-500 hover:text-blue-700">
+                        <div className="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => openModal(type)} className="text-blue-500 hover:text-blue-700 bg-white p-1.5 rounded-lg shadow-sm">
                                 <i className="fas fa-edit"></i>
                             </button>
-                            <button onClick={() => handleDelete(type)} className="text-red-500 hover:text-red-700">
+                            <button onClick={() => handleDelete(type)} className="text-red-500 hover:text-red-700 bg-white p-1.5 rounded-lg shadow-sm">
                                 <i className="fas fa-trash"></i>
                             </button>
                         </div>

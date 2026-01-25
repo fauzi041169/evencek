@@ -29,7 +29,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
         isCommittee = activity.is_committee || false;
     }
 
-    const canManageBatches = (user && currentActivityId) && (isAdmin || isOwner) && 
+    const canManageBatches = (user && currentActivityId) && (isAdmin || isOwner || isCommittee) && 
         (!activity || typeof activity !== 'object' || activity.activity_type === 'batch');
     const canManageAttendance = (user && currentActivityId) && (isAdmin || isOwner || isCommittee);
 

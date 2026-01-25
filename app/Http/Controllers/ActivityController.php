@@ -1423,6 +1423,8 @@ class ActivityController extends Controller
                 'activity' => array_merge($activity->toArray(), [
                     'id_card_visible' => $printSettings['id_card_visible'] ?? true,
                     'certificate_visible' => $certificatePrintSettings['download_card_visible'] ?? false,
+                    'is_committee' => $isCommittee,
+                    'can_manage_registration' => $activity->canManageRegistration($authUser->id),
                 ]),
                 'isEnrolled' => $isEnrolled,
                 'isRegistered' => $isRegistered,
@@ -2568,6 +2570,13 @@ class ActivityController extends Controller
             return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk menghapus peserta.');
         }
 
+        \Log::info('DEBUG removeParticipants', [
+            'request_all' => $request->all(),
+            'activity_id' => $activity->id,
+            'activity_uid' => $activity->uid,
+            'user_ids_input' => $request->input('user_ids'),
+        ]);
+
         $userIds = [];
         $activityUserIds = [];
 
@@ -2682,7 +2691,10 @@ class ActivityController extends Controller
     // Show form to create attendance for an activity
     public function createAttendance(Activity $activity)
     {
-        if (! auth()->user()->isAdminOrCreator()) {
+        $user = auth()->user();
+        $canManage = $activity->canManageRegistration($user->id);
+        
+        if (! ($user->isAdminOrCreator() || $canManage)) {
             return back()->with('error', 'Anda tidak memiliki izin untuk membuat absensi.');
         }
 
@@ -2696,15 +2708,38 @@ class ActivityController extends Controller
     // ActivityController.php
     public function activitimanajemen(Request $request, $id = null)
     {
+        $user = auth()->user();
         $title = 'Manajemen Aktivitas';
         $titlepage = 'Manajemen Aktivitas';
-        $activities = Activity::all();
+        
+        // Filter activities based on user role
+        if ($user->isAdmin() || $user->isSuperAdmin()) {
+            $activities = Activity::all();
+        } else {
+            // Get activities where user is creator or committee
+            $activities = Activity::where('user_id', $user->id)
+                ->orWhereHas('committeeStructures', function($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                })
+                ->get();
+        }
+
         $selectedActivity = null;
         $attendances = collect();
         $participants = collect();
+        $isCommittee = false;
 
         if ($id) {
             $selectedActivity = Activity::findOrFail($id);
+            
+            // Check permission for selected activity
+            if (!$selectedActivity->canManageRegistration($user->id)) {
+                 if (! ($user->isAdmin() || $user->isSuperAdmin())) {
+                     abort(403, 'Anda tidak memiliki izin untuk mengelola aktivitas ini.');
+                 }
+            }
+            
+            $isCommittee = $selectedActivity->canManageRegistration($user->id);
             $attendances = $selectedActivity->attendances;
 
             // Ambil participants dengan query builder untuk memudahkan pencarian
@@ -2727,7 +2762,10 @@ class ActivityController extends Controller
 
         return Inertia::render('Activity/ActivityManagement', [
             'activities' => $activities,
-            'selectedActivity' => $selectedActivity,
+            'selectedActivity' => $selectedActivity ? array_merge($selectedActivity->toArray(), [
+                'is_committee' => $isCommittee,
+                'can_manage_registration' => $isCommittee,
+            ]) : null,
             'participants' => $participants,
             'attendances' => $attendances,
             'title' => $title,
@@ -2739,14 +2777,26 @@ class ActivityController extends Controller
     // Show scan page for QR code
     public function scan(Activity $activity, Attendance $attendance)
     {
+        $user = auth()->user();
+        if (!$activity->canManageRegistration($user->id)) {
+             if (! ($user->isAdmin() || $user->isSuperAdmin())) {
+                 abort(403, 'Anda tidak memiliki izin untuk melakukan scan QR.');
+             }
+        }
+
         $title = 'Scan QR Code';
         $titlepage = 'Scan QR Code Peserta';
         
         $backgrounds = IdCardBackground::where('activity_id', $activity->id)->get();
         $participants = $activity->participants;
 
+        $isCommittee = $activity->canManageRegistration($user->id);
+
         return Inertia::render('Activity/Attendance/Scan', [
-            'activity' => $activity,
+            'activity' => array_merge($activity->toArray(), [
+                'is_committee' => $isCommittee,
+                'can_manage_registration' => $isCommittee,
+            ]),
             'attendance' => $attendance,
             'activity_id' => $activity->id,
             'attendance_id' => $attendance->id,
@@ -2765,6 +2815,16 @@ class ActivityController extends Controller
             'activity_id' => 'required|exists:activities,id',
             'attendance_id' => 'required|exists:attendances,id',
         ]);
+
+        // Security check
+        $activity = Activity::findOrFail($request->activity_id);
+        if (!$activity->canManageRegistration(auth()->id()) && !auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin()) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'unauthorized',
+                'message' => 'Anda tidak memiliki izin untuk memproses absensi.',
+            ], 403);
+        }
 
         // Get batch ID from attendance session
         $attendanceSession = Attendance::find($request->attendance_id);
@@ -2805,6 +2865,15 @@ class ActivityController extends Controller
 
     public function updateAttendanceStatus(Request $request)
     {
+        // Security check
+        $activity = Activity::find($request->activity_id);
+        if ($activity && !$activity->canManageRegistration(auth()->id()) && !auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin()) {
+             return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
         $attendance = ActivityRecord::where([
             'user_id' => $request->user_id,
             'activity_id' => $request->activity_id,
@@ -2844,6 +2913,12 @@ class ActivityController extends Controller
             'attendance_id' => 'required|exists:attendances,id',
             'qr_code' => 'required',
         ]);
+
+        // Security check
+        $activity = Activity::findOrFail($request->activity_id);
+        if (!$activity->canManageRegistration(auth()->id()) && !auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
 
         try {
             // Validate QR code matches user's card
@@ -2907,9 +2982,14 @@ class ActivityController extends Controller
     public function list()
     {
         try {
-            if (! auth()->check() || (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! auth()->user()->isCreator())) {
+            if (! auth()->check()) {
                 abort(403, 'Unauthorized');
             }
+            
+            $user = auth()->user();
+            // Allow Admin, Superadmin, Creator, or Committee members
+            // We'll filter the query later, so basic auth check is enough here
+            
             $title = 'Daftar Aktivitas';
             $titlepage = 'Daftar Aktivitas';
 
@@ -2918,11 +2998,13 @@ class ActivityController extends Controller
 
             // Batasi ke milik sendiri HANYA untuk role creator murni (dan handle pengunjung tidak login)
             if (auth()->check()) {
-                $user = auth()->user();
-                if (! $user->isAdmin() && ! $user->isSuperAdmin() && $user->isCreator()) {
+                if (! $user->isAdmin() && ! $user->isSuperAdmin()) {
                     $query->where(function ($q) use ($user) {
                         $q->where('user_id', $user->id)
                             ->orWhereHas('owners', function ($subQ) use ($user) {
+                                $subQ->where('user_id', $user->id);
+                            })
+                            ->orWhereHas('committeeStructures', function ($subQ) use ($user) {
                                 $subQ->where('user_id', $user->id);
                             });
                     });
@@ -5031,8 +5113,15 @@ class ActivityController extends Controller
                 ];
             });
 
+        // Prepare activity data with committee flags
+        $isCommittee = $activity->canManageRegistration($currentUser->id);
+        $activityData = array_merge($activity->toArray(), [
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
+        ]);
+
         return Inertia::render('Activity/Certificates', [
-            'activity' => $activity,
+            'activity' => $activityData,
             'participants' => $participants,
         ]);
     }
@@ -5134,8 +5223,15 @@ class ActivityController extends Controller
             $designTypes[] = 'committee';
         }
 
+        // Prepare activity data with committee flags
+        $isCommittee = $activity->canManageRegistration($currentUser->id);
+        $activityData = array_merge($activity->toArray(), [
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
+        ]);
+
         return Inertia::render('Activity/IdCards/Index', [
-                'activity' => $activity,
+                'activity' => $activityData,
                 'participants' => $participants,
                 'committees' => $committees,
                 'designTypes' => $designTypes,

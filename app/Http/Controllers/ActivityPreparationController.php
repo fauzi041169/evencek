@@ -255,16 +255,20 @@ class ActivityPreparationController extends Controller
             $cardSettings = CardSettings::where('activity_id', $activityIdValue)
                 ->whereNull('activity_batch_id')
                 ->first();
-            $activity->id_card_visible = $cardSettings && isset($cardSettings->print_settings['id_card_visible'])
+            $idCardVisible = $cardSettings && isset($cardSettings->print_settings['id_card_visible'])
                 ? (bool) $cardSettings->print_settings['id_card_visible']
                 : true;
 
             $certSettings = CertificateSettings::where('activity_id', $activityIdValue)
                 ->whereNull('activity_batch_id')
                 ->first();
-            $activity->certificate_visible = $certSettings && isset($certSettings->print_settings['download_card_visible'])
+            $certificateVisible = $certSettings && isset($certSettings->print_settings['download_card_visible'])
                 ? (bool) $certSettings->print_settings['download_card_visible']
                 : false;
+            
+            // Set dynamic properties for compatibility
+            $activity->id_card_visible = $idCardVisible;
+            $activity->certificate_visible = $certificateVisible;
 
             // Lazy init Participation Types (Default: Panitia, Peserta)
             if (\App\Models\ActivityParticipationType::where('activity_id', $activityIdValue)->count() === 0) {
@@ -281,7 +285,27 @@ class ActivityPreparationController extends Controller
             }
             $committeeTypes = \App\Models\ActivityCommitteeType::where('activity_id', $activityIdValue)->get();
 
-                return Inertia::render('Activity/Preparation/Index', compact('activity', 'divisions', 'committeeStructure', 'participants', 'rundowns', 'materials', 'owners', 'refPositions', 'participationTypes', 'committeeTypes'));
+            // Prepare activity data with committee flags
+            $isCommittee = $activity->canManageRegistration(auth()->id());
+            $activityData = array_merge($activity->toArray(), [
+                'id_card_visible' => $idCardVisible,
+                'certificate_visible' => $certificateVisible,
+                'is_committee' => $isCommittee,
+                'can_manage_registration' => $isCommittee,
+            ]);
+
+            return Inertia::render('Activity/Preparation/Index', [
+                'activity' => $activityData,
+                'divisions' => $divisions,
+                'committeeStructure' => $committeeStructure,
+                'participants' => $participants,
+                'rundowns' => $rundowns,
+                'materials' => $materials,
+                'owners' => $owners,
+                'refPositions' => $refPositions,
+                'participationTypes' => $participationTypes,
+                'committeeTypes' => $committeeTypes,
+            ]);
         } catch (ModelNotFoundException $e) {
             abort(404, 'Aktivitas tidak ditemukan.');
         } catch (Exception $e) {
@@ -1498,8 +1522,15 @@ class ActivityPreparationController extends Controller
                 })
                 ->count();
 
+            // Prepare activity data with committee flags
+            $isCommittee = $activity->canManageRegistration(auth()->id());
+            $activityData = array_merge($activity->toArray(), [
+                'is_committee' => $isCommittee,
+                'can_manage_registration' => $isCommittee,
+            ]);
+
             return Inertia::render('Activity/Participants/Index', [
-                'activity' => $activity,
+                'activity' => $activityData,
                 'unverifiedEmailCount' => $unverifiedEmailCount,
                 'participants' => $participants,
                 'rooms' => $rooms,
@@ -1617,6 +1648,7 @@ class ActivityPreparationController extends Controller
                 abort(403);
             }
         }
+
         $data = $request->validate([
             'activity_batch_id' => 'nullable|exists:activity_batches,id',
             'hotel_name' => 'nullable|string|max:128',
@@ -3621,10 +3653,10 @@ class ActivityPreparationController extends Controller
         }
         $activityId = $activity->id;
         
-        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
-            if (! $activity->canManageRegistration(auth()->id())) {
-                abort(403);
-            }
+        // Allow any authenticated user to download their own import result
+        // The import_result session is unique to the user's session
+        if (! auth()->check()) {
+            abort(403, 'Silakan login terlebih dahulu.');
         }
 
         $import = session('import_result');

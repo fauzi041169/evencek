@@ -286,8 +286,14 @@ class AttendanceController extends Controller
 
             $participants = $query->select('users.id', 'users.name')->get();
 
+            $isCommittee = $activity->canManageRegistration(auth()->id());
+            $activityData = array_merge($activity->toArray(), [
+                'is_committee' => $isCommittee,
+                'can_manage_registration' => $isCommittee,
+            ]);
+
             return Inertia::render('Activity/Attendance/Scan', [
-                'activity' => $activity,
+                'activity' => $activityData,
                 'attendance' => $attendance,
                 'activity_id' => $activity_id,
                 'attendance_id' => $attendance_id,
@@ -347,8 +353,14 @@ class AttendanceController extends Controller
             ]);
         }
 
+        $isCommittee = $activity->canManageRegistration(auth()->id());
+        $activityData = array_merge($activity->toArray(), [
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
+        ]);
+
         return Inertia::render('Activity/Attendance/Results', [
-            'activity' => $activity,
+            'activity' => $activityData,
             'attendance' => $attendance,
             'participants' => $participants,
         ]);
@@ -418,8 +430,15 @@ class AttendanceController extends Controller
     public function create(Activity $activity)
     {
         $this->authorizeActivityAccess($activity->id);
+        
+        $isCommittee = $activity->canManageRegistration(auth()->id());
+        $activityData = array_merge($activity->toArray(), [
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
+        ]);
+
         return Inertia::render('Activity/Attendance/Create', [
-            'activity' => $activity,
+            'activity' => $activityData,
             'batches' => $activity->batches
         ]);
     }
@@ -427,8 +446,15 @@ class AttendanceController extends Controller
     public function edit(Activity $activity, Attendance $attendance)
     {
         $this->authorizeActivityAccess($activity->id);
+        
+        $isCommittee = $activity->canManageRegistration(auth()->id());
+        $activityData = array_merge($activity->toArray(), [
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
+        ]);
+
         return Inertia::render('Activity/Attendance/Edit', [
-            'activity' => $activity,
+            'activity' => $activityData,
             'attendance' => $attendance,
             'batches' => $activity->batches
         ]);
@@ -744,8 +770,17 @@ class AttendanceController extends Controller
             });
         }
 
+        $selectedActivityData = $selectedActivity;
+        if ($selectedActivity) {
+             $isCommittee = $selectedActivity->canManageRegistration(auth()->id());
+             $selectedActivityData = array_merge($selectedActivity->toArray(), [
+                 'is_committee' => $isCommittee,
+                 'can_manage_registration' => $isCommittee,
+             ]);
+        }
+
         return Inertia::render('Activity/Attendance/Management', [
-            'selectedActivity' => $selectedActivity,
+            'selectedActivity' => $selectedActivityData,
             'participants' => $participants,
             'activities' => $activities,
             'attendances' => $attendances,
