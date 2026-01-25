@@ -85,7 +85,7 @@ export default function Dashboard({
                 borderColor: '#696cff',
                 borderWidth: 1,
                 borderRadius: 4,
-                barPercentage: 0.6,
+                barPercentage: 0.5,
                 categoryPercentage: 0.8
             },
             {
@@ -95,7 +95,7 @@ export default function Dashboard({
                 borderColor: '#ffab00',
                 borderWidth: 1,
                 borderRadius: 4,
-                barPercentage: 0.6,
+                barPercentage: 0.5,
                 categoryPercentage: 0.8
             },
             {
@@ -105,57 +105,181 @@ export default function Dashboard({
                 borderColor: '#10B981',
                 borderWidth: 1,
                 borderRadius: 4,
-                barPercentage: 0.6,
+                barPercentage: 0.5,
                 categoryPercentage: 0.8
             }
         ]
     };
 
+    // Preload images for chart
+    const [chartImages, setChartImages] = useState({});
+
+    // Handle image load from hidden img tags
+    const handleImageLoad = (id, img) => {
+        if (img && img.complete) {
+            setChartImages(prev => ({ ...prev, [id]: img }));
+        }
+    };
+
+    const avatarPlugin = {
+        id: 'avatarPlugin',
+        afterDraw: (chart) => {
+            const { ctx, scales: { x, y } } = chart;
+            // Use the last visible dataset to find the top of the stack
+            const visibleDatasets = chart.getVisibleDatasetCount();
+            if (visibleDatasets === 0 || !committee_stats) return;
+
+            // We need to find the specific dataset that represents the "top" for each bar
+            // In a stacked chart, we can usually use the meta of the last dataset,
+            // but we must check if the bar exists
+
+            const metas = chart.getSortedVisibleDatasetMetas();
+            if (metas.length === 0) return;
+            const lastMeta = metas[metas.length - 1]; // Top-most visible dataset
+
+            const top10 = committee_stats.slice(0, 10);
+
+            top10.forEach((member, index) => {
+                const bar = lastMeta.data[index];
+                if (!bar) return;
+
+                // For stacked charts, bar.y is the top of THIS segment. 
+                // However, we want the TOTAL height.
+                // We can use y.getPixelForValue(total_actions) which translates the value to Y position.
+                // This relies on the scale being correct.
+
+                const xPos = bar.x;
+                const total = member.total_actions;
+                const yPos = y.getPixelForValue(total);
+
+                // Ensure we don't draw out of bounds (though clip usually handles it)
+                if (yPos < 0) return;
+
+                // Draw Total Text
+                ctx.save();
+                ctx.font = 'bold 12px "Inter", sans-serif';
+                ctx.fillStyle = '#64748b';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                // Add white outline for readability
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#ffffff';
+                ctx.strokeText(total, xPos, yPos - 40);
+                ctx.fillText(total, xPos, yPos - 40);
+                ctx.restore();
+
+                // Draw Image
+                const img = chartImages[member.id];
+                const size = 32;
+
+                if (img && img.complete && img.naturalHeight !== 0) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(xPos, yPos - 20, size / 2, 0, Math.PI * 2);
+                    ctx.closePath();
+                    // Clip logic
+                    ctx.save();
+                    ctx.clip();
+                    try {
+                        ctx.drawImage(img, xPos - size / 2, yPos - 20 - size / 2, size, size);
+                    } catch (e) {
+                        // ignore
+                    }
+                    ctx.restore(); // restore clip
+
+                    // Ring
+                    ctx.beginPath();
+                    ctx.arc(xPos, yPos - 20, size / 2, 0, Math.PI * 2);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.stroke();
+                    ctx.restore();
+                } else {
+                    // Draw Placeholder Circle
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(xPos, yPos - 20, size / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = '#cbd5e1'; // gray-300
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Initials
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const initials = member.name.substring(0, 2).toUpperCase();
+                    ctx.fillText(initials, xPos, yPos - 20);
+                    ctx.restore();
+                }
+            });
+        }
+    };
+
     const committeeActionChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+            padding: {
+                top: 60 // Make space for images
+            }
+        },
         plugins: {
             legend: {
                 position: 'top',
+                align: 'end',
                 labels: {
-                    font: { size: 12, family: "'Inter', sans-serif", weight: '600' },
-                    padding: 20,
-                    usePointStyle: true,
-                    boxWidth: 8
+                    font: { size: 11, family: "'Inter', sans-serif", weight: '600' },
+                    boxWidth: 8,
+                    usePointStyle: true
                 }
             },
             tooltip: {
                 mode: 'index',
                 intersect: false,
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 12,
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                titleColor: '#1e293b',
+                bodyColor: '#475569',
+                borderColor: '#e2e8f0',
+                borderWidth: 1,
+                padding: 10,
                 titleFont: { size: 13, weight: 'bold' },
                 bodyFont: { size: 12 },
                 cornerRadius: 8,
-                displayColors: true
+                displayColors: true,
+                callbacks: {
+                    labelTextColor: () => '#475569'
+                }
             }
         },
         scales: {
             x: {
-                stacked: false,
+                stacked: true,
                 grid: { display: false },
                 ticks: {
-                    font: { size: 11, family: "'Inter', sans-serif" },
-                    color: '#64748b'
+                    font: { size: 10, family: "'Inter', sans-serif", weight: '500' },
+                    color: '#64748b',
+                    maxRotation: 45,
+                    minRotation: 0,
+                    autoSkip: false,
+                    callback: function (val, index) {
+                        // Truncate long names
+                        const label = this.getLabelForValue(val);
+                        return label.length > 10 ? label.substr(0, 10) + '...' : label;
+                    }
                 }
             },
             y: {
-                stacked: false,
+                stacked: true,
                 beginAtZero: true,
                 grid: {
                     color: '#f1f5f9',
-                    borderDash: [2, 2]
+                    borderDash: [4, 4],
+                    drawBorder: false
                 },
-                ticks: {
-                    stepSize: 1,
-                    font: { size: 11, family: "'Inter', sans-serif" },
-                    color: '#64748b'
-                },
+                ticks: { display: false },
                 border: { display: false }
             }
         },
@@ -1039,64 +1163,46 @@ export default function Dashboard({
                                 <h5 className="text-base font-semibold text-gray-700">10 Panitia Teraktif (Top 10)</h5>
                             </div>
 
+                            {/* Hidden images for canvas loading - using height:0 instead of display:none to ensure loading triggers */}
+                            <div style={{ position: 'absolute', height: 0, width: 0, overflow: 'hidden' }}>
+                                {committee_stats.slice(0, 10).map(member => (
+                                    <img
+                                        key={member.id}
+                                        src={member.profile_photo_url}
+                                        alt={member.name}
+                                        onLoad={(e) => handleImageLoad(member.id, e.target)}
+                                        onError={(e) => console.error("Error loading img for", member.name, e)}
+                                    />
+                                ))}
+                            </div>
+
                             {/* Chart Section */}
                             <div className="mb-8">
                                 <div className="bg-gray-50 rounded-lg p-4 h-80 relative">
-                                    <Bar data={committeeActionChartData} options={committeeActionChartOptions} />
+                                    <Bar
+                                        key={Object.keys(chartImages).length} // Force re-render when images load
+                                        data={committeeActionChartData}
+                                        options={{
+                                            ...committeeActionChartOptions,
+                                            layout: {
+                                                padding: {
+                                                    top: 50
+                                                }
+                                            },
+                                            scales: {
+                                                ...committeeActionChartOptions.scales,
+                                                y: {
+                                                    ...committeeActionChartOptions.scales.y,
+                                                    grace: '20%' // Add grace to ensure space for images
+                                                }
+                                            }
+                                        }}
+                                        plugins={[avatarPlugin]}
+                                    />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                                {committee_stats.map((member, index) => (
-                                    <div key={index} className="bg-white border rounded-xl p-4 hover:shadow-lg transition-shadow duration-300 relative overflow-hidden group">
-                                        {/* Rank Badge */}
-                                        <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-xl text-xs font-bold text-white shadow-sm ${index === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
-                                                index === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-500' :
-                                                    index === 2 ? 'bg-gradient-to-r from-orange-400 to-orange-600' :
-                                                        'bg-gray-200 text-gray-600'
-                                            }`}>
-                                            #{index + 1}
-                                        </div>
 
-                                        <div className="flex items-center gap-4">
-                                            {/* Profile Photo */}
-                                            <div className="relative">
-                                                <img
-                                                    src={member.profile_photo_url}
-                                                    alt={member.name}
-                                                    onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&color=7F9CF5&background=EBF4FF`;
-                                                    }}
-                                                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shadow-sm group-hover:scale-105 transition-transform"
-                                                />
-                                            </div>
-
-                                            {/* User Info */}
-                                            <div className="flex-1 min-w-0 pr-8">
-                                                <h4 className="text-sm font-bold text-gray-800 truncate">{member.name}</h4>
-                                                <p className="text-xs text-gray-500 truncate mb-2">{member.position || 'Panitia'}</p>
-
-                                                {/* Stats Grid */}
-                                                <div className="grid grid-cols-3 gap-2 text-center bg-gray-50 rounded-lg p-2">
-                                                    <div>
-                                                        <div className="text-[10px] text-gray-400 uppercase tracking-wide">Daftar</div>
-                                                        <div className="font-bold text-secondary text-sm">{member.registrations}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-[10px] text-gray-400 uppercase tracking-wide">Validasi</div>
-                                                        <div className="font-bold text-orange-500 text-sm">{member.validations}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-[10px] text-gray-400 uppercase tracking-wide">Akses</div>
-                                                        <div className="font-bold text-emerald-600 text-sm">{member.akses}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
                     </div>
                 )}

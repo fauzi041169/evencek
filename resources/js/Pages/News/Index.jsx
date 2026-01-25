@@ -85,6 +85,21 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
     const { appSettings } = props;
     const heroAnim = appSettings?.hero_animation_style || 'circles';
 
+    // Helper for hex to rgba
+    const hexToRgba = (hex, alpha) => {
+        if (!hex) return `rgba(124, 58, 237, ${alpha})`; // default purple
+        let c;
+        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+            c= hex.substring(1).split('');
+            if(c.length== 3){
+                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+            }
+            c= '0x'+c.join('');
+            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+        }
+        return hex;
+    }
+
     const [searchQuery, setSearchQuery] = useState(new URLSearchParams(window.location.search).get('query') || '');
     const [editMode, setEditMode] = useState(false);
 
@@ -137,6 +152,43 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                 .hero-gradient-overlay-top {
                     position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.3), transparent);
                 }
+                
+                /* Animations */
+                @keyframes blob {
+                    0% { transform: translate(0px, 0px) scale(1); }
+                    33% { transform: translate(30px, -50px) scale(1.1); }
+                    66% { transform: translate(-20px, 20px) scale(0.9); }
+                    100% { transform: translate(0px, 0px) scale(1); }
+                }
+                .animate-blob { animation: blob 10s infinite; }
+                .animation-delay-2000 { animation-delay: 2s; }
+                
+                /* Rain Animation */
+                .rain-line {
+                    position: absolute;
+                    width: 1px;
+                    height: 100px;
+                    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3));
+                    animation: rain 1s linear infinite;
+                }
+                @keyframes rain {
+                    0% { transform: translateY(-100px); }
+                    100% { transform: translateY(100vh); }
+                }
+                
+                /* Particles Animation */
+                .particle-dot {
+                    position: absolute;
+                    background: white;
+                    border-radius: 50%;
+                    animation: particle 10s linear infinite;
+                }
+                @keyframes particle {
+                    0% { transform: translateY(100vh) scale(0); opacity: 0; }
+                    50% { opacity: 0.5; }
+                    100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+                }
+
                 .hero-grow {
                     position: relative;
                     background-color: #1a1b3a; /* Deep Blue */
@@ -204,25 +256,52 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                     <div className="absolute inset-0">
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 via-slate-900/95 to-slate-900 z-10"></div>
                         <img
-                            src="/assets/images/begron/bg-pattern.png"
+                            src={appSettings?.hero_background_1 ? getImageUrl(appSettings.hero_background_1) : "/assets/images/begron/bg-pattern.png"}
                             alt="Background Pattern"
                             className="w-full h-full object-cover opacity-20 mix-blend-overlay"
                             onError={(e) => e.target.style.display = 'none'}
                         />
-                        {/* Dynamic Hero Animation based on Settings */}
-                        {heroAnim === 'circles' && (
-                            <div className="hero-circles absolute inset-0 pointer-events-none overflow-hidden">
-                                <div className="hero-circle hero-circle-1"></div>
-                                <div className="hero-circle hero-circle-2"></div>
-                                <div className="hero-circle hero-circle-3"></div>
+                        {/* Dynamic Animations based on Settings */}
+                        {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (
+                            <>
+                                <div 
+                                    className="absolute top-[-10%] right-[-5%] w-96 h-96 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob z-10 pointer-events-none"
+                                    style={{ backgroundColor: hexToRgba(appSettings?.colors?.primary, 0.2) }}
+                                ></div>
+                                <div 
+                                    className="absolute bottom-[-10%] left-[-5%] w-96 h-96 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10 pointer-events-none"
+                                    style={{ backgroundColor: hexToRgba(appSettings?.colors?.secondary, 0.2) }}
+                                ></div>
+                            </>
+                        )}
+                        
+                        {heroAnim === 'rain' && (
+                            <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
+                                {[...Array(30)].map((_, i) => (
+                                    <div key={i} className="rain-line" style={{
+                                        left: `${Math.random() * 100}%`,
+                                        animationDelay: `${Math.random()}s`,
+                                        animationDuration: `${0.5 + Math.random()}s`,
+                                        opacity: 0.3 + Math.random() * 0.5
+                                    }}></div>
+                                ))}
                             </div>
                         )}
-
-                        {heroAnim === 'rain' && <div className="hero-rain-streaks"></div>}
                         
-                        {heroAnim === 'waves' && <div className="hero-diagonal-waves"></div>}
-                        
-                        {heroAnim === 'particles' && <div className="hero-snow-particles"></div>}
+                        {heroAnim === 'particles' && (
+                            <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
+                                {[...Array(30)].map((_, i) => (
+                                    <div key={i} className="particle-dot" style={{
+                                        left: `${Math.random() * 100}%`,
+                                        width: `${2 + Math.random() * 4}px`,
+                                        height: `${2 + Math.random() * 4}px`,
+                                        animationDelay: `${Math.random() * 5}s`,
+                                        animationDuration: `${5 + Math.random() * 10}s`,
+                                        opacity: 0.2 + Math.random() * 0.6
+                                    }}></div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -265,7 +344,10 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                 <section className="py-10 bg-white relative z-10 -mt-8 mx-4 sm:mx-8 rounded-3xl shadow-xl border border-gray-100 max-w-5xl lg:mx-auto">
                     <div className="flex flex-wrap justify-center items-center gap-8 sm:gap-16">
                          <Reveal direction="up" className="flex items-center gap-4">
-                            <div className="inline-flex items-center justify-center w-14 h-14 bg-primary/5 rounded-2xl text-secondary ring-1 ring-primary/10">
+                            <div 
+                                className="inline-flex items-center justify-center w-14 h-14 rounded-2xl text-secondary ring-1"
+                                style={{ backgroundColor: hexToRgba(appSettings?.colors?.secondary, 0.05), '--tw-ring-color': hexToRgba(appSettings?.colors?.secondary, 0.1) }}
+                            >
                                 <i className="far fa-newspaper text-2xl"></i>
                             </div>
                             <div>
@@ -279,7 +361,10 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                         <div className="hidden sm:block w-px h-12 bg-gray-200"></div>
 
                         <Reveal direction="up" className="flex items-center gap-4" delay={100}>
-                            <div className="inline-flex items-center justify-center w-14 h-14 bg-primary/10 rounded-2xl text-primary ring-1 ring-primary/20">
+                            <div 
+                                className="inline-flex items-center justify-center w-14 h-14 rounded-2xl text-primary ring-1"
+                                style={{ backgroundColor: hexToRgba(appSettings?.colors?.primary, 0.1), '--tw-ring-color': hexToRgba(appSettings?.colors?.primary, 0.2) }}
+                            >
                                 <i className="fas fa-tags text-2xl"></i>
                             </div>
                             <div>

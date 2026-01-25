@@ -40,9 +40,22 @@ export default function Detail({
     flash,
     contactPersons = []
 }) {
-    const { auth } = usePage().props;
+    const { auth, appSettings } = usePage().props;
     const user = auth?.user;
-    const heroStyle = heroAnimationStyle; // Fix ReferenceError
+    
+    // Global Settings Logic
+    const heroAnim = appSettings?.hero_animation_style || heroAnimationStyle || 'circles';
+    const heroBg1 = appSettings?.hero_background_1 || null;
+
+    const getStorageUrl = (path) => {
+        if (!path) return null;
+        if (path.startsWith('http')) return path;
+        if (path.startsWith('storage/')) return '/' + path;
+        return '/' + path;
+    };
+
+    const heroBgUrl = heroBg1 ? getStorageUrl(heroBg1) : null;
+    const heroStyle = heroAnim; // Use the resolved animation style
 
     // Normalize participants data (handle both pagination and collection)
     const filteredParticipants = Array.isArray(participants)
@@ -524,7 +537,7 @@ export default function Detail({
             <Head title={activity.title || activity.name} />
 
             {/* Hero Section */}
-            <div className="relative bg-slate-900 overflow-hidden min-h-[500px] lg:min-h-[600px] flex items-center pt-16">
+            <div className="relative bg-slate-900 overflow-hidden min-h-[500px] lg:min-h-[600px] flex items-center">
                 <style>{`
                     @keyframes fade-up {
                         from { opacity: 0; transform: translateY(20px); }
@@ -585,19 +598,83 @@ export default function Detail({
                     .animate-float {
                         animation: float 6s ease-in-out infinite;
                     }
+                    /* Rain Animation */
+                    .rain-line {
+                        position: absolute;
+                        width: 1px;
+                        height: 100px;
+                        background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3));
+                        animation: rain 1s linear infinite;
+                    }
+                    @keyframes rain {
+                        0% { transform: translateY(-100px); }
+                        100% { transform: translateY(100vh); }
+                    }
+                    /* Particles Animation */
+                    .particle-dot {
+                        position: absolute;
+                        background: white;
+                        border-radius: 50%;
+                        animation: particle 10s linear infinite;
+                    }
+                    @keyframes particle {
+                        0% { transform: translateY(100vh) scale(0); opacity: 0; }
+                        50% { opacity: 0.5; }
+                        100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+                    }
                 `}</style>
 
                 {/* Background Elements */}
-                <div className="absolute inset-0 pointer-events-none">
-                    {/* Dark Background */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    {/* Base Background */}
                     <div className="absolute inset-0 bg-slate-900 z-0"></div>
                     
-                    {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-900/20 to-slate-900 z-10"></div>
+                    {/* Dynamic Background Image from Settings */}
+                    {heroBgUrl && (
+                        <div 
+                            className="absolute inset-0 bg-cover bg-center opacity-40 transition-opacity duration-500 z-0"
+                            style={{ backgroundImage: `url('${heroBgUrl}')` }}
+                        ></div>
+                    )}
                     
-                    {/* Animated Blobs */}
-                    <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-purple-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob z-10"></div>
-                    <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10"></div>
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 via-indigo-900/40 to-slate-900/95 z-10"></div>
+                    
+                    {/* Dynamic Animations based on Settings */}
+                    {(heroStyle === 'circles' || heroStyle === 'blob' || !heroStyle) && (
+                        <>
+                            <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-purple-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob z-10"></div>
+                            <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10"></div>
+                        </>
+                    )}
+                    
+                    {heroStyle === 'rain' && (
+                        <div className="absolute inset-0 z-10 overflow-hidden opacity-40">
+                            {[...Array(30)].map((_, i) => (
+                                <div key={i} className="rain-line" style={{
+                                    left: `${Math.random() * 100}%`,
+                                    animationDelay: `${Math.random()}s`,
+                                    animationDuration: `${0.5 + Math.random()}s`,
+                                    opacity: 0.3 + Math.random() * 0.5
+                                }}></div>
+                            ))}
+                        </div>
+                    )}
+                    
+                    {heroStyle === 'particles' && (
+                        <div className="absolute inset-0 z-10 overflow-hidden opacity-40">
+                            {[...Array(30)].map((_, i) => (
+                                <div key={i} className="particle-dot" style={{
+                                    left: `${Math.random() * 100}%`,
+                                    width: `${2 + Math.random() * 4}px`,
+                                    height: `${2 + Math.random() * 4}px`,
+                                    animationDelay: `${Math.random() * 5}s`,
+                                    animationDuration: `${5 + Math.random() * 10}s`,
+                                    opacity: 0.2 + Math.random() * 0.6
+                                }}></div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Content Container */}

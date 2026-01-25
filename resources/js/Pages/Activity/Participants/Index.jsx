@@ -114,7 +114,8 @@ export default function Index({
     totalProvinces = 0,
     totalRegencies = 0,
     totalDistricts = 0,
-    unverifiedEmailCount = 0
+    unverifiedEmailCount = 0,
+    participationTypes = []
 }) {
     const { auth } = usePage().props;
     const currentUser = auth?.user;
@@ -446,6 +447,59 @@ export default function Index({
                         setSelectedIds([]);
                         setSelectAllMatching(false);
                         Swal.fire('Terhapus!', 'Peserta berhasil dihapus.', 'success');
+                    }
+                });
+            }
+        });
+    };
+
+    const handleBulkChangeRole = (targetType) => {
+        if (!selectedIds.length) return;
+
+        const activityId = activity?.uid || activity?.id;
+
+        Swal.fire({
+            title: `Jadikan ${targetType.name}?`,
+            text: selectAllMatching
+                ? `Apakah Anda yakin ingin mengubah peran SEMUA ${participants.total} peserta menjadi ${targetType.name}?`
+                : `Apakah Anda yakin ingin mengubah peran ${selectedIds.length} peserta terpilih menjadi ${targetType.name}?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Ubah',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Route name must match web.php: 'change-role-bulk' (inside 'activity.participants.' prefix)
+                // Prefix is 'activity/{activityId}/participants' -> name 'activity.participants.'
+                // Route is 'change-role-bulk' -> full name 'activity.participants.change-role-bulk'
+                // But in web.php I defined it inside the group:
+                // Route::prefix('activity/{activityId}/participants')->name('activity.participants.')->...->group(...)
+                //    Route::post('/participants/change-role-bulk', ...)->name('change-role-bulk');
+                // So full name is 'activity.participants.change-role-bulk'.
+                // Wait, in web.php I added: Route::post('/participants/change-role-bulk', ...
+                // The prefix for group is 'activity/{activityId}/participants'.
+                // So the URL is 'activity/{activityId}/participants/participants/change-role-bulk'.
+                // That looks redundant but that's how I defined it in SearchReplace.
+                // Let me double check web.php content I modified.
+                // I replaced `Route::post('/participants/check', ...)` with `... Route::post('/participants/change-role-bulk', ...)`
+                // The group prefix is `activity/{activityId}/participants`.
+                // The route path is `/participants/change-role-bulk`.
+                // So combined: `activity/{activityId}/participants/participants/change-role-bulk`.
+                // This is ugly but functional.
+                // The route name is `activity.participants.change-role-bulk`.
+                
+                router.post(route('activity.participants.change-role-bulk', { activityId }), {
+                    user_ids: selectAllMatching ? [] : selectedIds,
+                    select_all: selectAllMatching,
+                    participation_type_id: targetType.id,
+                    ...filters
+                }, {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        setSelectedIds([]);
+                        setSelectAllMatching(false);
+                        setShowBulkMenu(false);
+                        Swal.fire('Berhasil!', `Peran peserta telah diubah menjadi ${targetType.name}.`, 'success');
                     }
                 });
             }
@@ -791,6 +845,24 @@ export default function Index({
                                     >
                                         <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-100 z-50">
                                             <div className="p-1.5">
+                                                {/* Dynamic Role Change Buttons */}
+                                                {participationTypes.length > 0 && participationTypes
+                                                    .filter(type => type.code !== 'peserta') // Exclude 'peserta' as it is default
+                                                    .map(type => (
+                                                        <button
+                                                            key={type.id}
+                                                            onClick={() => handleBulkChangeRole(type)}
+                                                            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-3 transition-colors"
+                                                        >
+                                                            <UserCog className="w-4 h-4 text-indigo-500" />
+                                                            Jadikan {type.name}
+                                                        </button>
+                                                    ))
+                                                }
+                                                {participationTypes.some(t => t.code !== 'peserta') && (
+                                                    <div className="border-t border-slate-100 my-1"></div>
+                                                )}
+
                                                 <button
                                                     onClick={handleBulkAssignGroup}
                                                     className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-3 transition-colors"

@@ -1,6 +1,18 @@
 import React from 'react';
+import { usePage } from '@inertiajs/react';
 
-export default function PageHero({ title, description, heroAnim = 'circles', shape = 'waves', children }) {
+export default function PageHero({ title, description, heroAnim, shape = 'waves', children }) {
+    const { appSettings } = usePage().props;
+    
+    // Use prop if provided, otherwise fallback to settings, then default
+    const effectiveHeroAnim = heroAnim || appSettings?.hero_animation_style || 'circles';
+    const heroBg1 = appSettings?.hero_background_1 || null;
+
+    const getStorageUrl = (url) => {
+        if (!url) return null;
+        return url.startsWith('http') ? url : `/storage/${url}`;
+    };
+
     return (
         <section className="page-hero relative overflow-hidden">
             <style>{`
@@ -34,6 +46,42 @@ export default function PageHero({ title, description, heroAnim = 'circles', sha
                     background-size: 20px 20px !important;
                     z-index: 2 !important;
                     opacity: 0.6 !important;
+                }
+
+                /* Animations */
+                @keyframes blob {
+                    0% { transform: translate(0px, 0px) scale(1); }
+                    33% { transform: translate(30px, -50px) scale(1.1); }
+                    66% { transform: translate(-20px, 20px) scale(0.9); }
+                    100% { transform: translate(0px, 0px) scale(1); }
+                }
+                .animate-blob { animation: blob 10s infinite; }
+                .animation-delay-2000 { animation-delay: 2s; }
+                
+                /* Rain Animation */
+                .rain-line {
+                    position: absolute;
+                    width: 1px;
+                    height: 100px;
+                    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3));
+                    animation: rain 1s linear infinite;
+                }
+                @keyframes rain {
+                    0% { transform: translateY(-100px); }
+                    100% { transform: translateY(100vh); }
+                }
+                
+                /* Particles Animation */
+                .particle-dot {
+                    position: absolute;
+                    background: white;
+                    border-radius: 50%;
+                    animation: particle 10s linear infinite;
+                }
+                @keyframes particle {
+                    0% { transform: translateY(100vh) scale(0); opacity: 0; }
+                    50% { opacity: 0.5; }
+                    100% { transform: translateY(-10vh) scale(1); opacity: 0; }
                 }
 
                 .hero-circle {
@@ -114,15 +162,50 @@ export default function PageHero({ title, description, heroAnim = 'circles', sha
 
             <div className="hero-gradient-bg"></div>
             
-            {heroAnim !== 'clean' && (
+            {heroBg1 && (
+                <div 
+                    className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay z-[1]"
+                    style={{ backgroundImage: `url('${getStorageUrl(heroBg1)}')` }}
+                />
+            )}
+            
+            {effectiveHeroAnim !== 'clean' && !heroBg1 && (
                 <div className="hero-dots-pattern pointer-events-none absolute inset-0 z-0"></div>
             )}
             
-            {heroAnim === 'circles' && (
+            {(effectiveHeroAnim === 'circles' || effectiveHeroAnim === 'blob') && (
                 <div className="hero-circles absolute inset-0 pointer-events-none">
                     <div className="hero-circle hero-circle-1"></div>
                     <div className="hero-circle hero-circle-2"></div>
                     <div className="hero-circle hero-circle-3"></div>
+                </div>
+            )}
+            
+            {effectiveHeroAnim === 'rain' && (
+                <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
+                    {[...Array(30)].map((_, i) => (
+                        <div key={i} className="rain-line" style={{
+                            left: `${Math.random() * 100}%`,
+                            animationDelay: `${Math.random()}s`,
+                            animationDuration: `${0.5 + Math.random()}s`,
+                            opacity: 0.3 + Math.random() * 0.5
+                        }}></div>
+                    ))}
+                </div>
+            )}
+            
+            {effectiveHeroAnim === 'particles' && (
+                <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
+                    {[...Array(30)].map((_, i) => (
+                        <div key={i} className="particle-dot" style={{
+                            left: `${Math.random() * 100}%`,
+                            width: `${2 + Math.random() * 4}px`,
+                            height: `${2 + Math.random() * 4}px`,
+                            animationDelay: `${Math.random() * 5}s`,
+                            animationDuration: `${5 + Math.random() * 10}s`,
+                            opacity: 0.2 + Math.random() * 0.6
+                        }}></div>
+                    ))}
                 </div>
             )}
 

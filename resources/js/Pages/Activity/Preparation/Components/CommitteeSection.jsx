@@ -33,11 +33,11 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
         if (!data.position || !data.user_id) return;
 
         setProcessing(true);
-        
+
         if (editingMember) {
-            router.put(route('activity.preparation.update-committee', { 
-                activityId: activity.uid || activity.id, 
-                committeeId: editingMember.id 
+            router.put(route('activity.preparation.update-committee', {
+                activityId: activity.uid || activity.id,
+                committeeId: editingMember.id
             }), data, {
                 onSuccess: () => {
                     setIsModalOpen(false);
@@ -127,52 +127,51 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     {committeeStructure.map((member) => (
-                        <div key={member.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <div key={member.id} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow transition-all group relative overflow-hidden">
+                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                 <button
                                     onClick={() => openModal(member)}
-                                    className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-white/90 text-gray-400 hover:text-blue-500 hover:bg-blue-50 shadow-sm border border-gray-100 transition-all"
+                                    className="h-7 w-7 inline-flex items-center justify-center rounded-lg bg-white/90 text-gray-400 hover:text-blue-500 hover:bg-blue-50 shadow-sm border border-gray-100 transition-all"
                                     title="Edit"
                                 >
-                                    <i className="fas fa-edit text-xs"></i>
+                                    <i className="fas fa-edit text-[10px]"></i>
                                 </button>
                                 <button
                                     onClick={() => handleDelete(member.id)}
-                                    className="h-8 w-8 inline-flex items-center justify-center rounded-lg bg-white/90 text-gray-400 hover:text-red-500 hover:bg-red-50 shadow-sm border border-gray-100 transition-all"
+                                    className="h-7 w-7 inline-flex items-center justify-center rounded-lg bg-white/90 text-gray-400 hover:text-red-500 hover:bg-red-50 shadow-sm border border-gray-100 transition-all"
                                     title="Hapus"
                                 >
-                                    <i className="fas fa-trash-alt text-xs"></i>
+                                    <i className="fas fa-trash-alt text-[10px]"></i>
                                 </button>
                             </div>
 
-                            <div className="flex items-start gap-4 mb-4">
-                                <div className="relative">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="relative shrink-0">
                                     <img
-                                        className="h-16 w-16 rounded-2xl object-cover ring-4 ring-gray-50 shadow-sm"
+                                        className="h-12 w-12 rounded-xl object-cover ring-2 ring-gray-50 shadow-sm"
                                         src={member.user?.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`}
                                         alt={member.name}
                                         onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
                                     />
-                                    <div className="absolute -bottom-2 -right-2 bg-white rounded-lg px-2 py-0.5 border border-gray-100 shadow-sm">
-                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                                            {divisions.find(d => d.id === member.activity_division_id)?.name || '-'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-bold text-gray-900 truncate">{member.name}</h4>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-secondary/10 text-secondary border border-secondary/20 truncate max-w-[120px]">
+                                            {member.position}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="flex-1 min-w-0 pt-1">
-                                    <h4 className="text-base font-bold text-gray-900 truncate pr-6">{member.name}</h4>
-                                    <p className="text-xs text-gray-400 truncate mb-2">{member.user?.email || 'External'}</p>
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-secondary/10 text-secondary border border-secondary/20">
-                                        {member.position}
-                                    </span>
-                                </div>
                             </div>
 
-                            <div className="pt-4 mt-2 border-t border-gray-50 flex justify-between items-center">
-                                <a href={`https://wa.me/${member.phone}`} target="_blank" className="text-sm font-medium text-gray-500 hover:text-green-500 transition-colors flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-green-50">
-                                    <i className="fab fa-whatsapp text-lg"></i>
+                            <div className="pt-3 mt-1 border-t border-gray-50 flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                    {divisions.find(d => d.id === member.activity_division_id)?.name || '-'}
+                                </span>
+                                <a href={`https://wa.me/${member.phone}`} target="_blank" className="text-xs font-medium text-gray-500 hover:text-green-500 transition-colors flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-green-50">
+                                    <i className="fab fa-whatsapp text-sm"></i>
                                     <span>{member.phone || '-'}</span>
                                 </a>
                             </div>

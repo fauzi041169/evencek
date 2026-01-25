@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
@@ -38,7 +38,7 @@ export default function Index({ pengurus = [] }) {
             <div className="min-h-screen bg-white py-4 px-4">
                 <div className="w-full">
                     <div className="mb-4">
-                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl shadow-lg px-5 py-2">
+                        <div className="bg-gradient-custom rounded-t-xl shadow-lg px-5 py-2">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-bold text-white flex items-center">
                                     <i className="fas fa-user-tie mr-2"></i>

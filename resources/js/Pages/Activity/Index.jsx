@@ -5,10 +5,19 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
 export default function Index({ latestActivities, sliderActivities, enrolledActivityIds = [], enrolledActivityBatches = [] }) {
+    const { appSettings } = usePage().props;
     const [currentSlide, setCurrentSlide] = useState(0);
     const [search, setSearch] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [editMode, setEditMode] = useState(false);
+
+    const getStorageUrl = (url) => {
+        if (!url) return null;
+        return url.startsWith('http') ? url : `/storage/${url}`;
+    };
+
+    const heroAnim = appSettings?.hero_animation_style || 'blob';
+    const heroBg1 = appSettings?.hero_background_1 || null;
 
     // Shape Editor State
     const [showShapeEditor, setShowShapeEditor] = useState(false);
@@ -155,19 +164,97 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
             <div className="bg-gray-50 min-h-screen pb-12">
                 {/* Hero Section */}
                 <div className="relative bg-slate-900 overflow-hidden min-h-[600px] flex items-center">
+                    <style>{`
+                        @keyframes blob {
+                            0% { transform: translate(0px, 0px) scale(1); }
+                            33% { transform: translate(30px, -50px) scale(1.1); }
+                            66% { transform: translate(-20px, 20px) scale(0.9); }
+                            100% { transform: translate(0px, 0px) scale(1); }
+                        }
+                        .animate-blob { animation: blob 10s infinite; }
+                        .animation-delay-2000 { animation-delay: 2s; }
+                        .animation-delay-4000 { animation-delay: 4s; }
+                        
+                        /* Rain Animation */
+                        .rain-line {
+                            position: absolute;
+                            width: 1px;
+                            height: 100px;
+                            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3));
+                            animation: rain 1s linear infinite;
+                        }
+                        @keyframes rain {
+                            0% { transform: translateY(-100px); }
+                            100% { transform: translateY(100vh); }
+                        }
+                        
+                        /* Particles Animation */
+                        .particle-dot {
+                            position: absolute;
+                            background: white;
+                            border-radius: 50%;
+                            animation: particle 10s linear infinite;
+                        }
+                        @keyframes particle {
+                            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+                            50% { opacity: 0.5; }
+                            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+                        }
+                    `}</style>
                     {/* Background Elements */}
                     <div className="absolute inset-0">
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 via-slate-900/95 to-slate-900 z-10"></div>
-                        <img
-                            src="/assets/images/begron/bg-pattern.png"
-                            alt="Background Pattern"
-                            className="w-full h-full object-cover opacity-20 mix-blend-overlay"
-                            onError={(e) => e.target.style.display = 'none'}
-                        />
-                        {/* Animated Blobs */}
-                        <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-                        <div className="absolute top-0 -right-4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-                        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+                        
+                        {heroBg1 ? (
+                            <div 
+                                className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay z-[1]"
+                                style={{ backgroundImage: `url('${getStorageUrl(heroBg1)}')` }}
+                            />
+                        ) : (
+                            <img
+                                src="/assets/images/begron/bg-pattern.png"
+                                alt="Background Pattern"
+                                className="w-full h-full object-cover opacity-20 mix-blend-overlay"
+                                onError={(e) => e.target.style.display = 'none'}
+                            />
+                        )}
+
+                        {/* Animated Elements */}
+                        {(heroAnim === 'blob' || heroAnim === 'circles') && (
+                            <>
+                                <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+                                <div className="absolute top-0 -right-4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+                                <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+                            </>
+                        )}
+
+                        {heroAnim === 'rain' && (
+                            <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
+                                {[...Array(30)].map((_, i) => (
+                                    <div key={i} className="rain-line" style={{
+                                        left: `${Math.random() * 100}%`,
+                                        animationDelay: `${Math.random()}s`,
+                                        animationDuration: `${0.5 + Math.random()}s`,
+                                        opacity: 0.3 + Math.random() * 0.5
+                                    }}></div>
+                                ))}
+                            </div>
+                        )}
+                        
+                        {heroAnim === 'particles' && (
+                            <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
+                                {[...Array(30)].map((_, i) => (
+                                    <div key={i} className="particle-dot" style={{
+                                        left: `${Math.random() * 100}%`,
+                                        width: `${2 + Math.random() * 4}px`,
+                                        height: `${2 + Math.random() * 4}px`,
+                                        animationDelay: `${Math.random() * 5}s`,
+                                        animationDuration: `${5 + Math.random() * 10}s`,
+                                        opacity: 0.2 + Math.random() * 0.6
+                                    }}></div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Decorative Side Shapes */}

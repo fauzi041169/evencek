@@ -55,6 +55,9 @@ class HandleInertiaRequests extends Middleware
                 'app_name' => \App\Models\Setting::get('app_name') ?? config('app.name', 'EVENTCEK'),
                 'app_logo' => \App\Models\Setting::get('app_logo') ?? '/assets/images/logo.png',
                 'hero_animation_style' => \App\Models\Setting::get('hero_animation_style', 'circles'),
+                'hero_background_1' => \App\Models\Setting::get('home_hero_background_1') ?? \App\Models\Setting::get('home_hero_background'),
+                'navbar_opacity' => \App\Models\Setting::get('navbar_opacity', '1'),
+                'colors' => \App\Models\Setting::getColors(),
             ],
         ]);
     }

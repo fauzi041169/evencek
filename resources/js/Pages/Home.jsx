@@ -3,17 +3,52 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 
 export default function Home({ heroSlides = [], stats = {}, partners = [], specialActivities = [], latestActivities = [], latestNews = [] }) {
-    const { auth } = usePage().props;
+    const { auth, appSettings } = usePage().props;
     const [currentSlide, setCurrentSlide] = useState(0);
     const mitraSliderRef = useRef(null);
 
-    // Process hero slides to ensure uniform format
-    const processedSlides = heroSlides.length > 0 ? heroSlides.map(slide => {
-        if (typeof slide === 'string') {
-            return { image: slide };
+    // Global Settings Logic
+    const heroAnim = appSettings?.hero_animation_style || 'circles';
+    const heroBg1 = appSettings?.hero_background_1 || null;
+
+    // Helper for hex to rgba
+    const hexToRgba = (hex, alpha) => {
+        if (!hex) return `rgba(124, 58, 237, ${alpha})`; // default purple
+        let c;
+        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+            c= hex.substring(1).split('');
+            if(c.length== 3){
+                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+            }
+            c= '0x'+c.join('');
+            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
         }
-        return slide;
-    }) : [{ image: '/assets/images/hero/defoult.webp' }];
+        return hex;
+    }
+
+    const getStorageUrl = (path) => {
+        if (!path) return null;
+        if (path.startsWith('http')) return path;
+        if (path.startsWith('storage/')) return '/' + path;
+        return '/' + path;
+    };
+
+    // Process hero slides to ensure uniform format, prioritizing global setting if available
+    const processedSlides = heroBg1 
+        ? [{ image: getStorageUrl(heroBg1) }] 
+        : (heroSlides.length > 0 ? heroSlides.map(slide => {
+            if (typeof slide === 'string') {
+                return { image: slide };
+            }
+            return slide;
+        }) : [{ image: '/assets/images/hero/defoult.webp' }]);
+    
+    const activeSlide = processedSlides[currentSlide] || {};
+    // Force static content as requested to match the specific design
+    const heroTitle = "Platform Manajemen Event Digital Profesional";
+    const heroDesc = "Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.";
+    const heroLink = route('activity.index');
+    const heroLinkText = "Mulai Kelola Event";
 
     // Auto-advance hero slides
     useEffect(() => {
@@ -214,12 +249,90 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 @keyframes ctaIconNudge{0%{transform:translateX(0)}50%{transform:translateX(3px)}100%{transform:translateX(0)}}
                 @keyframes ctaIconPulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
                 @keyframes ctaShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+                
+                /* Animations */
+                @keyframes blob {
+                    0% { transform: translate(0px, 0px) scale(1); }
+                    33% { transform: translate(30px, -50px) scale(1.1); }
+                    66% { transform: translate(-20px, 20px) scale(0.9); }
+                    100% { transform: translate(0px, 0px) scale(1); }
+                }
+                .animate-blob { animation: blob 10s infinite; }
+                .animation-delay-2000 { animation-delay: 2s; }
+                
+                /* Rain Animation */
+                .rain-line {
+                    position: absolute;
+                    width: 1px;
+                    height: 100px;
+                    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3));
+                    animation: rain 1s linear infinite;
+                }
+                @keyframes rain {
+                    0% { transform: translateY(-100px); }
+                    100% { transform: translateY(100vh); }
+                }
+                
+                /* Particles Animation */
+                .particle-dot {
+                    position: absolute;
+                    background: white;
+                    border-radius: 50%;
+                    animation: particle 10s linear infinite;
+                }
+                @keyframes particle {
+                    0% { transform: translateY(100vh) scale(0); opacity: 0; }
+                    50% { opacity: 0.5; }
+                    100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+                }
             `}} />
 
             <div className="min-h-screen bg-gradient-to-br from-white via-white to-white relative overflow-hidden font-sans">
                 
                 {/* Hero Section */}
                 <section className="relative min-h-[85vh] flex items-center overflow-hidden">
+                    {/* Dynamic Animations based on Settings */}
+                    {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (
+                        <>
+                            <div 
+                                className="absolute top-[-10%] right-[-5%] w-96 h-96 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob z-10 pointer-events-none"
+                                style={{ backgroundColor: hexToRgba(appSettings?.colors?.primary, 0.2) }}
+                            ></div>
+                            <div 
+                                className="absolute bottom-[-10%] left-[-5%] w-96 h-96 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10 pointer-events-none"
+                                style={{ backgroundColor: hexToRgba(appSettings?.colors?.secondary, 0.2) }}
+                            ></div>
+                        </>
+                    )}
+                    
+                    {heroAnim === 'rain' && (
+                        <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
+                            {[...Array(30)].map((_, i) => (
+                                <div key={i} className="rain-line" style={{
+                                    left: `${Math.random() * 100}%`,
+                                    animationDelay: `${Math.random()}s`,
+                                    animationDuration: `${0.5 + Math.random()}s`,
+                                    opacity: 0.3 + Math.random() * 0.5
+                                }}></div>
+                            ))}
+                        </div>
+                    )}
+                    
+                    {heroAnim === 'particles' && (
+                        <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
+                            {[...Array(30)].map((_, i) => (
+                                <div key={i} className="particle-dot" style={{
+                                    left: `${Math.random() * 100}%`,
+                                    width: `${2 + Math.random() * 4}px`,
+                                    height: `${2 + Math.random() * 4}px`,
+                                    animationDelay: `${Math.random() * 5}s`,
+                                    animationDuration: `${5 + Math.random() * 10}s`,
+                                    opacity: 0.2 + Math.random() * 0.6
+                                }}></div>
+                            ))}
+                        </div>
+                    )}
+
                     {/* Background Slider */}
                     <div className="absolute inset-0 z-0">
                         {processedSlides.map((slide, index) => (
@@ -231,57 +344,51 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                     className="absolute inset-0 bg-cover bg-center animate-slow-zoom"
                                     style={{ backgroundImage: `url('${slide.image}')` }}
                                 />
-                                {/* Gradient Overlay - Professional Split Look */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-900/20"></div>
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
+                                {/* Gradient Overlay - Bright & Modern */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/50 via-purple-900/50 to-blue-900/50 mix-blend-multiply"></div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/80 via-transparent to-indigo-900/30"></div>
                             </div>
                         ))}
                     </div>
 
                     {/* Content */}
-                    <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-                        <div className="max-w-3xl">
-                            {/* Badge */}
-                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md mb-8 reveal-left shadow-lg">
-                                <span className="flex h-2.5 w-2.5 rounded-full bg-green-400 animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.5)]"></span>
-                                <span className="text-sm font-bold text-white tracking-wide uppercase">Official Event Platform</span>
-                            </div>
-
-                            {/* Headline */}
-                            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-6 reveal-left drop-shadow-lg" style={{transitionDelay: '100ms'}}>
-                                Kelola Event Anda <br/>
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">Lebih Profesional</span>
-                            </h1>
-
-                            {/* Subheadline */}
-                            <p className="text-lg md:text-xl text-gray-300 mb-10 leading-relaxed max-w-2xl reveal-left font-medium" style={{transitionDelay: '200ms'}}>
-                                Satu platform terintegrasi untuk pendaftaran, pembayaran, absensi, hingga sertifikat digital. Hemat waktu, data akurat, dan pengalaman peserta yang lebih baik.
-                            </p>
-
-                            {/* CTAs */}
-                            <div className="flex flex-wrap gap-5 reveal-left" style={{transitionDelay: '300ms'}}>
-                                <Link href={route('activity.index')} 
-                                    className="group relative px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold text-lg shadow-[0_10px_20px_rgba(79,70,229,0.3)] hover:shadow-[0_15px_30px_rgba(79,70,229,0.4)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
-                                    <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 skew-x-12 -ml-4"></div>
-                                    <span className="relative flex items-center gap-3">
-                                        <i className="fas fa-rocket"></i>
-                                        Mulai Sekarang
-                                    </span>
-                                </Link>
+                    <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center min-h-[85vh]">
+                        <div className="max-w-5xl mx-auto text-center">
+                             {/* Glass Card Container */}
+                             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 md:p-16 shadow-2xl relative overflow-hidden">
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50 pointer-events-none"></div>
                                 
-                                {!auth?.user && (
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (window.toggleLoginDropdown) window.toggleLoginDropdown();
-                                        }}
-                                        className="group px-8 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-lg border border-white/10 backdrop-blur-md transition-all duration-300 flex items-center gap-3 hover:border-white/30"
+                                {/* Headline */}
+                                <h1 className="relative text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-8 reveal drop-shadow-lg tracking-tight">
+                                    {heroTitle}
+                                </h1>
+
+                                {/* Subheadline */}
+                                <p className="relative text-lg md:text-xl text-indigo-100 mb-12 leading-relaxed max-w-3xl mx-auto reveal font-medium opacity-90">
+                                    {heroDesc}
+                                </p>
+
+                                {/* CTAs */}
+                                <div className="relative flex flex-wrap gap-6 justify-center reveal" style={{transitionDelay: '200ms'}}>
+                                    <Link href={heroLink} 
+                                        className="group relative px-10 py-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-lg shadow-[0_10px_30px_rgba(79,70,229,0.4)] hover:shadow-[0_20px_40px_rgba(79,70,229,0.5)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
                                     >
-                                        <i className="fas fa-user-plus text-blue-400 group-hover:text-white transition-colors"></i>
-                                        Daftar Akun
-                                    </button>
-                                )}
+                                        <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 skew-x-12 -ml-4"></div>
+                                        <span className="relative flex items-center gap-3">
+                                            <i className="fas fa-rocket"></i>
+                                            {heroLinkText}
+                                        </span>
+                                    </Link>
+                                    
+                                    <a href="#fitur" 
+                                        className="group px-10 py-5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-lg border border-white/20 backdrop-blur-md transition-all duration-300 flex items-center gap-3 hover:border-white/40 shadow-lg hover:shadow-xl"
+                                    >
+                                        <i className="fas fa-layer-group text-blue-300 group-hover:text-white transition-colors"></i>
+                                        Jelajahi Fitur
+                                    </a>
+                                </div>
                             </div>
+                        </div>
 
                             {/* Trust Signals */}
                             <div className="mt-14 flex flex-wrap items-center gap-x-8 gap-y-4 text-white/60 text-sm font-semibold tracking-wide uppercase reveal-left border-t border-white/10 pt-8" style={{transitionDelay: '400ms'}}>
@@ -299,7 +406,6 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                 </div>
                             </div>
                         </div>
-                    </div>
 
                     {/* Slider Indicators */}
                     <div className="absolute bottom-10 right-10 flex gap-3 z-20">

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
@@ -29,7 +29,7 @@ export default function PartnersIndex({ partners = [], flash }) {
                 <div className="w-full">
                     {/* Header */}
                     <div className="mb-4">
-                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl shadow-lg px-5 py-2">
+                        <div className="bg-gradient-custom rounded-t-xl shadow-lg px-5 py-2">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-bold text-white flex items-center">
                                     <i className="fas fa-handshake mr-2"></i>

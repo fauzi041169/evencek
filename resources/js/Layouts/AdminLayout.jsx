@@ -4,13 +4,33 @@ import Sidebar from '../Components/Sidebar';
 import Alerts from '../Components/Alerts';
 
 export default function AdminLayout({ children, title = '' }) {
-    const { auth, flash, errors } = usePage().props;
+    const { auth, flash, errors, appSettings } = usePage().props;
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+    
+    const settings = appSettings || {};
 
     return (
         <div className="min-h-screen bg-gray-100">
+            <style dangerouslySetInnerHTML={{ __html: `
+                :root {
+                    --color-primary: ${settings.colors?.primary || '#7c3aed'};
+                    --color-secondary: ${settings.colors?.secondary || '#db2777'};
+                    --color-accent: ${settings.colors?.accent || '#f59e0b'};
+                }
+                .bg-gradient-custom {
+                    background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
+                }
+                .text-primary { color: var(--color-primary) !important; }
+                .bg-primary { background-color: var(--color-primary) !important; }
+                .text-secondary { color: var(--color-secondary) !important; }
+                .bg-secondary { background-color: var(--color-secondary) !important; }
+                .border-primary { border-color: var(--color-primary) !important; }
+                .ring-primary { --tw-ring-color: var(--color-primary) !important; }
+                .hover\\:bg-primary:hover { background-color: var(--color-primary) !important; }
+                .hover\\:text-primary:hover { color: var(--color-primary) !important; }
+            `}} />
             {/* Mobile Sidebar Overlay */}
             {isMobileSidebarOpen && (
                 <div 

@@ -357,6 +357,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
 
         Route::post('/participants/import', 'importParticipants')->name('import-participants');
         Route::post('/participants/check', 'checkParticipants')->name('check-participants');
+        Route::post('/participants/change-role-bulk', 'changeRoleBulk')->name('change-role-bulk');
         Route::get('/participants/get-import-template', 'getImportTemplate')->name('get-import-template');
         Route::post('/participants/save-import-template', 'saveImportTemplate')->name('save-import-template');
         Route::get('/participants/import', 'importParticipantsGet')->name('import-participants.get');

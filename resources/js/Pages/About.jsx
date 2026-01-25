@@ -3,8 +3,29 @@ import { Head, usePage, Link } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 
 export default function About() {
-    const { flash } = usePage().props;
+    const { flash, appSettings } = usePage().props;
     const [scrolled, setScrolled] = useState(false);
+    const heroAnim = appSettings?.hero_animation_style || 'circles';
+
+    // Helper for hex to rgba
+    const hexToRgba = (hex, alpha) => {
+        if (!hex) return `rgba(124, 58, 237, ${alpha})`; // default purple
+        let c;
+        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+            c= hex.substring(1).split('');
+            if(c.length== 3){
+                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+            }
+            c= '0x'+c.join('');
+            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+        }
+        return hex;
+    }
+
+    const getStorageUrl = (url) => {
+        if (!url) return null;
+        return url.startsWith('http') ? url : `/storage/${url}`;
+    };
 
     useEffect(() => {
         const handleScroll = () => {
@@ -17,6 +38,43 @@ export default function About() {
     return (
         <WebLayout hasHeaderSpacer={false}>
             <Head title="Tentang Kami - Solusi Enterprise" />
+            <style dangerouslySetInnerHTML={{ __html: `
+                /* Animations */
+                @keyframes blob {
+                    0% { transform: translate(0px, 0px) scale(1); }
+                    33% { transform: translate(30px, -50px) scale(1.1); }
+                    66% { transform: translate(-20px, 20px) scale(0.9); }
+                    100% { transform: translate(0px, 0px) scale(1); }
+                }
+                .animate-blob { animation: blob 10s infinite; }
+                .animation-delay-2000 { animation-delay: 2s; }
+                
+                /* Rain Animation */
+                .rain-line {
+                    position: absolute;
+                    width: 1px;
+                    height: 100px;
+                    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3));
+                    animation: rain 1s linear infinite;
+                }
+                @keyframes rain {
+                    0% { transform: translateY(-100px); }
+                    100% { transform: translateY(100vh); }
+                }
+                
+                /* Particles Animation */
+                .particle-dot {
+                    position: absolute;
+                    background: white;
+                    border-radius: 50%;
+                    animation: particle 10s linear infinite;
+                }
+                @keyframes particle {
+                    0% { transform: translateY(100vh) scale(0); opacity: 0; }
+                    50% { opacity: 0.5; }
+                    100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+                }
+            `}} />
             
             <div className="bg-white font-sans text-slate-800">
                 
@@ -24,9 +82,57 @@ export default function About() {
                 <div className="relative overflow-hidden bg-slate-900 pt-32 pb-20 lg:pt-48 lg:pb-32">
                     {/* Background Pattern */}
                     <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-primary/20 rounded-full blur-[120px] opacity-30 mix-blend-screen"></div>
-                        <div className="absolute bottom-0 right-0 w-[800px] h-[600px] bg-indigo-600/20 rounded-full blur-[100px] opacity-20"></div>
-                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+                        {appSettings?.hero_background_1 && (
+                            <div 
+                                className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay"
+                                style={{ backgroundImage: `url('${getStorageUrl(appSettings.hero_background_1)}')` }}
+                            />
+                        )}
+                        {!appSettings?.hero_background_1 && (
+                             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+                        )}
+
+                        {/* Dynamic Animations based on Settings */}
+                        {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (
+                            <>
+                                <div 
+                                    className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] rounded-full blur-[120px] opacity-30 mix-blend-screen animate-blob"
+                                    style={{ backgroundColor: hexToRgba(appSettings?.colors?.primary, 0.2) }}
+                                ></div>
+                                <div 
+                                    className="absolute bottom-0 right-0 w-[800px] h-[600px] rounded-full blur-[100px] opacity-20 animate-blob animation-delay-2000"
+                                    style={{ backgroundColor: hexToRgba(appSettings?.colors?.secondary, 0.2) }}
+                                ></div>
+                            </>
+                        )}
+                        
+                        {heroAnim === 'rain' && (
+                            <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
+                                {[...Array(30)].map((_, i) => (
+                                    <div key={i} className="rain-line" style={{
+                                        left: `${Math.random() * 100}%`,
+                                        animationDelay: `${Math.random()}s`,
+                                        animationDuration: `${0.5 + Math.random()}s`,
+                                        opacity: 0.3 + Math.random() * 0.5
+                                    }}></div>
+                                ))}
+                            </div>
+                        )}
+                        
+                        {heroAnim === 'particles' && (
+                            <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
+                                {[...Array(30)].map((_, i) => (
+                                    <div key={i} className="particle-dot" style={{
+                                        left: `${Math.random() * 100}%`,
+                                        width: `${2 + Math.random() * 4}px`,
+                                        height: `${2 + Math.random() * 4}px`,
+                                        animationDelay: `${Math.random() * 5}s`,
+                                        animationDuration: `${5 + Math.random() * 10}s`,
+                                        opacity: 0.2 + Math.random() * 0.6
+                                    }}></div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

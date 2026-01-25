@@ -64,6 +64,32 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
 
     return (
         <div className="min-h-screen bg-gray-50">
+            {/* Global Styles from AppSettings */}
+            <style dangerouslySetInnerHTML={{ __html: `
+                :root {
+                    --color-primary: ${settings.colors?.primary || '#7c3aed'};
+                    --color-secondary: ${settings.colors?.secondary || '#db2777'};
+                    --color-accent: ${settings.colors?.accent || '#f59e0b'};
+                    --color-navbar-bg: ${settings.colors?.navbar_bg || '#1e293b'};
+                    --color-navbar-text: ${settings.colors?.navbar_text || '#f8fafc'};
+                }
+                .navbar-gradient {
+                    background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
+                }
+                .text-primary { color: var(--color-primary); }
+                .bg-primary { background-color: var(--color-primary); }
+                .text-secondary { color: var(--color-secondary); }
+                .bg-secondary { background-color: var(--color-secondary); }
+                .hover\\:bg-primary:hover { background-color: var(--color-primary); }
+                .hover\\:text-primary:hover { color: var(--color-primary); }
+                
+                /* Custom scrollbar */
+                ::-webkit-scrollbar { width: 8px; height: 8px; }
+                ::-webkit-scrollbar-track { background: #f1f5f9; }
+                ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+                ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+            `}} />
+
             {/* Flash Messages */}
             <div className="fixed top-16 right-4 z-[10000] max-w-sm">
                 <Alerts flash={flash} errors={errors} />

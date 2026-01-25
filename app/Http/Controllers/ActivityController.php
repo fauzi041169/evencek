@@ -2570,13 +2570,6 @@ class ActivityController extends Controller
             return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk menghapus peserta.');
         }
 
-        \Log::info('DEBUG removeParticipants', [
-            'request_all' => $request->all(),
-            'activity_id' => $activity->id,
-            'activity_uid' => $activity->uid,
-            'user_ids_input' => $request->input('user_ids'),
-        ]);
-
         $userIds = [];
         $activityUserIds = [];
 
@@ -2613,11 +2606,16 @@ class ActivityController extends Controller
             $candidateActivityUserIds = array_diff($allIds, $existingUserIds);
             if (! empty($candidateActivityUserIds)) {
                 // Cari record activity_user yang sesuai dengan ID tersebut
-                $activityUsers = ActivityUser::where('activity_id', $activity->id)
-                    ->whereIn('id', $candidateActivityUserIds)
-                    ->get();
+            // Cari record activity_user yang sesuai dengan ID tersebut
+            // Gunakan pencarian ID langsung terlebih dahulu untuk memastikan record ada
+            $activityUsers = ActivityUser::whereIn('id', $candidateActivityUserIds)->get();
 
-                // Ambil user_id dari record tersebut dan tambahkan ke userIds
+            // Filter agar hanya menghapus data dari aktivitas yang sdah ditentukan (security verify)
+            $activityUsers = $activityUsers->filter(function ($au) use ($activity) {
+                return (string) $au->activity_id === (string) $activity->id;
+            });
+            
+            // Ambil user_id dari record tersebut dan tambahkan ke userIds
                 $additionalUserIds = $activityUsers->pluck('user_id')->filter()->map(function ($id) {
                     return (string) $id;
                 })->toArray();
@@ -6278,7 +6276,7 @@ class ActivityController extends Controller
             }
 
             // Map to committee members
-            $committee_stats = $committees->map(function ($member) use ($registrations, $validations, $paymentCounts) {
+            $mappedCommittees = $committees->map(function ($member) use ($registrations, $validations, $paymentCounts) {
                 $userId = $member->user_id;
                 $name = $member->user ? $member->user->name : $member->name;
                 $normalizedName = strtolower(trim((string)$name));
@@ -6309,13 +6307,37 @@ class ActivityController extends Controller
                     'user_id' => $userId,
                     'name' => $name,
                     'position' => $member->position,
-                    'registrations' => $totalReg,
-                    'validations' => $valCount,
-                    'akses' => $aksesCount,
-                    'total_actions' => $totalReg + $valCount + $aksesCount,
+                    'registrations' => $totalReg, // User-level stat
+                    'validations' => $valCount, // User-level stat
+                    'akses' => $aksesCount, // Entry-level stat
                     'profile_photo_url' => $profilePhotoUrl,
                 ];
-            })->sortByDesc('total_actions')->values()->take(10);
+            });
+
+            // Group by user and aggregate stats
+            $committee_stats = $mappedCommittees
+                ->groupBy(function ($item) {
+                     return $item['user_id'] ? 'u_'.$item['user_id'] : 'n_'.$item['name'];
+                })
+                ->map(function ($group) {
+                    $first = $group->first();
+                    $sumAkses = $group->sum('akses'); // Sum access from all positions
+                    
+                    return [
+                        'id' => $first['id'],
+                        'user_id' => $first['user_id'],
+                        'name' => $first['name'],
+                        'position' => $group->pluck('position')->unique()->implode(', '), // Merge positions
+                        'registrations' => $first['registrations'],
+                        'validations' => $first['validations'],
+                        'akses' => $sumAkses,
+                        'total_actions' => $first['registrations'] + $first['validations'] + $sumAkses,
+                        'profile_photo_url' => $first['profile_photo_url'],
+                    ];
+                })
+                ->sortByDesc('total_actions')
+                ->values()
+                ->take(10);
         }
 
         // Statistik rundown

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 
-export default function Subscription({ plans, activePlanIds, heroAnim = 'circles', midtransStatus }) {
+export default function Subscription({ plans, activePlanIds, heroAnim, midtransStatus }) {
     const { flash, errors, csrf_token } = usePage().props;
 
     // Helper to format currency if not provided by backend (fallback)
