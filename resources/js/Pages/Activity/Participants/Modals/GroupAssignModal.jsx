@@ -3,8 +3,6 @@ import { useForm } from '@inertiajs/react';
 import { Users, X, Loader2 } from 'lucide-react';
 
 export default function GroupAssignModal({ isOpen, onClose, activity, participantGroups, selectedIds }) {
-    if (!isOpen) return null;
-
     const { data, setData, post, processing, errors, reset } = useForm({
         user_ids: selectedIds,
         group_id: '',
@@ -13,9 +11,11 @@ export default function GroupAssignModal({ isOpen, onClose, activity, participan
 
     const [mode, setMode] = useState('existing'); // 'existing', 'new', 'remove'
 
+    if (!isOpen) return null;
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         let submitData = {
             user_ids: selectedIds,
             group_id: data.group_id

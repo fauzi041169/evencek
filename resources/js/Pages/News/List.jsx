@@ -36,7 +36,7 @@ export default function List({ news }) {
                 <div className="w-full px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center mb-6">
                         <h1 className="text-2xl font-bold text-gray-900">Manajemen Berita</h1>
-                        <Link 
+                        <Link
                             href={route('news.create')}
                             className="bg-secondary text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center shadow-md"
                         >
@@ -64,10 +64,10 @@ export default function List({ news }) {
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
                                                         <div className="h-10 w-10 flex-shrink-0">
-                                                            <img 
-                                                                className="h-10 w-10 rounded-lg object-cover" 
-                                                                src={item.image ? (item.image.startsWith('http') ? item.image : `/storage/${item.image}`) : '/assets/images/news/default-news.jpg'} 
-                                                                alt="" 
+                                                            <img
+                                                                className="h-10 w-10 rounded-lg object-cover"
+                                                                src={item.image ? (item.image.startsWith('http') ? item.image : `/storage/${item.image}`) : '/assets/images/news/default-news.jpg'}
+                                                                alt=""
                                                             />
                                                         </div>
                                                         <div className="ml-4">
@@ -96,22 +96,22 @@ export default function List({ news }) {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <div className="flex justify-end space-x-2">
-                                                        <Link 
-                                                            href={route('news.show', item.slug)} 
+                                                        <Link
+                                                            href={route('news.show', item.slug)}
                                                             className="text-secondary hover:text-blue-900 bg-blue-50 hover:bg-secondary/10 p-2 rounded-lg transition"
                                                             title="Lihat"
                                                         >
                                                             <i className="far fa-eye"></i>
                                                         </Link>
-                                                        <Link 
-                                                            href={route('news.edit', item.id)} 
+                                                        <Link
+                                                            href={route('news.edit', item.id)}
                                                             className="text-primary hover:text-indigo-900 bg-indigo-50 hover:bg-primary/10 p-2 rounded-lg transition"
                                                             title="Edit"
                                                         >
                                                             <i className="far fa-edit"></i>
                                                         </Link>
-                                                        <button 
-                                                            onClick={() => handleDelete(item.id)} 
+                                                        <button
+                                                            onClick={() => handleDelete(item.id)}
                                                             className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition"
                                                             title="Hapus"
                                                         >
@@ -132,7 +132,7 @@ export default function List({ news }) {
                                 </tbody>
                             </table>
                         </div>
-                        
+
                         {/* Pagination */}
                         {news.links && news.links.length > 3 && (
                             <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
@@ -141,12 +141,11 @@ export default function List({ news }) {
                                         {news.links.map((link, i) => (
                                             <Link
                                                 key={i}
-                                                href={link.url}
-                                                className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                                                    link.active
+                                                href={link.url || '#'}
+                                                className={`px-3 py-1 text-sm rounded-md transition-colors ${link.active
                                                         ? 'bg-secondary text-white'
                                                         : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                                                } ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    } ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 dangerouslySetInnerHTML={{ __html: link.label }}
                                             />
                                         ))}

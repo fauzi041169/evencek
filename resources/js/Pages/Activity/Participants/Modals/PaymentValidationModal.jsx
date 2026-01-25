@@ -35,7 +35,7 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
         }
     }, [payment, activity]);
 
-    if (!payment) return null;
+    if (!show || !payment) return null;
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];

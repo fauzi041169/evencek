@@ -21,28 +21,60 @@ import ColumnFilter from './ColumnFilter';
 import RoomSelect from './RoomSelect';
 
 // Helper for key normalization
-const normalizeCustomKey = (raw) => {
-    let key = String(raw).replace(/^\d+\./, '').trim();
-    key = key.replace(/\{[^}]*\}/, '').trim();
+    const normalizeCustomKey = (raw) => {
+        let key = String(raw).replace(/^\d+\./, '').trim();
+        key = key.replace(/\{[^}]*\}/, '').trim();
 
-    if (key !== '' && key.endsWith('*')) {
-        key = key.substring(0, key.length - 1).trim();
-    }
-    if (key !== '' && key.includes('|')) {
-        key = key.split('|')[0].trim();
-    }
+        if (key !== '' && key.endsWith('*')) {
+            key = key.substring(0, key.length - 1).trim();
+        }
+        if (key !== '' && key.includes('|')) {
+            key = key.split('|')[0].trim();
+        }
 
-    let lower = key.toLowerCase();
-    if (lower.startsWith('user:')) {
-        key = key.substring(5).trim();
-        lower = key.toLowerCase();
-    }
-    if (lower.startsWith('profile:')) {
-        key = key.substring(8).trim();
-    }
+        let lower = key.toLowerCase();
+        if (lower.startsWith('user:')) {
+            key = key.substring(5).trim();
+            lower = key.toLowerCase();
+        }
+        if (lower.startsWith('profile:')) {
+            key = key.substring(8).trim();
+        }
 
-    return key.trim();
-};
+        return key.trim();
+    };
+
+    const columnLabels = {
+        'col-index': 'No',
+        'col-name': 'Nama Lengkap',
+        'col-email': 'Email',
+        'col-hp': 'No. HP',
+        'col-nik': 'NIK',
+        'col-instansi': 'Instansi',
+        'col-pekerjaan': 'Pekerjaan',
+        'col-jabatan': 'Jabatan',
+        'col-prov': 'Provinsi',
+        'col-regency': 'Kabupaten/Kota',
+        'col-district': 'Kecamatan',
+        'col-alamat': 'Alamat',
+        'col-gender': 'Jenis Kelamin',
+        'col-birthplace': 'Tempat Lahir',
+        'col-birthdate': 'Tanggal Lahir',
+        'col-status': 'Status',
+        'col-payment-method': 'Metode Pembayaran',
+        'col-registration-method': 'Metode Daftar',
+        'col-action': 'Aksi',
+        'col-room': 'Kamar',
+        'col-group': 'Kelompok',
+        'col-created-at': 'Tanggal Daftar',
+        'col-updated-at': 'Terakhir Update',
+        'col-batch': 'Batch',
+        'col-card-status': 'Status Kartu',
+        'col-certificate-id': 'ID Sertifikat',
+        'col-print-count': 'Jml Cetak',
+        'col-created-by': 'Dibuat Oleh',
+        'col-updated-by': 'Diupdate Oleh'
+    };
 
 export default function Index({
     activity,
@@ -143,15 +175,6 @@ export default function Index({
 
     // Sync selectedPaymentParticipant when participants data updates (e.g. after upload)
     useEffect(() => {
-        if (participants?.data) {
-            console.log('DEBUG PARTICIPANTS DATA:', participants.data);
-            const debugUser = participants.data.find(p => p.user?.email === 'maderum434@gmail.com');
-            if (debugUser) {
-                console.log('DEBUG SPECIFIC USER:', debugUser.user?.name, debugUser);
-                console.log('DEBUG USER PROFILE:', debugUser.user?.profile);
-                console.log('DEBUG USER PROVINCE:', debugUser.user?.profile?.province);
-            }
-        }
         if (selectedPaymentParticipant && participants?.data) {
             const updatedParticipant = participants.data.find(p => p.id === selectedPaymentParticipant.participant.id);
             if (updatedParticipant) {
@@ -609,7 +632,7 @@ export default function Index({
                                                         className="rounded border-slate-300 text-primary focus:ring-indigo-500 w-4 h-4"
                                                     />
                                                     <span className="text-sm text-slate-700 font-medium">
-                                                        {key.replace('col-', '').replace(/^\w/, c => c.toUpperCase())}
+                                                        {columnLabels[key] || key.replace('col-', '').replace(/^\w/, c => c.toUpperCase()).replace(/-/g, ' ')}
                                                     </span>
                                                 </label>
                                             ))}
@@ -666,10 +689,7 @@ export default function Index({
                             )}
 
                             <button
-                                onClick={() => {
-                                    console.log('Manajemen Kamar clicked');
-                                    setShowRoomsModal(true);
-                                }}
+                                onClick={() => setShowRoomsModal(true)}
                                 className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
                             >
                                 <Building className="w-4 h-4 text-indigo-500" />

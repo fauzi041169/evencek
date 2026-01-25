@@ -1622,6 +1622,8 @@ class ActivityController extends Controller
             'mandatory_profile_fields' => 'nullable|array',
             'manual_payment_details' => 'nullable|array',
             'visible_sections' => 'nullable|array',
+            'import_template' => 'nullable|string|max:2000',
+            'column_settings' => 'nullable|array',
         ]);
 
         // Custom validation for end_time
@@ -5090,16 +5092,22 @@ class ActivityController extends Controller
         } 
         
         if (!empty($activity->import_template)) {
-            $cols = explode(',', $activity->import_template);
+            // Split by comma, semicolon, newline
+            $cols = preg_split('/[,;\r\n]+/', $activity->import_template);
+            
             $standardKeys = array_map(function($c) { return $c['key']; }, $availableColumns);
             // Add some implicit standard keys that might be in template but we already handled
             $standardKeys = array_merge($standardKeys, ['password']); 
 
             foreach ($cols as $col) {
                 $col = trim($col);
-                // Clean up options like {A|B} or |dropdown:
+                if (empty($col)) continue;
+
+                // Clean up options like {A|B}
                 $cleanCol = preg_replace('/\{.*\}/', '', $col);
+                // Clean up options after pipe
                 $cleanCol = explode('|', $cleanCol)[0];
+                
                 $cleanCol = trim($cleanCol);
                 $cleanCol = str_replace(['user:', 'profile:'], '', $cleanCol);
                 $cleanCol = str_replace('*', '', $cleanCol);

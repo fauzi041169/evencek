@@ -797,13 +797,7 @@ class ActivityPreparationController extends Controller
 
                         if ($participants->isNotEmpty()) {
                             $firstP = $participants->first();
-                            \Log::info('DEBUG FIRST PARTICIPANT RELATIONS', [
-                                'user_id' => $firstP->user_id,
-                                'has_user' => (bool)$firstP->user,
-                                'has_profile' => (bool)($firstP->user->profile ?? false),
-                                'province_data' => $firstP->user->profile->province ?? 'NULL',
-                                'regency_data' => $firstP->user->profile->regency ?? 'NULL',
-                            ]);
+
                         }
 
 

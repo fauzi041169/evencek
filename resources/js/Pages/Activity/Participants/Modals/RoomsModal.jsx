@@ -75,20 +75,6 @@ const SearchableParticipantSelect = ({ participants, onSelect, placeholder = "+ 
 };
 
 export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hotels = [], unassignedParticipants = [], roomOccupants = [] }) {
-    if (!isOpen) return null;
-
-    useEffect(() => {
-        if (isOpen) {
-            console.log('RoomsModal OPENED', { activity, rooms, hotels, unassignedParticipants, roomOccupants });
-        }
-    }, [isOpen]);
-
-    // Safety check for activity
-    if (!activity) {
-        console.error('RoomsModal: activity prop is missing');
-        return null;
-    }
-
     const { data, setData, post, processing, errors, reset } = useForm({
         hotel_name: '',
         room_number: '',
@@ -103,6 +89,20 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     const importForm = useForm({
         file: null
     });
+
+    useEffect(() => {
+        if (isOpen) {
+            console.log('RoomsModal OPENED', { activity, rooms, hotels, unassignedParticipants, roomOccupants });
+        }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    // Safety check for activity
+    if (!activity) {
+        console.error('RoomsModal: activity prop is missing');
+        return null;
+    }
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -195,6 +195,15 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         });
     };
 
+    const handleDeleteAll = () => {
+        if (!confirm('Hapus SEMUA data kamar beserta penugasan pesertanya dalam aktivitas ini? Tindakan ini tidak dapat dibatalkan.')) return;
+        router.delete(route('activity.participants.rooms.destroy-all', { activityId: activity.uid || activity.id }), {
+            onSuccess: () => {
+                setSelectedRooms([]);
+            }
+        });
+    };
+
     return createPortal(
         <div className="relative z-[100]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             {/* Background backdrop */}
@@ -249,7 +258,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                     </button>
                                 </div>
                                 {rooms.length > 0 && (
-                                    <button 
+                                    <button
                                         type="button"
                                         onClick={handleDeleteAll}
                                         className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-t-lg transition-colors flex items-center gap-2"
