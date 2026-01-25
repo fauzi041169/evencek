@@ -92,7 +92,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
     useEffect(() => {
         if (isOpen) {
-            console.log('RoomsModal OPENED', { activity, rooms, hotels, unassignedParticipants, roomOccupants });
+            // Modal opened
         }
     }, [isOpen]);
 

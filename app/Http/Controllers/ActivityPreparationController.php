@@ -348,7 +348,6 @@ class ActivityPreparationController extends Controller
      */
     public function participants($activityId)
     {
-        \Log::info('Participants Controller HIT', ['activity_uid' => $activityId]);
         try {
             $activity = Activity::where('uid', $activityId)->first();
             if (! $activity) {

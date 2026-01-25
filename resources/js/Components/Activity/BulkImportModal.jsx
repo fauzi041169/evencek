@@ -231,7 +231,6 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
 
             
             const result = await response.json();
-            console.log('[DEBUG] Import Success Result:', result);
 
             if (result.success) {
                 // Determine counts based on result structure (blade uses result-linked, inserted, skipped, failed)
