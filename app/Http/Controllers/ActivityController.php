@@ -978,7 +978,7 @@ class ActivityController extends Controller
             ->get();
 
         // Eager load rundown items to display in activity.show
-        $activity->load(['rundowns', 'galleries']);
+        $activity->load(['rundowns', 'galleries', 'comments.user', 'comments.children.user']);
 
         // Get subscription limits and participant count for creator
         $participantLimitInfo = null;
@@ -1425,6 +1425,9 @@ class ActivityController extends Controller
                     'certificate_visible' => $certificatePrintSettings['download_card_visible'] ?? false,
                     'is_committee' => $isCommittee,
                     'can_manage_registration' => $activity->canManageRegistration($authUser->id),
+                    'statistics' => [
+                        'average_rating' => $activity->averageRating(),
+                    ],
                 ]),
                 'isEnrolled' => $isEnrolled,
                 'isRegistered' => $isRegistered,

@@ -22,9 +22,11 @@ export default function About() {
         return hex;
     }
 
-    const getStorageUrl = (url) => {
-        if (!url) return null;
-        return url.startsWith('http') ? url : `/storage/${url}`;
+    const getStorageUrl = (path) => {
+        if (!path) return null;
+        if (path.startsWith('http')) return path;
+        if (path.startsWith('storage/')) return '/' + path;
+        return '/' + path;
     };
 
     useEffect(() => {
@@ -82,18 +84,21 @@ export default function About() {
                 <div className="relative overflow-hidden bg-slate-900 pt-32 pb-20 lg:pt-48 lg:pb-32">
                     {/* Background Pattern */}
                     <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+                         {/* Base Background */}
+                        <div className="absolute inset-0 bg-slate-900 z-0"></div>
+
                         {appSettings?.hero_background_1 && (
-                            <>
-                                <div 
-                                    className="absolute inset-0 bg-cover bg-center"
-                                    style={{ backgroundImage: `url('${getStorageUrl(appSettings.hero_background_1)}')` }}
-                                />
-                                <div className="absolute inset-0 bg-slate-900/75"></div>
-                            </>
+                            <div 
+                                className="absolute inset-0 bg-cover bg-center opacity-40 transition-opacity duration-500 z-0"
+                                style={{ backgroundImage: `url('${getStorageUrl(appSettings.hero_background_1)}')` }}
+                            />
                         )}
                         {!appSettings?.hero_background_1 && (
                              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
                         )}
+
+                        {/* Gradient Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 via-indigo-900/40 to-slate-900/95 z-10"></div>
 
                         {/* Dynamic Animations based on Settings */}
                         {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (

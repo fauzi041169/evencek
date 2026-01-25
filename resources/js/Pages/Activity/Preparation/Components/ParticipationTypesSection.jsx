@@ -29,23 +29,35 @@ export default function ParticipationTypesSection({ participationTypes, activity
     };
 
     const content = (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-gray-900 border-l-4 border-secondary pl-3">Jenis Kepesertaan</h3>
+        <div className="p-8">
+            <div className="flex justify-between items-start mb-8">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm border border-purple-100">
+                        <i className="fas fa-ticket-alt text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 leading-tight">Jenis Kepesertaan</h3>
+                        <p className="text-xs text-slate-500 font-medium pt-1">Kategori Peserta</p>
+                    </div>
+                </div>
                 <button
                     onClick={() => openModal()}
-                    className="bg-secondary/10 text-secondary p-2 rounded-xl hover:bg-secondary hover:text-white transition-all shadow-sm"
+                    className="group flex items-center justify-center w-10 h-10 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white transition-all shadow-sm border border-purple-100/50 hover:shadow-purple-200 hover:shadow-lg"
+                    title="Tambah Jenis Kepesertaan"
                 >
-                    <i className="fas fa-plus"></i>
+                    <i className="fas fa-plus transform group-hover:rotate-90 transition-transform duration-300"></i>
                 </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
                 {participationTypes.map((type) => (
-                    <div key={type.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors">
-                        <span className="text-sm font-bold truncate pr-2 flex-1 min-w-0">{type.name}</span>
-                        <div className="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => openModal(type)} className="text-blue-500 hover:text-blue-700 bg-white p-1.5 rounded-lg shadow-sm">
+                    <div key={type.id} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-purple-100 transition-all duration-300 group">
+                        <div className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-purple-400 group-hover:scale-125 transition-transform"></div>
+                            <span className="text-sm font-bold text-slate-700 truncate min-w-0 group-hover:text-purple-700 transition-colors">{type.name}</span>
+                        </div>
+                        <div className="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                            <button onClick={() => openModal(type)} className="text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 p-2 rounded-lg transition-colors">
                                 <i className="fas fa-edit"></i>
                             </button>
                         </div>

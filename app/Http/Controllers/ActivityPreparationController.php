@@ -380,7 +380,14 @@ class ActivityPreparationController extends Controller
      */
     public function changeRoleBulk(Request $request, $activityId)
     {
-        $activity = Activity::where('uid', $activityId)->firstOrFail();
+        $activity = Activity::where('uid', $activityId)->first();
+        if (!$activity) {
+            $activity = Activity::find($activityId);
+        }
+
+        if (!$activity) {
+            abort(404, 'Aktivitas tidak ditemukan.');
+        }
         
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
             abort(403);
@@ -388,11 +395,13 @@ class ActivityPreparationController extends Controller
 
         $request->validate([
             'participation_type_id' => 'required|exists:activity_participation_types,id',
+            'committee_type_id' => 'nullable|exists:activity_committee_types,id',
             'user_ids' => 'required_without:select_all|array',
             'select_all' => 'boolean',
         ]);
 
         $targetTypeId = $request->participation_type_id;
+        $targetCommitteeTypeId = $request->committee_type_id;
         
         // Verify the type belongs to this activity
         $targetType = \App\Models\ActivityParticipationType::where('activity_id', $activity->id)
@@ -406,7 +415,7 @@ class ActivityPreparationController extends Controller
         $query = ActivityUser::where('activity_id', $activity->id);
 
         if ($request->boolean('select_all')) {
-            $this->applyFilters($query, $request);
+            $this->applyFilters($query, $request, $activity);
         } else {
             $query->whereIn('id', $request->user_ids);
         }
@@ -423,9 +432,17 @@ class ActivityPreparationController extends Controller
 
         if ($isPanitia && count($affectedUserIds) > 0) {
             // Find default committee type (e.g., Panitia Seksi or just first one)
-            $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)
-                ->where('name', 'like', '%Seksi%')
-                ->first();
+            $defaultCommitteeType = null;
+            
+            if ($targetCommitteeTypeId) {
+                $defaultCommitteeType = \App\Models\ActivityCommitteeType::find($targetCommitteeTypeId);
+            }
+            
+            if (!$defaultCommitteeType) {
+                $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)
+                    ->where('name', 'like', '%Seksi%')
+                    ->first();
+            }
             
             if (!$defaultCommitteeType) {
                 $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)->first();
@@ -439,11 +456,11 @@ class ActivityPreparationController extends Controller
 
             foreach ($users as $user) {
                 // Check if already in committee
-                $exists = ActivityCommitteeStructure::where('activity_id', $activity->id)
+                $committeeMember = ActivityCommitteeStructure::where('activity_id', $activity->id)
                     ->where('user_id', $user->id)
-                    ->exists();
+                    ->first();
 
-                if (!$exists) {
+                if (!$committeeMember) {
                     ActivityCommitteeStructure::create([
                         'activity_id' => $activity->id,
                         'user_id' => $user->id,
@@ -453,6 +470,11 @@ class ActivityPreparationController extends Controller
                         'position' => 'Anggota Panitia', // Default position
                         'committee_type_id' => $defaultCommitteeType ? $defaultCommitteeType->id : null,
                         'order' => 99, // Put at the end
+                    ]);
+                } elseif ($targetCommitteeTypeId && $committeeMember->committee_type_id !== $targetCommitteeTypeId) {
+                    // Update committee type if explicitly requested and different
+                    $committeeMember->update([
+                        'committee_type_id' => $targetCommitteeTypeId
                     ]);
                 }
             }
@@ -466,8 +488,14 @@ class ActivityPreparationController extends Controller
         return redirect()->back()->with('success', "Berhasil mengubah peran {$count} peserta.");
     }
 
-    private function applyFilters($query, $request) {
-        // Basic filter implementation matching participants method
+    private function applyFilters($query, $request, $activity = null) {
+        $activityId = $activity ? $activity->id : ($query->getModel()->activity_id ?? request()->route('activityId'));
+        if (!$activityId && $request->route('activityId')) {
+             // Fallback if not passed
+             $act = Activity::where('uid', $request->route('activityId'))->first() ?? Activity::find($request->route('activityId'));
+             $activityId = $act->id ?? null;
+        }
+
         if ($val = $request->batch_id) {
             $query->where('activity_batch_id', $val);
         }
@@ -475,23 +503,173 @@ class ActivityPreparationController extends Controller
         if ($val = $request->search) {
             $searchTerm = trim($val);
             $query->where(function ($q) use ($searchTerm) {
+                // 1. User fields
                 $q->orWhereHas('user', function ($u) use ($searchTerm) {
                     $u->where(function ($sub) use ($searchTerm) {
                         $sub->orWhere('name', 'like', "%{$searchTerm}%");
                         $sub->orWhere('email', 'like', "%{$searchTerm}%");
                     });
                 });
-                // Add other search conditions as needed
+
+                // 2. Profile fields
+                $profileMap = [
+                    'no_hp', 'nik', 'instansi', 'pekerjaan', 'jabatan',
+                    'alamat', 'jenis_kelamin', 'birth_place',
+                ];
+
+                $q->orWhereHas('user.profile', function ($p) use ($searchTerm, $profileMap) {
+                    $p->where(function ($sub) use ($searchTerm, $profileMap) {
+                        foreach ($profileMap as $field) {
+                            $sub->orWhere($field, 'like', "%{$searchTerm}%");
+                        }
+                        // Location relationships
+                        $sub->orWhereHas('province', fn ($loc) => $loc->where('name', 'like', "%{$searchTerm}%"));
+                        $sub->orWhereHas('regency', fn ($loc) => $loc->where('name', 'like', "%{$searchTerm}%"));
+                        $sub->orWhereHas('district', fn ($loc) => $loc->where('name', 'like', "%{$searchTerm}%"));
+                    });
+                });
+
+                // 3. Custom Data
+                if (Schema::hasColumn('activity_users', 'custom_data')) {
+                    $q->orWhere('custom_data', 'like', "%{$searchTerm}%");
+                }
+
+                // 4. Participant Group
+                $q->orWhereHas('participantGroup', function ($g) use ($searchTerm) {
+                    $g->where('name', 'like', "%{$searchTerm}%");
+                });
             });
         }
         
-        // Add other filters as needed...
-        // For 'select_all' to work perfectly, we need to extract the filter logic from participants() into a reusable method.
-        // However, for now, if the user selects specific IDs, we are good.
-        // If select_all is used, we might rely on the frontend sending all IDs or implementing the full filter logic.
-        // Given the complexity, let's trust the frontend to send IDs for now or implement a shared filter scope later.
-        // But wait, the frontend logic for bulk delete uses 'select_all' and passes filters.
-        // So I should at least support basic filters.
+        // Detailed Filters
+        if ($val = $request->name) $query->whereHas('user', fn($q) => $q->where('name', $val));
+        if ($val = $request->email) $query->whereHas('user', fn($q) => $q->where('email', $val));
+        if ($val = $request->no_hp) $query->whereHas('user.profile', fn($q) => $q->where('no_hp', $val));
+        if ($val = $request->nik) $query->whereHas('user.profile', fn($q) => $q->where('nik', $val));
+        if ($val = $request->instansi) $query->whereHas('user.profile', fn($q) => $q->where('instansi', $val));
+        if ($val = $request->pekerjaan) $query->whereHas('user.profile', fn($q) => $q->where('pekerjaan', $val));
+        if ($val = $request->jabatan) $query->whereHas('user.profile', fn($q) => $q->where('jabatan', $val));
+        
+        if ($val = $request->jenis_kelamin) {
+             if ($val === '__EMPTY__') {
+                $query->whereHas('user.profile', fn($q) => $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-'));
+            } else {
+                $query->whereHas('user.profile', fn($q) => $q->where('jenis_kelamin', $val));
+            }
+        }
+        
+        if ($val = $request->birth_place) {
+             if ($val === '__EMPTY__') {
+                $query->whereHas('user.profile', fn($q) => $q->whereNull('birth_place')->orWhere('birth_place', '')->orWhere('birth_place', '-'));
+            } else {
+                $query->whereHas('user.profile', fn($q) => $q->where('birth_place', $val));
+            }
+        }
+        
+        if ($val = $request->birth_year) $query->whereHas('user.profile', fn($q) => $q->whereYear('birth_date', $val));
+        if ($val = $request->address) $query->whereHas('user.profile', fn($q) => $q->where('alamat', $val));
+        
+        if ($val = $request->province_name) $query->whereHas('user.profile.province', fn($q) => $q->where('name', $val));
+        if ($val = $request->regency_name) $query->whereHas('user.profile.regency', fn($q) => $q->where('name', $val));
+        if ($val = $request->district_name) $query->whereHas('user.profile.district', fn($q) => $q->where('name', $val));
+        
+        if ($val = $request->province_id) $query->whereHas('user.profile', fn($q) => $q->where('province_id', $val));
+        if ($val = $request->regency_id) $query->whereHas('user.profile', fn($q) => $q->where('regency_id', $val));
+        
+        if ($val = $request->district_id) {
+             if (str_starts_with($val, 'other:')) {
+                $otherVal = substr($val, 6);
+                if (Schema::hasColumn('profiles', 'other_district')) {
+                    $query->whereHas('user.profile', function ($q) use ($otherVal) {
+                        $q->where('other_district', $otherVal);
+                    });
+                }
+            } else {
+                $query->whereHas('user.profile', function ($q) use ($val) {
+                    $q->where('district_id', $val);
+                });
+            }
+        }
+
+        if ($val = $request->group_id) $query->where('activity_participant_group_id', $val);
+        
+        if ($val = $request->room_number) $query->whereHas('room', fn($q) => $q->where('room_number', $val));
+        
+        if ($val = $request->room_status && $activityId) {
+            if ($val === 'assigned') {
+                $query->whereExists(function ($q) use ($activityId) {
+                    $q->select(\DB::raw(1))
+                      ->from('activity_hotel_room_assignments')
+                      ->whereColumn('activity_hotel_room_assignments.user_id', 'activity_users.user_id')
+                      ->where('activity_hotel_room_assignments.activity_id', $activityId);
+                });
+            } elseif ($val === 'unassigned') {
+                $query->whereNotExists(function ($q) use ($activityId) {
+                    $q->select(\DB::raw(1))
+                      ->from('activity_hotel_room_assignments')
+                      ->whereColumn('activity_hotel_room_assignments.user_id', 'activity_users.user_id')
+                      ->where('activity_hotel_room_assignments.activity_id', $activityId);
+                });
+            }
+        }
+        
+        // Registration Method (Calculated Bulk IDs)
+        if ($val = $request->registration_method) {
+            $bulkGroupUserIds = [];
+            if ($activityId) {
+                try {
+                    $paymentsWithNotes = Payment::select('id', 'activity_id', 'user_id', 'notes')
+                        ->where('activity_id', $activityId)
+                        ->whereNotNull('notes')
+                        ->where(function($q) {
+                            $q->where('notes', 'like', '%user_ids%')
+                              ->orWhere('notes', 'like', '%bulk_import%');
+                        })
+                        ->get();
+
+                    foreach ($paymentsWithNotes as $p) {
+                        $decoded = json_decode($p->notes, true);
+                        if (!$decoded && str_contains($p->notes, '{')) {
+                             $start = strpos($p->notes, '{');
+                             $end = strrpos($p->notes, '}');
+                             if ($start !== false && $end !== false) {
+                                 $decoded = json_decode(substr($p->notes, $start, $end - $start + 1), true);
+                             }
+                        }
+
+                        if (is_array($decoded)) {
+                            $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
+                            foreach ($uids as $uid) {
+                                if($uid) $bulkGroupUserIds[] = (string)$uid;
+                            }
+                        }
+                    }
+                    $bulkGroupUserIds = array_unique($bulkGroupUserIds);
+                } catch (\Exception $e) {}
+            }
+
+            if ($val === 'kelompok') {
+                 $query->where(function($q) use ($bulkGroupUserIds) {
+                    $q->whereNotNull('activity_participant_group_id');
+                    if (!empty($bulkGroupUserIds)) {
+                        $q->orWhereIn('user_id', $bulkGroupUserIds);
+                    }
+                 });
+            } elseif ($val === 'mandiri') {
+                $query->whereNull('activity_participant_group_id');
+                if (!empty($bulkGroupUserIds)) {
+                    $query->whereNotIn('user_id', $bulkGroupUserIds);
+                }
+            }
+        }
+        
+        // Custom columns
+        foreach ($request->all() as $reqKey => $reqVal) {
+            if (str_starts_with($reqKey, 'custom_') && !empty($reqVal)) {
+                $jsonKey = substr($reqKey, 7); 
+                $query->where("custom_data->{$jsonKey}", (string)$reqVal);
+            }
+        }
     }
 
     public function participants($activityId)
@@ -4866,13 +5044,25 @@ class ActivityPreparationController extends Controller
         }
 
         if (! $hasFile && $hasLink) {
+            $fileType = 'link';
+            $filePath = $request->link_url;
+            
+            // Auto-detect YouTube
+            $youtubePattern = '/^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/i';
+            if (preg_match($youtubePattern, $request->link_url)) {
+                $fileType = 'youtube';
+                
+                // Extract clean embed URL if possible, or just store the link and handle on frontend
+                // For simplicity, we store the link as is. Frontend will handle embedding.
+            }
+
             ActivityMaterial::create([
                 'activity_id' => $activityId,
                 'activity_batch_id' => $request->activity_batch_id,
                 'name' => $request->name,
                 'file_name' => null,
-                'file_path' => $request->link_url,
-                'file_type' => 'link',
+                'file_path' => $filePath,
+                'file_type' => $fileType,
                 'mime_type' => null,
                 'file_size' => 0,
                 'description' => $request->description,
@@ -5922,9 +6112,15 @@ class ActivityPreparationController extends Controller
             }
 
             // Get participants with empty gender
-            $participants = ActivityUser::where('activity_id', $activity->id)
-                ->with('user.profile')
-                ->get();
+            $query = ActivityUser::where('activity_id', $activity->id)
+                ->with('user.profile');
+
+            // Apply user_ids filter if provided
+            if ($request->has('user_ids') && is_array($request->input('user_ids')) && count($request->input('user_ids')) > 0 && !$request->boolean('select_all')) {
+                $query->whereIn('user_id', $request->input('user_ids'));
+            }
+
+            $participants = $query->get();
 
             $stats = [
                 'success' => 0,

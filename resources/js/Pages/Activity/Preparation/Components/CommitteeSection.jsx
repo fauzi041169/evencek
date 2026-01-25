@@ -93,7 +93,7 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                router.delete(route('activity.preparation.destroy-committee', { activityId: activity.uid || activity.id, id }), {
+                router.delete(route('activity.preparation.destroy-committee', { activityId: activity.uid || activity.id, committeeId: id }), {
                     onSuccess: () => {
                         Swal.fire('Terhapus!', 'Panitia berhasil dihapus.', 'success');
                     }

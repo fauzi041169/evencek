@@ -202,19 +202,50 @@ export default function Detail({
         const endDate = end ? new Date(end) : null;
 
         if (endDate && endDate > startDate) {
-            if (startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear()) {
-                return `${format(startDate, 'd')} - ${format(endDate, 'd MMMM yyyy', { locale: id })}`;
+            // Same year check
+            if (startDate.getFullYear() === endDate.getFullYear()) {
+                // Same month check
+                if (startDate.getMonth() === endDate.getMonth()) {
+                    // Format: Senin, 26 - Rabu, 28 Januari 2026
+                    return `${format(startDate, 'EEEE, d', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
+                }
+                // Different month: Senin, 26 Januari - Rabu, 3 Februari 2026
+                return `${format(startDate, 'EEEE, d MMMM', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
             }
-            return `${format(startDate, 'd MMMM')} - ${format(endDate, 'd MMMM yyyy', { locale: id })}`;
+            // Different year: Senin, 26 Des 2025 - Rabu, 2 Jan 2026
+            return `${format(startDate, 'EEEE, d MMMM yyyy', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
         }
-        return format(startDate, 'd MMMM yyyy', { locale: id });
+        // Single date: Senin, 26 Januari 2026
+        return format(startDate, 'EEEE, d MMMM yyyy', { locale: id });
     };
 
     const formatTimeRange = (start, end) => {
         if (!start) return '';
-        const startTime = start.substring(0, 5);
-        const endTime = end ? end.substring(0, 5) : null;
-        return endTime ? `${startTime} - ${endTime}` : startTime;
+        // If inputs are dates/datetimes (contain '-'), try to parse time or return empty if no time component
+        if (start.includes('-') && !start.includes(':')) return ''; // Date only string
+        
+        // Helper to extract HH:mm from various formats
+        const extractTime = (str) => {
+            if (!str) return null;
+            if (str.includes('T')) {
+                // ISO format 2026-01-26T08:00:00
+                const date = new Date(str);
+                return format(date, 'HH:mm');
+            }
+            if (str.includes(' ')) {
+                // DB format 2026-01-26 08:00:00
+                const parts = str.split(' ');
+                if (parts.length > 1) return parts[1].substring(0, 5);
+            }
+            // Plain time string 08:00:00
+            return str.substring(0, 5);
+        };
+
+        const startTime = extractTime(start);
+        const endTime = extractTime(end);
+
+        if (!startTime) return ''; // Fallback or empty
+        return endTime ? `${startTime} - ${endTime} WIB` : `${startTime} WIB`;
     };
 
     const openPaymentDetailLookup = (activityId, userId) => {
@@ -537,7 +568,7 @@ export default function Detail({
             <Head title={activity.title || activity.name} />
 
             {/* Hero Section */}
-            <div className="relative bg-slate-900 overflow-hidden min-h-[500px] lg:min-h-[600px] flex items-center">
+            <div className="relative bg-slate-900 overflow-hidden min-h-[400px] lg:min-h-[500px] flex items-center">
                 <style>{`
                     @keyframes fade-up {
                         from { opacity: 0; transform: translateY(20px); }
@@ -678,25 +709,20 @@ export default function Detail({
                 </div>
 
                 {/* Content Container */}
-                <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-5 pt-16 pb-20 lg:pb-32">
                     
                     {/* Left Column: Text & Actions */}
-                    <div className="w-full lg:w-1/2 text-center lg:text-left space-y-8 animate-fade-up">
+                    <div className="w-full max-w-4xl mx-auto text-center space-y-6 animate-fade-up">
                         
                         {/* Badges Row */}
-                        <div className="flex flex-wrap justify-center lg:justify-start gap-3">
+                        <div className="flex flex-wrap justify-center gap-3">
                             {activity.activity_type !== 'non_batch' && activeBatch && activeBatch.name && (
                                 <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
                                     <i className="fas fa-layer-group text-cyan-300"></i>
                                     <span>{activeBatch.name}</span>
                                 </span>
                             )}
-                            {(activity.date || activity.start_date) && (
-                                <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
-                                    <i className="far fa-calendar-alt text-cyan-300"></i>
-                                    <span>{formatDateRange(activity.date || activity.start_date, activity.end_date)}</span>
-                                </span>
-                            )}
+
                         </div>
 
                         {/* Title */}
@@ -705,51 +731,71 @@ export default function Detail({
                         </h1>
 
                         {/* Additional Info (Location & Time) */}
-                        <div className="flex flex-col sm:flex-row items-center lg:items-start gap-4 text-gray-300">
-                             {(activity.time || activity.start_time) && (
-                                <div className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-xl backdrop-blur-sm border border-white/10 w-full sm:w-auto">
-                                    <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
-                                        <i className="fas fa-clock"></i>
+                        <div className="flex flex-row flex-wrap items-stretch justify-center gap-3 text-gray-300 w-full">
+                             {(activity.date || activity.start_date || activity.time || activity.start_time) && (
+                                <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 flex-1 min-w-[200px] justify-start sm:justify-center">
+                                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                                        <i className="fas fa-calendar-alt text-sm"></i>
                                     </div>
-                                    <div className="text-left">
-                                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Waktu</p>
-                                        <p className="text-sm font-semibold text-white">{formatTimeRange(activity.time || activity.start_time, activity.end_time)}</p>
+                                    <div className="text-left min-w-0">
+                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Waktu Pelaksanaan</p>
+                                        <p className="text-xs sm:text-sm font-semibold text-white break-words">
+                                            {formatDateRange(activity.date || activity.start_date, activity.end_date)}
+                                        </p>
+                                        {(activity.time || activity.start_time) && (
+                                            <p className="text-xs text-amber-400/80 mt-0.5">
+                                                {formatTimeRange(activity.time || activity.start_time, activity.end_time)}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             )}
                             {activity.location && (
-                                <div className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-xl backdrop-blur-sm border border-white/10 w-full sm:w-auto">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                                        <i className="fas fa-map-marker-alt"></i>
+                                <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 flex-1 min-w-[140px] justify-start sm:justify-center">
+                                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                                        <i className="fas fa-map-marker-alt text-sm"></i>
                                     </div>
-                                    <div className="text-left">
-                                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Lokasi</p>
-                                        <p className="text-sm font-semibold text-white line-clamp-1 max-w-[200px]" title={activity.location}>{activity.location}</p>
+                                    <div className="text-left min-w-0">
+                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Lokasi</p>
+                                        <p className="text-xs sm:text-sm font-semibold text-white truncate max-w-[150px]" title={activity.location}>{activity.location}</p>
+                                    </div>
+                                </div>
+                            )}
+                            {activity.price !== null && (
+                                <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 flex-1 min-w-[140px] justify-start sm:justify-center">
+                                    <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                                        <i className="fas fa-tag text-sm"></i>
+                                    </div>
+                                    <div className="text-left min-w-0">
+                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Harga</p>
+                                        <div className="flex items-center gap-2">
+                                            {Number(activity.price) > 0 ? (
+                                                <>
+                                                    <p className="text-xs sm:text-sm font-semibold text-white">
+                                                        {(showPrice || canEdit) ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : 'Sembunyi'}
+                                                    </p>
+                                                    {canEdit && (
+                                                        <button
+                                                            onClick={(e) => { e.preventDefault(); togglePriceVisibility(); }}
+                                                            className="w-4 h-4 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                                                            title={showPrice ? 'Sembunyikan' : 'Tampilkan'}
+                                                        >
+                                                            <i className={`fas ${showPrice ? 'fa-eye' : 'fa-eye-slash'} text-[8px] text-gray-300`}></i>
+                                                        </button>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <p className="text-xs sm:text-sm font-semibold text-emerald-400">GRATIS</p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )}
                         </div>
 
                         {/* Action Buttons Row */}
-                        <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-4">
-                            {isJoined ? (
-                                <button
-                                    onClick={() => {
-                                        if (showCompletePaymentCTA && completePaymentUrl) {
-                                            router.visit(completePaymentUrl);
-                                        } else {
-                                            openPaymentDetailLookup(activity.id, user?.id);
-                                        }
-                                    }}
-                                    className={`inline-flex items-center gap-3 h-14 px-8 rounded-full text-white font-bold hover:shadow-lg transition-all transform hover:-translate-y-1 ${showCompletePaymentCTA
-                                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-orange-500/30'
-                                        : 'bg-gradient-to-r from-primary to-secondary hover:shadow-primary/30'
-                                        }`}
-                                >
-                                    <i className={`fas ${showCompletePaymentCTA ? 'fa-wallet' : 'fa-file-invoice'} text-xl`}></i>
-                                    <span>{buttonText || 'Lihat Detail'}</span>
-                                </button>
-                            ) : registrationTarget ? (
+                        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                            {isJoined ? null : registrationTarget ? (
                                 <>
                                     {registrationTarget.type === 'disabled' ? (
                                         <span className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gray-500/50 backdrop-blur-sm text-white font-bold cursor-not-allowed border border-white/10">
@@ -801,74 +847,18 @@ export default function Detail({
                             {user && (
                                 <button
                                     onClick={() => setIsBulkImportModalOpen(true)}
-                                    className="h-14 px-6 rounded-full glass-button text-white font-medium hover:bg-white/20 inline-flex items-center gap-2"
+                                    className={`h-14 px-6 rounded-full glass-button text-white font-medium hover:bg-white/20 inline-flex items-center gap-2 ${isJoined ? 'bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 border-none min-w-[200px] justify-center' : ''}`}
                                     title={isJoined ? 'Daftarkan Lain' : 'Daftar Kolektif'}
                                 >
                                     <i className="fas fa-users"></i>
+                                    {isJoined && <span>Daftarkan Peserta Lain</span>}
                                 </button>
                             )}
                         </div>
 
                     </div>
 
-                    {/* Right Column: Image/Hero Visual */}
-                    <div className="w-full lg:w-1/2 relative animate-fade-up delay-200">
-                        <div className="relative rounded-3xl overflow-hidden shadow-2xl border-[6px] border-white/20 group transform transition-transform hover:scale-[1.01] duration-500">
-                            <div className="aspect-[4/3] w-full bg-slate-800 relative overflow-hidden">
-                                {/* Blurred Background to fill space */}
-                                <div 
-                                    className="absolute inset-0 bg-cover bg-center blur-xl opacity-50 scale-110 transition-opacity duration-700"
-                                    style={{ backgroundImage: `url(${heroCoverPath})` }}
-                                ></div>
-                                
-                                {/* Main Image - Object Contain to prevent cropping */}
-                                <img 
-                                    src={heroCoverPath} 
-                                    alt={activity.name}
-                                    className="relative w-full h-full object-contain z-10 drop-shadow-xl"
-                                    onError={(e) => {
-                                        e.target.onerror = null;
-                                        e.target.src = '/assets/images/hero/defoult.webp';
-                                        e.target.className = "w-full h-full object-cover"; // Fallback to cover for default placeholder
-                                    }}
-                                />
-                                
-                                {/* Overlay Gradient for text readability if needed, but we keep it clean */}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 z-20 pointer-events-none"></div>
-                                
-                                {/* Price Badge Floating */}
-                                {activity.price !== null && (
-                                    <div className="absolute top-6 right-6">
-                                        {Number(activity.price) > 0 ? (
-                                            (showPrice || canEdit) && (
-                                                <div className={`bg-white/90 backdrop-blur-md text-slate-900 px-5 py-2.5 rounded-full font-bold shadow-lg flex items-center gap-2 transform transition-all ${!showPrice ? 'opacity-75' : ''}`}>
-                                                    <span className="text-sm font-medium text-slate-500">HTM</span>
-                                                    <span className="text-lg">Rp {new Intl.NumberFormat('id-ID').format(activity.price)}</span>
-                                                    {canEdit && (
-                                                        <button
-                                                            onClick={(e) => { e.preventDefault(); togglePriceVisibility(); }}
-                                                            className="ml-2 w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
-                                                            title={showPrice ? 'Sembunyikan Harga' : 'Tampilkan Harga'}
-                                                        >
-                                                            <i className={`fas ${showPrice ? 'fa-eye' : 'fa-eye-slash'} text-xs text-slate-500`}></i>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )
-                                        ) : (
-                                            <div className="bg-emerald-500 text-white px-6 py-2.5 rounded-full font-bold shadow-lg flex items-center gap-2">
-                                                <i className="fas fa-check-circle"></i>
-                                                <span>GRATIS</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        
-                        {/* Decorative Back Glow */}
-                        <div className="absolute -inset-4 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-[2.5rem] blur-2xl opacity-40 -z-10 animate-pulse"></div>
-                    </div>
+
 
                 </div>
 
@@ -888,10 +878,10 @@ export default function Detail({
                         <h3 className="text-sm font-bold text-gray-900 mb-3">Atur Tampilan Halaman (Admin/Creator)</h3>
                         <div className="flex flex-wrap gap-2">
                             {[
-                                { id: 'description', label: 'Deskripsi', icon: 'fa-info-circle' },
-                                { id: 'speakers', label: 'Narasumber', icon: 'fa-user-tie' },
-                                { id: 'gallery', label: 'Galeri', icon: 'fa-images' },
-                                { id: 'participants', label: 'Peserta', icon: 'fa-users' },
+                                { id: 'detail_description', label: 'Deskripsi', icon: 'fa-info-circle' },
+                                { id: 'detail_contact_person', label: 'Narahubung', icon: 'fa-address-book' },
+                                { id: 'detail_gallery', label: 'Galeri', icon: 'fa-images' },
+                                { id: 'detail_participants', label: 'Peserta', icon: 'fa-users' },
                             ].map(section => (
                                 <button
                                     key={section.id}
@@ -913,8 +903,28 @@ export default function Detail({
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-8">
+                        {/* Activity Image - Moved from Hero */}
+                        <div className="bg-white rounded-2xl shadow-sm p-2 overflow-hidden">
+                             <div className="aspect-video w-full bg-slate-100 relative rounded-xl overflow-hidden group">
+                                <div 
+                                    className="absolute inset-0 bg-cover bg-center blur-xl opacity-20 scale-110 transition-opacity duration-700"
+                                    style={{ backgroundImage: `url(${heroCoverPath})` }}
+                                ></div>
+                                <img 
+                                    src={heroCoverPath} 
+                                    alt={activity.name}
+                                    className="relative w-full h-full object-contain z-10 transition-transform duration-500 group-hover:scale-[1.02]"
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = '/assets/images/hero/defoult.webp';
+                                        e.target.className = "relative w-full h-full object-cover z-10";
+                                    }}
+                                />
+                             </div>
+                        </div>
+
                         {/* Description */}
-                        {isVisible('description') && (
+                        {isVisible('detail_description') && (
                             <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Tentang Kegiatan</h2>
                                 <div
@@ -926,7 +936,7 @@ export default function Detail({
                         )}
 
                         {/* Gallery */}
-                        {isVisible('gallery') && (
+                        {isVisible('detail_gallery') && (
                             <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-2xl font-bold text-gray-900">Galeri</h2>
@@ -1107,6 +1117,7 @@ export default function Detail({
                                 )}
                             </div>
                         </div>
+                        )}
                     </div>
 
                     {/* Sidebar */}
@@ -1136,49 +1147,55 @@ export default function Detail({
                         )}
 
                         {/* Contact Person */}
-                        <div className="bg-white rounded-2xl shadow-sm p-6">
-                            <h3 className="text-lg font-bold text-gray-900 mb-4">Narahubung</h3>
-                            <div className="space-y-4">
-                                {contactPersons && contactPersons.length > 0 ? (
-                                    contactPersons.map((person, idx) => (
-                                        <div key={person.id || idx} className="flex items-center gap-3">
+                        {isVisible('detail_contact_person') && (
+                            <div className="bg-white rounded-2xl shadow-sm p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">Narahubung</h3>
+                                <div className="space-y-4">
+                                    {contactPersons && contactPersons.length > 0 ? (
+                                        contactPersons.map((person, idx) => (
+                                            <div key={person.id || idx} className="flex items-center gap-3">
+                                                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                                                    <img
+                                                        src={person.avatar || '/assets/images/profilefoto/default-profile.png'}
+                                                        alt={person.name}
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-900">{person.name}</p>
+                                                    <p className="text-xs text-indigo-600 font-medium">{person.position}</p>
+                                                    {person.email && <p className="text-sm text-gray-500">{person.email}</p>}
+                                                    {person.phone && <p className="text-sm text-gray-500">{person.phone}</p>}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="flex items-center gap-3">
                                             <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
                                                 <img
-                                                    src={person.avatar || '/assets/images/profilefoto/default-profile.png'}
-                                                    alt={person.name}
+                                                    src={activity.user?.profile_photo_url || activity.creator?.avatar || '/assets/images/profilefoto/default-profile.png'}
+                                                    alt={activity.user?.name || activity.creator?.name}
                                                     className="w-full h-full object-cover"
                                                     onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
                                                 />
                                             </div>
                                             <div>
-                                                <p className="font-medium text-gray-900">{person.name}</p>
-                                                <p className="text-xs text-indigo-600 font-medium">{person.position}</p>
-                                                {person.email && <p className="text-sm text-gray-500">{person.email}</p>}
-                                                {person.phone && <p className="text-sm text-gray-500">{person.phone}</p>}
+                                                <p className="font-medium text-gray-900">{activity.user?.name || activity.creator?.name}</p>
+                                                <p className="text-sm text-gray-500">{activity.user?.email || activity.creator?.email}</p>
                                             </div>
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                                            <img
-                                                src={activity.user?.profile_photo_url || activity.creator?.avatar || '/assets/images/profilefoto/default-profile.png'}
-                                                alt={activity.user?.name || activity.creator?.name}
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
-                                            />
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-gray-900">{activity.user?.name || activity.creator?.name}</p>
-                                            <p className="text-sm text-gray-500">{activity.user?.email || activity.creator?.email}</p>
-                                        </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
+
+                        {/* ID Card Section - Removed */}
+                        
+                        {/* Certificate Section - Removed */}
 
                         {/* Speakers */}
-                        {isVisible('speakers') && activity.speakers && activity.speakers.length > 0 && (
+                        {isVisible('detail_speakers') && activity.speakers && activity.speakers.length > 0 && (
                             <div className="bg-white rounded-2xl shadow-sm p-6">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4">Narasumber</h3>
                                 <div className="space-y-4">
@@ -1204,7 +1221,7 @@ export default function Detail({
                         )}
 
                         {/* Participants List */}
-                        {isVisible('participants') && (
+                        {isVisible('detail_participants') && (
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[500px] overflow-hidden">
                                 <div className="px-6 py-4 border-b flex items-center justify-between bg-amber-50 border-yellow-200">
                                     <h5 className="m-0 font-bold text-yellow-800">Daftar Peserta</h5>

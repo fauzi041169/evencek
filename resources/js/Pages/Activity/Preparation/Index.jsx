@@ -6,6 +6,7 @@ import RequirementsManager from './Components/RequirementsManager';
 import CorePreparationSection from './Components/CorePreparationSection';
 import CommitteeSection from './Components/CommitteeSection';
 import GallerySection from './Components/GallerySection';
+import MaterialsSection from './Components/MaterialsSection';
 import RundownSection from './Components/RundownSection';
 import SectionContainer from './Components/SectionContainer';
 import AddDivisionModal from './Modals/AddDivisionModal';
@@ -46,14 +47,27 @@ export default function PreparationIndex({
             <div className="min-h-screen bg-[#fafbfc] py-10 font-primary">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* modern header */}
-                    <div className="mb-10 animate-in fade-in slide-in-from-top-4 duration-500">
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                            <div className="space-y-2">
-                                <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-2">
-                                    <i className="fas fa-tools mr-2"></i> Preparation Hub
+                    {/* Modern Premium Header */}
+                    <div className="mb-12 relative">
+                        {/* Decorative background blob */}
+                        <div className="absolute -top-20 -left-20 w-72 h-72 bg-blue-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+                        <div className="absolute -top-20 -right-20 w-72 h-72 bg-purple-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
+
+                        <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6">
+                            <div className="space-y-4 max-w-2xl">
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm text-slate-600 text-xs font-bold uppercase tracking-wider">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                    <span>Preparation Hub</span>
                                 </div>
-                                <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight leading-none">Manajemen Persiapan</h1>
-                                <p className="text-lg text-gray-500 font-medium">Melengkapi segala kebutuhan untuk <span className="text-primary font-bold underline decoration-primary/30 decoration-4 underline-offset-4">{activity.name}</span></p>
+                                <div>
+                                    <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 tracking-tight leading-tight">
+                                        Manajemen Persiapan
+                                    </h1>
+                                    <div className="h-1.5 w-24 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mt-2"></div>
+                                </div>
+                                <p className="text-lg text-slate-600 leading-relaxed">
+                                    Pusat kontrol untuk melengkapi dan memonitor segala kebutuhan acara <span className="font-bold text-slate-900">{activity.name}</span>. Pastikan semua persiapan matang sebelum hari H.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -80,6 +94,11 @@ export default function PreparationIndex({
                         {/* Rundown */}
                         <SectionContainer title="Rundown Acara" activity={activity}>
                             <RundownSection activity={activity} rundowns={rundowns} />
+                        </SectionContainer>
+
+                        {/* Materials */}
+                        <SectionContainer title="Materi & Dokumen" activity={activity}>
+                            <MaterialsSection activity={activity} materials={materials} />
                         </SectionContainer>
                     </div>
 

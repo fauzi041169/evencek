@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -204,9 +204,9 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                     {/* Background Elements */}
                     <div className="absolute inset-0">
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 via-slate-900/95 to-slate-900 z-10"></div>
-                        
+
                         {heroBg1 ? (
-                            <div 
+                            <div
                                 className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay z-[1]"
                                 style={{ backgroundImage: `url('${getStorageUrl(heroBg1)}')` }}
                             />
@@ -240,7 +240,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                 ))}
                             </div>
                         )}
-                        
+
                         {heroAnim === 'particles' && (
                             <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
                                 {[...Array(30)].map((_, i) => (
@@ -373,7 +373,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-sm text-slate-400 font-medium">Harga Tiket</span>
                                                                     {editMode && (
-                                                                        <Link 
+                                                                        <Link
                                                                             href={route('activity.edit', activity.id)}
                                                                             className="opacity-0 group-hover/price:opacity-100 transition-opacity text-xs bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-white"
                                                                             title="Edit Harga"

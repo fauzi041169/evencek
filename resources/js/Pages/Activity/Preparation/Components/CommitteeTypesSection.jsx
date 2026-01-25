@@ -50,31 +50,40 @@ export default function CommitteeTypesSection({ committeeTypes, activity, isEmbe
     };
 
     const content = (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-gray-900 border-l-4 border-secondary pl-3">Jenis Kepanitiaan</h3>
+        <div className="p-8">
+            <div className="flex justify-between items-start mb-8">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 shadow-sm border border-amber-100">
+                        <i className="fas fa-sitemap text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 leading-tight">Jenis Kepanitiaan</h3>
+                        <p className="text-xs text-slate-500 font-medium pt-1">Struktur Panitia</p>
+                    </div>
+                </div>
                 <button
                     onClick={() => openModal()}
-                    className="bg-secondary/10 text-secondary p-2 rounded-xl hover:bg-secondary hover:text-white transition-all shadow-sm"
+                    className="group flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm border border-amber-100/50 hover:shadow-amber-200 hover:shadow-lg"
+                    title="Tambah Jenis Kepanitiaan"
                 >
-                    <i className="fas fa-plus"></i>
+                    <i className="fas fa-plus transform group-hover:rotate-90 transition-transform duration-300"></i>
                 </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
                 {committeeTypes.map((type) => (
-                    <div key={type.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors">
-                        <div className="flex-1 min-w-0 pr-2">
-                            <span className="text-sm font-bold block truncate">{type.name}</span>
+                    <div key={type.id} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-amber-100 transition-all duration-300 group">
+                        <div className="flex-1 min-w-0 pr-4">
+                            <span className="text-sm font-bold text-slate-900 block truncate group-hover:text-amber-700 transition-colors">{type.name}</span>
                             {type.description && (
-                                <span className="text-xs text-gray-500 truncate block">{type.description}</span>
+                                <span className="text-xs text-slate-500 truncate block mt-0.5">{type.description}</span>
                             )}
                         </div>
-                        <div className="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => openModal(type)} className="text-blue-500 hover:text-blue-700 bg-white p-1.5 rounded-lg shadow-sm">
+                        <div className="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                            <button onClick={() => openModal(type)} className="text-slate-400 hover:text-amber-600 bg-slate-50 hover:bg-amber-50 p-2 rounded-lg transition-colors">
                                 <i className="fas fa-edit"></i>
                             </button>
-                            <button onClick={() => handleDelete(type)} className="text-red-500 hover:text-red-700 bg-white p-1.5 rounded-lg shadow-sm">
+                            <button onClick={() => handleDelete(type)} className="text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 p-2 rounded-lg transition-colors">
                                 <i className="fas fa-trash"></i>
                             </button>
                         </div>

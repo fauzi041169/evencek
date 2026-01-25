@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePage, router } from '@inertiajs/react';
-import { MessageCircle, X, Send, ArrowLeft, Loader2 } from 'lucide-react';
+import { MessageSquareText, X, Send, ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function ChatWidget({ activityId, ownerId, ownerName }) {
     const { auth } = usePage().props;
@@ -14,11 +14,12 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
     const messagesEndRef = useRef(null);
 
     // Only show for logged in users
-    if (!auth.user) return null;
+    // if (!auth.user) return null;
 
-    const isOwner = auth.user.id === ownerId;
+    const isOwner = auth.user && auth.user.id === ownerId;
 
     const fetchUnreadCount = async () => {
+        if (!auth.user) return;
         try {
             const response = await fetch(route('activity.chat.unread-count', activityId));
             if (response.ok) {
@@ -85,7 +86,7 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
     }, [activityId]);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && auth.user) {
             if (isOwner) {
                 if (activeConversation) {
                     fetchMessages();
@@ -170,7 +171,7 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
                 className="fixed bottom-6 right-6 z-50 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110 flex items-center justify-center w-14 h-14"
                 title="Hubungi Penyelenggara"
             >
-                <MessageCircle className="w-6 h-6" />
+                <MessageSquareText className="w-6 h-6" />
                 {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full border-2 border-white">
                         {unreadCount}

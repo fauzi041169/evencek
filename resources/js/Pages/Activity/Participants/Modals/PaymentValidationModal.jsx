@@ -173,23 +173,34 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                         >
                             <Dialog.Panel className="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-xl transition-all">
                                 <div className="bg-white p-6">
-                                    <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-                                        <Dialog.Title as="h3" className="text-xl font-bold text-slate-900">
-                                            Validasi Pembayaran
-                                        </Dialog.Title>
+                                    <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-6 -mx-6 -mt-6 px-6 pt-6 bg-slate-50/50 rounded-t-2xl">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600 border border-indigo-100 shadow-sm">
+                                                <CreditCard className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <Dialog.Title as="h3" className="text-xl font-bold text-slate-900 leading-none">
+                                                    Validasi Pembayaran
+                                                </Dialog.Title>
+                                                <p className="text-xs text-slate-500 font-medium mt-1">Verifikasi bukti transfer peserta</p>
+                                            </div>
+                                        </div>
                                         <div className="flex items-center gap-4">
-                                            <div className="text-right">
-                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${registrationMethod === 'Kelompok' ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
+                                            <div className="text-right hidden sm:block">
+                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ring-1 ring-inset ${registrationMethod === 'Kelompok' ? 'bg-indigo-50 text-indigo-700 ring-indigo-600/20' : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'}`}>
                                                     {registrationMethod}
                                                 </span>
                                                 {participant?.participantGroup && (
-                                                    <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                                                    <div className="text-[10px] text-slate-400 mt-0.5 font-medium truncate max-w-[120px]">
                                                         {participant.participantGroup.name}
                                                     </div>
                                                 )}
                                             </div>
-                                            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-                                                <XCircle className="w-6 h-6" />
+                                            <button
+                                                onClick={onClose}
+                                                className="group p-2 rounded-full hover:bg-slate-100 transition-all text-slate-400 hover:text-rose-500"
+                                            >
+                                                <XCircle className="w-6 h-6 transform group-hover:rotate-90 transition-transform duration-300" />
                                             </button>
                                         </div>
                                     </div>

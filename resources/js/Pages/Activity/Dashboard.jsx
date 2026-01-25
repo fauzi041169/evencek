@@ -636,6 +636,7 @@ export default function Dashboard({
         <AcaraLayout
             activity={activity}
             title={`Dashboard - ${activity.name}`}
+            fluid={true}
         >
             {/* Chart Configurations are defined above but rendered here */}
 
@@ -895,59 +896,47 @@ export default function Dashboard({
                 {/* Baris 3: Statistik Wilayah */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                     {/* Total Provinsi */}
+                    {/* Total Provinsi */}
                     <div className="group relative bg-gradient-to-br from-emerald-400 via-teal-500 to-green-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                        <div className="relative p-6">
-                            <div className="flex items-start justify-between mb-4">
+                        <div className="relative p-5 flex items-center justify-between h-full">
+                            <div className="flex items-center gap-4">
                                 <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
                                     <i className="fas fa-map-marked-alt"></i>
                                 </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-emerald-100 text-xs font-medium uppercase tracking-wider">Total Provinsi</span>
-                                </div>
+                                <div className="text-4xl font-bold text-white">{provinceStats?.length || 0}</div>
                             </div>
-                            <div className="text-4xl font-bold text-white mb-2">{provinceStats?.length || 0}</div>
-                            <div className="pt-3 border-t border-white/20">
-                                <span className="text-emerald-100 text-sm">Sebaran wilayah</span>
-                            </div>
+                            <span className="absolute top-4 right-4 text-emerald-100 text-xs font-bold uppercase tracking-wider">Total Provinsi</span>
                         </div>
                     </div>
 
                     {/* Total Kab/Kota */}
+                    {/* Total Kab/Kota */}
                     <div className="group relative bg-gradient-to-br from-amber-400 via-orange-500 to-yellow-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                        <div className="relative p-6">
-                            <div className="flex items-start justify-between mb-4">
+                        <div className="relative p-5 flex items-center justify-between h-full">
+                            <div className="flex items-center gap-4">
                                 <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
                                     <i className="fas fa-city"></i>
                                 </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-amber-100 text-xs font-medium uppercase tracking-wider">Total Kab/Kota</span>
-                                </div>
+                                <div className="text-4xl font-bold text-white">{regencyStats?.length || 0}</div>
                             </div>
-                            <div className="text-4xl font-bold text-white mb-2">{regencyStats?.length || 0}</div>
-                            <div className="pt-3 border-t border-white/20">
-                                <span className="text-amber-100 text-sm">Kabupaten & Kota</span>
-                            </div>
+                            <span className="absolute top-4 right-4 text-amber-100 text-xs font-bold uppercase tracking-wider">Total Kab/Kota</span>
                         </div>
                     </div>
 
                     {/* Total Kecamatan */}
+                    {/* Total Kecamatan */}
                     <div className="group relative bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                        <div className="relative p-6">
-                            <div className="flex items-start justify-between mb-4">
+                        <div className="relative p-5 flex items-center justify-between h-full">
+                            <div className="flex items-center gap-4">
                                 <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
                                     <i className="fas fa-map-marker-alt"></i>
                                 </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-pink-100 text-xs font-medium uppercase tracking-wider">Total Kecamatan</span>
-                                </div>
+                                <div className="text-4xl font-bold text-white">{districtStats?.length || 0}</div>
                             </div>
-                            <div className="text-4xl font-bold text-white mb-2">{districtStats?.length || 0}</div>
-                            <div className="pt-3 border-t border-white/20">
-                                <span className="text-pink-100 text-sm">Sebaran kecamatan</span>
-                            </div>
+                            <span className="absolute top-4 right-4 text-pink-100 text-xs font-bold uppercase tracking-wider">Total Kecamatan</span>
                         </div>
                     </div>
                 </div>

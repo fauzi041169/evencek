@@ -7,6 +7,7 @@ import CardPreview from '@/Pages/Activity/IdCards/CardPreview';
 import BulkImportModal from '@/Components/Activity/BulkImportModal';
 import BulkPaymentModal from '@/Components/Activity/BulkPaymentModal';
 import ManualPaymentModal from '@/Components/Activity/ManualPaymentModal';
+import CommentSection from './Components/CommentSection';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
@@ -76,6 +77,20 @@ export default function Show({
 
     // Hero Animation Logic
     const heroAnim = appSettings?.hero_animation_style || 'circles';
+    const heroBg1 = appSettings?.hero_background_1 || null;
+
+    const getStorageUrl = (path) => {
+        if (!path) return null;
+        if (path.startsWith('http')) return path;
+        if (path.startsWith('storage/')) return '/' + path;
+        return '/' + path;
+    };
+
+    const heroBgUrl = heroBg1 ? getStorageUrl(heroBg1) : null;
+    const heroStyle = heroAnim;
+
+    // Batch Logic
+    const activeBatch = batches?.find(b => b.id == (filterBatch || selectedBatchId));
 
     const handlePaymentClick = (e) => {
         e.preventDefault();
@@ -309,239 +324,294 @@ export default function Show({
         const endDate = end ? new Date(end) : null;
 
         if (endDate && endDate > startDate) {
-            if (startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear()) {
-                return `${format(startDate, 'd')} - ${format(endDate, 'd MMMM yyyy', { locale: id })}`;
+            // Same year check
+            if (startDate.getFullYear() === endDate.getFullYear()) {
+                // Same month check
+                if (startDate.getMonth() === endDate.getMonth()) {
+                    // Format: Senin, 26 - Rabu, 28 Januari 2026
+                    return `${format(startDate, 'EEEE, d', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
+                }
+                // Different month: Senin, 26 Januari - Rabu, 3 Februari 2026
+                return `${format(startDate, 'EEEE, d MMMM', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
             }
-            return `${format(startDate, 'd MMMM')} - ${format(endDate, 'd MMMM yyyy', { locale: id })}`;
+            // Different year: Senin, 26 Des 2025 - Rabu, 2 Jan 2026
+            return `${format(startDate, 'EEEE, d MMMM yyyy', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
         }
-        return format(startDate, 'd MMMM yyyy', { locale: id });
+        // Single date: Senin, 26 Januari 2026
+        return format(startDate, 'EEEE, d MMMM yyyy', { locale: id });
+    };
+
+    const formatTimeRange = (start, end) => {
+        if (!start) return '';
+        if (start.includes('-') && !start.includes(':')) return ''; 
+        
+        const extractTime = (str) => {
+            if (!str) return null;
+            if (str.includes('T')) {
+                const date = new Date(str);
+                return format(date, 'HH:mm');
+            }
+            if (str.includes(' ')) {
+                const parts = str.split(' ');
+                if (parts.length > 1) return parts[1].substring(0, 5);
+            }
+            return str.substring(0, 5);
+        };
+
+        const startTime = extractTime(start);
+        const endTime = extractTime(end);
+
+        if (!startTime) return '';
+        return endTime ? `${startTime} - ${endTime} WIB` : `${startTime} WIB`;
     };
 
     const dateLabel = formatDateRange(activity.date, activity.end_date);
-
-    const startTime = activity.start_time ? activity.start_time.substring(0, 5) : null;
-    const endTime = activity.end_time ? activity.end_time.substring(0, 5) : null;
-    const timeLabel = startTime && endTime ? `${startTime} - ${endTime}` : startTime;
+    const timeLabel = formatTimeRange(activity.start_time, activity.end_time);
 
     return (
-        <WebLayout>
+        <WebLayout hasHeaderSpacer={false} transparentNavbar={true}>
             <div className="pb-12">
                 <Head title={`Detail - ${activity.name}`} />
 
-                <style>{`
-                    .hero-grow {
-                        position: relative;
-                        background-color: #1a1b3a; /* Deep Blue */
-                        overflow: hidden;
-                        font-family: 'Plus Jakarta Sans', sans-serif;
-                    }
-
-                    /* Top Right White Curve */
-                    .curve-top-right {
-                        position: absolute;
-                        top: 0;
-                        right: 0;
-                        width: 45%;
-                        height: 180px;
-                        background-color: white;
-                        border-bottom-left-radius: 100%;
-                        z-index: 1;
-                    }
-
-                    /* Yellow Shape Wrapper (Desktop) */
-                    .yellow-shape-wrapper {
-                        position: absolute;
-                        bottom: 0;
-                        right: 0;
-                        width: 50%; /* Increased from 45% */
-                        height: 90%; /* Increased height */
-                        max-width: 700px; /* Limit max width */
-                        z-index: 10;
-                    }
-
-                    .yellow-shape {
-                        width: 100%;
-                        height: 100%;
-                        background-color: #FFB800;
-                        border-top-left-radius: 60px; /* Reduced radius for sharper look */
-                        position: relative;
-                        box-shadow: -10px -10px 30px rgba(0,0,0,0.1); /* Soft shadow */
-                    }
-
-                    .image-container {
-                        position: absolute;
-                        top: 15px;
-                        left: 15px;
-                        right: 0;
-                        bottom: 0;
-                        background-color: #e5e7eb;
-                        border-top-left-radius: 50px;
-                        overflow: hidden;
-                    }
-                    
-                    /* Mobile Responsive */
-                    @media (max-width: 1024px) {
-                        .curve-top-right {
-                            display: none;
+                {/* Hero Section */}
+                <div className="relative bg-slate-900 overflow-hidden min-h-[400px] lg:min-h-[500px] flex items-center">
+                    <style>{`
+                        @keyframes fade-up {
+                            from { opacity: 0; transform: translateY(20px); }
+                            to { opacity: 1; transform: translateY(0); }
                         }
-                        .yellow-shape-wrapper {
-                            position: relative;
-                            width: 100%;
-                            height: 300px; /* Fixed height for mobile */
-                            margin-top: 2rem;
-                            border-radius: 20px;
-                            overflow: hidden;
-                            max-width: 100%;
+                        .animate-fade-up {
+                            animation: fade-up 0.8s ease-out forwards;
                         }
-                        .yellow-shape {
-                            border-radius: 20px;
+                        .glass-badge {
+                            background: rgba(255, 255, 255, 0.1);
+                            backdrop-filter: blur(12px);
+                            border: 1px solid rgba(255, 255, 255, 0.2);
+                            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
                         }
-                        .image-container {
-                            top: 10px;
-                            left: 10px;
-                            right: 10px;
-                            bottom: 10px;
-                            width: auto;
-                            height: auto;
-                            border-radius: 15px;
+                        .glass-button {
+                            background: rgba(255, 255, 255, 0.15);
+                            backdrop-filter: blur(12px);
+                            border: 1px solid rgba(255, 255, 255, 0.3);
+                            transition: all 0.3s ease;
                         }
-                    }
-                `}</style>
+                        .glass-button:hover {
+                            background: rgba(255, 255, 255, 0.25);
+                            transform: translateY(-2px);
+                            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+                        }
+                        @keyframes blob {
+                            0% { transform: translate(0px, 0px) scale(1); }
+                            33% { transform: translate(30px, -50px) scale(1.1); }
+                            66% { transform: translate(-20px, 20px) scale(0.9); }
+                            100% { transform: translate(0px, 0px) scale(1); }
+                        }
+                        .animate-blob {
+                            animation: blob 10s infinite;
+                        }
+                        .animation-delay-2000 {
+                            animation-delay: 2s;
+                        }
+                        /* Rain Animation */
+                        .rain-line {
+                            position: absolute;
+                            width: 1px;
+                            height: 100px;
+                            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3));
+                            animation: rain 1s linear infinite;
+                        }
+                        @keyframes rain {
+                            0% { transform: translateY(-100px); }
+                            100% { transform: translateY(100vh); }
+                        }
+                        /* Particles Animation */
+                        .particle-dot {
+                            position: absolute;
+                            background: white;
+                            border-radius: 50%;
+                            animation: particle 10s linear infinite;
+                        }
+                        @keyframes particle {
+                            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+                            50% { opacity: 0.5; }
+                            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+                        }
+                    `}</style>
 
-                <div className="bg-gray-50 min-h-screen pb-20">
-                    {/* Hero Section */}
-                    <section className="hero-grow min-h-[600px] flex items-center">
-                        <div className="curve-top-right hidden lg:block"></div>
+                    {/* Background Elements */}
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                        <div className="absolute inset-0 bg-slate-900 z-0"></div>
+                        {heroBgUrl && (
+                            <div 
+                                className="absolute inset-0 bg-cover bg-center opacity-40 transition-opacity duration-500 z-0"
+                                style={{ backgroundImage: `url('${heroBgUrl}')` }}
+                            ></div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 via-indigo-900/40 to-slate-900/95 z-10"></div>
+                        
+                        {(heroStyle === 'circles' || heroStyle === 'blob' || !heroStyle) && (
+                            <>
+                                <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-purple-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob z-10"></div>
+                                <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10"></div>
+                            </>
+                        )}
+                        
+                        {heroStyle === 'rain' && (
+                            <div className="absolute inset-0 z-10 overflow-hidden opacity-40">
+                                {[...Array(30)].map((_, i) => (
+                                    <div key={i} className="rain-line" style={{
+                                        left: `${Math.random() * 100}%`,
+                                        animationDelay: `${Math.random()}s`,
+                                        animationDuration: `${0.5 + Math.random()}s`,
+                                        opacity: 0.3 + Math.random() * 0.5
+                                    }}></div>
+                                ))}
+                            </div>
+                        )}
+                        
+                        {heroStyle === 'particles' && (
+                            <div className="absolute inset-0 z-10 overflow-hidden opacity-40">
+                                {[...Array(30)].map((_, i) => (
+                                    <div key={i} className="particle-dot" style={{
+                                        left: `${Math.random() * 100}%`,
+                                        width: `${2 + Math.random() * 4}px`,
+                                        height: `${2 + Math.random() * 4}px`,
+                                        animationDelay: `${Math.random() * 5}s`,
+                                        animationDuration: `${5 + Math.random() * 10}s`,
+                                        opacity: 0.2 + Math.random() * 0.6
+                                    }}></div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
-                        <div className="container mx-auto px-4 relative z-20 h-full py-12 lg:py-0">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center h-full">
-                                {/* Left Content */}
-                                <div className="text-white space-y-8 order-2 lg:order-1">
-                                    <div className="space-y-2">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-4">
-                                            <span className="w-2 h-2 rounded-full bg-[#FFB800]"></span>
-                                            <span className="text-xs font-bold tracking-widest uppercase text-gray-200">EVENT SPESIAL</span>
+                    {/* Content Container */}
+                    <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-5 pt-16 pb-20 lg:pb-32">
+                        
+                        {/* Left Column: Text & Actions */}
+                        <div className="w-full max-w-4xl mx-auto text-center space-y-6 animate-fade-up">
+                            
+                            {/* Badges Row */}
+                            <div className="flex flex-wrap justify-center gap-3 min-h-[38px]">
+                                {activity.activity_type !== 'non_batch' && activeBatch && activeBatch.name && (
+                                    <span className="glass-badge inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-medium hover:bg-white/20 transition-colors cursor-default">
+                                        <i className="fas fa-layer-group text-cyan-300"></i>
+                                        <span>{activeBatch.name}</span>
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Title */}
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                                {activity.title || activity.name}
+                            </h1>
+
+                            {/* Additional Info (Location & Time) */}
+                            <div className="flex flex-row flex-wrap items-stretch justify-center gap-3 text-gray-300 w-full">
+                                 {(dateLabel || timeLabel) && (
+                                    <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 flex-1 min-w-[200px] justify-start sm:justify-center">
+                                        <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                                            <i className="fas fa-calendar-alt text-sm"></i>
                                         </div>
-                                        <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight">
-                                            {activity.name}
-                                        </h1>
-                                    </div>
-
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex flex-wrap gap-3">
-                                            <div className="flex items-center gap-3 bg-white/5 px-5 py-3 rounded-2xl border border-white/10 backdrop-blur-sm">
-                                                <div className="w-10 h-10 rounded-full bg-[#FFB800]/20 flex items-center justify-center">
-                                                    <i className="fas fa-calendar-alt text-[#FFB800]"></i>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs text-gray-400">Tanggal</div>
-                                                    <div className="font-semibold text-white">{dateLabel}</div>
-                                                </div>
-                                            </div>
-
+                                        <div className="text-left min-w-0">
+                                            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Waktu Pelaksanaan</p>
+                                            <p className="text-xs sm:text-sm font-semibold text-white break-words">
+                                                {dateLabel}
+                                            </p>
                                             {timeLabel && (
-                                                <div className="flex items-center gap-3 bg-white/5 px-5 py-3 rounded-2xl border border-white/10 backdrop-blur-sm">
-                                                    <div className="w-10 h-10 rounded-full bg-[#FFB800]/20 flex items-center justify-center">
-                                                        <i className="fas fa-clock text-[#FFB800]"></i>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-xs text-gray-400">Waktu</div>
-                                                        <div className="font-semibold text-white">{timeLabel}</div>
-                                                    </div>
-                                                </div>
+                                                <p className="text-xs text-amber-400/80 mt-0.5">
+                                                    {timeLabel}
+                                                </p>
                                             )}
                                         </div>
-
-                                        {activity.location && (
-                                            <div className="flex items-center gap-3 bg-white/5 px-5 py-3 rounded-2xl border border-white/10 backdrop-blur-sm max-w-xl">
-                                                <div className="w-10 h-10 rounded-full bg-[#FFB800]/20 flex items-center justify-center shrink-0">
-                                                    <i className="fas fa-map-marker-alt text-[#FFB800]"></i>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="text-xs text-gray-400">Lokasi</div>
-                                                    <div className="font-semibold text-white truncate">{activity.location}</div>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
-
-                                    {showPrice && (
-                                        <div className="text-4xl font-bold text-[#FFB800] tracking-tight">
-                                            {(Number(activity.price) === 0) ? 'GRATIS' : `Rp ${Number(activity.price).toLocaleString('id-ID')}`}
+                                )}
+                                
+                                {activity.location && (
+                                    <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 flex-1 min-w-[140px] justify-start sm:justify-center">
+                                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                                            <i className="fas fa-map-marker-alt text-sm"></i>
                                         </div>
-                                    )}
-
-                                    <div className="flex flex-wrap gap-4 pt-2">
-                                        {pendingPayment ? (
-                                            <button
-                                                onClick={handlePaymentClick}
-                                                disabled={loadingPaymentModal}
-                                                className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-full hover:shadow-lg hover:shadow-amber-500/30 transition-all transform hover:-translate-y-1"
-                                            >
-                                                {loadingPaymentModal ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-credit-card"></i>}
-                                                Selesaikan Pembayaran
-                                            </button>
-                                        ) : isEnrolled ? (
-                                            <button className="px-8 py-4 bg-emerald-500 text-white font-bold rounded-full cursor-default shadow-lg shadow-emerald-500/20 flex items-center gap-2">
-                                                <i className="fas fa-check-circle"></i>
-                                                Terdaftar
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => setRegistrationTypeModalOpen(true)}
-                                                className="px-8 py-4 bg-[#FFB800] text-[#1a1b3a] font-bold rounded-full hover:bg-yellow-400 transition-all transform hover:-translate-y-1 shadow-xl shadow-yellow-500/20"
-                                            >
-                                                Daftar Sekarang
-                                            </button>
-                                        )}
-
-                                        <button
-                                            onClick={handleShare}
-                                            className="px-8 py-4 bg-transparent border border-white/30 text-white font-bold rounded-full hover:bg-white/10 transition-all"
-                                        >
-                                            Bagikan
-                                        </button>
+                                        <div className="text-left min-w-0">
+                                            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Lokasi</p>
+                                            <p className="text-xs sm:text-sm font-semibold text-white truncate max-w-[150px]" title={activity.location}>{activity.location}</p>
+                                        </div>
                                     </div>
-                                </div>
-
-                                {/* Right Content - Yellow Shape & Image */}
-                                <div className="block lg:hidden order-1">
-                                    <div className="yellow-shape-wrapper">
-                                        <div className="yellow-shape">
-                                            <div className="image-container">
-                                                <img
-                                                    src={heroCoverPath}
-                                                    alt={activity.name}
-                                                    className="w-full h-full object-cover"
-                                                    onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.src = '/assets/images/begron/defoult.png';
-                                                    }}
-                                                />
+                                )}
+                                
+                                {activity.price !== null && (
+                                    <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 flex-1 min-w-[140px] justify-start sm:justify-center">
+                                        <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                                            <i className="fas fa-tag text-sm"></i>
+                                        </div>
+                                        <div className="text-left min-w-0">
+                                            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Harga</p>
+                                            <div className="flex items-center gap-2">
+                                                {Number(activity.price) > 0 ? (
+                                                    <p className="text-xs sm:text-sm font-semibold text-white">
+                                                        {showPrice ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : 'Sembunyi'}
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-xs sm:text-sm font-semibold text-emerald-400">GRATIS</p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
+                            </div>
+
+                            {/* Action Buttons Row */}
+                            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                                {pendingPayment ? (
+                                    <button
+                                        onClick={handlePaymentClick}
+                                        disabled={loadingPaymentModal}
+                                        className="inline-flex items-center gap-3 h-14 px-8 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold hover:shadow-lg hover:shadow-amber-500/30 transition-all transform hover:-translate-y-1"
+                                    >
+                                        {loadingPaymentModal ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-credit-card"></i>}
+                                        <span>Selesaikan Pembayaran</span>
+                                    </button>
+                                ) : isEnrolled ? (
+                                    <button
+                                        onClick={() => setIsBulkImportModalOpen(true)}
+                                        className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-emerald-500/90 backdrop-blur-sm text-white font-bold cursor-pointer border border-white/10 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
+                                    >
+                                        <i className="fas fa-user-plus"></i>
+                                        <span>Daftarkan Peserta Lain</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => setRegistrationTypeModalOpen(true)}
+                                        className="inline-flex items-center gap-3 h-14 px-8 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold hover:shadow-lg hover:shadow-orange-500/30 transition-all transform hover:-translate-y-1"
+                                    >
+                                        <i className="fas fa-user-plus text-xl"></i>
+                                        <span>Daftar Sekarang</span>
+                                    </button>
+                                )}
+
+                                {/* Share Button */}
+                                <button
+                                    type="button"
+                                    onClick={handleShare}
+                                    className="h-14 px-6 rounded-full glass-button text-white font-medium hover:bg-white/20 inline-flex items-center gap-2 relative"
+                                >
+                                    <i className="fas fa-share-alt"></i>
+                                    <span className="hidden sm:inline">Bagikan</span>
+                                </button>
                             </div>
                         </div>
 
-                        {/* Desktop Yellow Shape (Absolute) */}
-                        <div className="yellow-shape-wrapper hidden lg:block">
-                            <div className="yellow-shape">
-                                <div className="image-container">
-                                    <img
-                                        src={heroCoverPath}
-                                        alt={activity.name}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                            e.target.onerror = null;
-                                            e.target.src = '/assets/images/begron/defoult.png';
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+                    </div>
+
+                    {/* Wave Separator */}
+                    <div className="absolute -bottom-1 left-0 right-0 z-20 pointer-events-none text-gray-50">
+                        <svg className="fill-current w-full h-8 lg:h-12" viewBox="0 0 1440 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0 48H1440V0C1440 0 1140 48 720 48C300 48 0 0 0 0V48Z" fill="currentColor"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <div className="bg-gray-50 min-h-screen pb-20">
 
                     {/* Registration Type Modal */}
                     {registrationTypeModalOpen && (
@@ -629,6 +699,8 @@ export default function Show({
                                                 { id: 'speakers', label: 'Narasumber', icon: 'fa-user-tie' },
                                                 { id: 'gallery', label: 'Galeri', icon: 'fa-images' },
                                                 { id: 'participants', label: 'Peserta', icon: 'fa-users' },
+                                                { id: 'id_card', label: 'Kartu', icon: 'fa-id-card' },
+                                                { id: 'certificate', label: 'Sertifikat', icon: 'fa-certificate' },
                                             ].map(section => (
                                                 <button
                                                     key={section.id}
@@ -757,52 +829,11 @@ export default function Show({
                                     </div>
                                 )}
 
-                                {/* Gallery Section */}
-                                {isVisible('gallery') && activity.galleries && activity.galleries.length > 0 && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                            <i className="fas fa-images text-indigo-500"></i>
-                                            Galeri
-                                        </h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            {Array.isArray(activity.galleries) && activity.galleries.length > 0 ? (
-                                                activity.galleries.map((gallery) => {
-                                                    const gallerySrc = gallery.image
-                                                        ? `/storage/activities/gallery/${gallery.image.replace('activities/gallery/', '').replace('storage/activities/gallery/', '')}`
-                                                        : '/assets/images/begron/defoult.png';
 
-                                                    return (
-                                                        <div key={gallery.id} className="aspect-video relative group rounded-xl overflow-hidden cursor-pointer shadow-sm">
-                                                            <img
-                                                                src={gallerySrc}
-                                                                alt="Galeri"
-                                                                className="w-full h-full object-cover transition transform group-hover:scale-110"
-                                                            />
-                                                        </div>
-                                                    );
-                                                })
-                                            ) : (
-                                                <div className="col-span-full text-center py-8 text-gray-500">
-                                                    <p>Belum ada dokumentasi</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
 
                                 {/* Participants List */}
                                 {isVisible('participants') && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                                            <div className="flex items-center gap-2">
-                                                <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-primary to-purple-600"></span>
-                                                <h3 className="text-xl font-bold text-gray-900">Daftar Peserta</h3>
-                                                <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-full border border-indigo-200">
-                                                    {participants.total || participantsList.length} terdaftar
-                                                </span>
-                                            </div>
-                                        </div>
-
                                         {/* Controls */}
                                         <div className="flex flex-col sm:flex-row gap-3 mb-4">
                                             <div className="relative flex-1">
@@ -931,6 +962,8 @@ export default function Show({
                                         )}
                                     </div>
                                 )}
+
+
                             </div>
 
                             {/* Sidebar (Right) */}
@@ -939,26 +972,26 @@ export default function Show({
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                     <h3 className="text-lg font-bold text-gray-900 mb-4">Status Keikutsertaan</h3>
                                     <div className="space-y-4">
-                                        <div className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50 border border-indigo-100">
-                                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                <i className="fas fa-user-check"></i>
+                                        <div className="flex items-center gap-3 p-2.5 rounded-xl bg-indigo-50 border border-indigo-100">
+                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                <i className="fas fa-user-check text-sm"></i>
                                             </div>
-                                            <div>
-                                                <div className="text-sm text-gray-500">Status</div>
-                                                <div className="font-semibold text-indigo-900">
+                                            <div className="flex items-center gap-2">
+                                                <div className="text-sm text-gray-500">Status:</div>
+                                                <div className="text-sm font-semibold text-indigo-900">
                                                     {enrollmentStatus === 1 ? 'Aktif' : enrollmentStatus === 0 ? 'Menunggu Verifikasi' : enrollmentStatus === 2 ? 'Ditolak' : 'Menunggu Pembayaran'}
                                                 </div>
                                             </div>
                                         </div>
 
                                         {userRoomNumber && (
-                                            <div className="flex items-center gap-3 p-3 rounded-xl bg-orange-50 border border-orange-100">
-                                                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                                                    <i className="fas fa-bed"></i>
+                                            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-orange-50 border border-orange-100">
+                                                <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+                                                    <i className="fas fa-bed text-sm"></i>
                                                 </div>
-                                                <div>
-                                                    <div className="text-sm text-gray-500">Kamar</div>
-                                                    <div className="font-semibold text-orange-900">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-sm text-gray-500">Kamar:</div>
+                                                    <div className="text-sm font-semibold text-orange-900">
                                                         {userRoomNumber} {userRoomHotelName && `(${userRoomHotelName})`}
                                                     </div>
                                                 </div>
@@ -966,7 +999,7 @@ export default function Show({
                                         )}
 
                                         {/* ID Card Display */}
-                                        {isEnrolled && enrollmentStatus === 1 && (activity.id_card_visible !== 0 && activity.id_card_visible !== '0' && activity.id_card_visible !== false) && (
+                                        {isEnrolled && enrollmentStatus === 1 && isVisible('id_card') && (
                                             <div className="pt-2">
                                                 <div
                                                     ref={cardContainerRef}
@@ -1004,7 +1037,7 @@ export default function Show({
                                         {/* Download Buttons for Active Participants */}
                                         {enrollmentStatus === 1 && (
                                             <div className="pt-2 border-t border-gray-100 mt-2 space-y-2">
-                                                {(printSettings?.id_card_visible ?? true) && cardSetting?.download_card_visible && (
+                                                {isVisible('id_card') && (printSettings?.id_card_visible ?? true) && cardSetting?.download_card_visible && (
                                                     <a
                                                         href={route('activity.print-cards', activity.id)}
                                                         target="_blank"
@@ -1015,7 +1048,7 @@ export default function Show({
                                                     </a>
                                                 )}
 
-                                                {certificatePrintSettings?.download_card_visible && (
+                                                {isVisible('certificate') && certificatePrintSettings?.download_card_visible && (
                                                     <a
                                                         href={route('activity.download-certificate', activity.id)}
                                                         target="_blank"
@@ -1050,6 +1083,44 @@ export default function Show({
                                 )}
                             </div>
                         </div>
+
+                        {/* Gallery Section */}
+                        {isVisible('gallery') && activity.galleries && activity.galleries.length > 0 && (
+                            <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <i className="fas fa-images text-indigo-500"></i>
+                                    Galeri
+                                </h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {Array.isArray(activity.galleries) && activity.galleries.length > 0 ? (
+                                        activity.galleries.map((gallery) => {
+                                            const gallerySrc = gallery.image
+                                                ? `/storage/activities/gallery/${gallery.image.replace('activities/gallery/', '').replace('storage/activities/gallery/', '')}`
+                                                : '/assets/images/begron/defoult.png';
+
+                                            return (
+                                                <div key={gallery.id} className="aspect-video relative group rounded-xl overflow-hidden cursor-pointer shadow-sm">
+                                                    <img
+                                                        src={gallerySrc}
+                                                        alt="Galeri"
+                                                        className="w-full h-full object-cover transition transform group-hover:scale-110"
+                                                    />
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="col-span-full text-center py-8 text-gray-500">
+                                            <p>Belum ada dokumentasi</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Comment Section */}
+                        {isVisible('comments') && (activity.enable_comments ?? true) && (
+                            <CommentSection activity={activity} comments={activity.comments} />
+                        )}
                     </div>
                 </div>
 

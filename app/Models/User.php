@@ -162,6 +162,20 @@ class User extends Authenticatable
                         elseif (isset($profile->additional_data[$field])) {
                             $val = $profile->additional_data[$field];
                         }
+
+                        // Fuzzy search for keys like "Key|modifier" - Fix for 422 error when keys mismatch in case/suffix
+                        if (empty($val)) {
+                             foreach ($profile->additional_data as $k => $v) {
+                                 $kClean = $k;
+                                 if (str_contains($k, '|')) $kClean = explode('|', $k)[0];
+                                 elseif (str_contains($k, ':')) $kClean = explode(':', $k)[0];
+                                 
+                                 if (strtolower(trim($kClean)) === strtolower(trim($effectiveKey))) {
+                                     $val = $v;
+                                     break;
+                                 }
+                             }
+                        }
                     }
 
                     if (! $profile || ! trim((string) ($val ?? ''))) {

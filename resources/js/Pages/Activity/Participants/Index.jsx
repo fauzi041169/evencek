@@ -453,6 +453,65 @@ export default function Index({
         });
     };
 
+    const handleBulkFillGender = () => {
+        if (!selectedIds.length) return;
+
+        const activityId = activity?.uid || activity?.id;
+
+        // Map selected ActivityUser IDs to User IDs
+        const userIdsToProcess = participants.data
+            .filter(p => selectedIds.includes(p.id))
+            .map(p => p.user?.id || p.user_id)
+            .filter(id => id);
+
+        Swal.fire({
+            title: 'Isi Jenis Kelamin Otomatis?',
+            text: selectAllMatching
+                ? `Sistem akan mencoba mengisi jenis kelamin SEMUA ${participants.total} peserta yang kosong menggunakan AI.`
+                : `Sistem akan mencoba mengisi jenis kelamin ${selectedIds.length} peserta terpilih yang kosong menggunakan AI.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Proses',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading state
+                Swal.fire({
+                    title: 'Sedang Memproses...',
+                    text: 'Mohon tunggu sebentar, AI sedang menganalisis nama peserta.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                axios.post(route('activity.participants.fill-gender', { activityId }), {
+                    user_ids: selectAllMatching ? [] : userIdsToProcess,
+                    select_all: selectAllMatching
+                })
+                .then(response => {
+                    if (response.data.success) {
+                        Swal.fire({
+                            title: 'Berhasil!',
+                            text: response.data.message,
+                            icon: 'success'
+                        }).then(() => {
+                            // Refresh page to show updated data
+                            router.reload();
+                        });
+                    } else {
+                        Swal.fire('Gagal', response.data.message || 'Terjadi kesalahan.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error filling gender:', error);
+                    Swal.fire('Error', 'Terjadi kesalahan saat memproses permintaan.', 'error');
+                });
+            }
+        });
+        setShowBulkMenu(false);
+    };
+
     const handleBulkChangeRole = (targetType) => {
         if (!selectedIds.length) return;
 
@@ -469,25 +528,6 @@ export default function Index({
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                // Route name must match web.php: 'change-role-bulk' (inside 'activity.participants.' prefix)
-                // Prefix is 'activity/{activityId}/participants' -> name 'activity.participants.'
-                // Route is 'change-role-bulk' -> full name 'activity.participants.change-role-bulk'
-                // But in web.php I defined it inside the group:
-                // Route::prefix('activity/{activityId}/participants')->name('activity.participants.')->...->group(...)
-                //    Route::post('/participants/change-role-bulk', ...)->name('change-role-bulk');
-                // So full name is 'activity.participants.change-role-bulk'.
-                // Wait, in web.php I added: Route::post('/participants/change-role-bulk', ...
-                // The prefix for group is 'activity/{activityId}/participants'.
-                // So the URL is 'activity/{activityId}/participants/participants/change-role-bulk'.
-                // That looks redundant but that's how I defined it in SearchReplace.
-                // Let me double check web.php content I modified.
-                // I replaced `Route::post('/participants/check', ...)` with `... Route::post('/participants/change-role-bulk', ...)`
-                // The group prefix is `activity/{activityId}/participants`.
-                // The route path is `/participants/change-role-bulk`.
-                // So combined: `activity/{activityId}/participants/participants/change-role-bulk`.
-                // This is ugly but functional.
-                // The route name is `activity.participants.change-role-bulk`.
-                
                 router.post(route('activity.participants.change-role-bulk', { activityId }), {
                     user_ids: selectAllMatching ? [] : selectedIds,
                     select_all: selectAllMatching,
@@ -868,6 +908,13 @@ export default function Index({
                                                     className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-3 transition-colors"
                                                 >
                                                     <Users className="w-4 h-4 text-orange-500" /> Masuk Kelompok
+                                                </button>
+                                                <button
+                                                    onClick={handleBulkFillGender}
+                                                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-3 transition-colors"
+                                                >
+                                                    <UserCog className="w-4 h-4 text-purple-500" />
+                                                    Isi Jenis Kelamin (AI)
                                                 </button>
                                                 <button
                                                     onClick={handleBulkVerify}
