@@ -7,6 +7,7 @@ import CardPreview from '@/Pages/Activity/IdCards/CardPreview';
 import BulkImportModal from '@/Components/Activity/BulkImportModal';
 import BulkPaymentModal from '@/Components/Activity/BulkPaymentModal';
 import ManualPaymentModal from '@/Components/Activity/ManualPaymentModal';
+import RegistrationTypeModal from '@/Components/Activity/RegistrationTypeModal';
 import LoginModal from '@/Components/Auth/LoginModal';
 import CommentSection from './Components/CommentSection';
 import axios from 'axios';

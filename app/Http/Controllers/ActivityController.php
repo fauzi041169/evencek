@@ -1414,9 +1414,14 @@ class ActivityController extends Controller
         $activityPrice = (int) ($activity->price ?? 0);
         $registrationStatus = (int) ($activity->pendaftaran ?? 1);
         
+        $enrollParams = ['activity' => $activity->id];
+        if ($activeBatch) {
+            $enrollParams['batch_id'] = $activeBatch->id;
+        }
+
         $registerTarget = [
             'type' => 'link',
-            'url' => route('activity.enroll', $activity),
+            'url' => route('activity.enroll', $enrollParams),
             'label' => 'Pendaftaran Kegiatan',
         ];
         
@@ -1431,7 +1436,7 @@ class ActivityController extends Controller
         }
         
         if ($registerTarget['type'] !== 'disabled' && auth()->check() && ! empty($missingProfileFields)) {
-            $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $activity), 'label' => 'Pendaftaran Kegiatan'];
+            $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $enrollParams), 'label' => 'Pendaftaran Kegiatan'];
         }
 
         if ($canViewDetails) {
@@ -3747,9 +3752,14 @@ class ActivityController extends Controller
         $activityPrice = (int) ($activity->price ?? 0);
         $registrationStatus = (int) ($activity->pendaftaran ?? 1);
         
+        $enrollParams = ['activity' => $activity->id];
+        if ($activeBatch) {
+            $enrollParams['batch_id'] = $activeBatch->id;
+        }
+
         $registerTarget = [
             'type' => 'link',
-            'url' => route('activity.enroll', $activity),
+            'url' => route('activity.enroll', $enrollParams),
             'label' => 'Pendaftaran Kegiatan',
         ];
         
@@ -3764,7 +3774,7 @@ class ActivityController extends Controller
         }
         
         if ($registerTarget['type'] !== 'disabled' && auth()->check() && ! empty($missingProfileFields)) {
-            $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $activity), 'label' => 'Pendaftaran Kegiatan'];
+            $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $enrollParams), 'label' => 'Pendaftaran Kegiatan'];
         }
 
         // Ambil data batch untuk keperluan display di list peserta
