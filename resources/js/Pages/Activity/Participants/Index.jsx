@@ -611,7 +611,7 @@ export default function Index({
     }, [filters.per_page]);
 
     // Helper to get activity ID param
-    const activityIdParam = activity.uid || activity.id;
+    const activityIdParam = activity?.uid || activity?.id;
 
     // Clear filters on page load (refresh)
     useEffect(() => {
@@ -620,7 +620,7 @@ export default function Index({
             return !!filters[key];
         });
 
-        if (hasActiveFilters) {
+        if (hasActiveFilters && activityIdParam) {
             router.get(
                 route('activity.participants.index', activityIdParam),
                 {},

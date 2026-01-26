@@ -1236,7 +1236,7 @@ export default function Show({
                                         )}
 
                                         {/* Action Buttons */}
-                                        {canAccessManagement && (
+                                        {canConfigureView && (
                                             <div className="pt-2 border-t border-gray-100 mt-2">
                                                 <Link
                                                     href={route('activity.dashboard', activity.id)}
