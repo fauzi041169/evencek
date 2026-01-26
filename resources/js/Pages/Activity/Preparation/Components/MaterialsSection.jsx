@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
+import { Plus, FolderOpen, FileText, Image, Link as LinkIcon, File } from 'lucide-react';
 import Modal from '@/Components/Modal';
 
 export default function MaterialsSection({ activity, materials }) {
@@ -89,11 +90,40 @@ export default function MaterialsSection({ activity, materials }) {
                                 </div>
                             ) : (
                                 <div className="bg-indigo-50/50 p-6 flex items-center justify-center h-48">
-                                    {item.file_type === 'pdf' && <FileText className="w-16 h-16 text-red-500" />}
+                                    {item.file_type === 'pdf' && (
+                                        <img 
+                                            src="/assets/images/icon/iconpdf.jpg" 
+                                            alt="PDF" 
+                                            className="w-20 h-20 object-contain hover:scale-110 transition-transform duration-300" 
+                                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                                        />
+                                    )}
+                                    {item.file_type === 'pdf' && <FileText className="w-16 h-16 text-red-500 hidden" />}
+                                    
                                     {item.file_type === 'doc' && <FileText className="w-16 h-16 text-blue-500" />}
-                                    {item.file_type === 'ppt' && <FileText className="w-16 h-16 text-orange-500" />}
+                                    
+                                    {item.file_type === 'ppt' && (
+                                        <img 
+                                            src="/assets/images/icon/iconppt.jpg" 
+                                            alt="PPT" 
+                                            className="w-20 h-20 object-contain hover:scale-110 transition-transform duration-300"
+                                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                                        />
+                                    )}
+                                    {item.file_type === 'ppt' && <FileText className="w-16 h-16 text-orange-500 hidden" />}
+                                    
                                     {item.file_type === 'image' && <Image className="w-16 h-16 text-purple-500" />}
-                                    {item.file_type === 'link' && <LinkIcon className="w-16 h-16 text-gray-500" />}
+                                    
+                                    {item.file_type === 'link' && (
+                                        <img 
+                                            src="/assets/images/icon/iconlink.jpg" 
+                                            alt="Link" 
+                                            className="w-20 h-20 object-contain hover:scale-110 transition-transform duration-300"
+                                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                                        />
+                                    )}
+                                    {item.file_type === 'link' && <LinkIcon className="w-16 h-16 text-gray-500 hidden" />}
+                                    
                                     {!['pdf', 'doc', 'ppt', 'image', 'link', 'youtube'].includes(item.file_type) && <File className="w-16 h-16 text-indigo-500" />}
                                 </div>
                             )}
