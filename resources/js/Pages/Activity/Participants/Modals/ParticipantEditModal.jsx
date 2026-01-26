@@ -42,7 +42,7 @@ export default function ParticipantEditModal({ show, onClose, user }) {
         e.preventDefault();
         if (!targetUser?.id) return;
         
-        post(route('profile.update-user', { user: targetUser.id }), {
+        post(route('profile.update-user', { id: targetUser.id }), {
             onSuccess: () => {
                 onClose();
                 Swal.fire({

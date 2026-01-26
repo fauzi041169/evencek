@@ -255,17 +255,22 @@ class ProfileController extends Controller
         // Handle file upload (prioritas lebih tinggi dari base64)
         if ($request->hasFile('foto_file')) {
             $foto = $request->file('foto_file');
-            // Simpan menggunakan Storage facade
-            $path = $foto->store('profile-photos', 'public');
+            try {
+                // Simpan menggunakan Storage facade
+                $path = $foto->store('profile-photos', 'public');
 
-            // Save the filename/path to database
-            if (! $profile) {
-                // Buat profile baru jika belum ada
-                $profile = new Profile;
-                $profile->user_id = $user->id;
+                // Save the filename/path to database
+                if (! $profile) {
+                    // Buat profile baru jika belum ada
+                    $profile = new Profile;
+                    $profile->user_id = $user->id;
+                }
+                // Model event will handle deleting the old file
+                $profile->foto = $path;
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Profile upload error (update): ' . $e->getMessage());
+                return redirect()->back()->withErrors(['foto_file' => 'Gagal upload foto. Cek log server/permission.'])->withInput();
             }
-            // Model event will handle deleting the old file
-            $profile->foto = $path;
         } elseif ($request->filled('foto_data') && $request->foto_data != 'delete') {
             // Handle base64 image from camera (hanya jika tidak ada file upload)
             $image_data = $request->foto_data;
@@ -299,15 +304,20 @@ class ProfileController extends Controller
         // Handle cover image upload
         if ($request->hasFile('cover_file')) {
             $cover = $request->file('cover_file');
-            // Simpan menggunakan Storage facade
-            $path = $cover->store('profile-covers', 'public');
+            try {
+                // Simpan menggunakan Storage facade
+                $path = $cover->store('profile-covers', 'public');
 
-            if (! $profile) {
-                $profile = new Profile;
-                $profile->user_id = $user->id;
+                if (! $profile) {
+                    $profile = new Profile;
+                    $profile->user_id = $user->id;
+                }
+                // Model event will handle deleting the old file
+                $profile->cover_image = $path;
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Cover upload error (update): ' . $e->getMessage());
+                return redirect()->back()->withErrors(['cover_file' => 'Gagal upload cover. Cek log server/permission.'])->withInput();
             }
-            // Model event will handle deleting the old file
-            $profile->cover_image = $path;
         }
 
         // Handle photo deletion

@@ -99,7 +99,7 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('profile.update', user.id), {
+        post(route('profile.update-user', user.id), {
             forceFormData: true,
             onSuccess: () => {
                 Swal.fire({
