@@ -1,6 +1,7 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import { Upload, X, FileSpreadsheet, CheckCircle, AlertCircle, AlertTriangle, FileText, Download, Plus, Save, MapPin, Trash2, ChevronDown, ChevronLeft } from 'lucide-react';
 
 export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegionLookup }) {
@@ -153,12 +154,24 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
         })
         .then(() => {
             setIsSavingTemplate(false);
-            alert('Template berhasil disimpan!');
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Template berhasil disimpan!',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
         })
         .catch(error => {
             setIsSavingTemplate(false);
             console.error('Failed to save template', error);
-            alert('Gagal menyimpan template');
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Gagal menyimpan template'
+            });
         });
     };
 
@@ -190,7 +203,11 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
             const blob = new Blob([dataToSend], { type: 'text/plain' });
             formData.append('file', blob, 'pasted_data.txt');
         } else {
-            alert('Silakan tempel data atau pilih file Excel.');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Perhatian',
+                text: 'Silakan tempel data atau pilih file Excel.'
+            });
             setIsProcessing(false);
             return;
         }
@@ -214,13 +231,21 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
             } else if (response.data.status === 'success') {
                 onCheckSuccess(response.data.stats || response.data);
             } else {
-                alert('Terjadi kesalahan: ' + (response.data.message || 'Unknown error'));
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Terjadi kesalahan: ' + (response.data.message || 'Unknown error')
+                });
             }
         })
         .catch(error => {
             setIsProcessing(false);
             console.error(error);
-            alert('Gagal mengimpor: ' + (error.response?.data?.message || error.message));
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Gagal mengimpor: ' + (error.response?.data?.message || error.message)
+            });
         });
     };
 

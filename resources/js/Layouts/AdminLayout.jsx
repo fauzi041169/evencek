@@ -174,16 +174,27 @@ export default function AdminLayout({ children, title = '' }) {
                                                         
                                                         <button 
                                                             onClick={() => {
-                                                                if (confirm('Apakah Anda yakin ingin membersihkan cache browser? Halaman akan dimuat ulang.')) {
-                                                                    if ('caches' in window) {
-                                                                        caches.keys().then(names => {
-                                                                            names.forEach(name => caches.delete(name));
-                                                                        });
+                                                                Swal.fire({
+                                                                    title: 'Bersihkan Cache?',
+                                                                    text: "Halaman akan dimuat ulang setelah cache dibersihkan.",
+                                                                    icon: 'warning',
+                                                                    showCancelButton: true,
+                                                                    confirmButtonColor: '#3085d6',
+                                                                    cancelButtonColor: '#d33',
+                                                                    confirmButtonText: 'Ya, Bersihkan!',
+                                                                    cancelButtonText: 'Batal'
+                                                                }).then((result) => {
+                                                                    if (result.isConfirmed) {
+                                                                        if ('caches' in window) {
+                                                                            caches.keys().then(names => {
+                                                                                names.forEach(name => caches.delete(name));
+                                                                            });
+                                                                        }
+                                                                        localStorage.clear();
+                                                                        sessionStorage.clear();
+                                                                        window.location.reload(true);
                                                                     }
-                                                                    localStorage.clear();
-                                                                    sessionStorage.clear();
-                                                                    window.location.reload(true);
-                                                                }
+                                                                });
                                                             }}
                                                             className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 rounded-xl hover:bg-primary/5 hover:text-primary transition-colors group"
                                                         >

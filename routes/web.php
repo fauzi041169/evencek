@@ -511,7 +511,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
 
         Route::get('/{user}', 'show')->name('show');
         Route::get('/{user}/edit', 'edit')->name('edit');
-        Route::put('/{user}', 'update')->name('update-user');
+        Route::match(['put', 'post'], '/{user}', 'update')->name('update-user');
     });
 
     // Category Routes

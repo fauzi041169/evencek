@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, usePage } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 import Cropper from 'react-easy-crop';
+import Swal from 'sweetalert2';
 import getCroppedImg from '@/Utils/canvasUtils';
 
 export default function MissingDataModal({ show, onClose, missingData = [], onSuccess }) {
@@ -129,7 +130,12 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
             setShowCropper(false);
         } catch (e) {
             console.error(e);
-            alert('Gagal memproses gambar');
+            Swal.fire({
+                title: 'Gagal',
+                text: 'Gagal memproses gambar',
+                icon: 'error',
+                confirmButtonColor: '#E02424'
+            });
         }
     };
 

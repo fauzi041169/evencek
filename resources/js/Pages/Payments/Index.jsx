@@ -23,12 +23,20 @@ export default function Index({ activity, payments, existingPayment }) {
                     setPaymentModalData(res.data);
                     setShowPaymentModal(true);
                 } else {
-                    alert('Gagal memuat form pembayaran. Silakan coba lagi.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: 'Gagal memuat form pembayaran. Silakan coba lagi.',
+                    });
                 }
             })
             .catch(err => {
                 console.error('Error fetching payment data:', err);
-                alert('Terjadi kesalahan saat memuat data pembayaran.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Kesalahan',
+                    text: 'Terjadi kesalahan saat memuat data pembayaran.',
+                });
             })
             .finally(() => setLoadingPaymentModal(false));
     };

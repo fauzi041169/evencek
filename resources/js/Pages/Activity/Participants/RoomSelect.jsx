@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 import { ChevronDown, X } from 'lucide-react';
+import Swal from 'sweetalert2';
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 
 export default function RoomSelect({
@@ -30,27 +31,49 @@ export default function RoomSelect({
             return;
         }
 
-        if (confirm(`Pindahkan peserta ke kamar ${room.room_number} (${room.hotel_name})?`)) {
-            router.post(route('activity.participants.assign-room', { activityId: activity.uid || activity.id }), {
-                room_id: room.id,
-                user_id: participant.user_id
-            }, {
-                preserveScroll: true,
-                onSuccess: () => close()
-            });
-        }
+        Swal.fire({
+            title: 'Konfirmasi Pindah Kamar',
+            text: `Pindahkan peserta ke kamar ${room.room_number} (${room.hotel_name})?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#0054a3',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Ya, Pindahkan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('activity.participants.assign-room', { activityId: activity.uid || activity.id }), {
+                    room_id: room.id,
+                    user_id: participant.user_id
+                }, {
+                    preserveScroll: true,
+                    onSuccess: () => close()
+                });
+            }
+        });
     };
 
     const handleUnassign = (close) => {
-        if (confirm(`Keluarkan peserta dari kamar?`)) {
-            router.post(route('activity.participants.assign-room', { activityId: activity.uid || activity.id }), {
-                room_id: '',
-                user_id: participant.user_id
-            }, {
-                preserveScroll: true,
-                onSuccess: () => close()
-            });
-        }
+        Swal.fire({
+            title: 'Konfirmasi Hapus Kamar',
+            text: 'Keluarkan peserta dari kamar?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#E02424',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Ya, Keluarkan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('activity.participants.assign-room', { activityId: activity.uid || activity.id }), {
+                    room_id: '',
+                    user_id: participant.user_id
+                }, {
+                    preserveScroll: true,
+                    onSuccess: () => close()
+                });
+            }
+        });
     }
 
     return (

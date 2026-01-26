@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useForm, router } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 import { Building, X, Plus, Upload, Download, Trash2, CheckCircle, Ban, UserPlus, Users } from 'lucide-react';
 
 // Internal component for searchable select
@@ -155,20 +156,31 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
             confirmMsg = `Hapus ${selectedRooms.length} kamar terpilih?`;
         }
 
-        if (confirm(confirmMsg)) {
-            if (action === 'delete') {
-                router.delete(route(routeName, { activityId: activity.uid || activity.id }), {
-                    data: { ids: selectedRooms },
-                    onSuccess: () => setSelectedRooms([])
-                });
-            } else {
-                router.post(route(routeName, { activityId: activity.uid || activity.id }), {
-                    ids: selectedRooms
-                }, {
-                    onSuccess: () => setSelectedRooms([])
-                });
+        Swal.fire({
+            title: 'Konfirmasi',
+            text: confirmMsg,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Lanjutkan!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (action === 'delete') {
+                    router.delete(route(routeName, { activityId: activity.uid || activity.id }), {
+                        data: { ids: selectedRooms },
+                        onSuccess: () => setSelectedRooms([])
+                    });
+                } else {
+                    router.post(route(routeName, { activityId: activity.uid || activity.id }), {
+                        ids: selectedRooms
+                    }, {
+                        onSuccess: () => setSelectedRooms([])
+                    });
+                }
             }
-        }
+        });
     };
 
     // Simplified room assignment handler (just for demo, in real app might need more complex UI)
@@ -186,20 +198,44 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     };
 
     const handleRemoveParticipant = (roomId, userId) => {
-        if (!confirm('Keluarkan peserta dari kamar ini?')) return;
-        router.post(route('activity.participants.assign-room', { activityId: activity.uid || activity.id }), {
-            room_id: '', // Unassign
-            user_id: userId
-        }, {
-            preserveScroll: true
+        Swal.fire({
+            title: 'Keluarkan Peserta?',
+            text: "Peserta akan dikeluarkan dari kamar ini.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Keluarkan!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('activity.participants.assign-room', { activityId: activity.uid || activity.id }), {
+                    room_id: '', // Unassign
+                    user_id: userId
+                }, {
+                    preserveScroll: true
+                });
+            }
         });
     };
 
     const handleDeleteAll = () => {
-        if (!confirm('Hapus SEMUA data kamar beserta penugasan pesertanya dalam aktivitas ini? Tindakan ini tidak dapat dibatalkan.')) return;
-        router.delete(route('activity.participants.rooms.destroy-all', { activityId: activity.uid || activity.id }), {
-            onSuccess: () => {
-                setSelectedRooms([]);
+        Swal.fire({
+            title: 'Hapus SEMUA Data Kamar?',
+            text: "Hapus SEMUA data kamar beserta penugasan pesertanya dalam aktivitas ini? Tindakan ini tidak dapat dibatalkan.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus Semua!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('activity.participants.rooms.destroy-all', { activityId: activity.uid || activity.id }), {
+                    onSuccess: () => {
+                        setSelectedRooms([]);
+                    }
+                });
             }
         });
     };

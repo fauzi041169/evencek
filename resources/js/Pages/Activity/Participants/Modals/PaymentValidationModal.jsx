@@ -3,6 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import { CheckCircle, XCircle, AlertCircle, FileText, Image, DollarSign, Calendar, User, CreditCard, Users, Upload, Save } from 'lucide-react';
 
 export default function PaymentValidationModal({ show, onClose, payment, participant, activity, paymentMethods = [] }) {
@@ -43,7 +44,11 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
         if (!file) return;
 
         if (file.size > 10 * 1024 * 1024) {
-            alert('Ukuran file maksimal 10MB');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Perhatian',
+                text: 'Ukuran file maksimal 10MB'
+            });
             return;
         }
 
@@ -68,7 +73,11 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
             })
             .catch(error => {
                 console.error('Upload failed:', error);
-                alert('Gagal mengunggah bukti pembayaran');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal mengunggah bukti pembayaran'
+                });
             })
             .finally(() => {
                 setUploading(false);
@@ -87,7 +96,11 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
             onSuccess: (page) => {
                 setProcessing(false);
                 if (page.props.flash?.error) {
-                    alert(page.props.flash.error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: page.props.flash.error
+                    });
                 } else {
                     onClose();
                 }
@@ -95,7 +108,11 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
             onError: (errors) => {
                 setProcessing(false);
                 console.error('Save failed:', errors);
-                alert('Gagal menyimpan: ' + Object.values(errors).join(', '));
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal menyimpan: ' + Object.values(errors).join(', ')
+                });
             }
         });
     };
@@ -107,7 +124,11 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
         }
 
         if (status === 'rejected' && !rejectReason.trim()) {
-            alert('Mohon isi alasan penolakan');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Perhatian',
+                text: 'Mohon isi alasan penolakan'
+            });
             return;
         }
 
@@ -125,7 +146,11 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
             onSuccess: (page) => {
                 setProcessing(false);
                 if (page.props.flash?.error) {
-                    alert(page.props.flash.error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: page.props.flash.error
+                    });
                 } else {
                     setNotes('');
                     setRejectReason('');
@@ -136,7 +161,11 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
             onError: (errors) => {
                 setProcessing(false);
                 console.error('Verification failed:', errors);
-                alert('Gagal memproses: ' + Object.values(errors).join(', '));
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal memproses: ' + Object.values(errors).join(', ')
+                });
             }
         });
     };

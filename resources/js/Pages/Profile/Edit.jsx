@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import axios from 'axios';
 import MainLayout from '@/Layouts/MainLayout';
@@ -73,7 +73,7 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
             }
         } catch (err) {
             console.error("Error accessing camera:", err);
-            alert("Tidak dapat mengakses kamera");
+            Swal.fire('Error', 'Tidak dapat mengakses kamera', 'error');
             setShowCamera(false);
         }
     };

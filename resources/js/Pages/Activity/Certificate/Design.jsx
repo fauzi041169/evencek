@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import { QRCodeSVG } from 'qrcode.react';
 import DraggableItem from './DraggableItem';
 import { toPng } from 'html-to-image';
@@ -326,13 +327,24 @@ export default function Design({ auth, activity, certificateSetting: initialSett
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                if (confirm('Hapus background ini?')) {
-                                                                    // We need a specific delete endpoint for list items if we want to delete from gallery
-                                                                    // reusing delete current for now is tricky if it's not the selected one.
-                                                                    // For now let's skip delete from list or implement handleListDelete later.
-                                                                    // But the User asked for "display default", so let's focus on that.
-                                                                    alert('Fitur hapus dari list belum aktif');
-                                                                }
+                                                                Swal.fire({
+                                                                    title: 'Hapus background ini?',
+                                                                    text: "Apakah Anda yakin ingin menghapus background ini dari daftar?",
+                                                                    icon: 'warning',
+                                                                    showCancelButton: true,
+                                                                    confirmButtonColor: '#d33',
+                                                                    cancelButtonColor: '#3085d6',
+                                                                    confirmButtonText: 'Ya, Hapus!',
+                                                                    cancelButtonText: 'Batal'
+                                                                }).then((result) => {
+                                                                    if (result.isConfirmed) {
+                                                                        // We need a specific delete endpoint for list items if we want to delete from gallery
+                                                                        // reusing delete current for now is tricky if it's not the selected one.
+                                                                        // For now let's skip delete from list or implement handleListDelete later.
+                                                                        // But the User asked for "display default", so let's focus on that.
+                                                                        Swal.fire('Info', 'Fitur hapus dari list belum aktif', 'info');
+                                                                    }
+                                                                });
                                                             }}
                                                             className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
                                                             title="Hapus"

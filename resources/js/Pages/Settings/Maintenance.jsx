@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 import MainLayout from '@/Layouts/MainLayout';
 import Modal from '@/Components/Modal';
 
@@ -73,34 +74,58 @@ export default function Maintenance({ setting, apkList = [] }) {
     };
 
     const enableMaintenance = async () => {
-        if (!window.confirm('Aktifkan maintenance mode?')) return;
-        try {
-            const payload = {
-                maintenance_message: data.maintenance_message,
-                maintenance_start: data.maintenance_start || null,
-                maintenance_end: data.maintenance_end || null,
-                allowed_ips: data.allowed_ips,
-            };
-            const res = await requestJson(route('maintenance.enable'), {
-                method: 'POST',
-                body: JSON.stringify(payload),
-            });
-            setStatusActive(true);
-            showAlert('success', res.message || 'Maintenance aktif');
-        } catch (err) {
-            showAlert('error', err.message);
-        }
+        Swal.fire({
+            title: 'Aktifkan maintenance?',
+            text: "Situs akan masuk ke mode maintenance.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Aktifkan!',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const payload = {
+                        maintenance_message: data.maintenance_message,
+                        maintenance_start: data.maintenance_start || null,
+                        maintenance_end: data.maintenance_end || null,
+                        allowed_ips: data.allowed_ips,
+                    };
+                    const res = await requestJson(route('maintenance.enable'), {
+                        method: 'POST',
+                        body: JSON.stringify(payload),
+                    });
+                    setStatusActive(true);
+                    showAlert('success', res.message || 'Maintenance aktif');
+                } catch (err) {
+                    showAlert('error', err.message);
+                }
+            }
+        });
     };
 
     const disableMaintenance = async () => {
-        if (!window.confirm('Matikan maintenance mode?')) return;
-        try {
-            const res = await requestJson(route('maintenance.disable'), { method: 'POST' });
-            setStatusActive(false);
-            showAlert('success', res.message || 'Maintenance nonaktif');
-        } catch (err) {
-            showAlert('error', err.message);
-        }
+        Swal.fire({
+            title: 'Matikan maintenance?',
+            text: "Situs akan kembali online.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, Matikan!',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await requestJson(route('maintenance.disable'), { method: 'POST' });
+                    setStatusActive(false);
+                    showAlert('success', res.message || 'Maintenance nonaktif');
+                } catch (err) {
+                    showAlert('error', err.message);
+                }
+            }
+        });
     };
 
     const uploadApk = (e) => {
@@ -109,28 +134,52 @@ export default function Maintenance({ setting, apkList = [] }) {
     };
 
     const deleteApk = async (filename) => {
-        if (!window.confirm('Hapus APK ini?')) return;
-        try {
-            const res = await requestJson(route('maintenance.delete-apk'), {
-                method: 'POST',
-                body: JSON.stringify({ filename }),
-            });
-            showAlert('success', res.message || 'APK dihapus');
-        } catch (err) {
-            showAlert('error', err.message);
-        }
+        Swal.fire({
+            title: 'Hapus APK?',
+            text: "File APK akan dihapus permanen.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await requestJson(route('maintenance.delete-apk'), {
+                        method: 'POST',
+                        body: JSON.stringify({ filename }),
+                    });
+                    showAlert('success', res.message || 'APK dihapus');
+                } catch (err) {
+                    showAlert('error', err.message);
+                }
+            }
+        });
     };
 
     const runArtisan = async (url) => {
-        if (!window.confirm('Jalankan perintah ini?')) return;
-        try {
-            const res = await requestJson(url, { method: 'POST' });
-            setArtisanOutput(res.output || res.message || '');
-            showAlert('success', res.message || 'Berhasil');
-        } catch (err) {
-            setArtisanOutput(err.message);
-            showAlert('error', err.message);
-        }
+        Swal.fire({
+            title: 'Jalankan perintah?',
+            text: "Perintah artisan akan dieksekusi.",
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, Jalankan!',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await requestJson(url, { method: 'POST' });
+                    setArtisanOutput(res.output || res.message || '');
+                    showAlert('success', res.message || 'Berhasil');
+                } catch (err) {
+                    setArtisanOutput(err.message);
+                    showAlert('error', err.message);
+                }
+            }
+        });
     };
 
     const clearBrowserCache = () => {
@@ -174,25 +223,36 @@ export default function Maintenance({ setting, apkList = [] }) {
     };
 
     const handleUpdateApp = async () => {
-        if (!window.confirm('Apakah Anda yakin ingin melakukan update aplikasi? Pastikan tidak ada perubahan lokal yang belum tersimpan.')) return;
+        Swal.fire({
+            title: 'Update Aplikasi?',
+            text: "Pastikan tidak ada perubahan lokal yang belum tersimpan.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, Update!',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                setShowUpdateModal(true);
+                setUpdateStatus('loading');
+                setUpdateMessage('Sedang melakukan update aplikasi...');
+                setUpdateOutput('');
 
-        setShowUpdateModal(true);
-        setUpdateStatus('loading');
-        setUpdateMessage('Sedang melakukan update aplikasi...');
-        setUpdateOutput('');
-
-        try {
-            const res = await requestJson(route('maintenance.update-app'), { method: 'POST' });
-            setUpdateStatus('success');
-            setUpdateMessage(res.message || 'Aplikasi berhasil diupdate.');
-            setUpdateOutput(res.output || '');
-        } catch (err) {
-            setUpdateStatus('error');
-            setUpdateMessage(err.message || 'Gagal melakukan update.');
-            if (err.data && err.data.output) {
-                setUpdateOutput(err.data.output);
+                try {
+                    const res = await requestJson(route('maintenance.update-app'), { method: 'POST' });
+                    setUpdateStatus('success');
+                    setUpdateMessage(res.message || 'Aplikasi berhasil diupdate.');
+                    setUpdateOutput(res.output || '');
+                } catch (err) {
+                    setUpdateStatus('error');
+                    setUpdateMessage(err.message || 'Gagal melakukan update.');
+                    if (err.data && err.data.output) {
+                        setUpdateOutput(err.data.output);
+                    }
+                }
             }
-        }
+        });
     };
 
     const closeUpdateModal = () => {

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import AcaraLayout from '@/Layouts/AcaraLayout';
@@ -340,22 +340,24 @@ export default function Management({
                                                 }`}
                                                 onClick={() => handleAttendanceClick(attendance.id)}
                                             >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                        <span className={`w-6 h-6 flex items-center justify-center rounded text-xs font-bold text-white ${
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                                                        <span className={`w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-xs font-bold text-white mt-1 ${
                                                             selectedAttendanceId === attendance.id ? 'bg-red-500' : 'bg-gray-500'
                                                         }`}>
                                                             {index + 1}
                                                         </span>
-                                                        <span className={`truncate ${selectedAttendanceId === attendance.id ? 'font-semibold text-red-700' : ''}`}>
-                                                            {attendance.name}
-                                                        </span>
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {attendance.jenis_absen.split(',').map((type, i) => (
-                                                                <span key={i} className="px-2 py-0.5 bg-secondary/10 text-blue-700 text-xs rounded">
-                                                                    {type}
-                                                                </span>
-                                                            ))}
+                                                        <div className="flex flex-col min-w-0 w-full">
+                                                            <span className={`break-words whitespace-normal leading-tight ${selectedAttendanceId === attendance.id ? 'font-semibold text-red-700' : ''}`}>
+                                                                {attendance.name}
+                                                            </span>
+                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                {attendance.jenis_absen.split(',').map((type, i) => (
+                                                                    <span key={i} className="px-2 py-0.5 bg-secondary/10 text-blue-700 text-xs rounded">
+                                                                        {type}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -479,17 +481,17 @@ export default function Management({
 
                                 {/* Table */}
                                 <div className="overflow-x-auto">
-                                    <table className="w-full">
+                                    <table className="w-full min-w-[1000px]">
                                         <thead className="bg-gray-50">
                                             <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama</th>
-                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell">Provinsi</th>
-                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell">Kabupaten</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Nama</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell whitespace-nowrap">Provinsi</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell whitespace-nowrap">Kabupaten</th>
                                                 {selectedAttendanceId && (
-                                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Status</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Status</th>
                                                 )}
                                                 {selectedAttendanceId && isManualType && (
-                                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Aksi</th>
+                                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Aksi</th>
                                                 )}
                                             </tr>
                                         </thead>
@@ -501,17 +503,17 @@ export default function Management({
                                                     
                                                     return (
                                                         <tr key={participant.id} className="hover:bg-gray-50">
-                                                            <td className="px-4 py-3">
+                                                            <td className="px-4 py-3 whitespace-nowrap">
                                                                 <strong>{participant.user?.name || '-'}</strong>
                                                             </td>
-                                                            <td className="px-4 py-3 hidden md:table-cell text-gray-600">
+                                                            <td className="px-4 py-3 hidden md:table-cell text-gray-600 whitespace-nowrap">
                                                                 {participant.user?.profile?.province?.name || '-'}
                                                             </td>
-                                                            <td className="px-4 py-3 hidden md:table-cell text-gray-600">
+                                                            <td className="px-4 py-3 hidden md:table-cell text-gray-600 whitespace-nowrap">
                                                                 {participant.user?.profile?.regency?.name || '-'}
                                                             </td>
                                                             {selectedAttendanceId && (
-                                                                <td className="px-4 py-3 text-center">
+                                                                <td className="px-4 py-3 text-center whitespace-nowrap">
                                                                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                                                                         isPresent 
                                                                             ? 'bg-green-100 text-green-800' 
@@ -523,7 +525,7 @@ export default function Management({
                                                                 </td>
                                                             )}
                                                             {selectedAttendanceId && isManualType && (
-                                                                <td className="px-4 py-3 text-center">
+                                                                <td className="px-4 py-3 text-center whitespace-nowrap">
                                                                     <input 
                                                                         type="checkbox"
                                                                         checked={isPresent}

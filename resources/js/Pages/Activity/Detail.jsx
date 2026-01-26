@@ -183,7 +183,13 @@ export default function Detail({
             preserveScroll: true,
             onSuccess: () => {
                 setCommentBody('');
-                // alert('Komentar berhasil dikirim');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Komentar berhasil dikirim',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
             }
         });
     };

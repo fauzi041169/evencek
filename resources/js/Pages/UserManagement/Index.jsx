@@ -28,7 +28,11 @@ export default function UserManagementIndex({
 
     const handleImport = (e) => {
         e.preventDefault();
-        if (!importFile) return alert('Pilih file terlebih dahulu');
+        if (!importFile) return Swal.fire({
+            icon: 'warning',
+            title: 'Perhatian',
+            text: 'Pilih file terlebih dahulu'
+        });
 
         setImportProcessing(true);
         router.post(route('user-management.import'), {
@@ -72,10 +76,18 @@ export default function UserManagementIndex({
             if (data.success) {
                 router.reload({ only: ['users'] });
             } else {
-                alert(data.message || 'Gagal mengubah role');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.message || 'Gagal mengubah role'
+                });
             }
         } catch (error) {
-            alert('Terjadi kesalahan');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Terjadi kesalahan saat mengubah role'
+            });
         }
     };
 
@@ -97,20 +109,36 @@ export default function UserManagementIndex({
             if (data.success) {
                 router.reload({ only: ['users'] });
             } else {
-                alert(data.message || 'Gagal memperbarui langganan');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.message || 'Gagal memperbarui langganan'
+                });
             }
         } catch (error) {
-            alert('Terjadi kesalahan');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Terjadi kesalahan saat memperbarui langganan'
+            });
         }
     };
 
     const handleResetPassword = async () => {
         if (newPassword !== confirmPassword) {
-            alert('Password tidak cocok');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Perhatian',
+                text: 'Password tidak cocok'
+            });
             return;
         }
         if (newPassword.length < 8) {
-            alert('Password minimal 8 karakter');
+            Swal.fire({
+                icon: 'warning',
+                title: 'Perhatian',
+                text: 'Password minimal 8 karakter'
+            });
             return;
         }
 
@@ -129,19 +157,42 @@ export default function UserManagementIndex({
                 setResetPasswordModal({ open: false, userId: null, userName: '' });
                 setNewPassword('');
                 setConfirmPassword('');
-                alert('Password berhasil direset');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Password berhasil direset'
+                });
             } else {
-                alert(data.message || 'Gagal mereset password');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.message || 'Gagal mereset password'
+                });
             }
         } catch (error) {
-            alert('Terjadi kesalahan');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Terjadi kesalahan saat mereset password'
+            });
         }
     };
 
     const handleDelete = (userId, userName) => {
-        if (confirm(`Apakah Anda yakin ingin menghapus user ${userName}?\n\nPERHATIAN: Semua data terkait user ini akan dihapus PERMANEN.`)) {
-            router.delete(route('user-management.destroy', userId));
-        }
+        Swal.fire({
+            title: 'Apakah Anda yakin?',
+            text: `Anda akan menghapus user ${userName}. PERHATIAN: Semua data terkait user ini akan dihapus PERMANEN.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('user-management.destroy', userId));
+            }
+        });
     };
 
     const getRoleColor = (role) => {

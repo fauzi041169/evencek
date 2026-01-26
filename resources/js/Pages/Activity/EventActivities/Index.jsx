@@ -20,9 +20,20 @@ export default function Index({ activity, eventActivities }) {
   const [showTypeModal, setShowTypeModal] = useState(false);
 
   const handleDelete = (itemId) => {
-    if (confirm('Apakah Anda yakin ingin menghapus kegiatan ini?')) {
-      router.delete(route('activity.event-activities.destroy', [activity.id, itemId]));
-    }
+    Swal.fire({
+      title: 'Hapus kegiatan?',
+      text: "Kegiatan ini akan dihapus permanen.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        router.delete(route('activity.event-activities.destroy', [activity.id, itemId]));
+      }
+    });
   };
 
   const getTypeLabel = (type) => {

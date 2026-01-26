@@ -10,9 +10,20 @@ export default function PartnersIndex({ partners = [], flash }) {
     const pagination = partners.links ? partners : null;
 
     const handleDelete = (id, name) => {
-        if (confirm(`Apakah Anda yakin ingin menghapus mitra "${name}"?`)) {
-            router.delete(route('partners.destroy', id));
-        }
+        Swal.fire({
+            title: 'Apakah Anda yakin?',
+            text: `Ingin menghapus mitra "${name}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('partners.destroy', id));
+            }
+        });
     };
 
     const getLogoUrl = (partner) => {

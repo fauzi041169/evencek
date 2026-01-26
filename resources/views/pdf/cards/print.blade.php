@@ -85,6 +85,16 @@
             .sheet:last-of-type {
                 break-after: auto;
             }
+            .yellow-card-3d {
+                background: #ffffff !important;
+                background-image: none !important;
+                box-shadow: none !important;
+                border: 1px solid #000 !important;
+            }
+            .cards-page-cell {
+                background: transparent !important;
+                border: none !important;
+            }
         }
         body { 
             margin: 0; 

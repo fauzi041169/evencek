@@ -1,5 +1,6 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, Link } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 
 export default function IdCards({ auth, activity, participants, committees = [], designTypes = ['participant'] }) {
@@ -67,7 +68,12 @@ export default function IdCards({ auth, activity, participants, committees = [],
     // Handle Print
     const handlePrint = () => {
         if (selectedIds.size === 0) {
-            alert('Pilih minimal satu peserta untuk dicetak kartunya.');
+            Swal.fire({
+                title: 'Peringatan',
+                text: 'Pilih minimal satu peserta untuk dicetak kartunya.',
+                icon: 'warning',
+                confirmButtonColor: '#3085d6',
+            });
             return;
         }
         const idsArray = Array.from(selectedIds);

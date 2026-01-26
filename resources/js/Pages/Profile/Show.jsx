@@ -225,6 +225,20 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
     const handleFileChange = async (e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
+            
+            // Limit file size to 2MB to prevent post_max_size issues
+            if (file.size > 2 * 1024 * 1024) {
+                Swal.fire({
+                    title: 'Ukuran File Terlalu Besar',
+                    text: 'Max 2MB. Silakan kompres foto Anda terlebih dahulu.',
+                    icon: 'warning',
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: 'Oke'
+                });
+                e.target.value = '';
+                return;
+            }
+
             const imageDataUrl = await readFile(file);
             setImageSrc(imageDataUrl);
             setShowCropper(true);
@@ -236,6 +250,18 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
     const handleCoverChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            // Limit file size to 2MB
+            if (file.size > 2 * 1024 * 1024) {
+                Swal.fire({
+                    title: 'Ukuran File Terlalu Besar',
+                    text: 'Max 2MB. Silakan kompres foto Anda terlebih dahulu.',
+                    icon: 'warning',
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: 'Oke'
+                });
+                e.target.value = '';
+                return;
+            }
             setData('cover_file', file);
         }
     };

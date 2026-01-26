@@ -206,12 +206,23 @@ export default function List({
                                                     };
 
                                                     const handleDelete = () => {
-                                                        if (confirm('Apakah Anda yakin ingin menghapus aktivitas ini?')) {
-                                                            router.delete(route('activity.destroy', activity.id), {
-                                                                preserveScroll: true,
-                                                                preserveState: true,
-                                                            });
-                                                        }
+                                                        Swal.fire({
+                                                            title: 'Hapus Aktivitas?',
+                                                            text: "Apakah Anda yakin ingin menghapus aktivitas ini?",
+                                                            icon: 'warning',
+                                                            showCancelButton: true,
+                                                            confirmButtonColor: '#d33',
+                                                            cancelButtonColor: '#3085d6',
+                                                            confirmButtonText: 'Ya, Hapus!',
+                                                            cancelButtonText: 'Batal'
+                                                        }).then((result) => {
+                                                            if (result.isConfirmed) {
+                                                                router.delete(route('activity.destroy', activity.id), {
+                                                                    preserveScroll: true,
+                                                                    preserveState: true,
+                                                                });
+                                                            }
+                                                        });
                                                     };
 
                                                     return (

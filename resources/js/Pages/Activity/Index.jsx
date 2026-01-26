@@ -3,6 +3,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import Swal from 'sweetalert2';
 
 export default function Index({ latestActivities, sliderActivities, enrolledActivityIds = [], enrolledActivityBatches = [] }) {
     const { appSettings } = usePage().props;
@@ -503,11 +504,22 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    if (confirm('Apakah Anda yakin ingin menghapus kegiatan ini?')) {
-                                                        router.delete(route('activity.destroy', activity.id), {
-                                                            preserveScroll: true,
-                                                        });
-                                                    }
+                                                    Swal.fire({
+                                                        title: 'Hapus Kegiatan?',
+                                                        text: "Data kegiatan akan dihapus permanen.",
+                                                        icon: 'warning',
+                                                        showCancelButton: true,
+                                                        confirmButtonColor: '#d33',
+                                                        cancelButtonColor: '#3085d6',
+                                                        confirmButtonText: 'Ya, Hapus!',
+                                                        cancelButtonText: 'Batal'
+                                                    }).then((result) => {
+                                                        if (result.isConfirmed) {
+                                                            router.delete(route('activity.destroy', activity.id), {
+                                                                preserveScroll: true,
+                                                            });
+                                                        }
+                                                    });
                                                 }}
                                                 className="w-10 h-10 flex items-center justify-center bg-danger text-white rounded-xl shadow-lg hover:bg-danger/90 hover:scale-110 transition-all duration-200"
                                                 title="Hapus Kegiatan"
@@ -657,11 +669,22 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                     onClick={(e) => {
                                                         e.preventDefault();
                                                         e.stopPropagation();
-                                                        if (confirm('Apakah Anda yakin ingin menghapus kegiatan ini?')) {
+                                                        Swal.fire({
+                                                        title: 'Hapus Kegiatan?',
+                                                        text: "Data kegiatan akan dihapus permanen.",
+                                                        icon: 'warning',
+                                                        showCancelButton: true,
+                                                        confirmButtonColor: '#d33',
+                                                        cancelButtonColor: '#3085d6',
+                                                        confirmButtonText: 'Ya, Hapus!',
+                                                        cancelButtonText: 'Batal'
+                                                    }).then((result) => {
+                                                        if (result.isConfirmed) {
                                                             router.delete(route('activity.destroy', activity.id), {
                                                                 preserveScroll: true,
                                                             });
                                                         }
+                                                    });
                                                     }}
                                                     className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded-xl shadow-lg hover:bg-red-600 hover:scale-110 transition-all duration-200"
                                                     title="Hapus Kegiatan"
@@ -798,10 +821,21 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                             Shape Settings
                             <button
                                 onClick={() => {
-                                    if (confirm('Reset settings?')) {
-                                        localStorage.removeItem('heroShapeSettings_v5');
-                                        window.location.reload();
-                                    }
+                                    Swal.fire({
+                                        title: 'Reset Settings?',
+                                        text: "Semua pengaturan tampilan akan dikembalikan ke default.",
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonColor: '#d33',
+                                        cancelButtonColor: '#3085d6',
+                                        confirmButtonText: 'Ya, Reset!',
+                                        cancelButtonText: 'Batal'
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            localStorage.removeItem('heroShapeSettings_v5');
+                                            window.location.reload();
+                                        }
+                                    });
                                 }}
                                 className="text-xs text-red-500 hover:text-red-700"
                             >

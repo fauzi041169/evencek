@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import Alerts from '@/Components/Alerts';
 import QRScanner from '@/Components/QRScanner';
 
@@ -80,13 +81,25 @@ export default function Scan({ activity, attendance, activity_id, attendance_id,
                     }, 3000);
                 } else {
                     // Handle error (already scanned, etc)
-                    alert(response.data.message || 'Gagal mencatat absensi');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: response.data.message || 'Gagal mencatat absensi',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
                 }
             }
         })
         .catch(error => {
             console.error(error);
-            alert(error.response?.data?.message || 'Terjadi kesalahan saat menghubungi server');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.response?.data?.message || 'Terjadi kesalahan saat menghubungi server',
+                timer: 2000,
+                showConfirmButton: false
+            });
         });
     };
 
@@ -118,9 +131,19 @@ export default function Scan({ activity, attendance, activity_id, attendance_id,
     };
 
     const handleDeleteBg = (path) => {
-        if (confirm('Hapus background ini?')) {
-            router.post(route('attendance.scan.backgrounds.delete'), { path });
-        }
+        Swal.fire({
+            title: 'Hapus background?',
+            text: "Anda tidak dapat mengembalikan ini!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('attendance.scan.backgrounds.delete'), { path });
+            }
+        });
     };
 
     return (

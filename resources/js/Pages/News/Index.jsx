@@ -459,11 +459,22 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                 <button 
                                                     onClick={(e) => { 
                                                         e.preventDefault(); 
-                                                        if(confirm('Apakah Anda yakin ingin menghapus berita ini?')) {
-                                                            router.delete(route('news.destroy', news.id), {
-                                                                preserveScroll: true,
-                                                            });
-                                                        }
+                                                        Swal.fire({
+                                                            title: 'Apakah Anda yakin?',
+                                                            text: "Ingin menghapus berita ini?",
+                                                            icon: 'warning',
+                                                            showCancelButton: true,
+                                                            confirmButtonColor: '#d33',
+                                                            cancelButtonColor: '#3085d6',
+                                                            confirmButtonText: 'Ya, Hapus!',
+                                                            cancelButtonText: 'Batal'
+                                                        }).then((result) => {
+                                                            if (result.isConfirmed) {
+                                                                router.delete(route('news.destroy', news.id), {
+                                                                    preserveScroll: true,
+                                                                });
+                                                            }
+                                                        });
                                                     }} 
                                                     className="w-8 h-8 flex items-center justify-center bg-danger text-white rounded-lg shadow-lg hover:bg-danger/90 hover:scale-110 transition-all duration-200"
                                                     title="Hapus Berita"

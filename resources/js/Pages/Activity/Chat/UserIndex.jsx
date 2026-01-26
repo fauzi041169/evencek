@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 import MainLayout from '@/Layouts/MainLayout';
 
 export default function UserIndex({ activity }) {
@@ -78,13 +79,25 @@ export default function UserIndex({ activity }) {
 
             const data = await response.json();
             if (!data.success) {
-                alert('Gagal mengirim pesan');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal mengirim pesan',
+                    timer: 3000,
+                    showConfirmButton: false
+                });
                 // Remove optimistic message on failure
                 setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
             }
         } catch (error) {
             console.error('Error sending message:', error);
-            alert('Gagal mengirim pesan');
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Gagal mengirim pesan',
+                timer: 3000,
+                showConfirmButton: false
+            });
             setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
         }
     };

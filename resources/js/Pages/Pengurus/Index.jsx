@@ -26,10 +26,20 @@ export default function Index({ pengurus = [] }) {
     }, [pengurus, search]);
 
     const handleDelete = (id) => {
-        if (!window.confirm('Apakah Anda yakin ingin menghapus data ini?')) {
-            return;
-        }
-        router.delete(route('pengurus.destroy', id));
+        Swal.fire({
+            title: 'Apakah Anda yakin?',
+            text: "Ingin menghapus data ini?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('pengurus.destroy', id));
+            }
+        });
     };
 
     return (

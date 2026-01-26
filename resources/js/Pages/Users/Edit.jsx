@@ -73,7 +73,12 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
             }
         } catch (err) {
             console.error("Error accessing camera:", err);
-            alert("Tidak dapat mengakses kamera");
+            Swal.fire({
+                title: 'Akses Kamera Gagal',
+                text: 'Tidak dapat mengakses kamera. Pastikan izin kamera diberikan.',
+                icon: 'error',
+                confirmButtonColor: '#E02424'
+            });
             setShowCamera(false);
         }
     };
@@ -98,11 +103,22 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
     };
     
     const handleDeletePhoto = () => {
-        if (confirm('Apakah Anda yakin ingin menghapus foto profil?')) {
-            setPhotoPreview('/assets/images/profilefoto/default-profile.png');
-            setData('foto_data', 'delete');
-            setData('foto_file', null);
-        }
+        Swal.fire({
+            title: 'Hapus foto?',
+            text: "Foto profil akan dihapus.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                setPhotoPreview('/assets/images/profilefoto/default-profile.png');
+                setData('foto_data', 'delete');
+                setData('foto_file', null);
+            }
+        });
     };
 
     const handleSubmit = (e) => {
