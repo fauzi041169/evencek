@@ -203,8 +203,8 @@ export default function ManualPaymentModal({ show, onClose, activity, paymentMet
                                 {errors.payment_method_id && <p className="text-xs text-red-600 mt-1">{errors.payment_method_id}</p>}
                             </div>
 
-                            {/* Hidden Sender Name Input as per request */}
-                            <div className="hidden">
+                            {/* Sender Name Input */}
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Nama Pengirim</label>
                                 <input
                                     type="text"

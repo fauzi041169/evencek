@@ -794,6 +794,11 @@ class PaymentController extends Controller
                 $targetBatchId = $activeBatch->id;
             }
 
+            // Validate targetBatchId exists to prevent FK errors (e.g. if batch was deleted)
+            if ($targetBatchId && ! ActivityBatch::where('id', $targetBatchId)->exists()) {
+                $targetBatchId = null;
+            }
+
             // If batches exist but none is active and no pending enrollment, reject registration/payment
             if ($hasBatches && ! $activeBatch && ! $pendingEnrollment) {
                 if ($request->expectsJson() || $request->boolean('modal')) {
