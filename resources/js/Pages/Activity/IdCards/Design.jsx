@@ -25,6 +25,19 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
     const [isPreviewOpen, setIsPreviewOpen] = useState(false); // Modal state
     const canvasRef = useRef(null);
 
+    // Helper: Show Toast
+    const showToast = (message, icon = 'success') => {
+        Swal.fire({
+            icon: icon,
+            title: icon === 'success' ? 'Berhasil' : 'Gagal',
+            text: message,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000
+        });
+    };
+
     // Fetch backgrounds
     const fetchBackgrounds = async () => {
         try {
