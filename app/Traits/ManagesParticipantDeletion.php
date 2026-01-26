@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\Activity;
+use App\Models\ActivityChat;
 use App\Models\ActivityHotelRoomAssignment;
 use App\Models\ActivityRecord;
 use App\Models\ActivityUser;
@@ -10,6 +11,7 @@ use App\Models\Attendance;
 use App\Models\Comment;
 use App\Models\Payment;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -41,22 +43,54 @@ trait ManagesParticipantDeletion
                     $payment->delete();
                 }
 
-                // 2. Delete Activity Enrollments & Image Files
+                // 2. Delete Activity Enrollments & Image Files (Check both potential tables)
+                // Main model deletion (handles the active table)
                 $enrollments = ActivityUser::where('activity_id', $activity->id)->where('user_id', $uid)->get();
                 foreach ($enrollments as $enrollment) {
+                    // Check for files in custom_data
+                    if (!empty($enrollment->custom_data)) {
+                        $this->deleteCustomDataFiles($enrollment->custom_data);
+                    }
+                    
+                    // Check for certificate file (if any stored)
+                    if (!empty($enrollment->certificate_id)) {
+                        $this->deleteCertificateFile($enrollment->certificate_id, $activity->id);
+                    }
+
                     $this->deleteEnrollmentImage($enrollment);
-                    
-                    // Handle group logic if needed (e.g. decrease count or remove empty group)
-                    // Currently relying on foreign keys or periodic cleanup, but could be added here
-                    
                     $enrollment->delete();
                 }
+                
+                // Explicit cleanup for legacy/typo tables to ensure no residue
+                $legacyUserTables = ['activitiusers', 'activity_users'];
+                foreach ($legacyUserTables as $table) {
+                    if (Schema::hasTable($table)) {
+                        DB::table($table)
+                            ->where('activity_id', $activity->id)
+                            ->where('user_id', $uid)
+                            ->delete();
+                    }
+                }
 
-                // 3. Delete Activity Record (Attendance)
+                // 3. Delete Activity Record (Attendance) - Check both potential tables
+                $attendanceIds = [];
                 if (Schema::hasTable('attendances')) {
-                    $attendanceIds = Attendance::where('activity_id', $activity->id)->pluck('id');
-                    if ($attendanceIds->isNotEmpty()) {
-                        ActivityRecord::whereIn('attendance_id', $attendanceIds)->where('user_id', $uid)->delete();
+                    $attendanceIds = Attendance::where('activity_id', $activity->id)->pluck('id')->toArray();
+                }
+
+                if (!empty($attendanceIds)) {
+                    // Main model
+                    ActivityRecord::whereIn('attendance_id', $attendanceIds)->where('user_id', $uid)->delete();
+                    
+                    // Legacy/Typo tables
+                    $legacyRecordTables = ['activitirecords', 'activity_records'];
+                    foreach ($legacyRecordTables as $table) {
+                        if (Schema::hasTable($table)) {
+                            DB::table($table)
+                                ->whereIn('attendance_id', $attendanceIds)
+                                ->where('user_id', $uid)
+                                ->delete();
+                        }
                     }
                 }
 
@@ -70,6 +104,19 @@ trait ManagesParticipantDeletion
                     ->where('commentable_type', Activity::class)
                     ->where('user_id', $uid)
                     ->delete();
+                    
+                // 6. Delete Activity Chats
+                if (Schema::hasTable('activity_chats')) {
+                    // Delete chats where user is the participant context
+                    ActivityChat::where('activity_id', $activity->id)
+                        ->where('user_id', $uid)
+                        ->delete();
+                        
+                    // Also delete chats where user is the sender (if any, though usually same as above)
+                    ActivityChat::where('activity_id', $activity->id)
+                        ->where('sender_id', $uid)
+                        ->delete();
+                }
 
                 $count++;
             } catch (\Exception $e) {
@@ -161,5 +208,62 @@ trait ManagesParticipantDeletion
         }
 
         return $allUserIds->unique()->values()->all();
+    }
+
+    /**
+     * Delete files found in custom_data
+     */
+    protected function deleteCustomDataFiles($customData)
+    {
+        if (!is_array($customData)) return;
+
+        foreach ($customData as $key => $value) {
+            // Check if value looks like a file path
+            if (is_string($value) && (
+                strpos($value, 'storage/') === 0 || 
+                strpos($value, 'uploads/') === 0 || 
+                strpos($value, '/storage/') !== false
+            )) {
+                try {
+                    // Try to delete if it looks like a file path and exists
+                    $path = public_path($value);
+                    if (File::exists($path) && is_file($path)) {
+                        File::delete($path);
+                    } else {
+                        // Check relative to storage
+                        $storagePath = str_replace('storage/', '', $value);
+                        if (Storage::disk('public')->exists($storagePath)) {
+                            Storage::disk('public')->delete($storagePath);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning("Failed to delete custom data file {$value}: " . $e->getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * Delete certificate file if it exists
+     */
+    protected function deleteCertificateFile($certificateId, $activityId)
+    {
+        // Speculative paths where certificates might be stored
+        $paths = [
+            "certificates/{$activityId}/{$certificateId}.pdf",
+            "certificates/{$certificateId}.pdf",
+            "public/certificates/{$activityId}/{$certificateId}.pdf",
+            "public/certificates/{$certificateId}.pdf",
+        ];
+
+        foreach ($paths as $path) {
+            try {
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->delete($path);
+                }
+            } catch (\Exception $e) {
+                // Ignore errors
+            }
+        }
     }
 }

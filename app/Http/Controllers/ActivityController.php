@@ -1410,6 +1410,30 @@ class ActivityController extends Controller
 
         $canViewDetails = $isEnrolled || $canAccessManagement;
 
+        // CALCULATE REGISTER TARGET
+        $activityPrice = (int) ($activity->price ?? 0);
+        $registrationStatus = (int) ($activity->pendaftaran ?? 1);
+        
+        $registerTarget = [
+            'type' => 'link',
+            'url' => route('activity.enroll', $activity),
+            'label' => 'Pendaftaran Kegiatan',
+        ];
+        
+        if ($registrationStatus === 0) {
+            $registerTarget = ['type' => 'disabled', 'url' => null, 'label' => 'Pendaftaran Belum Dibuka'];
+        } elseif ($registrationStatus === 2) {
+            $registerTarget = ['type' => 'disabled', 'url' => null, 'label' => 'Pendaftaran Ditutup'];
+        } else {
+            if (!auth()->check()) {
+                $registerTarget = ['type' => 'login_modal', 'url' => '#', 'label' => 'Pendaftaran Kegiatan'];
+            }
+        }
+        
+        if ($registerTarget['type'] !== 'disabled' && auth()->check() && ! empty($missingProfileFields)) {
+            $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $activity), 'label' => 'Pendaftaran Kegiatan'];
+        }
+
         if ($canViewDetails) {
             // Load current user with profile for ID card display
             $currentUser = auth()->user();
@@ -1420,6 +1444,7 @@ class ActivityController extends Controller
             return Inertia::render('Activity/Show', [
                 'heroAnimationStyle' => $heroAnimationStyle,
                 'currentUser' => $currentUser,
+                'registrationTarget' => $registerTarget,
                 'activity' => array_merge($activity->toArray(), [
                     'id_card_visible' => $printSettings['id_card_visible'] ?? true,
                     'certificate_visible' => $certificatePrintSettings['download_card_visible'] ?? false,

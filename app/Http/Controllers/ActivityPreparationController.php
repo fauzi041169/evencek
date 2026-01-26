@@ -46,6 +46,8 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
+use Symfony\Component\HttpKernel\Exception\HttpException;
+
 class ActivityPreparationController extends Controller
 {
     /**
@@ -53,17 +55,17 @@ class ActivityPreparationController extends Controller
      */
     public function index($activityId)
     {
+        // Check permission: Admin dan superadmin bisa akses semua, creator dan panitia hanya aktivitas mereka
+        if (! auth()->check()) {
+            return redirect()->route('login')->with('message', 'Silakan login terlebih dahulu.');
+        }
+
         try {
             $activity = Activity::where('uid', $activityId)->first();
             if (! $activity) {
                 $activity = Activity::findOrFail($activityId);
             }
             $activityId = $activity->id;
-
-            // Check permission: Admin dan superadmin bisa akses semua, creator dan panitia hanya aktivitas mereka
-            if (! auth()->check()) {
-                abort(403, 'Silakan login terlebih dahulu.');
-            }
 
             if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
                 // Untuk creator dan panitia, check apakah mereka bisa manage registration untuk aktivitas ini
@@ -308,6 +310,8 @@ class ActivityPreparationController extends Controller
             ]);
         } catch (ModelNotFoundException $e) {
             abort(404, 'Aktivitas tidak ditemukan.');
+        } catch (HttpException $e) {
+            throw $e;
         } catch (Exception $e) {
             Log::error('Error loading preparation page', [
                 'activity_id' => $activityId,
@@ -854,7 +858,7 @@ class ActivityPreparationController extends Controller
             if ($roleFilter === 'panitia') {
                 $query->whereIn('user_id', $committeeUserIds);
             } elseif ($roleFilter === 'peserta' || empty($roleFilter)) {
-                $query->whereNotIn('user_id', $committeeUserIds);
+                // $query->whereNotIn('user_id', $committeeUserIds);
             }
 
             if ($combinedFilter === 'email_unverified') {
@@ -3688,35 +3692,9 @@ class ActivityPreparationController extends Controller
         $template = $activity->import_template ?: 'email,name,password';
         $columns = array_values(array_filter(array_map('trim', explode(',', $template))));
 
-        // Merge with mandatory_profile_fields
-        $mandatoryFields = $activity->mandatory_profile_fields ?? [];
-        if (! empty($mandatoryFields)) {
-            $existingKeys = [];
-            foreach ($columns as $col) {
-                // Remove * for key comparison
-                $key = str_replace('*', '', $col);
-                $key = preg_replace('/^\d+\./', '', $key); // Remove numbering if any
-                $key = strtolower(trim($key));
-                // Handle user:/profile: prefixes
-                if (str_starts_with($key, 'user:')) {
-                    $key = trim(substr($key, 5));
-                }
-                if (str_starts_with($key, 'profile:')) {
-                    $key = trim(substr($key, 8));
-                }
+        // Mandatory fields are no longer automatically merged to ensure template matches user configuration
+        // This ensures the downloaded file columns match exactly what is displayed in the import modal
 
-                $existingKeys[$key] = true;
-            }
-
-            foreach ($mandatoryFields as $field) {
-                // If field is not in columns, add it
-                // We add '*' to indicate it's required (since it is mandatory)
-                if (! isset($existingKeys[$field])) {
-                    $columns[] = $field.'*';
-                    $existingKeys[$field] = true;
-                }
-            }
-        }
 
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
@@ -3754,6 +3732,9 @@ class ActivityPreparationController extends Controller
                     }
                 }
             }
+
+            // Remove prefixes user: or profile: from header name
+            $headerName = str_replace(['user:', 'profile:'], '', $headerName);
 
             // Use columnLetter helper to be consistent
             $cellLetter = $this->columnLetter($colIndex);

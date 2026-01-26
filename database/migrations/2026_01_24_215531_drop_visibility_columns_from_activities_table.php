@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        /*
         Schema::table('activities', function (Blueprint $table) {
             $columns = [
                 'detail_description_visible',
@@ -40,6 +41,7 @@ return new class extends Migration
                 $table->dropColumn($toDrop);
             }
         });
+        */
     }
 
     /**
