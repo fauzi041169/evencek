@@ -1,5 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 export default function AddDivisionModal({ activity, onClose }) {
     const [name, setName] = useState('');
@@ -21,10 +22,23 @@ export default function AddDivisionModal({ activity, onClose }) {
             });
             setIsOpen(false);
             setName('');
-            window.location.reload(); // Simple reload to refresh data
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Divisi berhasil ditambahkan',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.reload();
+            });
         } catch (error) {
             console.error('Error adding division:', error);
-            alert('Gagal menambah divisi.');
+            Swal.fire({
+                title: 'Gagal',
+                text: 'Gagal menambah divisi.',
+                icon: 'error',
+                confirmButtonColor: '#E02424'
+            });
         } finally {
             setLoading(false);
         }

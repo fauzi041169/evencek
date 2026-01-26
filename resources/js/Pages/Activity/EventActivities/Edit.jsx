@@ -1,7 +1,8 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 import { ArrowLeft, Save, Trash2, Plus, Image as ImageIcon, X } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function Edit({ activity, eventActivity }) {
     const [votingType, setVotingType] = useState(() => {
@@ -46,6 +47,17 @@ export default function Edit({ activity, eventActivity }) {
             // Clean up data before sending if needed, but FormData handles it mostly
         }, {
             forceFormData: true,
+            onSuccess: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Kegiatan berhasil diperbarui!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
         });
     };
 

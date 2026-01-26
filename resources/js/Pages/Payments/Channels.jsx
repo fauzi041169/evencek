@@ -1,6 +1,7 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import Swal from 'sweetalert2';
 
 const typeLabels = {
     bank_transfer: 'Bank Transfer (Virtual Account)',
@@ -69,7 +70,12 @@ export default function Channels({ channels = [] }) {
             }
         } catch (err) {
             setItems(items);
-            alert(err.message);
+            Swal.fire({
+                title: 'Gagal',
+                text: err.message,
+                icon: 'error',
+                confirmButtonColor: '#E02424'
+            });
         }
     };
 
@@ -87,7 +93,12 @@ export default function Channels({ channels = [] }) {
                 throw new Error(data?.message || 'Gagal menyimpan');
             }
         } catch (err) {
-            alert(err.message);
+            Swal.fire({
+                title: 'Gagal',
+                text: err.message,
+                icon: 'error',
+                confirmButtonColor: '#E02424'
+            });
         }
     };
 
@@ -114,9 +125,21 @@ export default function Channels({ channels = [] }) {
                                 action={route('payments.channels.sync')}
                                 method="post"
                                 onSubmit={(e) => {
-                                    if (!window.confirm('Apakah Anda yakin ingin mereset/sinkronisasi data channel?')) {
-                                        e.preventDefault();
-                                    }
+                                    e.preventDefault();
+                                    Swal.fire({
+                                        title: 'Reset & Sinkronisasi?',
+                                        text: 'Apakah Anda yakin ingin mereset/sinkronisasi data channel?',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonColor: '#E02424',
+                                        cancelButtonColor: '#718096',
+                                        confirmButtonText: 'Ya, Sinkronisasi',
+                                        cancelButtonText: 'Batal'
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            e.target.submit();
+                                        }
+                                    });
                                 }}
                             >
                                 <input type="hidden" name="_token" value={csrfToken} />

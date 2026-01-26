@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import { Ticket, Plus, Edit } from 'lucide-react';
 
 export default function ParticipationTypesSection({ participationTypes, activity, isEmbedded = false }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -17,8 +18,27 @@ export default function ParticipationTypesSection({ participationTypes, activity
         e.preventDefault();
         const activityId = activity.uid || activity.id;
         const opts = {
-            onSuccess: () => { setIsModalOpen(false); Swal.fire('Berhasil', '', 'success'); },
-            onError: () => Swal.fire('Error', '', 'error')
+            onSuccess: () => { 
+                setIsModalOpen(false); 
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: editingType ? 'Jenis kepesertaan diperbarui' : 'Jenis kepesertaan ditambahkan',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            },
+            onError: () => Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Terjadi kesalahan saat menyimpan data',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            })
         };
 
         if (editingType) {
@@ -33,7 +53,7 @@ export default function ParticipationTypesSection({ participationTypes, activity
             <div className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm border border-purple-100">
-                        <i className="fas fa-ticket-alt text-xl"></i>
+                        <Ticket className="w-6 h-6" />
                     </div>
                     <div>
                         <h3 className="text-xl font-bold text-slate-900 leading-tight">Jenis Kepesertaan</h3>
@@ -45,7 +65,7 @@ export default function ParticipationTypesSection({ participationTypes, activity
                     className="group flex items-center justify-center w-10 h-10 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white transition-all shadow-sm border border-purple-100/50 hover:shadow-purple-200 hover:shadow-lg"
                     title="Tambah Jenis Kepesertaan"
                 >
-                    <i className="fas fa-plus transform group-hover:rotate-90 transition-transform duration-300"></i>
+                    <Plus className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" />
                 </button>
             </div>
 
@@ -58,7 +78,7 @@ export default function ParticipationTypesSection({ participationTypes, activity
                         </div>
                         <div className="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                             <button onClick={() => openModal(type)} className="text-slate-400 hover:text-purple-600 bg-slate-50 hover:bg-purple-50 p-2 rounded-lg transition-colors">
-                                <i className="fas fa-edit"></i>
+                                <Edit className="w-4 h-4" />
                             </button>
                         </div>
                     </div>

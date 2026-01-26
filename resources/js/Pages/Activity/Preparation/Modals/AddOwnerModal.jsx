@@ -48,7 +48,7 @@ export default function AddOwnerModal({ activity }) {
                 <div className="p-8">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-2xl font-bold text-gray-900">Tambah Admin</h3>
-                        <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-900"><i className="fas fa-times"></i></button>
+                        <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-900"><X className="w-6 h-6" /></button>
                     </div>
 
                     <div className="relative mb-6">
@@ -60,7 +60,7 @@ export default function AddOwnerModal({ activity }) {
                             onChange={(e) => handleSearch(e.target.value)}
                             autoFocus
                         />
-                        <i className="fas fa-search absolute left-5 top-5 text-gray-400"></i>
+                        <Search className="absolute left-5 top-5 text-gray-400 w-5 h-5" />
                     </div>
 
                     <div className="max-h-64 overflow-y-auto space-y-2">
@@ -77,10 +77,10 @@ export default function AddOwnerModal({ activity }) {
                                     <div className="font-bold text-gray-900">{user.name}</div>
                                     <div className="text-xs text-gray-500">{user.email}</div>
                                 </div>
-                                <i className="fas fa-plus-circle ml-auto text-primary opacity-0 group-hover:opacity-100 transition-all"></i>
+                                <PlusCircle className="ml-auto text-primary opacity-0 group-hover:opacity-100 transition-all w-6 h-6" />
                             </button>
                         ))}
-                        {isSearching && <div className="text-center p-4 text-gray-500"><i className="fas fa-spinner fa-spin mr-2"></i>Mencari...</div>}
+                        {isSearching && <div className="text-center p-4 text-gray-500 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin mr-2" />Mencari...</div>}
                     </div>
                 </div>
             </div>

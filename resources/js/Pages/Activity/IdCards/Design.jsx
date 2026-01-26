@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import { QRCodeSVG } from 'qrcode.react';
 import DraggableItem from './DraggableItem';
 import { toPng } from 'html-to-image';
@@ -22,7 +23,6 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
     const [backgrounds, setBackgrounds] = useState([]); // Store uploaded backgrounds
     const [isBackgroundsLoaded, setIsBackgroundsLoaded] = useState(false); // Track loading state
     const [isPreviewOpen, setIsPreviewOpen] = useState(false); // Modal state
-    const [toasts, setToasts] = useState([]); // Toast Notifications
     const canvasRef = useRef(null);
 
     // Fetch backgrounds
@@ -64,14 +64,7 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
         }
     }, [isBackgroundsLoaded, backgrounds, settings.card?.background]);
 
-    // Toast Helper
-    const showToast = (message, type = 'success') => {
-        const id = Date.now();
-        setToasts(prev => [...prev, { id, message, type }]);
-        setTimeout(() => {
-            setToasts(prev => prev.filter(t => t.id !== id));
-        }, 3000);
-    };
+
 
     // Available Fonts
     const availableFonts = [
@@ -119,17 +112,36 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
 
     // Handler Reset Elements (Clear all except background/config)
     const handleResetElements = () => {
-        if (!confirm('Apakah Anda yakin ingin menghapus semua elemen?')) return;
-
-        setSettings(prev => {
-            // Keep only 'card' config
-            const newSettings = {
-                card: prev.card
-            };
-            return newSettings;
+        Swal.fire({
+            title: 'Reset Desain?',
+            text: 'Apakah Anda yakin ingin menghapus semua elemen? Tindakan ini tidak dapat dibatalkan.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#E02424',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Ya, Hapus Semua',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                setSettings(prev => {
+                    // Keep only 'card' config
+                    const newSettings = {
+                        card: prev.card
+                    };
+                    return newSettings;
+                });
+                setSelectedId(null);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Semua elemen berhasil dihapus',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
         });
-        setSelectedId(null);
-        showToast('Semua elemen berhasil dihapus');
     };
 
     // Handler Add Field (Dynamic or Static)
@@ -250,13 +262,29 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
         try {
             // Check file size (if > 50MB, try to compress)
             if (file.size > 50 * 1024 * 1024) {
-                showToast('Ukuran file besar, sedang mengompresi...', 'info');
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Info',
+                    text: 'Ukuran file besar, sedang mengompresi...',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
                 try {
                     file = await compressImage(file, 49); // Compress to < 49MB to be safe
 
                 } catch (compError) {
                     console.error('Compression failed:', compError);
-                    showToast('Gagal mengompresi gambar. Silakan gunakan gambar yang lebih kecil.', 'error');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: 'Gagal mengompresi gambar. Silakan gunakan gambar yang lebih kecil.',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
                     setBgUploading(false);
                     return;
                 }
@@ -281,7 +309,15 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                 ...prev,
                 card: { ...prev.card, background: res.data.filename }
             }));
-            showToast('Background berhasil diubah!');
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Background berhasil diubah!',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
             fetchBackgrounds(); // Refresh list
         } catch (error) {
             console.error('Upload error:', error.response || error);
@@ -302,7 +338,15 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                 errMsg = 'File terlalu besar (Server Reject)';
             }
 
-            showToast(errMsg, 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: errMsg,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
         } finally {
             setBgUploading(false);
             // Reset input value to allow re-uploading same file if needed
@@ -313,28 +357,40 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
     // Handler Delete Background
     const handleDeleteBackground = async (e, filename) => {
         e.stopPropagation(); // Prevent selecting the image when clicking delete
-        if (!confirm('Apakah Anda yakin ingin menghapus background ini?')) return;
+        
+        Swal.fire({
+            title: 'Hapus Background?',
+            text: 'Apakah Anda yakin ingin menghapus background ini?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#E02424',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    await axios.post('/idcard-background/delete', {
+                        activity_id: activity.id,
+                        filename: filename
+                    });
 
-        try {
-            await axios.post('/idcard-background/delete', {
-                activity_id: activity.id,
-                filename: filename
-            });
+                    // If the deleted background was selected, clear it from settings
+                    if (settings.card?.background === filename) {
+                        setSettings(prev => ({
+                            ...prev,
+                            card: { ...prev.card, background: null }
+                        }));
+                    }
 
-            // If the deleted background was selected, clear it from settings
-            if (settings.card?.background === filename) {
-                setSettings(prev => ({
-                    ...prev,
-                    card: { ...prev.card, background: null }
-                }));
+                    showToast('Background berhasil dihapus');
+                    fetchBackgrounds(); // Refresh list
+                } catch (error) {
+                    console.error('Delete error:', error);
+                    showToast('Gagal menghapus background', 'error');
+                }
             }
-
-            showToast('Background berhasil dihapus');
-            fetchBackgrounds(); // Refresh list
-        } catch (error) {
-            console.error('Delete error:', error);
-            showToast('Gagal menghapus background', 'error');
-        }
+        });
     };
 
     // Save functionality
@@ -379,10 +435,26 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
             link.download = `kartu-peserta-${user.name || 'sample'}.png`;
             link.href = dataUrl;
             link.click();
-            showToast('Gambar berhasil didownload!');
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Gambar berhasil didownload!',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
         } catch (err) {
             console.error(err);
-            showToast('Gagal mendownload gambar', 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Gagal mendownload gambar',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
         }
     };
 
@@ -921,19 +993,6 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
                         </>
                     )}
                 </button>
-            </div>
-
-            {/* TOAST NOTIFICATIONS */}
-            <div className="fixed top-20 right-6 z-50 flex flex-col gap-2">
-                {toasts.map(toast => (
-                    <div
-                        key={toast.id}
-                        className={`px-4 py-3 rounded-lg shadow-lg text-white font-medium flex items-center animate-fade-in-down ${toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}
-                    >
-                        <i className={`fas fa-${toast.type === 'error' ? 'exclamation-circle' : 'check-circle'} mr-2`}></i>
-                        {toast.message}
-                    </div>
-                ))}
             </div>
         </AcaraLayout>
     );

@@ -170,13 +170,19 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                 if (action === 'delete') {
                     router.delete(route(routeName, { activityId: activity.uid || activity.id }), {
                         data: { ids: selectedRooms },
-                        onSuccess: () => setSelectedRooms([])
+                        onSuccess: () => {
+                            setSelectedRooms([]);
+                            Swal.fire('Berhasil', 'Kamar terpilih telah dihapus.', 'success');
+                        }
                     });
                 } else {
                     router.post(route(routeName, { activityId: activity.uid || activity.id }), {
                         ids: selectedRooms
                     }, {
-                        onSuccess: () => setSelectedRooms([])
+                        onSuccess: () => {
+                            setSelectedRooms([]);
+                            Swal.fire('Berhasil', 'Status kamar berhasil diperbarui.', 'success');
+                        }
                     });
                 }
             }
@@ -192,7 +198,15 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         }, {
             preserveScroll: true,
             onSuccess: () => {
-                // Toast or feedback
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Peserta berhasil dimasukkan ke kamar!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
             }
         });
     };
@@ -234,6 +248,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                 router.delete(route('activity.participants.rooms.destroy-all', { activityId: activity.uid || activity.id }), {
                     onSuccess: () => {
                         setSelectedRooms([]);
+                        Swal.fire('Berhasil', 'Semua data kamar berhasil dihapus.', 'success');
                     }
                 });
             }

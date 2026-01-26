@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import { Network, Plus, Edit, Trash2 } from 'lucide-react';
 
 export default function CommitteeTypesSection({ committeeTypes, activity, isEmbedded = false }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -17,8 +18,27 @@ export default function CommitteeTypesSection({ committeeTypes, activity, isEmbe
         e.preventDefault();
         const activityId = activity.uid || activity.id;
         const opts = {
-            onSuccess: () => { setIsModalOpen(false); Swal.fire('Berhasil', '', 'success'); },
-            onError: () => Swal.fire('Error', '', 'error')
+            onSuccess: () => { 
+                setIsModalOpen(false); 
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: editingType ? 'Jenis kepanitiaan diperbarui' : 'Jenis kepanitiaan ditambahkan',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            },
+            onError: () => Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Terjadi kesalahan saat menyimpan data',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            })
         };
 
         if (editingType) {
@@ -42,8 +62,24 @@ export default function CommitteeTypesSection({ committeeTypes, activity, isEmbe
             if (result.isConfirmed) {
                 const activityId = activity.uid || activity.id;
                 router.delete(route('activity.preparation.committee-types.destroy', { activityId, typeId: type.id }), {
-                    onSuccess: () => Swal.fire('Terhapus!', 'Jenis kepanitiaan berhasil dihapus.', 'success'),
-                    onError: () => Swal.fire('Error', 'Gagal menghapus jenis kepanitiaan.', 'error')
+                    onSuccess: () => Swal.fire({
+                        icon: 'success',
+                        title: 'Terhapus!',
+                        text: 'Jenis kepanitiaan berhasil dihapus.',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    }),
+                    onError: () => Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Gagal menghapus jenis kepanitiaan.',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    })
                 });
             }
         });
@@ -54,7 +90,7 @@ export default function CommitteeTypesSection({ committeeTypes, activity, isEmbe
             <div className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 shadow-sm border border-amber-100">
-                        <i className="fas fa-sitemap text-xl"></i>
+                        <Network className="w-6 h-6" />
                     </div>
                     <div>
                         <h3 className="text-xl font-bold text-slate-900 leading-tight">Jenis Kepanitiaan</h3>
@@ -66,7 +102,7 @@ export default function CommitteeTypesSection({ committeeTypes, activity, isEmbe
                     className="group flex items-center justify-center w-10 h-10 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm border border-amber-100/50 hover:shadow-amber-200 hover:shadow-lg"
                     title="Tambah Jenis Kepanitiaan"
                 >
-                    <i className="fas fa-plus transform group-hover:rotate-90 transition-transform duration-300"></i>
+                    <Plus className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" />
                 </button>
             </div>
 
@@ -81,10 +117,10 @@ export default function CommitteeTypesSection({ committeeTypes, activity, isEmbe
                         </div>
                         <div className="flex gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                             <button onClick={() => openModal(type)} className="text-slate-400 hover:text-amber-600 bg-slate-50 hover:bg-amber-50 p-2 rounded-lg transition-colors">
-                                <i className="fas fa-edit"></i>
+                                <Edit className="w-4 h-4" />
                             </button>
                             <button onClick={() => handleDelete(type)} className="text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 p-2 rounded-lg transition-colors">
-                                <i className="fas fa-trash"></i>
+                                <Trash2 className="w-4 h-4" />
                             </button>
                         </div>
                     </div>

@@ -1,5 +1,6 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 import MainLayout from '@/Layouts/MainLayout';
 
 export default function Index({
@@ -69,7 +70,31 @@ export default function Index({
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('settings.update'), { forceFormData: true });
+        post(route('settings.update'), {
+            forceFormData: true,
+            onSuccess: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Pengaturan berhasil disimpan',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            },
+            onError: () => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal menyimpan pengaturan. Periksa inputan Anda.',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
+        });
     };
 
     return (

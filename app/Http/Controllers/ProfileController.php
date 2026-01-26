@@ -499,17 +499,33 @@ class ProfileController extends Controller
 
     public function updatePassword(Request $request)
     {
-        $request->validate([
-            'current_password' => ['required', 'current_password'],
-            'new_password' => ['required', 'min:8', 'confirmed'],
-        ]);
-
         $user = auth()->user();
+        $targetUserId = $request->input('user_id', $user->id);
+
+        // Jika target berbeda dengan auth user, cek permission
+        if ($targetUserId != $user->id) {
+            // Hanya admin/superadmin yang boleh ganti password orang lain
+            if (! ($user->isSuperAdmin() || $user->isAdmin())) {
+                 abort(403, 'Unauthorized action.');
+            }
+            $user = User::findOrFail($targetUserId);
+            
+            // Validasi tanpa current_password
+            $request->validate([
+                'new_password' => ['required', 'min:8', 'confirmed'],
+            ]);
+        } else {
+            // Ganti password sendiri butuh current_password
+            $request->validate([
+                'current_password' => ['required', 'current_password'],
+                'new_password' => ['required', 'min:8', 'confirmed'],
+            ]);
+        }
+
         $user->password = Hash::make($request->new_password);
         $user->save();
 
-        return redirect()->route('profile.show', $user->id)
-            ->with('success', 'Password berhasil diperbarui');
+        return redirect()->back()->with('success', 'Password berhasil diperbarui');
     }
 
     public function updateSubdomain(Request $request)

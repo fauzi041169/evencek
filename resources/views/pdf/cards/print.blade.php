@@ -86,10 +86,12 @@
                 break-after: auto;
             }
             .yellow-card-3d {
-                background: #ffffff !important;
-                background-image: none !important;
+                /* background: #ffffff !important; */
+                /* background-image: none !important; */
                 box-shadow: none !important;
-                border: 1px solid #000 !important;
+                /* border: 1px solid #000 !important; */
+                print-color-adjust: exact !important;
+                -webkit-print-color-adjust: exact !important;
             }
             .cards-page-cell {
                 background: transparent !important;

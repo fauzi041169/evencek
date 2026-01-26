@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { usePage } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 
 export default function RequirementsManager({ activity, divisionId, divisions }) {
     const [requirements, setRequirements] = useState([]);
@@ -22,6 +23,12 @@ export default function RequirementsManager({ activity, divisionId, divisions })
             setRequirements(response.data.requirements || []);
         } catch (error) {
             console.error("Error loading requirements:", error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Memuat',
+                text: 'Terjadi kesalahan saat memuat data persyaratan.',
+                confirmButtonColor: '#EF4444'
+            });
         } finally {
             setLoading(false);
         }

@@ -102,7 +102,26 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
         post(route('profile.update', user.id), {
             forceFormData: true,
             onSuccess: () => {
-                // Success handled by flash message
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Profil berhasil diperbarui!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            },
+            onError: () => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal memperbarui profil. Periksa inputan Anda.',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
             }
         });
     };

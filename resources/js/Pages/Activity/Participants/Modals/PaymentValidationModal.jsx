@@ -103,6 +103,15 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                     });
                 } else {
                     onClose();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Data pembayaran berhasil disimpan',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
                 }
             },
             onError: (errors) => {
@@ -156,6 +165,15 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                     setRejectReason('');
                     setShowRejectInput(false);
                     onClose();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Status pembayaran berhasil diperbarui',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
                 }
             },
             onError: (errors) => {

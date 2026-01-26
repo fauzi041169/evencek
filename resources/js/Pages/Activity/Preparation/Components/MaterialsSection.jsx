@@ -63,13 +63,13 @@ export default function MaterialsSection({ activity, materials }) {
                     onClick={() => setIsModalOpen(true)}
                     className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150"
                 >
-                    <i className="fas fa-plus mr-2"></i> Tambah Materi
+                    <Plus className="w-4 h-4 mr-2" /> Tambah Materi
                 </button>
             </div>
 
             {materials.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                    <i className="fas fa-folder-open text-4xl text-gray-300 mb-4"></i>
+                    <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">Belum ada materi yang diunggah.</p>
                 </div>
             ) : (
@@ -89,14 +89,12 @@ export default function MaterialsSection({ activity, materials }) {
                                 </div>
                             ) : (
                                 <div className="bg-indigo-50/50 p-6 flex items-center justify-center h-48">
-                                    <i className={`fas fa-4x ${
-                                        item.file_type === 'pdf' ? 'fa-file-pdf text-red-500' :
-                                        item.file_type === 'doc' ? 'fa-file-word text-blue-500' :
-                                        item.file_type === 'ppt' ? 'fa-file-powerpoint text-orange-500' :
-                                        item.file_type === 'image' ? 'fa-file-image text-purple-500' :
-                                        item.file_type === 'link' ? 'fa-link text-gray-500' :
-                                        'fa-file-alt text-indigo-500'
-                                    }`}></i>
+                                    {item.file_type === 'pdf' && <FileText className="w-16 h-16 text-red-500" />}
+                                    {item.file_type === 'doc' && <FileText className="w-16 h-16 text-blue-500" />}
+                                    {item.file_type === 'ppt' && <FileText className="w-16 h-16 text-orange-500" />}
+                                    {item.file_type === 'image' && <Image className="w-16 h-16 text-purple-500" />}
+                                    {item.file_type === 'link' && <LinkIcon className="w-16 h-16 text-gray-500" />}
+                                    {!['pdf', 'doc', 'ppt', 'image', 'link', 'youtube'].includes(item.file_type) && <File className="w-16 h-16 text-indigo-500" />}
                                 </div>
                             )}
                             

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePage, router } from '@inertiajs/react';
 import { MessageSquareText, X, Send, ArrowLeft, Loader2 } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function ChatWidget({ activityId, ownerId, ownerName }) {
     const { auth } = usePage().props;
@@ -31,9 +32,9 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
         }
     };
 
-    const fetchConversations = async () => {
+    const fetchConversations = async (isBackground = false) => {
         if (!isOwner) return;
-        setIsLoading(true);
+        if (!isBackground) setIsLoading(true);
         try {
             const response = await fetch(route('activity.chat.conversations', activityId));
             if (response.ok) {
@@ -42,15 +43,26 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
             }
         } catch (error) {
             console.error('Failed to fetch conversations', error);
+            if (!isBackground) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal memuat percakapan',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
         } finally {
-            setIsLoading(false);
+            if (!isBackground) setIsLoading(false);
         }
     };
 
-    const fetchMessages = async () => {
+    const fetchMessages = async (isBackground = false) => {
         if (isOwner && !activeConversation) return;
         
-        setIsLoading(true);
+        if (!isBackground) setIsLoading(true);
         try {
             const url = isOwner 
                 ? route('activity.chat.messages', { activity: activityId, user_id: activeConversation.user.id })
@@ -59,23 +71,23 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
             const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
-                setMessages(data || []); // API returns array directly for getMessages? Check controller. 
-                // Controller returns response()->json($messages); where $messages is a collection/array.
-                // But wait, the previous code had setMessages(data.messages || []). 
-                // Let's check the controller response format.
-                // Controller: return response()->json($messages); -> Array of objects.
-                // Previous code: setMessages(data.messages || []); -> This implies previous response was { messages: [] }?
-                // Looking at my Read output for ActivityChatController.php:
-                // line 178: return response()->json($messages);
-                // So it is an array.
-                // But previous ChatWidget code (line 38): setMessages(data.messages || []);
-                // This suggests previous code might have been wrong OR I misread the controller.
-                // Let's re-read controller getMessages.
+                setMessages(data || []); 
             }
         } catch (error) {
             console.error('Failed to fetch messages', error);
+            if (!isBackground) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal memuat pesan',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
         } finally {
-            setIsLoading(false);
+            if (!isBackground) setIsLoading(false);
         }
     };
 
@@ -89,17 +101,17 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
         if (isOpen && auth.user) {
             if (isOwner) {
                 if (activeConversation) {
-                    fetchMessages();
-                    const interval = setInterval(fetchMessages, 10000);
+                    fetchMessages(false);
+                    const interval = setInterval(() => fetchMessages(true), 10000);
                     return () => clearInterval(interval);
                 } else {
-                    fetchConversations();
-                    const interval = setInterval(fetchConversations, 30000);
+                    fetchConversations(false);
+                    const interval = setInterval(() => fetchConversations(true), 30000);
                     return () => clearInterval(interval);
                 }
             } else {
-                fetchMessages();
-                const interval = setInterval(fetchMessages, 10000);
+                fetchMessages(false);
+                const interval = setInterval(() => fetchMessages(true), 10000);
                 return () => clearInterval(interval);
             }
         }
@@ -148,10 +160,19 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
             }
             
             // Refresh messages to get server timestamp/ID
-            fetchMessages();
+            fetchMessages(true);
         } catch (error) {
             console.error('Send failed', error);
-            // Optionally remove temp message or show error
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Gagal mengirim pesan',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
+            // Optionally remove temp message
         }
     };
 

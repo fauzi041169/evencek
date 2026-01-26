@@ -1,22 +1,41 @@
 import React from 'react';
 import { Head, useForm, usePage } from '@inertiajs/react';
+import Swal from 'sweetalert2';
+import { Upload, Loader2, Send } from 'lucide-react';
 import WebLayout from '@/Layouts/WebLayout';
 
-export default function ManualForm({ activity, paymentMethods = [], bulk_import_payment, is_modal, defaultSenderName, onSuccess }) {
+export default function ManualForm({ activity, paymentMethods = [], bulk_import_payment, is_modal, defaultSenderName, return_to, onSuccess }) {
     const { flash } = usePage().props;
     const { data, setData, post, processing, errors } = useForm({
         payment_method_id: '',
         sender_name: bulk_import_payment?.sender_name || defaultSenderName || '',
         payment_proof: null,
         is_bulk: bulk_import_payment ? 1 : 0,
+        return_to: return_to || '',
     });
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('payments.store', activity.id), { 
+        post(route('payments.store', activity.id), {
             forceFormData: true,
             onSuccess: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Bukti pembayaran berhasil dikirim!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
                 if (onSuccess) onSuccess();
+            },
+            onError: (errors) => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal mengirim pembayaran. Periksa input Anda.',
+                });
             }
         });
     };
@@ -90,17 +109,19 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
                     <label className="block text-sm font-medium text-gray-700 mb-2">Upload Bukti Pembayaran</label>
                     <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:bg-gray-50 transition-colors">
                         <div className="space-y-1 text-center">
-                            <i className="fas fa-cloud-upload-alt text-gray-400 text-3xl mb-2"></i>
+                            <div className="flex justify-center mb-2">
+                                <Upload className="h-10 w-10 text-gray-400" />
+                            </div>
                             <div className="flex text-sm text-gray-600">
                                 <label
                                     htmlFor="file-upload"
                                     className="relative cursor-pointer bg-white rounded-md font-medium text-secondary hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
                                 >
                                     <span>Upload file</span>
-                                    <input 
-                                        id="file-upload" 
-                                        name="file-upload" 
-                                        type="file" 
+                                    <input
+                                        id="file-upload"
+                                        name="file-upload"
+                                        type="file"
                                         className="sr-only"
                                         accept="image/jpeg,image/png,image/jpg"
                                         onChange={(e) => setData('payment_proof', e.target.files[0])}
@@ -128,11 +149,11 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
                 >
                     {processing ? (
                         <span className="flex items-center justify-center gap-2">
-                            <i className="fas fa-circle-notch fa-spin"></i> Memproses...
+                            <Loader2 className="w-5 h-5 animate-spin" /> Memproses...
                         </span>
                     ) : (
                         <span className="flex items-center justify-center gap-2">
-                            <i className="fas fa-paper-plane"></i> Kirim Pembayaran
+                            <Send className="w-5 h-5" /> Kirim Pembayaran
                         </span>
                     )}
                 </button>

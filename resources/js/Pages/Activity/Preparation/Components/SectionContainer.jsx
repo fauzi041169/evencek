@@ -1,5 +1,6 @@
 import React from 'react';
 import { router } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 
 export default function SectionContainer({ title, children, activity, controls = [] }) {
     const toggleField = (field, currentValue) => {
@@ -9,7 +10,15 @@ export default function SectionContainer({ title, children, activity, controls =
         }, {
             preserveScroll: true,
             onSuccess: () => {
-                // Optional toast
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Pengaturan berhasil diperbarui',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
             }
         });
     };

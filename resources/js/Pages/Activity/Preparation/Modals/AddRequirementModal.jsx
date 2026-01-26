@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 export default function AddRequirementModal({ activity }) {
@@ -46,10 +46,23 @@ export default function AddRequirementModal({ activity }) {
             setIsOpen(false);
             resetForm();
             // Trigger reload of requirements in parent
-            window.location.reload(); // Or use a custom event/callback context to refresh just the list
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Kebutuhan berhasil ditambahkan',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.reload();
+            });
         } catch (error) {
             console.error('Error adding requirement:', error);
-            alert('Gagal menambah kebutuhan.');
+            Swal.fire({
+                title: 'Gagal',
+                text: 'Gagal menambah kebutuhan.',
+                icon: 'error',
+                confirmButtonColor: '#E02424'
+            });
         } finally {
             setLoading(false);
         }

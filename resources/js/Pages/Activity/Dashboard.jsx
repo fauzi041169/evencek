@@ -759,14 +759,14 @@ export default function Dashboard({
                     </div>
 
                     {/* Top 3 Panitia */}
-                    <div className="group relative bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+                    <div className="group relative bg-gradient-to-br from-amber-500 via-orange-600 to-red-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
                         <div className="relative p-6">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-xl shadow-lg animate-pulse">
                                     <i className="fas fa-trophy"></i>
                                 </div>
-                                <span className="text-yellow-100 text-sm font-bold uppercase tracking-wider">Top 3 Panitia</span>
+                                <span className="text-white text-sm font-bold uppercase tracking-wider">Top 3 Panitia</span>
                             </div>
                             <div className="space-y-3">
                                 {committee_stats && committee_stats.slice(0, 3).map((member, index) => (
@@ -780,21 +780,21 @@ export default function Dashboard({
                                                         e.target.onerror = null;
                                                         e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&color=7F9CF5&background=EBF4FF`;
                                                     }}
-                                                    className={`w-10 h-10 rounded-full object-cover border-2 ${index === 0 ? 'border-yellow-400' :
+                                                    className={`w-10 h-10 rounded-full object-cover border-2 ${index === 0 ? 'border-yellow-300' :
                                                         index === 1 ? 'border-gray-300' :
-                                                            'border-orange-600'
+                                                            'border-orange-400'
                                                         }`}
                                                 />
-                                                <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${index === 0 ? 'bg-yellow-500' :
-                                                    index === 1 ? 'bg-gray-400' :
-                                                        'bg-orange-700'
+                                                <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm ${index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                                    index === 1 ? 'bg-gray-300 text-gray-800' :
+                                                        'bg-orange-600 text-white'
                                                     }`}>
                                                     {index + 1}
                                                 </div>
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="text-white font-semibold text-sm truncate max-w-[120px]">{member.name}</div>
-                                                <div className="text-yellow-100 text-xs truncate">{member.position || 'Panitia'}</div>
+                                                <div className="text-white/80 text-xs truncate">{member.position || 'Panitia'}</div>
                                             </div>
                                         </div>
                                         <div className="text-right pl-2">

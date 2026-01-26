@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Users, X, Loader2 } from 'lucide-react';
 
@@ -35,6 +35,15 @@ export default function GroupAssignModal({ isOpen, onClose, activity, participan
             onSuccess: () => {
                 reset();
                 onClose();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Kelompok peserta berhasil diperbarui!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
             }
         });
     };

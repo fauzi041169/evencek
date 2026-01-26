@@ -1,6 +1,7 @@
-﻿import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
+import Swal from 'sweetalert2';
 
 export default function Index({ activity, speakers: initialSpeakers }) {
     const [speakers, setSpeakers] = useState(initialSpeakers || []);
@@ -136,6 +137,15 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                 reset();
                 setErrors({});
                 router.reload();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Data narasumber berhasil diperbarui!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
             } else {
                 setErrors(result.errors || {});
             }
@@ -163,9 +173,20 @@ export default function Index({ activity, speakers: initialSpeakers }) {
     };
 
     const handleDelete = (speaker) => {
-        if (confirm('Apakah Anda yakin ingin menghapus narasumber ini?')) {
-            router.delete(route('activity.speakers.destroy', [activity.id, speaker.id]));
-        }
+        Swal.fire({
+            title: 'Hapus Narasumber?',
+            text: 'Apakah Anda yakin ingin menghapus narasumber ini? Tindakan ini tidak dapat dibatalkan.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#E02424',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('activity.speakers.destroy', [activity.id, speaker.id]));
+            }
+        });
     };
 
     return (

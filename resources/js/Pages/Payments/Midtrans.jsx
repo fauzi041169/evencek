@@ -1,5 +1,6 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 
 export default function Midtrans({ payment, activity, snapToken, isAjax, midtransClientKey, midtransIsProduction }) {
     const [loading, setLoading] = useState(false);
@@ -23,11 +24,21 @@ export default function Midtrans({ payment, activity, snapToken, isAjax, midtran
 
     const handlePay = () => {
         if (!window.snap || typeof window.snap.pay !== 'function') {
-            alert('Gagal memuat sistem pembayaran otomatis. Mohon refresh halaman dan coba lagi.');
+            Swal.fire({
+                title: 'Gagal Memuat Sistem',
+                text: 'Gagal memuat sistem pembayaran otomatis. Mohon refresh halaman dan coba lagi.',
+                icon: 'error',
+                confirmButtonColor: '#E02424'
+            });
             return;
         }
         if (!snapToken) {
-            alert('Token pembayaran tidak tersedia.');
+            Swal.fire({
+                title: 'Token Tidak Tersedia',
+                text: 'Token pembayaran tidak tersedia.',
+                icon: 'error',
+                confirmButtonColor: '#E02424'
+            });
             return;
         }
         setLoading(true);

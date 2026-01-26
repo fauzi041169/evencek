@@ -31,7 +31,19 @@ export default function Index({ activity, eventActivities }) {
       cancelButtonText: 'Batal'
     }).then((result) => {
       if (result.isConfirmed) {
-        router.delete(route('activity.event-activities.destroy', [activity.id, itemId]));
+        router.delete(route('activity.event-activities.destroy', [activity.id, itemId]), {
+          onSuccess: () => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Terhapus!',
+              text: 'Kegiatan telah dihapus.',
+              toast: true,
+              position: 'top-end',
+              showConfirmButton: false,
+              timer: 3000
+            });
+          }
+        });
       }
     });
   };

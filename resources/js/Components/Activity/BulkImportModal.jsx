@@ -22,7 +22,7 @@ const DEFAULT_TEMPLATE_OPTIONS = [
     { value: 'profile:position', label: 'Jabatan' },
 ];
 
-export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess, onPaymentRequest }) {
+export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess, onPaymentRequest, return_to }) {
     const { props } = usePage();
     const [pastedText, setPastedText] = useState('');
     const [previewData, setPreviewData] = useState([]);
@@ -32,7 +32,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
     const [importErrors, setImportErrors] = useState(null);
     const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
     const [fileHasHeader, setFileHasHeader] = useState(true);
-    
+
     const [templateOptions, setTemplateOptions] = useState(DEFAULT_TEMPLATE_OPTIONS);
     const [templateColumns, setTemplateColumns] = useState([]);
 
@@ -49,7 +49,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
             setStep('paste');
             setImportResult(null);
             setImportErrors(null);
-            
+
             // Fetch template specifically for this activity
             if (activityId) {
                 axios.get(route('activity.preparation.get-import-template', activityId))
@@ -57,7 +57,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                         if (response.data.template) {
                             const cols = response.data.template.split(',').map(c => c.trim());
                             setTemplateColumns(cols);
-                            
+
                             // Merge into options if not exists
                             const newOptions = [...DEFAULT_TEMPLATE_OPTIONS];
                             cols.forEach(col => {
@@ -67,7 +67,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                     let label = clean;
                                     if (clean.startsWith('profile:')) label = clean.replace('profile:', '') + ' (Profile)';
                                     else if (clean.startsWith('user:')) label = clean.replace('user:', '') + ' (User)';
-                                    
+
                                     newOptions.push({ value: clean, label: label });
                                 }
                             });
@@ -82,7 +82,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
     const handlePaste = (e) => {
         const text = e.target.value;
         setPastedText(text);
-        
+
         // Smart detection: if first line contains '@', assume it's data (no header)
         if (text && text.trim()) {
             const firstLine = text.trim().split('\n')[0];
@@ -117,7 +117,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
         else if (firstLine.includes(',')) delimiter = ',';
 
         const parsedRows = lines.map(line => line.split(delimiter).map(cell => cell.trim().replace(/^"|"$/g, '')));
-        
+
         let dataRows = parsedRows;
         let detectedHeaders = [];
 
@@ -127,7 +127,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
         } else {
             // Generate generic headers
             const colCount = parsedRows[0].length;
-            for(let i=0; i<colCount; i++) detectedHeaders.push(`Kolom ${i+1}`);
+            for (let i = 0; i < colCount; i++) detectedHeaders.push(`Kolom ${i + 1}`);
         }
 
         setHeaders(detectedHeaders);
@@ -135,7 +135,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
 
         // Auto-map headers
         const newMapping = {};
-        
+
         detectedHeaders.forEach((header, index) => {
             // Strategy 1: Map by Index (Prioritize template order as requested)
             // The user stated that uploaded data MUST follow template order.
@@ -150,14 +150,14 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
             if (fileHasHeader) {
                 const lowerHeader = header.toLowerCase();
                 // Find best match in templateOptions
-                const match = templateOptions.find(opt => 
-                    opt.label.toLowerCase().includes(lowerHeader) || 
+                const match = templateOptions.find(opt =>
+                    opt.label.toLowerCase().includes(lowerHeader) ||
                     opt.value.toLowerCase() === lowerHeader ||
                     (lowerHeader.includes('nama') && opt.value === 'user:name') ||
                     (lowerHeader.includes('email') && opt.value === 'user:email') ||
                     (lowerHeader.includes('hp') && opt.value === 'profile:no_hp')
                 );
-                
+
                 if (match) {
                     newMapping[index] = match.value;
                 }
@@ -170,7 +170,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
     // Re-parse when fileHasHeader changes, pastedText updates, or template changes
     useEffect(() => {
         if (pastedText) {
-             parseData(pastedText);
+            parseData(pastedText);
         }
     }, [fileHasHeader, pastedText, templateOptions, templateColumns]);
 
@@ -193,7 +193,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
             // The backend expects a file with headers matching the mapped fields
             const csvHeaderRow = headers.map((_, index) => mapping[index] || `col_${index}`);
             console.log('[DEBUG] Sending CSV Headers:', csvHeaderRow);
-            
+
             const escapeCsvCell = (cell) => {
                 if (cell === null || cell === undefined) return '';
                 const str = String(cell);
@@ -213,8 +213,11 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
 
             const formData = new FormData();
             formData.append('file', file);
+            if (return_to) {
+                formData.append('return_to', return_to);
+            }
             // formData.append('mapping', JSON.stringify(mapping)); // Not needed as we baked it into the CSV header
-            
+
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
 
@@ -229,7 +232,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
             });
 
 
-            
+
             const result = await response.json();
 
             if (result.success) {
@@ -297,25 +300,25 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                             Template Kolom yang Didukung
                                                         </label>
                                                         <div className="flex flex-wrap gap-2 text-xs text-gray-600 mb-4">
-                                                        {(templateColumns.length > 0 ? templateColumns : templateOptions.map(o => o.value)).map(col => {
-                                                            const isMandatory = col.endsWith('*');
-                                                            const cleanCol = isMandatory ? col.slice(0, -1) : col;
-                                                            const option = templateOptions.find(o => o.value === cleanCol);
-                                                            let label = option ? option.label : cleanCol;
-                                                            
-                                                            // If it's a dropdown/custom column, only show the name part
-                                                            if (label.includes('|')) {
-                                                                label = label.split('|')[0];
-                                                            }
-                                                            
-                                                            return (
-                                                                <span key={col} className={`px-2 py-1 rounded border ${isMandatory ? 'bg-red-50 border-red-200 text-red-700 font-medium' : 'bg-gray-100 border-gray-200 text-gray-600'}`}>
-                                                                    {label}{isMandatory && '*'}
-                                                                </span>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                        
+                                                            {(templateColumns.length > 0 ? templateColumns : templateOptions.map(o => o.value)).map(col => {
+                                                                const isMandatory = col.endsWith('*');
+                                                                const cleanCol = isMandatory ? col.slice(0, -1) : col;
+                                                                const option = templateOptions.find(o => o.value === cleanCol);
+                                                                let label = option ? option.label : cleanCol;
+
+                                                                // If it's a dropdown/custom column, only show the name part
+                                                                if (label.includes('|')) {
+                                                                    label = label.split('|')[0];
+                                                                }
+
+                                                                return (
+                                                                    <span key={col} className={`px-2 py-1 rounded border ${isMandatory ? 'bg-red-50 border-red-200 text-red-700 font-medium' : 'bg-gray-100 border-gray-200 text-gray-600'}`}>
+                                                                        {label}{isMandatory && '*'}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </div>
+
                                                         <div className="flex gap-2 mb-4">
                                                             <button
                                                                 type="button"
@@ -325,7 +328,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                                 <MapPin className="w-4 h-4" />
                                                                 Lihat Kode Wilayah
                                                             </button>
-                                                            <a 
+                                                            <a
                                                                 href={route('activity.preparation.download-participants-template', activityId)}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
@@ -337,8 +340,8 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                         </div>
 
                                                         <div className="flex items-center gap-2 mb-2">
-                                                            <input 
-                                                                type="checkbox" 
+                                                            <input
+                                                                type="checkbox"
                                                                 id="has-header"
                                                                 checked={fileHasHeader}
                                                                 onChange={(e) => setFileHasHeader(e.target.checked)}
@@ -358,7 +361,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                             className="w-full h-40 border border-gray-300 rounded-lg p-3 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-4"
                                                             placeholder="Paste data here..."
                                                         />
-                                                        
+
                                                         {previewData.length > 0 && (
                                                             <div className="mt-4">
                                                                 <h4 className="text-sm font-medium text-gray-700 mb-2">
@@ -377,12 +380,12 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                                                             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs py-1"
                                                                                         >
                                                                                             <option value="">-- Abaikan --</option>
-                                                            {templateOptions.map(opt => (
-                                                                <option key={opt.value} value={opt.value}>
-                                                                    {opt.label}
-                                                                </option>
-                                                            ))}
-                                                        </select>
+                                                                                            {templateOptions.map(opt => (
+                                                                                                <option key={opt.value} value={opt.value}>
+                                                                                                    {opt.label}
+                                                                                                </option>
+                                                                                            ))}
+                                                                                        </select>
                                                                                     </th>
                                                                                 ))}
                                                                             </tr>
@@ -498,7 +501,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        
+
                                                         <div className="flex justify-between">
                                                             <button
                                                                 onClick={() => setStep('map')}
@@ -539,7 +542,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                     <CheckCircle className="h-10 w-10 text-green-600" />
                                                 </div>
                                                 <h3 className="text-lg font-medium text-gray-900 mb-2">Impor Berhasil</h3>
-                                                
+
                                                 {importResult.stats ? (
                                                     <div className="max-w-xl mx-auto mt-4">
                                                         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -598,7 +601,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
 
                                                 {/* Download Credentials Button */}
                                                 <div className="mt-6 flex justify-center">
-                                                    <a 
+                                                    <a
                                                         href={route('activity.preparation.download-import-result-excel', activityId)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
@@ -637,7 +640,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                         <tbody className="bg-white divide-y divide-red-100">
                                                             {Array.isArray(importErrors) ? importErrors.map((err, i) => (
                                                                 <tr key={i}>
-                                                                    <td className="px-4 py-2 text-sm text-gray-900">{err.row || i+1}</td>
+                                                                    <td className="px-4 py-2 text-sm text-gray-900">{err.row || i + 1}</td>
                                                                     <td className="px-4 py-2 text-sm text-red-600">
                                                                         {typeof err === 'string' ? err : (err.error || JSON.stringify(err))}
                                                                     </td>
@@ -689,10 +692,10 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                     </div>
                 </Dialog>
             </Transition>
-            
-            <RegionLookupModal 
-                isOpen={isRegionModalOpen} 
-                onClose={() => setIsRegionModalOpen(false)} 
+
+            <RegionLookupModal
+                isOpen={isRegionModalOpen}
+                onClose={() => setIsRegionModalOpen(false)}
             />
         </>
     );

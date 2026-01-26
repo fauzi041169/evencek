@@ -1,4 +1,5 @@
 import React from 'react';
+import { FileText } from 'lucide-react';
 
 export default function GallerySection({ activity, materials }) {
     return (
@@ -16,7 +17,7 @@ export default function GallerySection({ activity, materials }) {
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-gray-400">
-                                    <i className="fas fa-file-alt text-4xl"></i>
+                                    <FileText className="w-12 h-12" />
                                 </div>
                             )}
                         </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 import MainLayout from '@/Layouts/MainLayout';
 import { ChevronLeft, Download, FileText, AlertCircle } from 'lucide-react';
 
@@ -99,6 +100,11 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
                 } catch (error) {
                     console.error("Error loading PPTX:", error);
                     setLoading(false);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Memuat Presentasi',
+                        text: 'Terjadi kesalahan saat memuat presentasi PPTX.',
+                    });
                 }
             };
             loadPptx();

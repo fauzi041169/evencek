@@ -50,9 +50,26 @@ class MaintenanceController extends Controller
             return version_compare($b['version'], $a['version']);
         });
 
+        // Permission Report Data
+        $roles = ['superadmin', 'admin', 'creator', 'user'];
+        $permissionKeys = \App\Models\RolePermission::getAllPermissionKeys();
+        
+        $permissionMatrix = [];
+        foreach ($permissionKeys as $key) {
+            $row = ['permission' => $key];
+            foreach ($roles as $role) {
+                // Determine permission status
+                $allowed = \App\Models\RolePermission::hasPermission($role, $key);
+                $row[$role] = $allowed;
+            }
+            $permissionMatrix[] = $row;
+        }
+
         return Inertia::render('Settings/Maintenance', [
             'setting' => $setting,
             'apkList' => $apkList,
+            'permissionMatrix' => $permissionMatrix,
+            'roles' => $roles,
         ]);
     }
 

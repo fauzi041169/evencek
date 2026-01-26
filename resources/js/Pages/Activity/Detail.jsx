@@ -42,7 +42,7 @@ export default function Detail({
 }) {
     const { auth, appSettings } = usePage().props;
     const user = auth?.user;
-    
+
     // Global Settings Logic
     const heroAnim = appSettings?.hero_animation_style || heroAnimationStyle || 'circles';
     const heroBg1 = appSettings?.hero_background_1 || null;
@@ -229,7 +229,7 @@ export default function Detail({
         if (!start) return '';
         // If inputs are dates/datetimes (contain '-'), try to parse time or return empty if no time component
         if (start.includes('-') && !start.includes(':')) return ''; // Date only string
-        
+
         // Helper to extract HH:mm from various formats
         const extractTime = (str) => {
             if (!str) return null;
@@ -665,18 +665,18 @@ export default function Detail({
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
                     {/* Base Background */}
                     <div className="absolute inset-0 bg-slate-900 z-0"></div>
-                    
+
                     {/* Dynamic Background Image from Settings */}
                     {heroBgUrl && (
-                        <div 
+                        <div
                             className="absolute inset-0 bg-cover bg-center opacity-40 transition-opacity duration-500 z-0"
                             style={{ backgroundImage: `url('${heroBgUrl}')` }}
                         ></div>
                     )}
-                    
+
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 via-indigo-900/40 to-slate-900/95 z-10"></div>
-                    
+
                     {/* Dynamic Animations based on Settings */}
                     {(heroStyle === 'circles' || heroStyle === 'blob' || !heroStyle) && (
                         <>
@@ -684,7 +684,7 @@ export default function Detail({
                             <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10"></div>
                         </>
                     )}
-                    
+
                     {heroStyle === 'rain' && (
                         <div className="absolute inset-0 z-10 overflow-hidden opacity-40">
                             {[...Array(30)].map((_, i) => (
@@ -697,7 +697,7 @@ export default function Detail({
                             ))}
                         </div>
                     )}
-                    
+
                     {heroStyle === 'particles' && (
                         <div className="absolute inset-0 z-10 overflow-hidden opacity-40">
                             {[...Array(30)].map((_, i) => (
@@ -716,10 +716,10 @@ export default function Detail({
 
                 {/* Content Container */}
                 <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-5 pt-16 pb-20 lg:pb-32">
-                    
+
                     {/* Left Column: Text & Actions */}
                     <div className="w-full max-w-4xl mx-auto text-center space-y-6 animate-fade-up">
-                        
+
                         {/* Badges Row */}
                         <div className="flex flex-wrap justify-center gap-3">
                             {activity.activity_type !== 'non_batch' && activeBatch && activeBatch.name && (
@@ -738,7 +738,7 @@ export default function Detail({
 
                         {/* Additional Info (Location & Time) */}
                         <div className="flex flex-row flex-wrap items-stretch justify-center gap-3 text-gray-300 w-full">
-                             {(activity.date || activity.start_date || activity.time || activity.start_time) && (
+                            {(activity.date || activity.start_date || activity.time || activity.start_time) && (
                                 <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 flex-1 min-w-[200px] justify-start sm:justify-center">
                                     <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
                                         <i className="fas fa-calendar-alt text-sm"></i>
@@ -849,7 +849,7 @@ export default function Detail({
                                     </div>
                                 )}
                             </button>
-                            
+
                             {user && (
                                 <button
                                     onClick={() => setIsBulkImportModalOpen(true)}
@@ -911,13 +911,13 @@ export default function Detail({
                     <div className="lg:col-span-2 space-y-8">
                         {/* Activity Image - Moved from Hero */}
                         <div className="bg-white rounded-2xl shadow-sm p-2 overflow-hidden">
-                             <div className="aspect-video w-full bg-slate-100 relative rounded-xl overflow-hidden group">
-                                <div 
+                            <div className="aspect-video w-full bg-slate-100 relative rounded-xl overflow-hidden group">
+                                <div
                                     className="absolute inset-0 bg-cover bg-center blur-xl opacity-20 scale-110 transition-opacity duration-700"
                                     style={{ backgroundImage: `url(${heroCoverPath})` }}
                                 ></div>
-                                <img 
-                                    src={heroCoverPath} 
+                                <img
+                                    src={heroCoverPath}
                                     alt={activity.name}
                                     className="relative w-full h-full object-contain z-10 transition-transform duration-500 group-hover:scale-[1.02]"
                                     onError={(e) => {
@@ -926,7 +926,7 @@ export default function Detail({
                                         e.target.className = "relative w-full h-full object-cover z-10";
                                     }}
                                 />
-                             </div>
+                            </div>
                         </div>
 
                         {/* Description */}
@@ -1197,7 +1197,7 @@ export default function Detail({
                         )}
 
                         {/* ID Card Section - Removed */}
-                        
+
                         {/* Certificate Section - Removed */}
 
                         {/* Speakers */}
@@ -1358,6 +1358,7 @@ export default function Detail({
                     setIsBulkImportModalOpen(false);
                     setIsBulkPaymentModalOpen(true);
                 }}
+                return_to="detail"
             />
 
             <BulkPaymentModal
@@ -1365,6 +1366,7 @@ export default function Detail({
                 onClose={() => setIsBulkPaymentModalOpen(false)}
                 activity={activity}
                 importResult={bulkImportResult}
+                return_to="detail"
             />
 
             <ChatWidget

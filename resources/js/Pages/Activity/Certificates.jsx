@@ -1,5 +1,7 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, Link } from '@inertiajs/react';
+import Swal from 'sweetalert2';
+import { Pencil, Search, Printer } from 'lucide-react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 
 export default function Certificates({ auth, activity, participants }) {
@@ -41,7 +43,12 @@ export default function Certificates({ auth, activity, participants }) {
     // Handle Print
     const handlePrint = () => {
         if (selectedIds.size === 0) {
-            alert('Pilih minimal satu peserta untuk dicetak sertifikatnya.');
+            Swal.fire({
+                title: 'Pilih Peserta',
+                text: 'Pilih minimal satu peserta untuk dicetak sertifikatnya.',
+                icon: 'warning',
+                confirmButtonColor: '#3085d6'
+            });
             return;
         }
         const idsArray = Array.from(selectedIds);
@@ -56,44 +63,44 @@ export default function Certificates({ auth, activity, participants }) {
         >
             <div className="bg-gray-50 min-h-screen p-6">
                 <div className="flex justify-between items-center mb-6">
-                                <div>
-                                    <h1 className="text-2xl font-bold text-gray-800">Cetak Sertifikat</h1>
-                                    <p className="text-gray-500 text-sm mt-1">Pilih peserta yang ingin dicetak sertifikatnya.</p>
-                                </div>
-                                <div className="flex gap-3">
-                                    <Link
-                                        href={`/activity/${activity.uid || activity.id}/custom-certificate`}
-                                        className="inline-flex items-center px-4 py-2 bg-primary hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition"
-                                    >
-                                        <i className="fas fa-pencil-alt mr-2"></i> Desain Sertifikat
-                                    </Link>
-                                </div>
-                            </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800">Cetak Sertifikat</h1>
+                        <p className="text-gray-500 text-sm mt-1">Pilih peserta yang ingin dicetak sertifikatnya.</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <Link
+                            href={`/activity/${activity.uid || activity.id}/custom-certificate`}
+                            className="inline-flex items-center px-4 py-2 bg-primary hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition"
+                        >
+                            <Pencil className="w-4 h-4 mr-2" /> Desain Sertifikat
+                        </Link>
+                    </div>
+                </div>
 
-                            {/* Toolbar */}
-                            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                <div className="w-full md:w-1/3 relative">
-                                    <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                                    <input
-                                        type="text"
-                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                        placeholder="Cari nama peserta..."
-                                        value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-600">Terpilih: <strong>{selectedIds.size}</strong></span>
-                                    <button
-                                        type="button"
-                                        onClick={handlePrint}
-                                        disabled={selectedIds.size === 0}
-                                        className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <i className="fas fa-print mr-2"></i> Cetak Sertifikat
-                                    </button>
-                                </div>
-                            </div>
+                {/* Toolbar */}
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <div className="w-full md:w-1/3 relative">
+                        <Search className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
+                        <input
+                            type="text"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder="Cari nama peserta..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">Terpilih: <strong>{selectedIds.size}</strong></span>
+                        <button
+                            type="button"
+                            onClick={handlePrint}
+                            disabled={selectedIds.size === 0}
+                            className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        >
+                            <Printer className="w-4 h-4 mr-2" /> Cetak Sertifikat
+                        </button>
+                    </div>
+                </div>
 
                             {/* Table */}
                             <div className="overflow-x-auto rounded-lg border border-gray-200">

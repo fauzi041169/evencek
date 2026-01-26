@@ -1,5 +1,6 @@
-﻿import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
+import Swal from 'sweetalert2';
 import MainLayout from '@/Layouts/MainLayout';
 
 export default function Requirements({ activity, division, requirements: initialRequirements }) {
@@ -78,11 +79,22 @@ export default function Requirements({ activity, division, requirements: initial
     };
 
     const handleDelete = (requirement) => {
-        if (confirm('Yakin ingin menghapus kebutuhan ini?')) {
-            router.delete(route('activity.preparation.destroy-requirement', [activity.id, division.id, requirement.id]), {
-                preserveScroll: true,
-            });
-        }
+        Swal.fire({
+            title: 'Konfirmasi Hapus',
+            text: 'Yakin ingin menghapus kebutuhan ini?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('activity.preparation.destroy-requirement', [activity.id, division.id, requirement.id]), {
+                    preserveScroll: true,
+                });
+            }
+        });
     };
 
     return (

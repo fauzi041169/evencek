@@ -1,5 +1,7 @@
-﻿import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import Swal from 'sweetalert2';
+import { Search } from 'lucide-react';
 import MainLayout from '@/Layouts/MainLayout';
 
 export default function Manage({ payments, stats, bankAccount }) {
@@ -110,7 +112,7 @@ export default function Manage({ payments, stats, bankAccount }) {
                                     <option value="asc">Terlama</option>
                                 </select>
                                 <button type="submit" className="px-4 py-2 bg-secondary text-white rounded-md">
-                                    <i className="fas fa-search"></i>
+                                    <Search className="w-5 h-5" />
                                 </button>
                             </div>
                         </form>

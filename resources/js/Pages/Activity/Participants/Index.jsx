@@ -371,47 +371,47 @@ export default function Index({
 
     // Bulk actions
     const handleBulkVerify = () => {
-            if (!selectedIds.length) return;
+        if (!selectedIds.length) return;
 
-            const activityId = activity?.uid || activity?.id;
+        const activityId = activity?.uid || activity?.id;
 
-            // Map selected ActivityUser IDs to User IDs
-            const userIdsToVerify = participants.data
-                .filter(p => selectedIds.includes(p.id))
-                .map(p => p.user?.id || p.user_id)
-                .filter(id => id); // Remove null/undefined
+        // Map selected ActivityUser IDs to User IDs
+        const userIdsToVerify = participants.data
+            .filter(p => selectedIds.includes(p.id))
+            .map(p => p.user?.id || p.user_id)
+            .filter(id => id); // Remove null/undefined
 
-            if (!selectAllMatching && userIdsToVerify.length === 0) {
-                 Swal.fire('Info', 'Tidak ada peserta terpilih yang dapat diverifikasi atau data user tidak ditemukan.', 'info');
-                 return;
+        if (!selectAllMatching && userIdsToVerify.length === 0) {
+            Swal.fire('Info', 'Tidak ada peserta terpilih yang dapat diverifikasi atau data user tidak ditemukan.', 'info');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Verifikasi Email?',
+            text: selectAllMatching
+                ? `Apakah Anda yakin ingin memverifikasi SEMUA ${participants.total} peserta?`
+                : `Apakah Anda yakin ingin memverifikasi email ${userIdsToVerify.length} peserta terpilih?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Verifikasi',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('activity.participants.verify-email-bulk', { activityId }), {
+                    user_ids: selectAllMatching ? [] : userIdsToVerify,
+                    select_all: selectAllMatching,
+                    batch_id: filters.batch_id
+                }, {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        setSelectedIds([]);
+                        setSelectAllMatching(false);
+                        Swal.fire('Berhasil!', 'Email peserta telah diverifikasi.', 'success');
+                    }
+                });
             }
-
-            Swal.fire({
-                title: 'Verifikasi Email?',
-                text: selectAllMatching 
-                    ? `Apakah Anda yakin ingin memverifikasi SEMUA ${participants.total} peserta?`
-                    : `Apakah Anda yakin ingin memverifikasi email ${userIdsToVerify.length} peserta terpilih?`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, Verifikasi',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    router.post(route('activity.participants.verify-email-bulk', { activityId }), {
-                        user_ids: selectAllMatching ? [] : userIdsToVerify,
-                        select_all: selectAllMatching,
-                        batch_id: filters.batch_id
-                    }, {
-                        preserveScroll: true,
-                        onSuccess: () => {
-                            setSelectedIds([]);
-                            setSelectAllMatching(false);
-                            Swal.fire('Berhasil!', 'Email peserta telah diverifikasi.', 'success');
-                        }
-                    });
-                }
-            });
-        };
+        });
+    };
 
     const handleBulkDelete = () => {
         if (!selectedIds.length) return;
@@ -489,24 +489,24 @@ export default function Index({
                     user_ids: selectAllMatching ? [] : userIdsToProcess,
                     select_all: selectAllMatching
                 })
-                .then(response => {
-                    if (response.data.success) {
-                        Swal.fire({
-                            title: 'Berhasil!',
-                            text: response.data.message,
-                            icon: 'success'
-                        }).then(() => {
-                            // Refresh page to show updated data
-                            router.reload();
-                        });
-                    } else {
-                        Swal.fire('Gagal', response.data.message || 'Terjadi kesalahan.', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error filling gender:', error);
-                    Swal.fire('Error', 'Terjadi kesalahan saat memproses permintaan.', 'error');
-                });
+                    .then(response => {
+                        if (response.data.success) {
+                            Swal.fire({
+                                title: 'Berhasil!',
+                                text: response.data.message,
+                                icon: 'success'
+                            }).then(() => {
+                                // Refresh page to show updated data
+                                router.reload();
+                            });
+                        } else {
+                            Swal.fire('Gagal', response.data.message || 'Terjadi kesalahan.', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error filling gender:', error);
+                        Swal.fire('Error', 'Terjadi kesalahan saat memproses permintaan.', 'error');
+                    });
             }
         });
         setShowBulkMenu(false);
@@ -708,7 +708,7 @@ export default function Index({
         } else {
             const newSelected = [...selectedIds, id];
             setSelectedIds(newSelected);
-            
+
             // If all items on the current page are selected, and there's only 1 page, we are "All Matching"
             if (participants.total <= participants.per_page && newSelected.length === participants.total) {
                 setSelectAllMatching(true);
@@ -719,7 +719,7 @@ export default function Index({
     // Auto-select items on page change if selectAllMatching is active
     useEffect(() => {
         if (selectAllMatching && participants.data) {
-             setSelectedIds(participants.data.map(p => p.id));
+            setSelectedIds(participants.data.map(p => p.id));
         }
     }, [participants.data, selectAllMatching]);
 
@@ -1482,6 +1482,7 @@ export default function Index({
                 onClose={() => setShowImportModals(false)}
                 activity={activity}
                 onRegionLookup={() => setShowRegionLookup(true)}
+                return_to="participants"
             />
 
             <RegionLookupModal

@@ -12,8 +12,8 @@ export default function UserIndex({ activity }) {
     const currentUserId = window.authUserId || null;
 
     useEffect(() => {
-        loadMessages();
-        const interval = setInterval(loadMessages, 3000);
+        loadMessages(false);
+        const interval = setInterval(() => loadMessages(true), 3000);
         return () => clearInterval(interval);
     }, []);
 
@@ -36,7 +36,7 @@ export default function UserIndex({ activity }) {
         }
     };
 
-    const loadMessages = async () => {
+    const loadMessages = async (isBackground = false) => {
         try {
             const response = await fetch(route('activity.chat.messages', activity.id));
             const data = await response.json();
@@ -45,6 +45,17 @@ export default function UserIndex({ activity }) {
         } catch (error) {
             console.error('Error loading messages:', error);
             setLoading(false);
+            if (!isBackground) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal memuat pesan',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
         }
     };
 

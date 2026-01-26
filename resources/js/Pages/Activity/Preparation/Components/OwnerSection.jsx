@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePage } from '@inertiajs/react';
+import { Users, Plus } from 'lucide-react';
 
 export default function OwnerSection({ owners, activity, isEmbedded = false }) {
     const { auth } = usePage().props;
@@ -15,7 +16,7 @@ export default function OwnerSection({ owners, activity, isEmbedded = false }) {
             <div className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
-                        <i className="fas fa-users-cog text-xl"></i>
+                        <Users className="w-6 h-6" />
                     </div>
                     <div>
                         <h3 className="text-xl font-bold text-slate-900 leading-tight">Penanggung Jawab</h3>
@@ -28,7 +29,7 @@ export default function OwnerSection({ owners, activity, isEmbedded = false }) {
                         className="group flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100/50 hover:shadow-blue-200 hover:shadow-lg"
                         title="Tambah Penanggung Jawab"
                     >
-                        <i className="fas fa-plus transform group-hover:rotate-90 transition-transform duration-300"></i>
+                        <Plus className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" />
                     </button>
                 )}
             </div>

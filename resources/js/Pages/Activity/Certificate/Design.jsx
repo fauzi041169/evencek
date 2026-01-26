@@ -45,13 +45,21 @@ export default function Design({ auth, activity, certificateSetting: initialSett
         // Auto-select first default if nothing selected? No, keep it clean.
     }, [isBackgroundsLoaded]);
 
-    // Toast Helper
+    const handleSelect = (id) => {
+        setSelectedId(id);
+    };
+
+    // Toast Helper replaced with Swal
     const showToast = (message, type = 'success') => {
-        const id = Date.now();
-        setToasts(prev => [...prev, { id, message, type }]);
-        setTimeout(() => {
-            setToasts(prev => prev.filter(t => t.id !== id));
-        }, 3000);
+        Swal.fire({
+            icon: type,
+            title: type === 'success' ? 'Berhasil' : 'Gagal',
+            text: message,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000
+        });
     };
 
     // Available Fonts
@@ -99,10 +107,30 @@ export default function Design({ auth, activity, certificateSetting: initialSett
 
     // Handler Reset Elements
     const handleResetElements = () => {
-        if (!confirm('Apakah Anda yakin ingin menghapus semua elemen?')) return;
-        setSettings(prev => ({ page: prev.page }));
-        setSelectedId(null);
-        showToast('Semua elemen berhasil dihapus');
+        Swal.fire({
+            title: 'Reset Desain?',
+            text: 'Apakah Anda yakin ingin menghapus semua elemen?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#E02424',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Ya, Hapus Semua',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                setSettings(prev => ({ page: prev.page }));
+                setSelectedId(null);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Semua elemen berhasil dihapus',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
+        });
     };
 
     // Handler Add Field
@@ -164,22 +192,34 @@ export default function Design({ auth, activity, certificateSetting: initialSett
     // Handler Delete Background
     const handleDeleteBackground = async () => {
         if (!settings.page?.background) return;
-        if (!confirm('Hapus background saat ini?')) return;
+        
+        Swal.fire({
+            title: 'Hapus Background?',
+            text: 'Hapus background saat ini?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#E02424',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    await axios.post('/certificate-settings/background/delete', {
+                        filename: settings.page.background
+                    });
 
-        try {
-            await axios.post('/certificate-settings/background/delete', {
-                filename: settings.page.background
-            });
-
-            setSettings(prev => ({
-                ...prev,
-                page: { ...prev.page, background: null }
-            }));
-            showToast('Background berhasil dihapus');
-        } catch (error) {
-            console.error('Delete error:', error);
-            showToast('Gagal menghapus background', 'error');
-        }
+                    setSettings(prev => ({
+                        ...prev,
+                        page: { ...prev.page, background: null }
+                    }));
+                    showToast('Background berhasil dihapus');
+                } catch (error) {
+                    console.error('Delete error:', error);
+                    showToast('Gagal menghapus background', 'error');
+                }
+            }
+        });
     };
 
     // Save functionality
@@ -515,14 +555,6 @@ export default function Design({ auth, activity, certificateSetting: initialSett
                         </div>
                     </div>
                 )}
-            </div>
-            {/* Toast Container */}
-            <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-                {toasts.map(t => (
-                    <div key={t.id} className={`px-4 py-2 rounded-lg shadow-lg text-white text-sm animate-fade-in-up ${t.type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
-                        {t.message}
-                    </div>
-                ))}
             </div>
         </AcaraLayout>
     );

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 
@@ -12,15 +12,15 @@ export default function CommitteeIndex({ activity }) {
     const currentUserId = window.authUserId || null;
 
     useEffect(() => {
-        loadConversations();
-        const interval = setInterval(loadConversations, 5000);
+        loadConversations(false);
+        const interval = setInterval(() => loadConversations(true), 5000);
         return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
         if (selectedUser) {
-            loadMessages(selectedUser.id);
-            const interval = setInterval(() => loadMessages(selectedUser.id), 3000);
+            loadMessages(selectedUser.id, false);
+            const interval = setInterval(() => loadMessages(selectedUser.id, true), 3000);
             return () => clearInterval(interval);
         }
     }, [selectedUser]);
@@ -33,7 +33,7 @@ export default function CommitteeIndex({ activity }) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    const loadConversations = async () => {
+    const loadConversations = async (isBackground = false) => {
         try {
             const response = await fetch(route('activity.chat.conversations', activity.id));
             const data = await response.json();
@@ -42,22 +42,44 @@ export default function CommitteeIndex({ activity }) {
         } catch (error) {
             console.error('Error loading conversations:', error);
             setLoading(false);
+            if (!isBackground) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal memuat percakapan',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
         }
     };
 
-    const loadMessages = async (userId) => {
+    const loadMessages = async (userId, isBackground = false) => {
         try {
             const response = await fetch(`${route('activity.chat.messages', activity.id)}?user_id=${userId}`);
             const data = await response.json();
             setMessages(data);
         } catch (error) {
             console.error('Error loading messages:', error);
+            if (!isBackground) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal memuat pesan',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
         }
     };
 
     const selectConversation = (user) => {
         setSelectedUser(user);
-        loadConversations(); // Refresh unread counts
+        loadConversations(true); // Refresh unread counts silently
     };
 
     const sendMessage = async (e) => {
@@ -80,11 +102,26 @@ export default function CommitteeIndex({ activity }) {
             const data = await response.json();
             if (data.success) {
                 setNewMessage('');
-                loadMessages(selectedUser.id);
-                loadConversations();
+                loadMessages(selectedUser.id, false);
+                loadConversations(true);
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal mengirim pesan',
+                    timer: 3000,
+                    showConfirmButton: false
+                });
             }
         } catch (error) {
             console.error('Error sending message:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Terjadi kesalahan saat mengirim pesan',
+                timer: 3000,
+                showConfirmButton: false
+            });
         }
     };
 

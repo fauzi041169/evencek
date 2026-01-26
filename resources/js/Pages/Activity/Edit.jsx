@@ -1,7 +1,8 @@
-﻿import { Head, useForm, Link, usePage, router } from '@inertiajs/react';
+import { Head, useForm, Link, usePage, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import CategoryManager from '../../Components/CategoryManager';
 import { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import { INDONESIAN_BANKS } from '../../Constants/BankList';
 
 export default function Edit({ 
@@ -68,7 +69,12 @@ export default function Edit({
 
     const handleSaveBankAccount = (account) => {
         if (!account.bank_name || !account.account_number || !account.account_name) {
-            alert('Mohon lengkapi data rekening sebelum menyimpan.');
+            Swal.fire({
+                title: 'Data Tidak Lengkap',
+                text: 'Mohon lengkapi data rekening sebelum menyimpan.',
+                icon: 'warning',
+                confirmButtonColor: '#3085d6'
+            });
             return;
         }
 
@@ -76,10 +82,22 @@ export default function Edit({
             preserveScroll: true,
             preserveState: true,
             onSuccess: () => {
-                // alert('Rekening berhasil disimpan ke profil Anda.');
+                Swal.fire({
+                    title: 'Berhasil',
+                    text: 'Rekening berhasil disimpan ke profil Anda.',
+                    icon: 'success',
+                    confirmButtonColor: '#3085d6',
+                    timer: 3000,
+                    showConfirmButton: false
+                });
             },
             onError: (errors) => {
-                alert('Gagal menyimpan rekening: ' + JSON.stringify(errors));
+                Swal.fire({
+                    title: 'Gagal',
+                    text: 'Gagal menyimpan rekening: ' + JSON.stringify(errors),
+                    icon: 'error',
+                    confirmButtonColor: '#E02424'
+                });
             }
         });
     };

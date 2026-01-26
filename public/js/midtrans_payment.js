@@ -15,7 +15,14 @@
   btn.addEventListener('click', function(){
     if (snapInvoked) return;
     if (!window.snap || typeof window.snap.pay !== 'function') {
-      alert('Gagal memuat sistem pembayaran otomatis. Mohon refresh halaman dan coba lagi.');
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Gagal',
+          text: 'Gagal memuat sistem pembayaran otomatis. Mohon refresh halaman dan coba lagi.',
+          icon: 'error',
+          confirmButtonColor: '#E02424'
+        });
+      }
       snapInvoked = false;
       return;
     }

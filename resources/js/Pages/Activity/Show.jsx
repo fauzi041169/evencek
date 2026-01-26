@@ -8,6 +8,7 @@ import BulkImportModal from '@/Components/Activity/BulkImportModal';
 import BulkPaymentModal from '@/Components/Activity/BulkPaymentModal';
 import ManualPaymentModal from '@/Components/Activity/ManualPaymentModal';
 import RegistrationTypeModal from '@/Components/Activity/RegistrationTypeModal';
+import MissingDataModal from '@/Components/Activity/MissingDataModal';
 import LoginModal from '@/Components/Auth/LoginModal';
 import CommentSection from './Components/CommentSection';
 import axios from 'axios';
@@ -99,6 +100,11 @@ export default function Show({
         e.preventDefault();
         openManualPaymentModal({ batch_id: filterBatch || selectedBatchId });
     };
+
+    // Access Control for View Configuration (Owner, Admin, Superadmin only)
+    const isOwner = currentUser && activity && currentUser.id === activity.user_id;
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin');
+    const canConfigureView = isOwner || isAdmin;
 
     const openManualPaymentModal = async (extraParams = {}) => {
         setLoadingPaymentModal(true);
@@ -436,6 +442,15 @@ export default function Show({
     const [bulkImportResult, setBulkImportResult] = useState(null);
     const [shareMenuOpen, setShareMenuOpen] = useState(false);
 
+    // Missing Data Modal Logic
+    const [isMissingDataModalOpen, setIsMissingDataModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (missingProfileData && missingProfileData.length > 0) {
+            setIsMissingDataModalOpen(true);
+        }
+    }, [missingProfileData]);
+
     const togglePriceVisibility = async () => {
         const result = await Swal.fire({
             title: 'Ubah Visibilitas Harga?',
@@ -517,8 +532,8 @@ export default function Show({
 
     const formatTimeRange = (start, end) => {
         if (!start) return '';
-        if (start.includes('-') && !start.includes(':')) return ''; 
-        
+        if (start.includes('-') && !start.includes(':')) return '';
+
         const extractTime = (str) => {
             if (!str) return null;
             if (str.includes('T')) {
@@ -616,20 +631,20 @@ export default function Show({
                     <div className="absolute inset-0 pointer-events-none overflow-hidden">
                         <div className="absolute inset-0 bg-slate-900 z-0"></div>
                         {heroBgUrl && (
-                            <div 
+                            <div
                                 className="absolute inset-0 bg-cover bg-center opacity-40 transition-opacity duration-500 z-0"
                                 style={{ backgroundImage: `url('${heroBgUrl}')` }}
                             ></div>
                         )}
                         <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 via-indigo-900/40 to-slate-900/95 z-10"></div>
-                        
+
                         {(heroStyle === 'circles' || heroStyle === 'blob' || !heroStyle) && (
                             <>
                                 <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-purple-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob z-10"></div>
                                 <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-blue-600/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10"></div>
                             </>
                         )}
-                        
+
                         {heroStyle === 'rain' && (
                             <div className="absolute inset-0 z-10 overflow-hidden opacity-40">
                                 {[...Array(30)].map((_, i) => (
@@ -642,7 +657,7 @@ export default function Show({
                                 ))}
                             </div>
                         )}
-                        
+
                         {heroStyle === 'particles' && (
                             <div className="absolute inset-0 z-10 overflow-hidden opacity-40">
                                 {[...Array(30)].map((_, i) => (
@@ -661,10 +676,10 @@ export default function Show({
 
                     {/* Content Container */}
                     <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-5 pt-16 pb-20 lg:pb-32">
-                        
+
                         {/* Left Column: Text & Actions */}
                         <div className="w-full max-w-4xl mx-auto text-center space-y-6 animate-fade-up">
-                            
+
                             {/* Badges Row */}
                             <div className="flex flex-wrap justify-center gap-3 min-h-[38px]">
                                 {activity.activity_type !== 'non_batch' && activeBatch && activeBatch.name && (
@@ -682,7 +697,7 @@ export default function Show({
 
                             {/* Additional Info (Location & Time) */}
                             <div className="flex flex-row flex-wrap items-stretch justify-center gap-3 text-gray-300 w-full">
-                                 {(dateLabel || timeLabel) && (
+                                {(dateLabel || timeLabel) && (
                                     <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 flex-1 min-w-[200px] justify-start sm:justify-center">
                                         <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
                                             <i className="fas fa-calendar-alt text-sm"></i>
@@ -700,7 +715,7 @@ export default function Show({
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {activity.location && (
                                     <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 flex-1 min-w-[140px] justify-start sm:justify-center">
                                         <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -712,7 +727,7 @@ export default function Show({
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {activity.price !== null && (
                                     <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl backdrop-blur-sm border border-white/10 flex-1 min-w-[140px] justify-start sm:justify-center">
                                         <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
@@ -886,7 +901,7 @@ export default function Show({
                             <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
 
                                 {/* Visibility Controls */}
-                                {canAccessManagement && (
+                                {canConfigureView && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                                         <h3 className="text-sm font-bold text-gray-900 mb-3">Atur Tampilan Halaman (Admin/Creator)</h3>
                                         <div className="flex flex-wrap gap-2">
@@ -1376,11 +1391,13 @@ export default function Show({
                 />
 
                 <MissingDataModal
-                    isOpen={isMissingDataModalOpen}
+                    show={isMissingDataModalOpen}
                     onClose={() => setIsMissingDataModalOpen(false)}
-                    missingData={localMissingProfileData}
-                    requiredProfileLabels={requiredProfileLabels}
-                    userId={auth?.user?.id}
+                    missingData={missingProfileData}
+                    onSuccess={() => {
+                         setIsMissingDataModalOpen(false);
+                         window.location.reload();
+                    }}
                 />
 
                 {/* Manual Payment Modal */}
@@ -1407,6 +1424,7 @@ export default function Show({
                         setIsBulkImportModalOpen(false);
                         setIsBulkPaymentModalOpen(true);
                     }}
+                    return_to="show"
                 />
 
                 <BulkPaymentModal
@@ -1414,6 +1432,7 @@ export default function Show({
                     onClose={() => setIsBulkPaymentModalOpen(false)}
                     activity={activity}
                     importResult={bulkImportResult}
+                    return_to="show"
                 />
             </div>
         </WebLayout>

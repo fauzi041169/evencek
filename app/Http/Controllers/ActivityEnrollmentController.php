@@ -594,11 +594,11 @@ class ActivityEnrollmentController extends Controller
                 return response()->json(array_merge([
                     'success' => true,
                     'message' => 'Berhasil mendaftar kegiatan',
-                    'redirect_url' => route('activity.show', $activity->id, false),
+                    'redirect_url' => route('activity.detail', $activity->id, false),
                 ], $debugPayload));
             }
 
-            return redirect()->route('activity.show', $activity->id)->with('success', 'Berhasil mendaftar kegiatan');
+            return redirect()->route('activity.detail', $activity->id)->with('success', 'Berhasil mendaftar kegiatan');
 
         } catch (\Throwable $e) {
             // Handle Duplicate Entry specifically

@@ -26,6 +26,15 @@ export default function Index({ activity, batches }) {
             onSuccess: () => {
                 setShowCreateModal(false);
                 reset();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Batch baru berhasil dibuat!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
             }
         });
     };
@@ -36,12 +45,45 @@ export default function Index({ activity, batches }) {
             onSuccess: () => {
                 setEditingBatch(null);
                 reset();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Data batch berhasil diperbarui!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
             }
         });
     };
 
     const handleActivate = (batchId) => {
-        router.post(route('activity.batches.activate', { activity: activity.id, batch: batchId }));
+        Swal.fire({
+            title: 'Aktifkan Batch?',
+            text: "Batch yang lain akan dinonaktifkan secara otomatis.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, Aktifkan!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('activity.batches.activate', { activity: activity.id, batch: batchId }), {}, {
+                    onSuccess: () => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Batch berhasil diaktifkan!',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000
+                        });
+                    }
+                });
+            }
+        });
     };
 
     const handleDelete = (batch) => {

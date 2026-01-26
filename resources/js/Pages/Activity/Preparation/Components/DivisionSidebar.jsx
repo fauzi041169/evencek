@@ -1,4 +1,5 @@
 import React from 'react';
+import { Plus, ChevronRight } from 'lucide-react';
 
 export default function DivisionSidebar({ divisions, selectedDivisionId, onSelect, activity }) {
     // Sort divisions by hierarchy logic if needed (already sorted from controller)
@@ -9,10 +10,10 @@ export default function DivisionSidebar({ divisions, selectedDivisionId, onSelec
                 <h4 className="font-bold text-gray-400 uppercase text-[10px] tracking-widest">Daftar Divisi</h4>
                 <button 
                     onClick={() => window.dispatchEvent(new CustomEvent('open-add-division-modal'))}
-                    className="text-xs bg-white border border-gray-200 text-gray-600 px-2 py-1 rounded-lg hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm"
+                    className="text-xs bg-white border border-gray-200 text-gray-600 px-2 py-1 rounded-lg hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm flex items-center"
                     title="Tambah Divisi"
                 >
-                    <i className="fas fa-plus mr-1"></i> Tambah
+                    <Plus className="w-3 h-3 mr-1" /> Tambah
                 </button>
             </div>
             <div className="p-3 flex-1 overflow-y-auto">
@@ -30,7 +31,7 @@ export default function DivisionSidebar({ divisions, selectedDivisionId, onSelec
                             `}
                         >
                             <span className="truncate">{division.name}</span>
-                            {selectedDivisionId === division.id && <i className="fas fa-chevron-right text-xs opacity-80"></i>}
+                            {selectedDivisionId === division.id && <ChevronRight className="w-3 h-3 opacity-80" />}
                         </div>
                     ))}
                     

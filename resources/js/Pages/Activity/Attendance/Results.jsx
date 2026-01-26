@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Head, Link } from '@inertiajs/react';
+import Swal from 'sweetalert2';
 
 export default function Results({ activity, attendance, participants }) {
     const [attendances, setAttendances] = useState([]);
@@ -9,12 +10,12 @@ export default function Results({ activity, attendance, participants }) {
 
     useEffect(() => {
         // Load attendance records
-        fetchAttendances();
-        const interval = setInterval(fetchAttendances, 5000);
+        fetchAttendances(false);
+        const interval = setInterval(() => fetchAttendances(true), 5000);
         return () => clearInterval(interval);
     }, []);
 
-    const fetchAttendances = async () => {
+    const fetchAttendances = async (isBackground = false) => {
         try {
             const response = await fetch(window.location.href, {
                 headers: {
@@ -29,6 +30,17 @@ export default function Results({ activity, attendance, participants }) {
             }
         } catch (error) {
             console.error('Error fetching attendances:', error);
+            if (!isBackground) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal memuat data absensi',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
         }
     };
 

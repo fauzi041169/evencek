@@ -3355,8 +3355,8 @@ class ActivityPreparationController extends Controller
             session()->put('import_result', $importResult);
             session()->flash('show_import_result_once', true);
             $importResult['bulk_payment_available'] = true;
-            if ($returnTo === 'detail') {
-                session(['import_return_to' => 'detail']);
+            if ($returnTo) {
+                session(['import_return_to' => $returnTo]);
             } else {
                 session()->forget('import_return_to');
             }
@@ -3365,7 +3365,8 @@ class ActivityPreparationController extends Controller
             $redirectUrl = route('payments.create', [
                 'activity' => $activityId,
                 'is_bulk' => 1,
-                'batch_id' => $batchId
+                'batch_id' => $batchId,
+                'return_to' => $returnTo
             ]);
 
             $importResult['redirect_url'] = $redirectUrl;
@@ -3388,7 +3389,11 @@ class ActivityPreparationController extends Controller
         if ($returnTo === 'detail') {
             session(['import_return_to' => 'detail']);
             return redirect()->route('activity.detail', $activityId)->with('success', $message);
+        } elseif ($returnTo === 'show') {
+            session(['import_return_to' => 'show']);
+            return redirect()->route('activity.show', $activityId)->with('success', $message);
         }
+
         session()->forget('import_return_to');
         return redirect()->route('activity.participants.index', $activityId)->with('success', $message);
     }

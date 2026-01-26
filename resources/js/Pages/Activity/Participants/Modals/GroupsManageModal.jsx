@@ -1,6 +1,7 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import { Users, X, Trash2, Save, Plus, AlertCircle } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function GroupsManageModal({ isOpen, onClose, activity, participantGroups }) {
     if (!isOpen) return null;
@@ -17,6 +18,15 @@ export default function GroupsManageModal({ isOpen, onClose, activity, participa
         post(route('activity.participant-groups.store', activity.uid), {
             onSuccess: () => {
                 reset();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Kelompok berhasil dibuat!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
             }
         });
     };
@@ -28,14 +38,34 @@ export default function GroupsManageModal({ isOpen, onClose, activity, participa
             onSuccess: () => {
                 setEditingGroup(null);
                 setEditName('');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Kelompok berhasil diperbarui!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
             }
         });
     };
 
     const handleDelete = (group) => {
-        if (confirm('Apakah Anda yakin ingin menghapus kelompok ini? Peserta dalam kelompok ini akan dikeluarkan dari kelompok.')) {
-            router.delete(route('activity.participant-groups.destroy', { activity: activity.uid, group: group.id }));
-        }
+        Swal.fire({
+            title: 'Hapus Kelompok?',
+            text: 'Peserta dalam kelompok ini akan dikeluarkan dari kelompok.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('activity.participant-groups.destroy', { activity: activity.uid, group: group.id }));
+            }
+        });
     };
 
     return (

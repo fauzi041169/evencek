@@ -303,10 +303,10 @@ class PaymentController extends Controller
                         return response()->json([
                             'success' => true,
                             'message' => 'Kegiatan gratis, tidak memerlukan pembayaran.',
-                            'redirect_url' => route('activity.show', $activity->id)
+                            'redirect_url' => route('activity.detail', $activity->id)
                         ]);
                     }
-                    return redirect()->route('activity.show', $activity->id)
+                    return redirect()->route('activity.detail', $activity->id)
                         ->with('info', 'Kegiatan gratis, tidak memerlukan pembayaran.');
                 }
             }
@@ -639,6 +639,7 @@ class PaymentController extends Controller
                 'bulk_import_payment' => $bulk,
                 'is_modal' => request()->boolean('modal'),
                 'defaultSenderName' => $defaultSenderName,
+                'return_to' => request()->input('return_to', session('import_return_to')),
             ]);
         } catch (\Exception $e) {
             \Log::error('Error in payment create: '.$e->getMessage(), [
@@ -1280,7 +1281,16 @@ class PaymentController extends Controller
                     ]);
                 }
 
-                return redirect()->route('activity.detail', $activity->id)
+                $returnTo = $request->input('return_to');
+                $routeTarget = route('activity.detail', $activity->id);
+                
+                if ($returnTo === 'participants') {
+                    $routeTarget = route('activity.participants.index', $activity->id);
+                } elseif ($returnTo === 'show') {
+                    $routeTarget = route('activity.show', $activity->id);
+                }
+
+                return redirect($routeTarget)
                     ->with('success', 'Bukti pembayaran berhasil dikirim. Silakan tunggu verifikasi dari admin.');
             }
 

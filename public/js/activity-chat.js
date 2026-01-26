@@ -459,7 +459,17 @@
             if (!msg) return;
 
             if (!this.currentTargetUserId) {
-                alert('Silakan pilih percakapan terlebih dahulu');
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Perhatian',
+                        text: 'Silakan pilih percakapan terlebih dahulu',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
                 return;
             }
 
@@ -499,7 +509,16 @@
             })
             .catch(err => {
                 // console.error('Error sending message:', err);
-                alert(err.message || 'Gagal mengirim pesan. Silakan coba lagi.');
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Gagal',
+                        text: err.message || 'Gagal mengirim pesan. Silakan coba lagi.',
+                        icon: 'error',
+                        confirmButtonColor: '#E02424'
+                    });
+                } else {
+                    alert(err.message || 'Gagal mengirim pesan. Silakan coba lagi.');
+                }
                 if (input) input.disabled = false;
                 if (btn) btn.disabled = false;
             });

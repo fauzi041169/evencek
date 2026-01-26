@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import { ArrowLeft, Calendar, Clock, CheckCircle, Info, ZoomIn } from 'lucide-react';
@@ -26,7 +26,27 @@ export default function Show({ activity, eventActivity, existingResponse }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('activity.event-activities.participate', [activity.id, eventActivity.id]));
+        post(route('activity.event-activities.participate', [activity.id, eventActivity.id]), {
+            onSuccess: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Jawaban/Partisipasi Anda berhasil dikirim!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            },
+            onError: () => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Terjadi kesalahan saat mengirim jawaban.',
+                    confirmButtonColor: '#EF4444'
+                });
+            }
+        });
     };
 
     const handleAnswerChange = (questionId, value, type) => {

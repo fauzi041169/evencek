@@ -3,6 +3,7 @@ import { Head, useForm, usePage, Link, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import MyQrCodeModal from '@/Components/MyQrCodeModal';
 import Cropper from 'react-easy-crop';
+import Swal from 'sweetalert2';
 
 export default function ProfileShow({ auth, user, provinces = [] }) {
     const { props } = usePage();
@@ -184,6 +185,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
 
     // Password Update Form
     const { data: passData, setData: setPassData, put: putPass, processing: passProcessing, errors: passErrors, reset: resetPass } = useForm({
+        user_id: user.id,
         current_password: '',
         new_password: '',
         new_password_confirmation: '',
@@ -341,9 +343,6 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                     </div>
                 )}
 
-                {/* Flash messages are handled globally */}
-
-
                 {/* Header Profile Card */}
                 <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-8 relative group/cover">
                     {/* Cover Placeholder */}
@@ -445,7 +444,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                     >
                         Overview & Edit
                     </button>
-                    {isOwnProfile && (
+                    {canEdit && (
                         <button
                             onClick={() => setActiveTab('security')}
                             className={`py-4 font-medium text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'security' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
@@ -668,7 +667,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                         </form>
                     )}
 
-                    {activeTab === 'security' && isOwnProfile && (
+                    {activeTab === 'security' && canEdit && (
                         <form onSubmit={submitPassword} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold text-gray-800">Ubah Password</h2>
@@ -682,17 +681,19 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                             </div>
 
                             <div className="space-y-6 max-w-xl">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Password Saat Ini</label>
-                                    <input
-                                        type="password"
-                                        value={passData.current_password}
-                                        onChange={(e) => setPassData('current_password', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
-                                        placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
-                                    />
-                                    {passErrors.current_password && <div className="text-red-500 text-xs mt-1">{passErrors.current_password}</div>}
-                                </div>
+                                {isOwnProfile && (
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Password Saat Ini</label>
+                                        <input
+                                            type="password"
+                                            value={passData.current_password}
+                                            onChange={(e) => setPassData('current_password', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                            placeholder="••••••••"
+                                        />
+                                        {passErrors.current_password && <div className="text-red-500 text-xs mt-1">{passErrors.current_password}</div>}
+                                    </div>
+                                )}
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Password Baru</label>
@@ -701,8 +702,11 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         value={passData.new_password}
                                         onChange={(e) => setPassData('new_password', e.target.value)}
                                         className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
-                                        placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                                        placeholder="••••••••"
                                     />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Minimal 8 karakter. Disarankan menggunakan kombinasi huruf besar, huruf kecil, angka, dan simbol.
+                                    </p>
                                     {passErrors.new_password && <div className="text-red-500 text-xs mt-1">{passErrors.new_password}</div>}
                                 </div>
 
@@ -713,7 +717,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         value={passData.new_password_confirmation}
                                         onChange={(e) => setPassData('new_password_confirmation', e.target.value)}
                                         className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
-                                        placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                                        placeholder="••••••••"
                                     />
                                     {passErrors.new_password_confirmation && <div className="text-red-500 text-xs mt-1">{passErrors.new_password_confirmation}</div>}
                                 </div>

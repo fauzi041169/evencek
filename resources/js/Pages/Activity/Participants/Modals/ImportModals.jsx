@@ -4,7 +4,7 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { Upload, X, FileSpreadsheet, CheckCircle, AlertCircle, AlertTriangle, FileText, Download, Plus, Save, MapPin, Trash2, ChevronDown, ChevronLeft } from 'lucide-react';
 
-export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegionLookup }) {
+export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegionLookup, return_to }) {
     // ImportModal Render
     const [pasteData, setPasteData] = useState('');
     const [file, setFile] = useState(null);
@@ -18,7 +18,7 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
     const [isColumnDropdownOpen, setIsColumnDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
     const fileInputRef = useRef(null);
-    
+
     const activityId = activity ? (activity.uid || activity.id) : null;
 
     // Helper: Detect delimiter
@@ -83,7 +83,7 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
                     if (response.data.template) {
                         const cols = response.data.template.split(',');
                         setColumns(cols);
-                        
+
                         // Merge unknown columns into options
                         const currentOptions = [...templateOptions];
                         let changed = false;
@@ -152,27 +152,27 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
         axios.post(route('activity.preparation.save-import-template', activityId), {
             template: columns.join(',')
         })
-        .then(() => {
-            setIsSavingTemplate(false);
-            Swal.fire({
-                icon: 'success',
-                title: 'Berhasil',
-                text: 'Template berhasil disimpan!',
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000
+            .then(() => {
+                setIsSavingTemplate(false);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Template berhasil disimpan!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            })
+            .catch(error => {
+                setIsSavingTemplate(false);
+                console.error('Failed to save template', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal menyimpan template'
+                });
             });
-        })
-        .catch(error => {
-            setIsSavingTemplate(false);
-            console.error('Failed to save template', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal',
-                text: 'Gagal menyimpan template'
-            });
-        });
     };
 
     const handleFileChange = (e) => {
@@ -184,7 +184,7 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
 
     const handleImport = () => {
         setIsProcessing(true);
-        
+
         // Prepare data
         const formData = new FormData();
         if (file) {
@@ -192,7 +192,7 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
         } else if (pasteData) {
             // Convert paste data to file or send as text
             let dataToSend = pasteData;
-            
+
             if (!hasHeader) {
                 const delimiter = detectDelimiter(pasteData);
                 // Prepend header row based on columns
@@ -214,6 +214,9 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
 
         // Send data
         setIsProcessing(true);
+        if (return_to) {
+            formData.append('return_to', return_to);
+        }
         axios.post(route('activity.preparation.import-participants', activityId), formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
@@ -221,32 +224,32 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
                 'Accept': 'application/json'
             }
         })
-        .then(response => {
-            setIsProcessing(false);
-            // Backend returns import result directly (inserted, skipped, etc.)
-            // or { status: 'error' } on failure.
-            if (response.data && !response.data.status && response.data.success) {
-                // Success (direct object)
-                onCheckSuccess(response.data);
-            } else if (response.data.status === 'success') {
-                onCheckSuccess(response.data.stats || response.data);
-            } else {
+            .then(response => {
+                setIsProcessing(false);
+                // Backend returns import result directly (inserted, skipped, etc.)
+                // or { status: 'error' } on failure.
+                if (response.data && !response.data.status && response.data.success) {
+                    // Success (direct object)
+                    onCheckSuccess(response.data);
+                } else if (response.data.status === 'success') {
+                    onCheckSuccess(response.data.stats || response.data);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: 'Terjadi kesalahan: ' + (response.data.message || 'Unknown error')
+                    });
+                }
+            })
+            .catch(error => {
+                setIsProcessing(false);
+                console.error(error);
                 Swal.fire({
                     icon: 'error',
-                    title: 'Gagal',
-                    text: 'Terjadi kesalahan: ' + (response.data.message || 'Unknown error')
+                    title: 'Error',
+                    text: 'Gagal mengimpor: ' + (error.response?.data?.message || error.message)
                 });
-            }
-        })
-        .catch(error => {
-            setIsProcessing(false);
-            console.error(error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Gagal mengimpor: ' + (error.response?.data?.message || error.message)
             });
-        });
     };
 
     if (!isOpen || !activity || !activityId) return null;
@@ -268,11 +271,11 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
 
                         <div className="mb-3">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Template Kolom (urut dari kiri)</label>
-                            
+
                             <div className="flex gap-2 mb-2 flex-wrap items-center">
                                 <div className="relative" ref={dropdownRef}>
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         onClick={() => setIsColumnDropdownOpen(!isColumnDropdownOpen)}
                                         className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 text-white px-3 py-1.5 text-sm font-medium shadow-md hover:bg-emerald-700 transition-all duration-200"
                                     >
@@ -284,7 +287,7 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
                                             {isCustomColumn ? (
                                                 <div className="p-3">
                                                     <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-gray-700">
-                                                        <button 
+                                                        <button
                                                             onClick={() => setIsCustomColumn(false)}
                                                             className="p-1 hover:bg-gray-100 rounded"
                                                         >
@@ -292,15 +295,15 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
                                                         </button>
                                                         <span>Kolom Custom</span>
                                                     </div>
-                                                    <input 
-                                                        type="text" 
+                                                    <input
+                                                        type="text"
                                                         value={newColumn}
                                                         onChange={(e) => setNewColumn(e.target.value)}
                                                         placeholder="Contoh: size_baju"
                                                         className="w-full text-sm border-gray-300 rounded-md focus:border-indigo-500 focus:ring-indigo-500 mb-2"
                                                         autoFocus
                                                     />
-                                                    <button 
+                                                    <button
                                                         onClick={() => handleAddColumn()}
                                                         disabled={!newColumn}
                                                         className="w-full bg-primary text-white py-1.5 rounded-md text-xs font-medium hover:bg-indigo-700 disabled:opacity-50"
@@ -335,8 +338,8 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
                                     )}
                                 </div>
 
-                                <button 
-                                    type="button" 
+                                <button
+                                    type="button"
                                     onClick={handleSaveTemplate}
                                     disabled={isSavingTemplate}
                                     className="inline-flex items-center gap-2 rounded-lg bg-primary text-white px-3 py-1.5 text-sm font-medium shadow-md hover:bg-indigo-700 transition-all duration-200"
@@ -344,32 +347,32 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
                                     <Save className="w-4 h-4" /> Simpan Template
                                 </button>
 
-                                <a 
-                                    href={route('activity.preparation.download-participants-template', activityId)} 
-                                    className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-1.5 text-sm font-medium shadow-md hover:shadow-lg hover:from-orange-600 hover:to-amber-600 transition-all duration-200" 
+                                <a
+                                    href={route('activity.preparation.download-participants-template', activityId)}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-1.5 text-sm font-medium shadow-md hover:shadow-lg hover:from-orange-600 hover:to-amber-600 transition-all duration-200"
                                     target="_blank"
                                     rel="noreferrer"
                                 >
                                     <Download className="w-4 h-4" /> Unduh .xlsx
                                 </a>
-                                <button 
-                                    type="button" 
-                                    onClick={onRegionLookup} 
+                                <button
+                                    type="button"
+                                    onClick={onRegionLookup}
                                     className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1.5 text-sm font-medium shadow-md hover:shadow-lg hover:from-primary hover:to-pink-600 transition-all duration-200"
                                 >
                                     <MapPin className="w-4 h-4" /> Lihat ID Wilayah
                                 </button>
-                                <button 
-                                    type="button" 
-                                    onClick={() => fileInputRef.current?.click()} 
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
                                     className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 text-sm font-medium shadow-md hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
                                 >
                                     <FileSpreadsheet className="w-4 h-4" /> Input Excel
                                 </button>
-                                <input 
-                                    type="file" 
+                                <input
+                                    type="file"
                                     ref={fileInputRef}
-                                    className="hidden" 
+                                    className="hidden"
                                     accept=".xlsx,.xls,.csv"
                                     onChange={handleFileChange}
                                 />
@@ -391,7 +394,7 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
                                         const isMandatory = col.endsWith('*');
                                         const cleanCol = isMandatory ? col.slice(0, -1) : col;
                                         let label = templateOptions.find(o => o.value === cleanCol)?.label || cleanCol;
-                                        
+
                                         // Clean up label display
                                         if (label.includes('|')) label = label.split('|')[0];
                                         if (label.endsWith('_id')) label = label.slice(0, -3);
@@ -405,7 +408,7 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
                                                     </div>
                                                     <span className={isMandatory ? 'font-medium text-red-700' : 'text-gray-700'}>{label}{isMandatory ? '*' : ''}</span>
                                                 </div>
-                                                <button 
+                                                <button
                                                     onClick={() => handleRemoveColumn(idx)}
                                                     className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-1 border-l pl-1 border-gray-200"
                                                     title="Hapus kolom"
@@ -418,23 +421,23 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
                                     {columns.length === 0 && <span className="text-xs text-gray-400 italic">Belum ada kolom dipilih</span>}
                                 </div>
                             </div>
-                            
+
                             <div className="flex items-center gap-2 mt-2">
-                                <input 
-                                    type="checkbox" 
-                                    id="has-header" 
-                                    checked={hasHeader} 
+                                <input
+                                    type="checkbox"
+                                    id="has-header"
+                                    checked={hasHeader}
                                     onChange={(e) => setHasHeader(e.target.checked)}
-                                    className="rounded border-gray-300 text-primary focus:ring-indigo-500" 
+                                    className="rounded border-gray-300 text-primary focus:ring-indigo-500"
                                 />
                                 <label htmlFor="has-header" className="text-xs text-gray-600">File memiliki header (baris pertama akan diabaikan)</label>
                             </div>
                         </div>
 
-                        <textarea 
+                        <textarea
                             value={pasteData}
                             onChange={(e) => setPasteData(e.target.value)}
-                            className="w-full h-36 border border-gray-300 rounded p-2 text-sm font-mono" 
+                            className="w-full h-36 border border-gray-300 rounded p-2 text-sm font-mono"
                             placeholder="Tempel di sini (Ctrl+V)"
                         ></textarea>
 
@@ -490,17 +493,17 @@ export function ImportModal({ isOpen, onClose, activity, onCheckSuccess, onRegio
                         )}
                     </div>
                     <div className="px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
-                        <button 
-                            type="button" 
-                            onClick={handleImport} 
+                        <button
+                            type="button"
+                            onClick={handleImport}
                             disabled={isProcessing}
                             className="w-full inline-flex justify-center rounded-md border border-transparent bg-primary px-4 py-2 text-white font-medium hover:bg-indigo-700 sm:w-auto sm:text-sm disabled:opacity-50"
                         >
                             {isProcessing ? 'Memproses...' : 'Impor'}
                         </button>
-                        <button 
-                            type="button" 
-                            onClick={onClose} 
+                        <button
+                            type="button"
+                            onClick={onClose}
                             disabled={isProcessing}
                             className="w-full inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 font-medium hover:bg-gray-50 sm:w-auto sm:text-sm"
                         >
@@ -517,7 +520,7 @@ export function CheckSummaryModal({ isOpen, onClose, data, onConfirm }) {
     if (!isOpen || !data) return null;
 
     const stats = data.stats || {};
-    
+
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -555,16 +558,16 @@ export function CheckSummaryModal({ isOpen, onClose, data, onConfirm }) {
                         </div>
                     </div>
                     <div className="px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
-                        <button 
-                            type="button" 
-                            onClick={() => onConfirm(data.import_id)} 
+                        <button
+                            type="button"
+                            onClick={() => onConfirm(data.import_id)}
                             className="w-full inline-flex justify-center rounded-md bg-emerald-600 text-white px-4 py-2 font-medium hover:bg-emerald-700 sm:w-auto sm:text-sm"
                         >
                             Lanjut Impor
                         </button>
-                        <button 
-                            type="button" 
-                            onClick={onClose} 
+                        <button
+                            type="button"
+                            onClick={onClose}
                             className="w-full inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 font-medium hover:bg-gray-50 sm:w-auto sm:text-sm"
                         >
                             Batalkan
@@ -647,14 +650,14 @@ export function ResultModal({ isOpen, onClose, data }) {
                         </button>
                     </div>
                     <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        
+
                         {isPaymentAvailable && (
-                             <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-center mb-6">
-                                 <h4 className="text-lg font-bold text-primary mb-1">Pembayaran Diperlukan</h4>
-                                 <p className="text-sm text-indigo-700">
-                                     Pendaftaran berhasil, namun pembayaran diperlukan untuk menyelesaikan proses.
-                                 </p>
-                             </div>
+                            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-center mb-6">
+                                <h4 className="text-lg font-bold text-primary mb-1">Pembayaran Diperlukan</h4>
+                                <p className="text-sm text-indigo-700">
+                                    Pendaftaran berhasil, namun pembayaran diperlukan untuk menyelesaikan proses.
+                                </p>
+                            </div>
                         )}
 
                         <h4 className="font-medium text-gray-900 mb-3">Statistik User</h4>
@@ -682,7 +685,7 @@ export function ResultModal({ isOpen, onClose, data }) {
                         </div>
 
                         {(skipped > 0 || failed > 0) && (
-                             <div className="grid grid-cols-2 gap-3 mb-6">
+                            <div className="grid grid-cols-2 gap-3 mb-6">
                                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
                                     <div className="text-2xl font-bold text-yellow-600">{skipped}</div>
                                     <div className="text-xs text-yellow-700 font-medium mt-1">Dilewati (Skipped)</div>
@@ -706,9 +709,9 @@ export function ResultModal({ isOpen, onClose, data }) {
 
                     </div>
                     <div className="px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
-                        <button 
-                            type="button" 
-                            onClick={handleComplete} 
+                        <button
+                            type="button"
+                            onClick={handleComplete}
                             className={`w-full inline-flex justify-center rounded-md px-4 py-2 font-medium sm:w-auto sm:text-sm ${isPaymentAvailable ? 'bg-primary text-white hover:bg-indigo-700' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
                         >
                             {isPaymentAvailable ? 'Lanjut ke Pembayaran' : 'Selesai'}
@@ -744,7 +747,7 @@ class ErrorBoundary extends React.Component {
                         <div className="bg-gray-100 p-3 rounded text-xs font-mono mb-4 overflow-auto max-h-40">
                             {this.state.error && this.state.error.toString()}
                         </div>
-                        <button 
+                        <button
                             onClick={() => {
                                 this.setState({ hasError: false });
                                 if (this.props.onClose) this.props.onClose();
@@ -762,7 +765,7 @@ class ErrorBoundary extends React.Component {
     }
 }
 
-export default function ImportModals({ show, onClose, activity, onRegionLookup }) {
+export default function ImportModals({ show, onClose, activity, onRegionLookup, return_to }) {
     const [step, setStep] = useState('input'); // input, check, result
     const [checkData, setCheckData] = useState(null);
     const [resultData, setResultData] = useState(null);
@@ -791,7 +794,12 @@ export default function ImportModals({ show, onClose, activity, onRegionLookup }
             setResultData(data);
             setStep('result');
         } else {
-            alert('Data hasil impor tidak valid.');
+            Swal.fire({
+                title: 'Gagal',
+                text: 'Data hasil impor tidak valid.',
+                icon: 'error',
+                confirmButtonColor: '#E02424'
+            });
         }
     };
 
@@ -804,12 +812,13 @@ export default function ImportModals({ show, onClose, activity, onRegionLookup }
 
     return (
         <ErrorBoundary onClose={onClose}>
-            <ImportModal 
-                isOpen={show && step === 'input'} 
-                onClose={onClose} 
+            <ImportModal
+                isOpen={show && step === 'input'}
+                onClose={onClose}
                 activity={activity}
                 onCheckSuccess={handleCheckSuccess}
                 onRegionLookup={onRegionLookup}
+                return_to={return_to}
             />
 
             <CheckSummaryModal

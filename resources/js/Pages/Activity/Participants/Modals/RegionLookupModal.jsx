@@ -1,5 +1,6 @@
-﻿import React, { useState, useMemo } from 'react';
-import { X } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Copy } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function RegionLookupModal({ isOpen, onClose, provinces, regencies, districts }) {
     if (!isOpen) return null;
@@ -7,6 +8,20 @@ export default function RegionLookupModal({ isOpen, onClose, provinces, regencie
     const [selectedProvince, setSelectedProvince] = useState('');
     const [selectedRegency, setSelectedRegency] = useState('');
     const [selectedDistrict, setSelectedDistrict] = useState('');
+
+    const copyToClipboard = (text, label) => {
+        navigator.clipboard.writeText(text).then(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Disalin!',
+                text: `Kode ${label} berhasil disalin`,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        });
+    };
 
     const filteredRegencies = useMemo(() => {
         if (!selectedProvince) return [];
@@ -52,8 +67,16 @@ export default function RegionLookupModal({ isOpen, onClose, provinces, regencie
                                     ))}
                                 </select>
                                 {selectedProvince && (
-                                    <div className="mt-2 text-sm">
-                                        Kode Provinsi: <span className="font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">{selectedProvince}</span>
+                                    <div className="mt-2 text-sm flex items-center gap-2">
+                                        <span>Kode Provinsi:</span>
+                                        <span className="font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">{selectedProvince}</span>
+                                        <button 
+                                            onClick={() => copyToClipboard(selectedProvince, 'Provinsi')}
+                                            className="text-gray-500 hover:text-primary transition-colors"
+                                            title="Salin Kode"
+                                        >
+                                            <Copy size={14} />
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -76,8 +99,16 @@ export default function RegionLookupModal({ isOpen, onClose, provinces, regencie
                                     ))}
                                 </select>
                                 {selectedRegency && (
-                                    <div className="mt-2 text-sm">
-                                        Kode Kab/Kota: <span className="font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">{selectedRegency}</span>
+                                    <div className="mt-2 text-sm flex items-center gap-2">
+                                        <span>Kode Kab/Kota:</span>
+                                        <span className="font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">{selectedRegency}</span>
+                                        <button 
+                                            onClick={() => copyToClipboard(selectedRegency, 'Kabupaten/Kota')}
+                                            className="text-gray-500 hover:text-primary transition-colors"
+                                            title="Salin Kode"
+                                        >
+                                            <Copy size={14} />
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -97,8 +128,16 @@ export default function RegionLookupModal({ isOpen, onClose, provinces, regencie
                                     ))}
                                 </select>
                                 {selectedDistrict && (
-                                    <div className="mt-2 text-sm">
-                                        Kode Kecamatan: <span className="font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">{selectedDistrict}</span>
+                                    <div className="mt-2 text-sm flex items-center gap-2">
+                                        <span>Kode Kecamatan:</span>
+                                        <span className="font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-bold">{selectedDistrict}</span>
+                                        <button 
+                                            onClick={() => copyToClipboard(selectedDistrict, 'Kecamatan')}
+                                            className="text-gray-500 hover:text-primary transition-colors"
+                                            title="Salin Kode"
+                                        >
+                                            <Copy size={14} />
+                                        </button>
                                     </div>
                                 )}
                             </div>

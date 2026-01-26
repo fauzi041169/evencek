@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { useForm, usePage } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
+import Swal from 'sweetalert2';
+import { UserPen } from 'lucide-react';
 
 export default function ParticipantEditModal({ show, onClose, user }) {
     // If no user is provided, don't render or handle gracefully
@@ -43,6 +45,22 @@ export default function ParticipantEditModal({ show, onClose, user }) {
         post(route('profile.update-user', { user: targetUser.id }), {
             onSuccess: () => {
                 onClose();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Profil peserta berhasil diperbarui!',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            },
+            onError: (errors) => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal memperbarui profil. Silakan periksa input Anda.',
+                });
             }
         });
     };
@@ -52,7 +70,7 @@ export default function ParticipantEditModal({ show, onClose, user }) {
             <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="sm:flex sm:items-start">
                     <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                        <i className="fas fa-user-edit text-blue-600"></i>
+                        <UserPen className="w-6 h-6 text-blue-600" />
                     </div>
                     <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                         <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">

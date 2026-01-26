@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 import MainLayout from '@/Layouts/MainLayout';
 import Modal from '@/Components/Modal';
 
-export default function Maintenance({ setting, apkList = [] }) {
+export default function Maintenance({ setting, apkList = [], permissionMatrix = [], roles = [] }) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const [statusActive, setStatusActive] = useState(!!setting?.is_maintenance_mode);
     const [alert, setAlert] = useState(null);
@@ -99,7 +99,15 @@ export default function Maintenance({ setting, apkList = [] }) {
                     setStatusActive(true);
                     showAlert('success', res.message || 'Maintenance aktif');
                 } catch (err) {
-                    showAlert('error', err.message);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: err.message,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
                 }
             }
         });
@@ -120,9 +128,25 @@ export default function Maintenance({ setting, apkList = [] }) {
                 try {
                     const res = await requestJson(route('maintenance.disable'), { method: 'POST' });
                     setStatusActive(false);
-                    showAlert('success', res.message || 'Maintenance nonaktif');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: res.message || 'Maintenance nonaktif',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
                 } catch (err) {
-                    showAlert('error', err.message);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: err.message,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
                 }
             }
         });
@@ -130,7 +154,18 @@ export default function Maintenance({ setting, apkList = [] }) {
 
     const uploadApk = (e) => {
         e.preventDefault();
-        postApk(route('maintenance.upload-apk'), { forceFormData: true, onSuccess: () => showAlert('success', 'APK diunggah') });
+        postApk(route('maintenance.upload-apk'), {
+            forceFormData: true,
+            onSuccess: () => Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'APK diunggah',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            })
+        });
     };
 
     const deleteApk = async (filename) => {
@@ -150,9 +185,25 @@ export default function Maintenance({ setting, apkList = [] }) {
                         method: 'POST',
                         body: JSON.stringify({ filename }),
                     });
-                    showAlert('success', res.message || 'APK dihapus');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: res.message || 'APK dihapus',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
                 } catch (err) {
-                    showAlert('error', err.message);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: err.message,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
                 }
             }
         });
@@ -183,14 +234,26 @@ export default function Maintenance({ setting, apkList = [] }) {
     };
 
     const clearBrowserCache = () => {
-        if (!window.confirm('Bersihkan cache browser? Ini akan menghapus data sesi lokal.')) return;
-        try {
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.reload();
-        } catch (e) {
-            showAlert('error', 'Gagal membersihkan browser cache');
-        }
+        Swal.fire({
+            title: 'Bersihkan Cache?',
+            text: 'Bersihkan cache browser? Ini akan menghapus data sesi lokal.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#E02424',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Ya, Bersihkan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                try {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.reload();
+                } catch (e) {
+                    showAlert('error', 'Gagal membersihkan browser cache');
+                }
+            }
+        });
     };
 
     const fetchLogs = async () => {
@@ -211,15 +274,43 @@ export default function Maintenance({ setting, apkList = [] }) {
     };
 
     const clearLogs = async () => {
-        if (!window.confirm('Hapus seluruh log?')) return;
-        try {
-            const res = await requestJson(route('maintenance.logs.clear'), { method: 'POST' });
-            setLogs([]);
-            setLogsUpdated('');
-            showAlert('success', res.message || 'Log dikosongkan');
-        } catch (err) {
-            showAlert('error', err.message);
-        }
+        Swal.fire({
+            title: 'Hapus Log?',
+            text: 'Apakah Anda yakin ingin menghapus seluruh log?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#E02424',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await requestJson(route('maintenance.logs.clear'), { method: 'POST' });
+                    setLogs([]);
+                    setLogsUpdated('');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: res.message || 'Log dikosongkan',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                } catch (err) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: err.message,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
+            }
+        });
     };
 
     const handleUpdateApp = async () => {
@@ -404,6 +495,64 @@ export default function Maintenance({ setting, apkList = [] }) {
                         )}
                     </div>
 
+                    <div className="bg-white rounded-xl shadow p-6 overflow-hidden">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">Laporan Izin Akses (Permission Matrix)</h3>
+                            <span className="text-xs text-gray-500">Menampilkan hak akses per tipe user</span>
+                        </div>
+
+                        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead className="bg-gray-50 sticky top-0 z-10">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Permission / Object
+                                        </th>
+                                        {roles.map(role => (
+                                            <th key={role} scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                {role.toUpperCase()}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {permissionMatrix.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={roles.length + 1} className="px-6 py-4 text-center text-gray-500">
+                                                Data permission tidak tersedia
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        permissionMatrix.map((row, idx) => (
+                                            <tr key={row.permission} className={idx % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50 hover:bg-gray-100'}>
+                                                <td className="px-6 py-2 whitespace-nowrap font-mono text-gray-700 text-xs">
+                                                    {row.permission}
+                                                </td>
+                                                {roles.map(role => (
+                                                    <td key={role} className="px-6 py-2 whitespace-nowrap text-center">
+                                                        {row[role] ? (
+                                                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-600">
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-50 text-red-300">
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                                </svg>
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <div className="bg-slate-50 rounded-xl shadow p-6">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-lg font-semibold text-gray-900">Log Aplikasi</h3>
@@ -468,7 +617,7 @@ export default function Maintenance({ setting, apkList = [] }) {
                             </div>
                             <h3 className="text-xl font-bold text-gray-900 mb-2">Update Berhasil!</h3>
                             <p className="text-gray-600 mb-6">Silahkan akses aplikasi baru Anda.</p>
-                            
+
                             {updateOutput && (
                                 <details className="w-full text-left mb-6 border rounded-lg overflow-hidden">
                                     <summary className="px-4 py-2 bg-gray-50 text-xs font-medium text-gray-500 cursor-pointer hover:bg-gray-100">
