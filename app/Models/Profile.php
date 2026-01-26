@@ -85,7 +85,7 @@ class Profile extends Model
                     // Fallback to legacy
                     $oldPhotoPath = public_path('assets/images/profilefoto/'.$originalFoto);
                     if (file_exists($oldPhotoPath)) {
-                        unlink($oldPhotoPath);
+                        @unlink($oldPhotoPath);
                     }
                 }
             }
@@ -97,7 +97,7 @@ class Profile extends Model
                 } else {
                     $oldCoverPath = public_path('assets/images/profilecover/'.$originalCover);
                     if (file_exists($oldCoverPath)) {
-                        unlink($oldCoverPath);
+                        @unlink($oldCoverPath);
                     }
                 }
             }

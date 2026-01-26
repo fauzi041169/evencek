@@ -366,8 +366,17 @@ class ProfileController extends Controller
 
         $foto = $request->file('foto_file');
         
-        // Simpan menggunakan Storage facade
-        $path = $foto->store('profile-photos', 'public');
+        try {
+            // Simpan menggunakan Storage facade
+            $path = $foto->store('profile-photos', 'public');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('API Profile upload error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal upload foto. Server error.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
 
         if (! $profile) {
             $profile = new \App\Models\Profile;
