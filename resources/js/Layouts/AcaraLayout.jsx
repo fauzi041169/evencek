@@ -7,6 +7,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [currentActivityId, setCurrentActivityId] = useState(null);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
 
     useEffect(() => {
         // Determine activity ID from various sources
@@ -23,13 +24,13 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
     const user = auth?.user;
     const isAdmin = user && (user.role === 'admin' || user.role === 'superadmin');
     const isOwner = user && activity && typeof activity === 'object' ? activity.user_id === user.id : false;
-    
+
     let isCommittee = false;
     if (user && currentActivityId && activity && typeof activity === 'object') {
         isCommittee = activity.is_committee || false;
     }
 
-    const canManageBatches = (user && currentActivityId) && (isAdmin || isOwner || isCommittee) && 
+    const canManageBatches = (user && currentActivityId) && (isAdmin || isOwner || isCommittee) &&
         (!activity || typeof activity !== 'object' || activity.activity_type === 'batch');
     const canManageAttendance = (user && currentActivityId) && (isAdmin || isOwner || isCommittee);
 
@@ -57,13 +58,12 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
     }
 
     const NavLink = ({ href, icon, label, active }) => (
-        <Link 
-            href={href} 
-            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group mb-1 ${
-                active 
-                    ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-md' 
+        <Link
+            href={href}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group mb-1 ${active
+                    ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-md'
                     : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-            }`}
+                }`}
         >
             <i className={`${icon} w-5 text-center text-lg transition-transform group-hover:scale-110 ${active ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}></i>
             <span className="font-medium text-sm">{label}</span>
@@ -76,17 +76,16 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
 
             {/* Mobile Sidebar Overlay */}
             {isSidebarOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
                     onClick={() => setIsSidebarOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
-            <aside 
-                className={`fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-gray-800 to-gray-900 text-white z-50 transition-transform duration-300 shadow-xl flex flex-col ${
-                    isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-                } lg:translate-x-0`}
+            <aside
+                className={`fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-gray-800 to-gray-900 text-white z-50 transition-transform duration-300 shadow-xl flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                    } lg:translate-x-0`}
             >
                 {/* Brand */}
                 <div className="h-16 flex items-center px-6 bg-black/20 border-b border-white/10">
@@ -96,79 +95,79 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
                     <div className="space-y-1">
-                        <NavLink 
-                            href="/" 
-                            icon="fas fa-home" 
-                            label="Home" 
-                            active={route().current() === 'home'} 
+                        <NavLink
+                            href="/"
+                            icon="fas fa-home"
+                            label="Home"
+                            active={route().current() === 'home'}
                         />
-                        <NavLink 
-                            href={currentActivityId ? `/activity/${currentActivityId}/dashboard` : '#'} 
-                            icon="fas fa-tachometer-alt" 
-                            label="Dashboard" 
-                            active={route().current('activity.dashboard')} 
+                        <NavLink
+                            href={currentActivityId ? `/activity/${currentActivityId}/dashboard` : '#'}
+                            icon="fas fa-tachometer-alt"
+                            label="Dashboard"
+                            active={route().current('activity.dashboard')}
                         />
-                        <NavLink 
-                            href={currentActivityId ? `/activity/${currentActivityId}/preparation` : '#'} 
-                            icon="fas fa-tasks" 
-                            label="Acara" 
-                            active={route().current('activity.preparation.*')} 
+                        <NavLink
+                            href={currentActivityId ? `/activity/${currentActivityId}/preparation` : '#'}
+                            icon="fas fa-tasks"
+                            label="Acara"
+                            active={route().current('activity.preparation.*')}
                         />
-                        <NavLink 
-                            href={currentActivityId ? route('activity.event-activities.index', currentActivityId) : '#'} 
-                            icon="fas fa-poll" 
-                            label="Kegiatan Acara" 
-                            active={route().current('activity.event-activities.*')} 
+                        <NavLink
+                            href={currentActivityId ? route('activity.event-activities.index', currentActivityId) : '#'}
+                            icon="fas fa-poll"
+                            label="Kegiatan Acara"
+                            active={route().current('activity.event-activities.*')}
                         />
-                        
+
                         {canManageBatches && (
-                            <NavLink 
-                                href={currentActivityId ? route('activity.batches.index', currentActivityId) : '#'} 
-                                icon="fas fa-layer-group" 
-                                label="Kelola Sesi" 
-                                active={route().current('activity.batches.*')} 
+                            <NavLink
+                                href={currentActivityId ? route('activity.batches.index', currentActivityId) : '#'}
+                                icon="fas fa-layer-group"
+                                label="Kelola Sesi"
+                                active={route().current('activity.batches.*')}
                             />
                         )}
-                        
-                        <NavLink 
-                            href={currentActivityId ? route('activity.speakers.index', currentActivityId) : '#'} 
-                            icon="fas fa-microphone" 
-                            label="Narasumber" 
-                            active={route().current('activity.speakers.*')} 
+
+                        <NavLink
+                            href={currentActivityId ? route('activity.speakers.index', currentActivityId) : '#'}
+                            icon="fas fa-microphone"
+                            label="Narasumber"
+                            active={route().current('activity.speakers.*')}
                         />
-                        
+
                         {canManageAttendance && (
-                            <NavLink 
-                                href={currentActivityId ? route('attendance.management', { activity: currentActivityId }) : '#'} 
-                                icon="fas fa-clipboard-check" 
-                                label="Absen" 
-                                active={route().current('attendance.*')} 
+                            <NavLink
+                                href={currentActivityId ? route('attendance.management', { activity: currentActivityId }) : '#'}
+                                icon="fas fa-clipboard-check"
+                                label="Absen"
+                                active={route().current('attendance.*')}
                             />
                         )}
-                        
-                        <NavLink 
-                            href={currentActivityId ? `/activity/${currentActivityId}/participants` : '#'} 
-                            icon="fas fa-users" 
-                            label="Peserta" 
-                            active={route().current('activity.participants.*')} 
+
+                        <NavLink
+                            href={currentActivityId ? `/activity/${currentActivityId}/participants` : '#'}
+                            icon="fas fa-users"
+                            label="Peserta"
+                            active={route().current('activity.participants.*')}
                         />
-                        <NavLink 
-                            href={currentActivityId ? `/activity/${currentActivityId}/idcards` : '#'} 
-                            icon="fas fa-id-badge" 
-                            label="Kartu ID" 
-                            active={route().current('activity.idcards')} 
+                        <NavLink
+                            href={currentActivityId ? `/activity/${currentActivityId}/idcards` : '#'}
+                            icon="fas fa-id-badge"
+                            label="Kartu ID"
+                            active={route().current('activity.idcards')}
                         />
-                        <NavLink 
-                            href={currentActivityId ? `/activity/${currentActivityId}/certificates` : '#'} 
-                            icon="fas fa-certificate" 
-                            label="Sertifikat" 
-                            active={route().current('activity.certificates')} 
+                        <NavLink
+                            href={currentActivityId ? `/activity/${currentActivityId}/certificates` : '#'}
+                            icon="fas fa-certificate"
+                            label="Sertifikat"
+                            active={route().current('activity.certificates')}
                         />
-                        <NavLink 
-                            href={currentActivityId ? `/activity/${currentActivityId}` : '#'} 
-                            icon="fas fa-external-link-alt" 
-                            label="Halaman Acara" 
-                            active={route().current('activity.show')} 
+                        <NavLink
+                            href={currentActivityId ? `/activity/${currentActivityId}` : '#'}
+                            icon="fas fa-external-link-alt"
+                            label="Halaman Acara"
+                            active={route().current('activity.show')}
                         />
                     </div>
                 </nav>
@@ -179,17 +178,19 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                         href={route('logout')}
                         method="post"
                         as="button"
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors shadow-sm"
+                        disabled={loggingOut}
+                        onClick={() => setLoggingOut(true)}
+                        className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors shadow-sm ${loggingOut ? 'opacity-50 cursor-wait' : ''}`}
                     >
-                        <i className="fas fa-sign-out-alt"></i>
-                        <span>Logout</span>
+                        <i className={`fas ${loggingOut ? 'fa-spinner fa-spin' : 'fa-sign-out-alt'}`}></i>
+                        <span>{loggingOut ? 'Logging out...' : 'Logout'}</span>
                     </Link>
                 </div>
             </aside>
 
             {/* Main Content Wrapper */}
             <div className="lg:ml-64 min-h-screen flex flex-col transition-all duration-300">
-                
+
                 {/* Top Navbar */}
                 <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30 border-b border-gray-100">
                     <div className="px-4 py-3 flex items-center justify-between">
@@ -210,12 +211,12 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
 
                         {/* Right Side - User Info */}
                         <div className="flex items-center gap-3">
-                            <div 
+                            <div
                                 className="relative"
                                 onMouseEnter={() => setIsProfileDropdownOpen(true)}
                                 onMouseLeave={() => setIsProfileDropdownOpen(false)}
                             >
-                                <button 
+                                <button
                                     onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                                     className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-primary/20 rounded-lg p-1 transition-all duration-200 hover:bg-gray-50"
                                 >
@@ -223,7 +224,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                                         <p className="text-sm font-semibold text-gray-700 leading-tight">{user.name}</p>
                                         <p className="text-xs text-gray-500 capitalize">{user.role}</p>
                                     </div>
-                                    <img 
+                                    <img
                                         src={user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
                                         alt={user.name}
                                         className="w-9 h-9 rounded-full object-cover border-2 border-primary/20 shadow-sm"
@@ -232,11 +233,11 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                                 </button>
 
                                 {/* Dropdown Menu */}
-                                <div 
+                                <div
                                     className={`
                                         absolute right-0 pt-2 w-72 z-50 transition-all duration-300 ease-in-out transform origin-top-right
-                                        ${isProfileDropdownOpen 
-                                            ? 'opacity-100 translate-y-0 scale-100 visible pointer-events-auto' 
+                                        ${isProfileDropdownOpen
+                                            ? 'opacity-100 translate-y-0 scale-100 visible pointer-events-auto'
                                             : 'opacity-0 -translate-y-2 scale-95 invisible pointer-events-none'
                                         }
                                     `}
@@ -245,9 +246,9 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                                         {/* Header */}
                                         <div className="bg-gradient-to-br from-indigo-600 to-purple-700 px-5 py-4">
                                             <div className="flex items-center gap-3">
-                                                <img 
-                                                    src={user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'} 
-                                                    alt={user.name} 
+                                                <img
+                                                    src={user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                    alt={user.name}
                                                     className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-md"
                                                     onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
                                                 />
@@ -285,7 +286,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                                                     </Link>
                                                 )}
 
-                                                <button 
+                                                <button
                                                     onClick={() => {
                                                         Swal.fire({
                                                             title: 'Bersihkan Cache?',
@@ -316,19 +317,21 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                                                     </div>
                                                     Bersihkan Cache
                                                 </button>
-                                                
+
                                                 <div className="border-t border-gray-100 my-1 mx-2"></div>
-                                                
-                                                <Link 
-                                                    as="button" 
-                                                    method="post" 
-                                                    href={route('logout')} 
-                                                    className="flex items-center w-full text-left px-4 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors group"
+
+                                                <Link
+                                                    as="button"
+                                                    method="post"
+                                                    href={route('logout')}
+                                                    disabled={loggingOut}
+                                                    onClick={() => setLoggingOut(true)}
+                                                    className={`flex items-center w-full text-left px-4 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors group ${loggingOut ? 'opacity-50 cursor-wait' : ''}`}
                                                 >
                                                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-100 text-red-600 mr-3 group-hover:bg-red-600 group-hover:text-white transition-colors">
-                                                        <i className="fas fa-sign-out-alt"></i>
+                                                        {loggingOut ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sign-out-alt"></i>}
                                                     </div>
-                                                    Logout
+                                                    {loggingOut ? 'Keluar...' : 'Logout'}
                                                 </Link>
                                             </div>
                                         </div>

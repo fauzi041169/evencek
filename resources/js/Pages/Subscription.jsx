@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import PageHero from '@/Components/PageHero';
 
 export default function Subscription({ plans, activePlanIds, heroAnim, midtransStatus }) {
     const { flash, errors, csrf_token } = usePage().props;
@@ -31,8 +32,8 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
             </Head>
 
             {/* Hero Section */}
-            <PageHero 
-                title="Paket Berlangganan" 
+            <PageHero
+                title="Paket Berlangganan"
                 description="Pilih paket yang sesuai dengan kebutuhan sistem manajemen inventaris Anda"
                 heroAnim={heroAnim}
             />
@@ -48,7 +49,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                                 <div>
                                     <h3 className="text-red-800 font-semibold mb-1">Terjadi kesalahan saat membuat token pembayaran</h3>
                                     <p className="text-red-700">{flash.error}</p>
-                                    
+
                                     {/* Debug Info */}
                                     <div className="mt-3 text-sm text-red-800">
                                         <p className="mb-1">Petunjuk cepat:</p>
@@ -91,7 +92,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                         {plans.map((plan, index) => {
                             const isPro = plan.slug === 'pro';
                             const isBasic = plan.slug === 'basic';
-                            
+
                             // Determine gradient
                             let gradientClass = 'from-orange-500 to-orange-600';
                             let buttonClass = 'bg-orange-600 hover:bg-orange-700';
@@ -104,18 +105,18 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                             }
 
                             // Manual limit check
-                            const manualLimit = plan.features && typeof plan.features === 'object' 
-                                ? plan.features['manual_activities_limit'] 
+                            const manualLimit = plan.features && typeof plan.features === 'object'
+                                ? plan.features['manual_activities_limit']
                                 : null;
 
                             // Active check
                             const isPlanActive = activePlanIds && activePlanIds.includes(plan.id);
 
                             return (
-                                <div 
+                                <div
                                     key={plan.id}
                                     className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 ${isPro ? 'border-4 border-purple-500 relative' : ''}`}
-                                    data-aos="fade-up" 
+                                    data-aos="fade-up"
                                     data-aos-delay={(index + 1) * 100}
                                 >
                                     {isPro && (
@@ -143,7 +144,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                                             <li className="flex items-start">
                                                 <i className="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
                                                 <span className="text-gray-700">
-                                                    {plan.max_activities 
+                                                    {plan.max_activities
                                                         ? `Manajemen kegiatan hingga ${new Intl.NumberFormat().format(plan.max_activities)} aktivitas`
                                                         : 'Manajemen kegiatan unlimited'}
                                                 </span>
@@ -152,7 +153,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                                             <li className="flex items-start">
                                                 <i className="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
                                                 <span className="text-gray-700">
-                                                    {plan.max_users 
+                                                    {plan.max_users
                                                         ? `Hingga ${new Intl.NumberFormat().format(plan.max_users)} pengguna aktif`
                                                         : 'Pengguna unlimited'}
                                                 </span>
@@ -161,7 +162,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                                             <li className="flex items-start">
                                                 <i className="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
                                                 <span className="text-gray-700">
-                                                    {plan.max_news 
+                                                    {plan.max_news
                                                         ? `Manajemen berita hingga ${new Intl.NumberFormat().format(plan.max_news)} artikel`
                                                         : 'Manajemen berita unlimited'}
                                                 </span>
@@ -170,7 +171,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                                             <li className="flex items-start">
                                                 <i className="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
                                                 <span className="text-gray-700">
-                                                    {plan.max_participants_per_activity 
+                                                    {plan.max_participants_per_activity
                                                         ? `Maksimal ${new Intl.NumberFormat().format(plan.max_participants_per_activity)} peserta per acara`
                                                         : 'Peserta per acara unlimited'}
                                                 </span>
@@ -188,7 +189,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                                             <li className="flex items-start">
                                                 <i className="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
                                                 <span className="text-gray-700">
-                                                    {plan.max_committees_per_activity 
+                                                    {plan.max_committees_per_activity
                                                         ? `Maksimal ${new Intl.NumberFormat().format(plan.max_committees_per_activity)} panitia per acara`
                                                         : 'Panitia per acara unlimited'}
                                                 </span>
@@ -223,13 +224,13 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                                             )}
                                             {/* Other Features */}
                                             {plan.features && Array.isArray(plan.features) && plan.features.map((feature, k) => {
-                                                 if (k === 'manual_activities_limit' || feature === null) return null;
-                                                 return (
+                                                if (k === 'manual_activities_limit' || feature === null) return null;
+                                                return (
                                                     <li key={k} className="flex items-start">
                                                         <i className="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
                                                         <span className="text-gray-700">{feature}</span>
                                                     </li>
-                                                 );
+                                                );
                                             })}
                                             {/* Handle object features if not array */}
                                             {plan.features && !Array.isArray(plan.features) && Object.entries(plan.features).map(([key, feature], k) => {
@@ -242,7 +243,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                                                 );
                                             })}
                                         </ul>
-                                        
+
                                         {/* Action Button */}
                                         {/* We use usePage().props.auth.user to check auth, but here we can just check if user is logged in via shared props */}
                                         {usePage().props.auth?.user ? (
@@ -338,8 +339,8 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                             </p>
                         </div>
 
-                         {/* Keuntungan 6 */}
-                         <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-6 hover:shadow-lg transition-all duration-300" data-aos="fade-up" data-aos-delay="500">
+                        {/* Keuntungan 6 */}
+                        <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-6 hover:shadow-lg transition-all duration-300" data-aos="fade-up" data-aos-delay="500">
                             <div className="bg-red-100 rounded-full w-16 h-16 flex items-center justify-center mb-4">
                                 <i className="fas fa-mobile-alt text-red-600 text-2xl"></i>
                             </div>

@@ -10,7 +10,8 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
-    
+    const [loggingOut, setLoggingOut] = useState(false);
+
     const settings = appSettings || {};
 
     useEffect(() => {
@@ -52,7 +53,8 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 :root {
                     --color-primary: ${settings.colors?.primary || '#7c3aed'};
                     --color-secondary: ${settings.colors?.secondary || '#db2777'};
@@ -306,12 +308,14 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                                     as="button"
                                                     method="post"
                                                     href={route('logout')}
-                                                    className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-all duration-200 hover:translate-x-1 group"
+                                                    disabled={loggingOut}
+                                                    onClick={() => setLoggingOut(true)}
+                                                    className={`flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-all duration-200 hover:translate-x-1 group ${loggingOut ? 'opacity-50 cursor-wait' : ''}`}
                                                 >
                                                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-100 text-red-600 mr-3 group-hover:bg-red-600 group-hover:text-white transition-colors">
-                                                        <i className="fas fa-sign-out-alt"></i>
+                                                        {loggingOut ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sign-out-alt"></i>}
                                                     </div>
-                                                    Logout
+                                                    {loggingOut ? 'Logging out...' : 'Logout'}
                                                 </Link>
                                             </div>
                                         </div>

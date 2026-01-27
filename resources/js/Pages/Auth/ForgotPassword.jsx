@@ -13,17 +13,17 @@ export default function ForgotPassword({ status, hp_time }) {
     };
 
     return (
-        <div className="min-h-screen flex justify-center items-center p-5 bg-gradient-to-br from-primary to-secondary font-sans">
+        <div className="min-h-screen flex justify-center items-center p-5 bg-gradient-to-br from-slate-900 to-indigo-900 font-sans">
             <Head title="Lupa Password - IVEN-HUB" />
-            
+
             <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-10 w-full max-w-[420px] shadow-2xl">
                 <div className="text-center mb-8">
-                     <img 
-                        src="/assets/images/logo.png" 
-                        alt="IVEN-HUB Logo" 
+                    <img
+                        src="/assets/images/logo.png"
+                        alt="IVEN-HUB Logo"
                         className="w-[120px] h-auto mx-auto mb-4"
                         onError={(e) => {
-                            e.target.onerror = null; 
+                            e.target.onerror = null;
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';
                         }}
@@ -47,12 +47,12 @@ export default function ForgotPassword({ status, hp_time }) {
 
                 <form onSubmit={submit}>
                     {/* Honeypot fields */}
-                    <input 
-                        type="text" 
-                        name="hp_field" 
-                        autoComplete="off" 
-                        tabIndex="-1" 
-                        aria-hidden="true" 
+                    <input
+                        type="text"
+                        name="hp_field"
+                        autoComplete="off"
+                        tabIndex="-1"
+                        aria-hidden="true"
                         className="absolute left-[-9999px] top-[-9999px] w-px h-px opacity-0"
                         value={data.hp_field}
                         onChange={(e) => setData('hp_field', e.target.value)}
@@ -61,12 +61,12 @@ export default function ForgotPassword({ status, hp_time }) {
 
                     <div className="mb-6">
                         <label htmlFor="email" className="block mb-2 text-[#333] font-medium text-sm">Email</label>
-                        <input 
-                            type="email" 
-                            id="email" 
+                        <input
+                            type="email"
+                            id="email"
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
-                            required 
+                            required
                             placeholder="contoh@email.com"
                             className="w-full px-4 py-3 border-2 border-[#e1e1e1] rounded-xl text-[15px] transition-all duration-300 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
                         />
@@ -78,10 +78,10 @@ export default function ForgotPassword({ status, hp_time }) {
                         )}
                     </div>
 
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         disabled={processing}
-                        className="w-full py-3.5 bg-gradient-to-br from-primary to-secondary border-none rounded-xl text-white text-base font-semibold cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-70"
+                        className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-blue-700 border-none rounded-xl text-white text-base font-bold cursor-pointer transition-all duration-300 hover:from-indigo-500 hover:to-blue-600 hover:-translate-y-0.5 hover:shadow-lg shadow-indigo-200 disabled:opacity-70 active:scale-[0.98]"
                     >
                         {processing ? 'Memproses...' : 'Kirim Link Reset Password'}
                     </button>

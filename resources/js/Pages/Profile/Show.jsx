@@ -399,11 +399,57 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         {role.name}
                                     </span>
                                 ))}
+                                {(!user.roles || user.roles.length === 0) && (
+                                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-600">
+                                        {user.role || 'User'}
+                                    </span>
+                                )}
                             </div>
                             <p className="text-xs text-gray-400 font-medium mt-3 flex items-center justify-center md:justify-start gap-1">
                                 <i className="fas fa-calendar-alt"></i>
                                 Bergabung {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
                             </p>
+                        </div>
+
+                        {/* Status & Kapasitas Akun - Display in the empty space requested */}
+                        <div className="hidden lg:flex flex-col gap-4 mt-0 md:mt-16 bg-white/60 backdrop-blur-xl p-5 rounded-[2rem] border border-white shadow-2xl shadow-gray-200/50 min-w-[280px] animate-in fade-in slide-in-from-right-8 duration-1000">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl ${user.role === 'superadmin' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-red-200' :
+                                    user.role === 'creator' ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-amber-200' :
+                                        'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-blue-200'
+                                    }`}>
+                                    <i className={`fas fa-2x ${user.role === 'superadmin' ? 'fa-shield-halved' : user.role === 'creator' ? 'fa-crown' : 'fa-user-check'}`}></i>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 block mb-0.5">Status Pengguna</span>
+                                    <span className="text-xl font-black text-gray-900 uppercase tracking-tight leading-none truncate block">
+                                        {user.role || 'Member'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 pt-2">
+                                <div className="flex flex-col">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Tingkat Kapasitas</span>
+                                        <span className="text-[10px] font-black px-3 py-1 bg-amber-100 text-amber-700 rounded-full border border-amber-200 uppercase tracking-wider">
+                                            {user.subscription?.plan?.name || 'Gratis'}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-white/80 p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
+                                            <i className="fas fa-users text-amber-500 mb-1 text-sm"></i>
+                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mb-0.5">Max Peserta</span>
+                                            <span className="text-sm font-black text-gray-900 leading-none">{user.subscription?.plan?.max_participants_per_activity || 'Unlimited'}</span>
+                                        </div>
+                                        <div className="bg-white/80 p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
+                                            <i className="fas fa-calendar-plus text-amber-500 mb-1 text-sm"></i>
+                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mb-0.5">Max Kegiatan</span>
+                                            <span className="text-sm font-black text-gray-900 leading-none">{user.subscription?.plan?.max_activities || 'Unlimited'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Status Akun - Moved to Header */}
@@ -615,7 +661,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                 setData(d => ({ ...d, province_id: e.target.value, regency_id: '', district_id: '' }));
                                                 fetchRegencies(e.target.value);
                                             }}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('province_id') && !data.province_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('province_id') && !data.province_id) || errors.province_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             disabled={!canEdit}
                                             required={isFieldRequired('province_id')}
                                         >
@@ -624,6 +670,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                 <option key={p.id} value={p.id}>{p.name}</option>
                                             ))}
                                         </select>
+                                        {errors.province_id && <div className="text-red-500 text-xs mt-1">{errors.province_id}</div>}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -635,7 +682,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                 setData(d => ({ ...d, regency_id: e.target.value, district_id: '' }));
                                                 fetchDistricts(e.target.value);
                                             }}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('regency_id') && !data.regency_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('regency_id') && !data.regency_id) || errors.regency_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             disabled={!canEdit || loadingRegencies || !data.province_id}
                                             required={isFieldRequired('regency_id')}
                                         >
@@ -644,6 +691,8 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                 <option key={r.id} value={r.id}>{r.name}</option>
                                             ))}
                                         </select>
+                                        {errors.regency_id && <div className="text-red-500 text-xs mt-1">{errors.regency_id}</div>}
+                                        {!data.province_id && data.regency_id && <div className="text-amber-600 text-[10px] mt-1 italic font-medium">Pilih Provinsi terlebih dahulu untuk memvalidasi data ini.</div>}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -652,7 +701,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         <select
                                             value={data.district_id}
                                             onChange={(e) => setData('district_id', e.target.value)}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('district_id') && !data.district_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('district_id') && !data.district_id) || errors.district_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             disabled={!canEdit || loadingDistricts || !data.regency_id}
                                             required={isFieldRequired('district_id')}
                                         >
@@ -661,6 +710,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                 <option key={d.id} value={d.id}>{d.name}</option>
                                             ))}
                                         </select>
+                                        {errors.district_id && <div className="text-red-500 text-xs mt-1">{errors.district_id}</div>}
                                     </div>
                                 </div>
                             </div>
@@ -728,32 +778,41 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
 
                 {/* Sidebar Info - Subscription & Stats */}
                 <div className="space-y-8">
-                    {/* Subscription Card */}
-                    <div className="bg-gradient-to-br from-primary to-secondary rounded-3xl shadow-lg p-8 text-white relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16"></div>
+                    {/* Subscription Card - Fixed visibility and enhanced aesthetics */}
+                    <div className="bg-slate-900 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
+                        {/* Vibrant decorative gradients */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/30 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/20 rounded-full blur-[80px] -ml-32 -mb-32"></div>
+
                         <div className="relative z-10">
-                            <h3 className="font-bold text-lg mb-1">Status Langganan</h3>
-                            <div className="flex items-center gap-2 mb-4">
-                                <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold uppercase tracking-wider">
-                                    {user.subscription?.isActive ? (user.subscription.plan?.name || 'Premium') : 'Free Plan'}
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-lg">Status Langganan</h3>
+                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                                    <i className="fas fa-crown text-amber-400"></i>
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <span className={`inline-block px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${user.subscription?.isActive ? 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/20' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}>
+                                    {user.subscription?.isActive ? (user.subscription.plan?.name || 'Premium') : 'FREE PLAN'}
                                 </span>
                             </div>
 
                             {user.subscription?.isActive ? (
-                                <div>
-                                    <p className="text-white/80 text-sm mb-4">
-                                        Langganan Anda aktif hingga {new Date(user.subscription.ends_at).toLocaleDateString()}.
+                                <div className="space-y-4">
+                                    <p className="text-slate-300 text-sm leading-relaxed">
+                                        Langganan Anda aktif hingga <span className="text-white font-bold">{new Date(user.subscription.ends_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>.
                                     </p>
-                                    <Link href="/subscriptions/manage" className="block w-full py-3 bg-white text-primary font-bold text-center rounded-xl hover:bg-indigo-50 transition">
+                                    <Link href="/subscriptions/manage" className="block w-full py-3.5 bg-white text-slate-900 font-bold text-center rounded-2xl hover:bg-gray-100 transition-all shadow-lg hover:shadow-white/10 active:scale-[0.98]">
                                         Kelola Langganan
                                     </Link>
                                 </div>
                             ) : (
-                                <div>
-                                    <p className="text-white/80 text-sm mb-4">
-                                        Upgrade ke Premium untuk akses fitur eksklusif dan batas lebih tinggi.
+                                <div className="space-y-4">
+                                    <p className="text-slate-300 text-sm leading-relaxed">
+                                        Upgrade ke Premium untuk akses fitur eksklusif, batas lebih tinggi, dan analitik lengkap.
                                     </p>
-                                    <Link href={route('subscriptions.pricing')} className="block w-full py-3 bg-white text-primary font-bold text-center rounded-xl hover:bg-indigo-50 transition">
+                                    <Link href={route('subscriptions.pricing')} className="block w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 font-black text-center rounded-2xl hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-400/20 active:scale-[0.98]">
                                         Upgrade Sekarang
                                     </Link>
                                 </div>

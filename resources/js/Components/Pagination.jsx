@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
 
-export default function Pagination({ 
+export default function Pagination({
     links = [],
     currentPage = 1,
     lastPage = 1,
@@ -17,7 +17,7 @@ export default function Pagination({
 
     function generateLinks(current, last) {
         const items = [];
-        
+
         // Previous
         items.push({
             url: current > 1 ? `?page=${current - 1}` : null,
@@ -28,8 +28,8 @@ export default function Pagination({
         // Page numbers
         for (let i = 1; i <= last; i++) {
             if (
-                i === 1 || 
-                i === last || 
+                i === 1 ||
+                i === last ||
                 (i >= current - 2 && i <= current + 2)
             ) {
                 items.push({
@@ -38,7 +38,7 @@ export default function Pagination({
                     active: i === current
                 });
             } else if (
-                i === current - 3 || 
+                i === current - 3 ||
                 i === current + 3
             ) {
                 items.push({
@@ -138,7 +138,7 @@ export default function Pagination({
                         if (!link.url) {
                             return (
                                 <span key={index} aria-disabled="true">
-                                    <span 
+                                    <span
                                         className="relative inline-flex items-center justify-center w-9 h-9 text-sm font-medium text-gray-400 bg-white border border-gray-300 cursor-default rounded-lg"
                                         aria-hidden="true"
                                         dangerouslySetInnerHTML={{ __html: link.label }}
@@ -150,7 +150,7 @@ export default function Pagination({
                         if (link.active) {
                             return (
                                 <span key={index} aria-current="page">
-                                    <span className="relative inline-flex items-center justify-center w-9 h-9 text-sm font-medium text-white bg-gradient-to-br from-primary to-secondary border-2 border-secondary cursor-default rounded-lg shadow-lg">
+                                    <span className="relative inline-flex items-center justify-center w-9 h-9 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-blue-700 border border-indigo-700 cursor-default rounded-lg shadow-md shadow-indigo-200">
                                         {link.label}
                                     </span>
                                 </span>

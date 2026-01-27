@@ -52,6 +52,39 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
         }
     }, [data.regency_id]);
 
+    // Effect to show errors in modal
+    useEffect(() => {
+        if (Object.keys(errors).length > 0) {
+            // Check for location specific errors
+            const locationErrors = [];
+            if (errors.province_id) locationErrors.push(errors.province_id);
+            if (errors.regency_id) locationErrors.push(errors.regency_id);
+            if (errors.district_id) locationErrors.push(errors.district_id);
+
+            if (locationErrors.length > 0) {
+                Swal.fire({
+                    title: 'Perhatian!',
+                    html: `Terdapat kesalahan pada data wilayah:<br/><ul>${locationErrors.map(e => `<li style="color:red; margin-top:5px;">• ${e}</li>`).join('')}</ul>`,
+                    icon: 'warning',
+                    confirmButtonText: 'Perbaiki Sekarang'
+                });
+            } else if (errors.error) {
+                // Handle generic server error caught in controller try-catch
+                Swal.fire({
+                    title: 'Terjadi Kesalahan',
+                    text: errors.error,
+                    icon: 'error',
+                });
+            } else {
+                Swal.fire({
+                    title: 'Validasi Gagal',
+                    text: 'Mohon periksa kembali isian formulir Anda.',
+                    icon: 'error',
+                });
+            }
+        }
+    }, [errors]);
+
     const handlePhotoChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -101,7 +134,7 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
         }
         setShowCamera(false);
     };
-    
+
     const handleDeletePhoto = () => {
         Swal.fire({
             title: 'Hapus foto?',
@@ -134,7 +167,7 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
     return (
         <div className="min-h-screen bg-gray-50 pb-12">
             <Head title="Edit Profil Peserta" />
-            
+
             {/* Simple Navbar */}
             <nav className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-md">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -162,9 +195,9 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                     <div className="p-8">
                         {/* Flash messages are handled globally */}
 
-                        
+
                         {Object.keys(errors).length > 0 && (
-                             <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm">
+                            <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm">
                                 <div className="ml-3">
                                     <p className="font-bold text-red-700">Terjadi kesalahan:</p>
                                     <ul className="list-disc ml-5 mt-1 text-sm text-red-700">
@@ -179,15 +212,15 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                         {/* Photo Section */}
                         <div className="flex justify-center mb-8">
                             <div className="relative group">
-                                <img 
-                                    src={photoPreview} 
-                                    alt="Profile" 
+                                <img
+                                    src={photoPreview}
+                                    alt="Profile"
                                     className="w-40 h-40 rounded-full object-cover border-4 border-white shadow-lg"
-                                    onError={(e) => {e.target.src = '/assets/images/profilefoto/default-profile.png'}}
+                                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png' }}
                                 />
                                 <div className="absolute bottom-0 right-0 flex space-x-2">
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         onClick={startCamera}
                                         className="bg-secondary hover:bg-blue-700 text-white p-2 rounded-full shadow-md transition"
                                         title="Ambil Foto"
@@ -199,8 +232,8 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                                         <input type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} />
                                     </label>
                                     {(user.profile?.foto || photoPreview !== '/assets/images/profilefoto/default-profile.png') && (
-                                        <button 
-                                            type="button" 
+                                        <button
+                                            type="button"
                                             onClick={handleDeletePhoto}
                                             className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-md transition"
                                             title="Hapus Foto"
@@ -234,29 +267,29 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap <span className="text-red-500">*</span></label>
-                                    <input 
-                                        type="text" 
-                                        value={data.name} 
+                                    <input
+                                        type="text"
+                                        value={data.name}
                                         onChange={e => setData('name', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 transition"
-                                        required 
+                                        required
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
-                                    <input 
-                                        type="email" 
-                                        value={data.email} 
+                                    <input
+                                        type="email"
+                                        value={data.email}
                                         onChange={e => setData('email', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 transition"
-                                        required 
+                                        required
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">No. HP</label>
-                                    <input 
-                                        type="tel" 
-                                        value={data.no_hp} 
+                                    <input
+                                        type="tel"
+                                        value={data.no_hp}
                                         onChange={e => setData('no_hp', e.target.value.replace(/[^0-9]/g, ''))}
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 transition"
                                         maxLength="13"
@@ -264,8 +297,8 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin <span className="text-red-500">*</span></label>
-                                    <select 
-                                        value={data.jenis_kelamin} 
+                                    <select
+                                        value={data.jenis_kelamin}
                                         onChange={e => setData('jenis_kelamin', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 transition"
                                         required
@@ -281,27 +314,27 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Pekerjaan</label>
-                                    <input 
-                                        type="text" 
-                                        value={data.pekerjaan} 
+                                    <input
+                                        type="text"
+                                        value={data.pekerjaan}
                                         onChange={e => setData('pekerjaan', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 transition"
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Instansi</label>
-                                    <input 
-                                        type="text" 
-                                        value={data.instansi} 
+                                    <input
+                                        type="text"
+                                        value={data.instansi}
                                         onChange={e => setData('instansi', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 transition"
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
-                                    <input 
-                                        type="text" 
-                                        value={data.jabatan} 
+                                    <input
+                                        type="text"
+                                        value={data.jabatan}
                                         onChange={e => setData('jabatan', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 transition"
                                     />
@@ -311,8 +344,8 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                             {/* Address */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap <span className="text-red-500">*</span></label>
-                                <textarea 
-                                    value={data.alamat} 
+                                <textarea
+                                    value={data.alamat}
                                     onChange={e => setData('alamat', e.target.value)}
                                     rows="3"
                                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 transition"
@@ -324,8 +357,8 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Provinsi <span className="text-red-500">*</span></label>
-                                    <select 
-                                        value={data.province_id} 
+                                    <select
+                                        value={data.province_id}
                                         onChange={e => setData('province_id', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 transition"
                                         required
@@ -338,8 +371,8 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Kabupaten/Kota <span className="text-red-500">*</span></label>
-                                    <select 
-                                        value={data.regency_id} 
+                                    <select
+                                        value={data.regency_id}
                                         onChange={e => setData('regency_id', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 transition"
                                         required
@@ -353,8 +386,8 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Kecamatan <span className="text-red-500">*</span></label>
-                                    <select 
-                                        value={data.district_id} 
+                                    <select
+                                        value={data.district_id}
                                         onChange={e => setData('district_id', e.target.value)}
                                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary/20 transition"
                                         required
@@ -379,9 +412,9 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                                         <i className="fas fa-arrow-left mr-2"></i> Kembali
                                     </button>
                                 )}
-                                
-                                <button 
-                                    type="submit" 
+
+                                <button
+                                    type="submit"
                                     disabled={processing}
                                     className="px-6 py-2 bg-secondary text-white rounded-md hover:bg-secondary/90 transition flex items-center shadow-md disabled:opacity-50"
                                 >

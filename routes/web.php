@@ -58,6 +58,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Public Routes
+Route::get('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout.get');
+Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout'); // Keep POST for standard compatibility
 Route::get('/fix-storage-link', function () {
     try {
         Artisan::call('storage:link');

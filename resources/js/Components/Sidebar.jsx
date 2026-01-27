@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 
 export default function Sidebar({ collapsed = false }) {
     const { auth, url, appSettings } = usePage().props;
     const user = auth?.user;
-    
+    const [loggingOut, setLoggingOut] = useState(false);
+
     if (!user) return null;
 
     const isSuperAdmin = user.role === 'superadmin';
@@ -24,11 +25,10 @@ export default function Sidebar({ collapsed = false }) {
 
     const NavLink = ({ href, icon, label, active }) => (
         <li className="nav-item">
-            <Link 
-                href={href} 
-                className={`nav-link flex items-center gap-2 px-4 py-2 rounded-lg text-white/85 hover:text-white hover:bg-white/10 transition-all ${
-                    active ? 'bg-gradient-to-r from-primary to-secondary text-white border-l-4 border-white' : ''
-                } ${collapsed ? 'justify-center' : ''}`}
+            <Link
+                href={href}
+                className={`nav-link flex items-center gap-2 px-4 py-2 rounded-lg text-white/85 hover:text-white hover:bg-white/10 transition-all ${active ? 'bg-gradient-to-r from-primary to-secondary text-white border-l-4 border-white' : ''
+                    } ${collapsed ? 'justify-center' : ''}`}
                 title={collapsed ? label : ''}
             >
                 <i className={`${icon} w-4 text-center ${collapsed ? 'text-lg' : ''}`}></i>
@@ -52,8 +52,8 @@ export default function Sidebar({ collapsed = false }) {
             {/* Logo Panel */}
             <div className={`logo-panel px-4 py-6 border-b border-white/10 flex justify-center items-center`}>
                 <Link href="/" className="flex justify-center items-center w-full">
-                    <img 
-                        src={appSettings?.app_logo ? (appSettings.app_logo.startsWith('http') ? appSettings.app_logo : `/${appSettings.app_logo}`) : '/assets/images/logo.png'} 
+                    <img
+                        src={appSettings?.app_logo ? (appSettings.app_logo.startsWith('http') ? appSettings.app_logo : `/${appSettings.app_logo}`) : '/assets/images/logo.png'}
                         alt="Logo"
                         className={`object-contain transition-all duration-300 ${collapsed ? 'h-10 w-10' : 'h-24 w-auto max-w-full'}`}
                         onError={(e) => { e.target.src = '/assets/images/logo.png'; }}
@@ -100,7 +100,7 @@ export default function Sidebar({ collapsed = false }) {
                             <MenuSection title="Manajemen" />
                             <NavLink href={route('user-management.index')} icon="fas fa-users-cog" label="Manajemen User" active={isActive('user-management.*')} />
                             <NavLink href={route('subscriptions.payments.manage')} icon="fas fa-money-bill-wave" label="Keuangan" active={isActive('payments.manage') || isActive('subscriptions.payments.*')} />
-                            
+
                             {isSuperAdmin && (
                                 <>
                                     <NavLink href={route('api-monitor.index')} icon="fas fa-network-wired" label="API" active={isActive('api-monitor.*')} />
@@ -135,11 +135,13 @@ export default function Sidebar({ collapsed = false }) {
                     as="button"
                     method="post"
                     href={route('logout')}
-                    className={`w-full flex items-center bg-danger hover:bg-danger/90 text-white rounded-lg font-semibold transition-all shadow-sm hover:shadow-md py-2 ${collapsed ? 'justify-center' : 'justify-center gap-2 px-4'}`}
+                    disabled={loggingOut}
+                    onClick={() => setLoggingOut(true)}
+                    className={`w-full flex items-center bg-danger hover:bg-danger/90 text-white rounded-lg font-semibold transition-all shadow-sm hover:shadow-md py-2 ${collapsed ? 'justify-center' : 'justify-center gap-2 px-4'} ${loggingOut ? 'opacity-50 cursor-wait' : ''}`}
                     title={collapsed ? 'Logout' : ''}
                 >
-                    <i className="fas fa-sign-out-alt"></i>
-                    {!collapsed && <span>Logout</span>}
+                    <i className={`fas ${loggingOut ? 'fa-spinner fa-spin' : 'fa-sign-out-alt'}`}></i>
+                    {!collapsed && <span>{loggingOut ? 'Logging out...' : 'Logout'}</span>}
                 </Link>
             </div>
         </div>

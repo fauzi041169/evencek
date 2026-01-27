@@ -15,13 +15,13 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     const hexToRgba = (hex, alpha) => {
         if (!hex) return `rgba(124, 58, 237, ${alpha})`; // default purple
         let c;
-        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
-            c= hex.substring(1).split('');
-            if(c.length== 3){
-                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+        if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+            c = hex.substring(1).split('');
+            if (c.length == 3) {
+                c = [c[0], c[0], c[1], c[1], c[2], c[2]];
             }
-            c= '0x'+c.join('');
-            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+            c = '0x' + c.join('');
+            return 'rgba(' + [(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',') + ',' + alpha + ')';
         }
         return hex;
     }
@@ -34,15 +34,15 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     };
 
     // Process hero slides to ensure uniform format, prioritizing global setting if available
-    const processedSlides = heroBg1 
-        ? [{ image: getStorageUrl(heroBg1) }] 
+    const processedSlides = heroBg1
+        ? [{ image: getStorageUrl(heroBg1) }]
         : (heroSlides.length > 0 ? heroSlides.map(slide => {
             if (typeof slide === 'string') {
                 return { image: slide };
             }
             return slide;
         }) : [{ image: '/assets/images/hero/defoult.webp' }]);
-    
+
     const activeSlide = processedSlides[currentSlide] || {};
     // Force static content as requested to match the specific design
     const heroTitle = "Platform Manajemen Event Digital Profesional";
@@ -53,7 +53,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     // Auto-advance hero slides
     useEffect(() => {
         if (processedSlides.length <= 1) return;
-        
+
         const interval = setInterval(() => {
             setCurrentSlide(prev => (prev + 1) % processedSlides.length);
         }, 5000);
@@ -96,10 +96,10 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     // Parallax Effect
     useEffect(() => {
         let ticking = false;
-        
+
         const updateParallax = () => {
             const lastY = window.scrollY;
-            
+
             // Hero slides background position
             const offset = Math.max(-80, Math.min(80, -lastY * 0.15));
             document.querySelectorAll('.hero-slide').forEach(s => {
@@ -109,15 +109,15 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
             // Gradient overlays
             const overlays = document.querySelectorAll('.hero-gradient-overlay');
             const overlaysTop = document.querySelectorAll('.hero-gradient-overlay-top');
-            
+
             const t = Math.max(-30, Math.min(30, lastY * 0.08));
             const o = Math.max(0.6, Math.min(1, 1 - lastY * 0.0008));
-            
+
             overlays.forEach(el => {
                 el.style.transform = `translateY(${t}px)`;
                 el.style.opacity = String(o);
             });
-            
+
             overlaysTop.forEach(el => {
                 el.style.transform = `translateY(${-t}px)`;
                 el.style.opacity = String(o);
@@ -164,7 +164,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
 
         const getStep = () => {
             const firstCard = slider.querySelector('.flex-none.w-56');
-            const gapPx = 24; 
+            const gapPx = 24;
             if (firstCard) {
                 return Math.ceil(firstCard.getBoundingClientRect().width + gapPx);
             }
@@ -176,7 +176,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
             const step = getStep();
             const max = slider.scrollWidth - slider.clientWidth;
             const next = slider.scrollLeft + step;
-            if (next >= max - 5) { 
+            if (next >= max - 5) {
                 slider.scrollTo({ left: 0, behavior: 'smooth' });
             } else {
                 slider.scrollBy({ left: step, behavior: 'smooth' });
@@ -218,8 +218,9 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     return (
         <WebLayout hasHeaderSpacer={false}>
             <Head title="Home" />
-            
-            <style dangerouslySetInnerHTML={{ __html: `
+
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 .reveal{opacity:0;transform:translateY(16px) scale(.98);transition:opacity .6s ease,transform .6s ease}
                 .reveal.show{opacity:1;transform:translateY(0) scale(1)}
                 .reveal-left{opacity:0;transform:translateX(-16px);transition:opacity .6s ease,transform .6s ease}
@@ -288,23 +289,23 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
             `}} />
 
             <div className="min-h-screen bg-gradient-to-br from-white via-white to-white relative overflow-hidden font-sans">
-                
+
                 {/* Hero Section */}
                 <section className="relative min-h-[85vh] flex items-center overflow-hidden">
                     {/* Dynamic Animations based on Settings */}
                     {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (
                         <>
-                            <div 
+                            <div
                                 className="absolute top-[-10%] right-[-5%] w-96 h-96 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob z-10 pointer-events-none"
                                 style={{ backgroundColor: hexToRgba(appSettings?.colors?.primary, 0.2) }}
                             ></div>
-                            <div 
+                            <div
                                 className="absolute bottom-[-10%] left-[-5%] w-96 h-96 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10 pointer-events-none"
                                 style={{ backgroundColor: hexToRgba(appSettings?.colors?.secondary, 0.2) }}
                             ></div>
                         </>
                     )}
-                    
+
                     {heroAnim === 'rain' && (
                         <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
                             {[...Array(30)].map((_, i) => (
@@ -317,7 +318,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                             ))}
                         </div>
                     )}
-                    
+
                     {heroAnim === 'particles' && (
                         <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
                             {[...Array(30)].map((_, i) => (
@@ -336,11 +337,11 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                     {/* Background Slider */}
                     <div className="absolute inset-0 z-0">
                         {processedSlides.map((slide, index) => (
-                            <div 
+                            <div
                                 key={index}
                                 className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
                             >
-                                <div 
+                                <div
                                     className="absolute inset-0 bg-cover bg-center animate-slow-zoom"
                                     style={{ backgroundImage: `url('${slide.image}')` }}
                                 />
@@ -354,23 +355,23 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                     {/* Content */}
                     <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center min-h-[85vh]">
                         <div className="max-w-5xl mx-auto text-center">
-                             {/* Glass Card Container */}
-                             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 md:p-16 shadow-2xl relative overflow-hidden">
+                            {/* Glass Card Container */}
+                            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 md:p-16 shadow-2xl relative overflow-hidden">
                                 <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50 pointer-events-none"></div>
-                                
+
                                 {/* Headline */}
                                 <h1 className="relative text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-8 reveal drop-shadow-lg tracking-tight">
                                     {heroTitle}
                                 </h1>
 
                                 {/* Subheadline */}
-                                <p className="relative text-lg md:text-xl text-indigo-100 mb-12 leading-relaxed max-w-3xl mx-auto reveal font-medium opacity-90">
+                                <p className="relative text-lg md:text-xl text-indigo-50 mb-12 leading-relaxed max-w-3xl mx-auto reveal font-medium">
                                     {heroDesc}
                                 </p>
 
                                 {/* CTAs */}
-                                <div className="relative flex flex-wrap gap-6 justify-center reveal" style={{transitionDelay: '200ms'}}>
-                                    <Link href={heroLink} 
+                                <div className="relative flex flex-wrap gap-6 justify-center reveal" style={{ transitionDelay: '200ms' }}>
+                                    <Link href={heroLink}
                                         className="group relative px-10 py-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-lg shadow-[0_10px_30px_rgba(79,70,229,0.4)] hover:shadow-[0_20px_40px_rgba(79,70,229,0.5)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
                                     >
                                         <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 skew-x-12 -ml-4"></div>
@@ -379,8 +380,8 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                             {heroLinkText}
                                         </span>
                                     </Link>
-                                    
-                                    <a href="#fitur" 
+
+                                    <a href="#fitur"
                                         className="group px-10 py-5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-lg border border-white/20 backdrop-blur-md transition-all duration-300 flex items-center gap-3 hover:border-white/40 shadow-lg hover:shadow-xl"
                                     >
                                         <i className="fas fa-layer-group text-blue-300 group-hover:text-white transition-colors"></i>
@@ -390,27 +391,27 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                             </div>
                         </div>
 
-                            {/* Trust Signals */}
-                            <div className="mt-14 flex flex-wrap items-center gap-x-8 gap-y-4 text-white/60 text-sm font-semibold tracking-wide uppercase reveal-left border-t border-white/10 pt-8" style={{transitionDelay: '400ms'}}>
-                                <div className="flex items-center gap-2.5">
-                                    <div className="p-1.5 rounded-full bg-green-500/20 text-green-400"><i className="fas fa-check"></i></div>
-                                    <span>Terpercaya</span>
-                                </div>
-                                <div className="flex items-center gap-2.5">
-                                    <div className="p-1.5 rounded-full bg-blue-500/20 text-blue-400"><i className="fas fa-shield-alt"></i></div>
-                                    <span>Data Aman</span>
-                                </div>
-                                <div className="flex items-center gap-2.5">
-                                    <div className="p-1.5 rounded-full bg-purple-500/20 text-purple-400"><i className="fas fa-bolt"></i></div>
-                                    <span>Real-time</span>
-                                </div>
+                        {/* Trust Signals */}
+                        <div className="mt-14 flex flex-wrap items-center gap-x-8 gap-y-4 text-white/60 text-sm font-semibold tracking-wide uppercase reveal-left border-t border-white/10 pt-8" style={{ transitionDelay: '400ms' }}>
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-1.5 rounded-full bg-green-500/20 text-green-400"><i className="fas fa-check"></i></div>
+                                <span>Terpercaya</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-1.5 rounded-full bg-blue-500/20 text-blue-400"><i className="fas fa-shield-alt"></i></div>
+                                <span>Data Aman</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-1.5 rounded-full bg-purple-500/20 text-purple-400"><i className="fas fa-bolt"></i></div>
+                                <span>Real-time</span>
                             </div>
                         </div>
+                    </div>
 
                     {/* Slider Indicators */}
                     <div className="absolute bottom-10 right-10 flex gap-3 z-20">
                         {processedSlides.map((_, i) => (
-                            <button 
+                            <button
                                 key={i}
                                 onClick={() => setCurrentSlide(i)}
                                 className={`h-1.5 rounded-full transition-all duration-500 ${i === currentSlide ? 'w-10 bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'w-2 bg-white/20 hover:bg-white/40'}`}
@@ -427,28 +428,28 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                     </div>
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6" data-stagger="stats" data-countup-group="true">
-                            <StatCard 
-                                icon="fas fa-users" 
-                                fromColor="#7c3aed" 
-                                toColor="#3b82f6" 
-                                count={stats.totalUsers || 0} 
-                                label="Total Pengguna" 
+                            <StatCard
+                                icon="fas fa-users"
+                                fromColor="#7c3aed"
+                                toColor="#3b82f6"
+                                count={stats.totalUsers || 0}
+                                label="Total Pengguna"
                                 className="reveal-left"
                             />
-                            <StatCard 
-                                icon="fas fa-calendar-check" 
-                                fromColor="#3b82f6" 
-                                toColor="#7c3aed" 
-                                count={stats.totalActivities || 0} 
-                                label="Total Kegiatan" 
+                            <StatCard
+                                icon="fas fa-calendar-check"
+                                fromColor="#3b82f6"
+                                toColor="#7c3aed"
+                                count={stats.totalActivities || 0}
+                                label="Total Kegiatan"
                                 className="reveal-right"
                             />
-                            <StatCard 
-                                icon="fas fa-user-tie" 
-                                fromColor="#7c3aed" 
-                                toColor="#3b82f6" 
-                                count={stats.totalCreators || 0} 
-                                label="Total Kreator" 
+                            <StatCard
+                                icon="fas fa-user-tie"
+                                fromColor="#7c3aed"
+                                toColor="#3b82f6"
+                                count={stats.totalCreators || 0}
+                                label="Total Kreator"
                                 className="reveal"
                             />
                         </div>
@@ -507,7 +508,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                     <div className="absolute inset-0 opacity-5">
                         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #7c3aed 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
                     </div>
-                    
+
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                         <div className="text-center mb-20 reveal">
                             <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[#7c3aed]/10 to-[#3b82f6]/10 rounded-2xl mb-6 backdrop-blur-sm border border-[#7c3aed]/30">
@@ -524,42 +525,42 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" data-stagger="features">
-                            <FeatureCard 
+                            <FeatureCard
                                 icon="fas fa-user-check"
                                 title="Pendaftaran Digital"
                                 description="Sistem pendaftaran event online yang mudah dan cepat. Peserta dapat mendaftar kapan saja, di mana saja, dengan proses yang ter-record secara digital."
                                 points={["Form pendaftaran otomatis", "Validasi data real-time", "Tracking status pendaftaran"]}
                                 className="reveal-left"
                             />
-                            <FeatureCard 
+                            <FeatureCard
                                 icon="fas fa-users-cog"
                                 title="Manajemen Peserta & Panitia"
                                 description="Kelola peserta dan panitia dengan sistem terpusat. Import/export data, filter pencarian, dan manajemen peran yang ter-record lengkap."
                                 points={["Manajemen database peserta", "Penugasan panitia event", "Import/Export Excel"]}
                                 className="reveal"
                             />
-                            <FeatureCard 
+                            <FeatureCard
                                 icon="fas fa-id-card"
                                 title="Kartu Peserta Digital"
                                 description="Generate kartu peserta digital dengan QR code. Desain customizable, print ready, dan dapat diakses langsung oleh peserta secara digital."
                                 points={["QR Code untuk absensi", "Desain customizable", "Print batch atau individual"]}
                                 className="reveal-right"
                             />
-                            <FeatureCard 
+                            <FeatureCard
                                 icon="fas fa-certificate"
                                 title="Sertifikat Digital"
                                 description="Generate sertifikat digital otomatis untuk semua peserta. Desain profesional, verifikasi digital, dan pengiriman otomatis."
                                 points={["Generate otomatis", "Desain profesional", "Verifikasi digital"]}
                                 className="reveal-pop"
                             />
-                            <FeatureCard 
+                            <FeatureCard
                                 icon="fas fa-qrcode"
                                 title="Sistem Absensi Digital"
                                 description="Absensi menggunakan QR code scanner atau manual. Data absensi ter-record real-time dan dapat diekspor untuk laporan."
                                 points={["Scan QR Code", "Realtime tracking", "Export laporan absensi"]}
                                 className="reveal-pop"
                             />
-                            <FeatureCard 
+                            <FeatureCard
                                 icon="fas fa-database"
                                 title="Semua Ter-record Digital"
                                 description="Semua aktivitas event ter-record secara digital: pendaftaran, pembayaran, absensi, sertifikat, dan dokumentasi. Data aman dan dapat diakses kapan saja."
@@ -607,7 +608,7 @@ function StatCard({ icon, fromColor, toColor, count, label, className }) {
     return (
         <div className={`group bg-gradient-to-br from-white to-indigo-50 rounded-3xl p-6 border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-500 transform hover:-translate-y-1 shadow-lg hover:shadow-xl ${className}`}>
             <div className="flex items-center gap-4">
-                <div 
+                <div
                     className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-white"
                     style={{ background: `linear-gradient(135deg, ${fromColor}, ${toColor})` }}
                 >
@@ -675,10 +676,10 @@ function CountUp({ end }) {
                     const animate = (currentTime) => {
                         const elapsed = currentTime - startTime;
                         const progress = Math.min(elapsed / duration, 1);
-                        
+
                         // Easing function
                         const easeOut = 1 - Math.pow(1 - progress, 3);
-                        
+
                         setCount(Math.floor(easeOut * end));
 
                         if (progress < 1) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { usePage, Link } from '@inertiajs/react';
+import { usePage, Link, router } from '@inertiajs/react';
 
 export default function Navbar({ auth, transparent = false, onSidebarToggle = null }) {
     const { props } = usePage();
@@ -7,6 +7,7 @@ export default function Navbar({ auth, transparent = false, onSidebarToggle = nu
 
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -16,13 +17,12 @@ export default function Navbar({ auth, transparent = false, onSidebarToggle = nu
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    const navClasses = `fixed top-0 inset-x-0 z-50 transition-all duration-300 border-b ${
-        scrolled
-            ? 'bg-[#0F172A]/90 backdrop-blur-md border-gray-800 py-3 shadow-lg'
-            : transparent
+    const navClasses = `fixed top-0 inset-x-0 z-50 transition-all duration-300 border-b ${scrolled
+        ? 'bg-[#0F172A]/90 backdrop-blur-md border-gray-800 py-3 shadow-lg'
+        : transparent
             ? 'bg-transparent border-transparent py-5'
             : 'bg-[#0F172A] border-gray-800 py-3'
-    }`;
+        }`;
 
     return (
         <nav className={navClasses}>
@@ -58,21 +58,19 @@ export default function Navbar({ auth, transparent = false, onSidebarToggle = nu
                 <div className="hidden md:flex items-center gap-6">
                     <Link
                         href="/"
-                        className={`text-sm font-medium transition py-2 ${
-                            window.location.pathname === '/'
-                                ? 'text-white border-b-2 border-white'
-                                : 'text-gray-300 hover:text-white'
-                        }`}
+                        className={`text-sm font-medium transition py-2 ${window.location.pathname === '/'
+                            ? 'text-white border-b-2 border-white'
+                            : 'text-gray-300 hover:text-white'
+                            }`}
                     >
                         Beranda
                     </Link>
                     <Link
                         href="/activity"
-                        className={`text-sm font-medium transition py-2 ${
-                            window.location.pathname.startsWith('/activity')
-                                ? 'text-white border-b-2 border-white'
-                                : 'text-gray-300 hover:text-white'
-                        }`}
+                        className={`text-sm font-medium transition py-2 ${window.location.pathname.startsWith('/activity')
+                            ? 'text-white border-b-2 border-white'
+                            : 'text-gray-300 hover:text-white'
+                            }`}
                     >
                         Acara
                     </Link>
@@ -139,17 +137,19 @@ export default function Navbar({ auth, transparent = false, onSidebarToggle = nu
                                             <div className="h-px bg-gray-700/50 mx-2 my-1"></div>
 
                                             {/* Logout */}
-                                            <Link
-                                                href={route('logout')}
-                                                method="post"
-                                                as="button"
-                                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors group/item text-left"
+                                            <button
+                                                onClick={() => {
+                                                    setLoggingOut(true);
+                                                    router.post(route('logout'));
+                                                }}
+                                                disabled={loggingOut}
+                                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors group/item text-left ${loggingOut ? 'opacity-50 cursor-wait' : ''}`}
                                             >
                                                 <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500">
-                                                    <i className="fas fa-sign-out-alt"></i>
+                                                    {loggingOut ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sign-out-alt"></i>}
                                                 </div>
-                                                <span className="font-medium">Keluar</span>
-                                            </Link>
+                                                <span className="font-medium">{loggingOut ? 'Keluar...' : 'Keluar'}</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

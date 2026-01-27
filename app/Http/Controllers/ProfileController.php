@@ -17,7 +17,7 @@ class ProfileController extends Controller
 {
     public function index()
     {
-        $user = Auth::user()->load(['profile.province', 'profile.regency', 'profile.district']);
+        $user = Auth::user()->load(['profile.province', 'profile.regency', 'profile.district', 'subscription.plan']);
 
         // Ambil semua langganan aktif maupun pending untuk ditampilkan di profil
         $subscriptions = $user->subscriptions()
@@ -39,14 +39,14 @@ class ProfileController extends Controller
     {
         // Jika parameter user diberikan, gunakan itu, jika tidak gunakan user yang sedang login
         if ($user) {
-            $user = User::with(['profile.province', 'profile.regency', 'profile.district'])->findOrFail($user);
+            $user = User::with(['profile.province', 'profile.regency', 'profile.district', 'subscription.plan'])->findOrFail($user);
 
             // Perbaiki otorisasi: izinkan admin dan superadmin melihat profil siapa pun
             if (! auth()->check() || (auth()->id() !== $user->id && ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()))) {
                 abort(403, 'Unauthorized action.');
             }
         } else {
-            $user = auth()->user()->load(['profile.province', 'profile.regency', 'profile.district']);
+            $user = auth()->user()->load(['profile.province', 'profile.regency', 'profile.district', 'subscription.plan']);
         }
         // Ambil semua langganan aktif maupun pending untuk ditampilkan di profil
         $subscriptions = $user->subscriptions()

@@ -11,13 +11,13 @@ export default function About() {
     const hexToRgba = (hex, alpha) => {
         if (!hex) return `rgba(124, 58, 237, ${alpha})`; // default purple
         let c;
-        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
-            c= hex.substring(1).split('');
-            if(c.length== 3){
-                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+        if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+            c = hex.substring(1).split('');
+            if (c.length == 3) {
+                c = [c[0], c[0], c[1], c[1], c[2], c[2]];
             }
-            c= '0x'+c.join('');
-            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+            c = '0x' + c.join('');
+            return 'rgba(' + [(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',') + ',' + alpha + ')';
         }
         return hex;
     }
@@ -40,7 +40,8 @@ export default function About() {
     return (
         <WebLayout hasHeaderSpacer={false}>
             <Head title="Tentang Kami - Solusi Enterprise" />
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 /* Animations */
                 @keyframes blob {
                     0% { transform: translate(0px, 0px) scale(1); }
@@ -77,24 +78,24 @@ export default function About() {
                     100% { transform: translateY(-10vh) scale(1); opacity: 0; }
                 }
             `}} />
-            
+
             <div className="bg-white font-sans text-slate-800">
-                
+
                 {/* HERO SECTION */}
                 <div className="relative overflow-hidden bg-slate-900 pt-32 pb-20 lg:pt-48 lg:pb-32">
                     {/* Background Pattern */}
                     <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-                         {/* Base Background */}
+                        {/* Base Background */}
                         <div className="absolute inset-0 bg-slate-900 z-0"></div>
 
                         {appSettings?.hero_background_1 && (
-                            <div 
+                            <div
                                 className="absolute inset-0 bg-cover bg-center opacity-40 transition-opacity duration-500 z-0"
                                 style={{ backgroundImage: `url('${getStorageUrl(appSettings.hero_background_1)}')` }}
                             />
                         )}
                         {!appSettings?.hero_background_1 && (
-                             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
                         )}
 
                         {/* Gradient Overlay */}
@@ -103,17 +104,17 @@ export default function About() {
                         {/* Dynamic Animations based on Settings */}
                         {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (
                             <>
-                                <div 
+                                <div
                                     className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] rounded-full blur-[120px] opacity-30 mix-blend-screen animate-blob"
                                     style={{ backgroundColor: hexToRgba(appSettings?.colors?.primary, 0.2) }}
                                 ></div>
-                                <div 
+                                <div
                                     className="absolute bottom-0 right-0 w-[800px] h-[600px] rounded-full blur-[100px] opacity-20 animate-blob animation-delay-2000"
                                     style={{ backgroundColor: hexToRgba(appSettings?.colors?.secondary, 0.2) }}
                                 ></div>
                             </>
                         )}
-                        
+
                         {heroAnim === 'rain' && (
                             <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
                                 {[...Array(30)].map((_, i) => (
@@ -126,7 +127,7 @@ export default function About() {
                                 ))}
                             </div>
                         )}
-                        
+
                         {heroAnim === 'particles' && (
                             <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
                                 {[...Array(30)].map((_, i) => (
@@ -148,16 +149,16 @@ export default function About() {
                             <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
                             <span className="text-sm font-medium text-slate-300 tracking-wide">LEADING INNOVATION</span>
                         </div>
-                        
+
                         <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-tight mb-8 leading-tight max-w-5xl mx-auto">
-                            Membangun Masa Depan <br/>
+                            Membangun Masa Depan <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Manajemen Event</span>
                         </h1>
-                        
-                        <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed">
+
+                        <p className="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-12 leading-relaxed">
                             Kami menghadirkan solusi teknologi enterprise untuk mengoptimalkan setiap aspek penyelenggaraan acara Anda. Dari registrasi hingga analitik mendalam.
                         </p>
-                        
+
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Link href="/register" className="w-full sm:w-auto px-8 py-4 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all transform hover:-translate-y-1">
                                 Mulai Sekarang
@@ -170,7 +171,7 @@ export default function About() {
 
                         {/* Abstract 3D Elements Placeholder */}
                         <div className="mt-20 relative hidden lg:block">
-                             <div className="absolute left-1/2 -translate-x-1/2 top-0 w-3/4 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
+                            <div className="absolute left-1/2 -translate-x-1/2 top-0 w-3/4 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
                         </div>
                     </div>
                 </div>
@@ -204,16 +205,16 @@ export default function About() {
                             <div className="relative">
                                 <div className="absolute -top-4 -left-4 w-24 h-24 bg-primary/10 rounded-tl-3xl -z-10"></div>
                                 <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-secondary/10 rounded-br-3xl -z-10"></div>
-                                <img 
-                                    src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
-                                    alt="Team working" 
+                                <img
+                                    src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+                                    alt="Team working"
                                     className="rounded-2xl shadow-2xl w-full object-cover h-[500px]"
                                 />
                                 <div className="absolute bottom-8 left-8 right-8 bg-white/90 backdrop-blur p-6 rounded-xl shadow-lg border border-white/50">
                                     <p className="text-slate-800 font-medium italic">"Inovasi adalah jantung dari setiap solusi yang kami bangun. Kami tidak hanya membuat software, kami menciptakan ekosistem."</p>
                                 </div>
                             </div>
-                            
+
                             <div>
                                 <h2 className="text-primary font-bold tracking-wider uppercase text-sm mb-3">Tentang Perusahaan</h2>
                                 <h3 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-6 leading-tight">Partner Teknologi Terpercaya Anda</h3>
@@ -223,7 +224,7 @@ export default function About() {
                                 <p className="text-lg text-slate-600 mb-8 leading-relaxed">
                                     Platform kami dirancang untuk skalabilitas, keamanan, dan kemudahan penggunaan, memastikan setiap stakeholder - dari panitia hingga peserta - mendapatkan pengalaman terbaik.
                                 </p>
-                                
+
                                 <div className="grid sm:grid-cols-2 gap-6">
                                     <div className="flex gap-4">
                                         <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
@@ -283,11 +284,11 @@ export default function About() {
                 <section className="py-20 bg-slate-900 relative overflow-hidden" id="contact">
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
                     <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-primary/10 to-transparent"></div>
-                    
+
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Siap Mengubah Cara Anda Mengelola Event?</h2>
                         <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">Bergabunglah dengan ratusan organisasi yang telah mempercayakan manajemen event mereka kepada kami.</p>
-                        
+
                         <div className="flex flex-col sm:flex-row justify-center gap-4">
                             <a href="mailto:contact@eventcek.com" className="px-8 py-4 bg-white text-slate-900 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-lg">
                                 Hubungi Sales
@@ -298,10 +299,10 @@ export default function About() {
                         </div>
                     </div>
                 </section>
-                
+
                 {/* FOOTER SIMPLE */}
                 <footer className="bg-slate-950 py-12 border-t border-slate-800">
-                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
                         <div className="text-slate-400 text-sm">
                             &copy; {new Date().getFullYear()} EventCek Management System. All rights reserved.
                         </div>
@@ -311,7 +312,7 @@ export default function About() {
                             <a href="#" className="text-slate-500 hover:text-white transition-colors"><i className="fab fa-instagram text-xl"></i></a>
                             <a href="#" className="text-slate-500 hover:text-white transition-colors"><i className="fab fa-linkedin text-xl"></i></a>
                         </div>
-                     </div>
+                    </div>
                 </footer>
             </div>
         </WebLayout>

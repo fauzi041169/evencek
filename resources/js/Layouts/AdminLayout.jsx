@@ -8,12 +8,14 @@ export default function AdminLayout({ children, title = '' }) {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-    
+    const [loggingOut, setLoggingOut] = useState(false);
+
     const settings = appSettings || {};
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 :root {
                     --color-primary: ${settings.colors?.primary || '#7c3aed'};
                     --color-secondary: ${settings.colors?.secondary || '#db2777'};
@@ -33,17 +35,16 @@ export default function AdminLayout({ children, title = '' }) {
             `}} />
             {/* Mobile Sidebar Overlay */}
             {isMobileSidebarOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/50 z-40 lg:hidden"
                     onClick={() => setIsMobileSidebarOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
-            <aside 
-                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 ${
-                    isSidebarCollapsed ? 'w-16' : 'w-64'
-                } ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+            <aside
+                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 ${isSidebarCollapsed ? 'w-16' : 'w-64'
+                    } ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
             >
                 <Sidebar collapsed={isSidebarCollapsed} />
             </aside>
@@ -79,7 +80,7 @@ export default function AdminLayout({ children, title = '' }) {
                         {/* Right Side */}
                         <div className="flex items-center gap-3">
                             {/* Home Link */}
-                            <Link 
+                            <Link
                                 href="/"
                                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary transition-colors"
                                 title="Beranda"
@@ -90,12 +91,12 @@ export default function AdminLayout({ children, title = '' }) {
                             {/* User Info & Dropdown */}
                             {auth && auth.user && (
                                 <div className="flex items-center gap-3 pl-3 border-l border-gray-200 ml-1 relative">
-                                    <div 
+                                    <div
                                         className="relative"
                                         onMouseEnter={() => setIsProfileDropdownOpen(true)}
                                         onMouseLeave={() => setIsProfileDropdownOpen(false)}
                                     >
-                                        <button 
+                                        <button
                                             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                                             className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 rounded-full p-0.5 transition-transform duration-200 hover:scale-105"
                                         >
@@ -103,20 +104,20 @@ export default function AdminLayout({ children, title = '' }) {
                                                 <p className="text-sm font-semibold text-gray-700 leading-tight">{auth.user.name}</p>
                                                 <p className="text-xs text-gray-500 capitalize">{auth.user.role}</p>
                                             </div>
-                                            <img 
-                                                src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'} 
-                                                alt={auth.user.name} 
+                                            <img
+                                                src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                alt={auth.user.name}
                                                 className="h-9 w-9 rounded-full object-cover border-2 border-indigo-100 shadow-sm"
                                                 onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
                                             />
                                         </button>
 
                                         {/* Profile Dropdown */}
-                                        <div 
+                                        <div
                                             className={`
                                                 absolute right-0 pt-4 w-80 z-50 transition-all duration-300 ease-in-out transform origin-top-right
-                                                ${isProfileDropdownOpen 
-                                                    ? 'opacity-100 translate-y-0 scale-100 visible pointer-events-auto' 
+                                                ${isProfileDropdownOpen
+                                                    ? 'opacity-100 translate-y-0 scale-100 visible pointer-events-auto'
                                                     : 'opacity-0 -translate-y-2 scale-95 invisible pointer-events-none'
                                                 }
                                             `}
@@ -127,9 +128,9 @@ export default function AdminLayout({ children, title = '' }) {
                                                     <div className="flex justify-between items-start">
                                                         <div className="flex items-center gap-3">
                                                             <div className="relative">
-                                                                <img 
-                                                                    src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'} 
-                                                                    alt={auth.user.name} 
+                                                                <img
+                                                                    src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                                    alt={auth.user.name}
                                                                     className="h-12 w-12 rounded-full object-cover border-2 border-white shadow-md"
                                                                     onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
                                                                 />
@@ -169,10 +170,10 @@ export default function AdminLayout({ children, title = '' }) {
                                                                 Pengaturan
                                                             </Link>
                                                         )}
-                                                        
+
                                                         <div className="border-t border-gray-100 my-1 mx-2"></div>
-                                                        
-                                                        <button 
+
+                                                        <button
                                                             onClick={() => {
                                                                 Swal.fire({
                                                                     title: 'Bersihkan Cache?',
@@ -203,19 +204,21 @@ export default function AdminLayout({ children, title = '' }) {
                                                             </div>
                                                             Bersihkan Cache
                                                         </button>
-                                                        
+
                                                         <div className="border-t border-gray-100 my-1 mx-2"></div>
-                                                        
-                                                        <Link 
-                                                            as="button" 
-                                                            method="post" 
-                                                            href={route('logout')} 
-                                                            className="flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-colors group"
-                                                            >
+
+                                                        <Link
+                                                            as="button"
+                                                            method="post"
+                                                            href={route('logout')}
+                                                            disabled={loggingOut}
+                                                            onClick={() => setLoggingOut(true)}
+                                                            className={`flex items-center w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 rounded-xl hover:bg-red-50 hover:text-red-700 transition-colors group ${loggingOut ? 'opacity-50 cursor-wait' : ''}`}
+                                                        >
                                                             <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-100 text-red-600 mr-3 group-hover:bg-red-600 group-hover:text-white transition-colors">
-                                                                <i className="fas fa-sign-out-alt"></i>
+                                                                {loggingOut ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sign-out-alt"></i>}
                                                             </div>
-                                                            Logout
+                                                            {loggingOut ? 'Keluar...' : 'Logout'}
                                                         </Link>
                                                     </div>
                                                 </div>

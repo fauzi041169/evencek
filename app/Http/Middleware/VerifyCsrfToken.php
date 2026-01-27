@@ -29,5 +29,7 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         'webhook/github', // GitHub webhook tidak memerlukan CSRF token
+        'auth/logout',    // Logout tidak memerlukan CSRF token untuk menghindari mismatch saat sesi berakhir
+        'logout',         // Alias logout juga dikecualikan
     ];
 }

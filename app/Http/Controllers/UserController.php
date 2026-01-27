@@ -73,6 +73,13 @@ class UserController extends Controller
             'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
             'foto_file' => 'nullable|image|mimes:jpeg,png,jpg|max:20480',
             'foto_data' => 'nullable|string',
+        ], [
+            'province_id.exists' => 'Kode Provinsi tidak valid atau tidak ditemukan di database. Silakan pilih ulang provinsi.',
+            'regency_id.exists' => 'Kode Kabupaten/Kota tidak valid atau tidak ditemukan. Silakan pilih ulang kota.',
+            'district_id.exists' => 'Kode Kecamatan tidak valid atau tidak ditemukan. Silakan pilih ulang kecamatan.',
+            'province_id.required' => 'Provinsi wajib dipilih.',
+            'regency_id.required' => 'Kabupaten/Kota wajib dipilih.',
+            'district_id.required' => 'Kecamatan wajib dipilih.',
         ]);
 
         if ($validator->fails()) {
