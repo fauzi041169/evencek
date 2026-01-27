@@ -60,28 +60,51 @@ export default function DashboardUser({ auth, stats = {}, joinedActivityUsers = 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <h2 className="text-gray-900 text-2xl font-semibold mb-4">Aktivitas Saya</h2>
 
-                    {/* Upgrade to Creator Banner */}
+                    {/* Upgrade to Creator Banner (Premium Design) */}
                     {canUpgrade && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="flex items-start">
-                                <span className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-amber-100 text-amber-700 mr-3 flex-shrink-0">
-                                    <i className="fas fa-star"></i>
-                                </span>
-                                <div>
-                                    <div className="text-sm font-semibold text-amber-800">Upgrade ke Creator</div>
-                                    <div className="text-sm text-amber-900">Buka akses untuk membuat dan mengelola aktivitas Anda sendiri.</div>
+                        <div className="relative overflow-hidden rounded-2xl shadow-lg mb-8 animate-fadeInUp">
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-700"></div>
+                            <div className="absolute inset-0 bg-[url('/assets/images/pattern.png')] opacity-10"></div>
+
+                            {/* Decorative circles */}
+                            <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white opacity-10 blur-3xl"></div>
+                            <div className="absolute -bottom-24 -left-24 w-64 h-64 rounded-full bg-pink-500 opacity-20 blur-3xl"></div>
+
+                            <div className="relative p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 z-10">
+                                <div className="flex-1 text-center md:text-left">
+                                    <h3 className="text-2xl font-bold text-white mb-2">
+                                        Mulai Buat Eventmu Sendiri!
+                                    </h3>
+                                    <p className="text-indigo-100 text-lg max-w-xl">
+                                        Upgrade akun kamu menjadi <span className="font-bold text-white">Creator</span> sekarang.
+                                        Kelola peserta, sertifikat, dan absensi dengan mudah dan profesional.
+                                    </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                    <form onSubmit={handleUpgrade}>
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="group relative inline-flex items-center justify-center px-8 py-3 bg-white text-indigo-700 font-bold rounded-full shadow-lg hover:shadow-xl hover:bg-gray-50 transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-75 disabled:cursor-not-allowed"
+                                        >
+                                            {processing ? (
+                                                <>
+                                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    Memproses...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="mr-2">Upgrade Gratis Sekarang</span>
+                                                    <i className="fas fa-rocket group-hover:translate-x-1 transition-transform"></i>
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
-                            <form onSubmit={handleUpgrade}>
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-md shadow hover:bg-emerald-700 transition disabled:opacity-50"
-                                >
-                                    <i className="fas fa-arrow-up mr-2"></i>
-                                    {processing ? 'Memproses...' : 'Upgrade ke Creator'}
-                                </button>
-                            </form>
                         </div>
                     )}
 

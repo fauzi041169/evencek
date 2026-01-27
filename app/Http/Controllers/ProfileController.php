@@ -637,7 +637,7 @@ class ProfileController extends Controller
         }
 
         if ($user->isCreator() || strtolower($user->role) === 'creator') {
-            return redirect()->route('profile.show', $user->id)
+            return redirect()->back()
                 ->with('info', 'Anda sudah berstatus Creator.');
         }
 
@@ -660,11 +660,11 @@ class ProfileController extends Controller
         } catch (\Throwable $e) {
             \DB::rollBack();
 
-            return redirect()->route('profile.show', $user->id)
+            return redirect()->back()
                 ->with('error', 'Terjadi kesalahan saat upgrade: '.$e->getMessage());
         }
 
-        return redirect()->route('profile.show', $user->id)
+        return redirect()->back()
             ->with('success', 'Selamat! Akun Anda telah diupgrade menjadi Creator.');
     }
 }
