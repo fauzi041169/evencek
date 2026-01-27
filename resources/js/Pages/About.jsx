@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Head, usePage, Link } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 
 export default function About() {
+    const { t } = useTranslation();
     const { flash, appSettings } = usePage().props;
     const [scrolled, setScrolled] = useState(false);
     const heroAnim = appSettings?.hero_animation_style || 'circles';
@@ -162,25 +164,25 @@ export default function About() {
                     <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-slate-700/50 backdrop-blur-md mb-8 animate-fade-in-up">
                             <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
-                            <span className="text-sm font-medium text-slate-300 tracking-wide">LEADING INNOVATION</span>
+                            <span className="text-sm font-medium text-slate-300 tracking-wide">{t('about.hero_badge')}</span>
                         </div>
 
                         <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white tracking-tight mb-8 leading-tight max-w-5xl mx-auto">
-                            Membangun Masa Depan <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Manajemen Event</span>
+                            {t('about.hero_title_1')} <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">{t('about.hero_title_2')}</span>
                         </h1>
 
                         <p className="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-12 leading-relaxed">
-                            Kami menghadirkan solusi teknologi enterprise untuk mengoptimalkan setiap aspek penyelenggaraan acara Anda. Dari registrasi hingga analitik mendalam.
+                            {t('about.hero_desc')}
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Link href="/register" className="w-full sm:w-auto px-8 py-4 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all transform hover:-translate-y-1">
-                                Mulai Sekarang
+                                {t('about.start_now')}
                                 <i className="fas fa-arrow-right ml-2"></i>
                             </Link>
                             <a href="#contact" className="w-full sm:w-auto px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl font-bold transition-all hover:bg-slate-700/80">
-                                Hubungi Tim Kami
+                                {t('about.contact_team')}
                             </a>
                         </div>
 
@@ -196,19 +198,19 @@ export default function About() {
                     <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 lg:p-12 grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
                         <div className="space-y-2">
                             <h3 className="text-4xl font-bold text-slate-900">100+</h3>
-                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Project Selesai</p>
+                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{t('about.stats_projects')}</p>
                         </div>
                         <div className="space-y-2">
                             <h3 className="text-4xl font-bold text-slate-900">500+</h3>
-                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Klien Enterprise</p>
+                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{t('about.stats_clients')}</p>
                         </div>
                         <div className="space-y-2">
                             <h3 className="text-4xl font-bold text-slate-900">99%</h3>
-                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Kepuasan Klien</p>
+                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{t('about.stats_satisfaction')}</p>
                         </div>
                         <div className="space-y-2">
                             <h3 className="text-4xl font-bold text-slate-900">24/7</h3>
-                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Support Aktif</p>
+                            <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{t('about.stats_support')}</p>
                         </div>
                     </div>
                 </div>
@@ -226,18 +228,18 @@ export default function About() {
                                     className="rounded-2xl shadow-2xl w-full object-cover h-[500px]"
                                 />
                                 <div className="absolute bottom-8 left-8 right-8 bg-white/90 backdrop-blur p-6 rounded-xl shadow-lg border border-white/50">
-                                    <p className="text-slate-800 font-medium italic">"Inovasi adalah jantung dari setiap solusi yang kami bangun. Kami tidak hanya membuat software, kami menciptakan ekosistem."</p>
+                                    <p className="text-slate-800 font-medium italic">"{t('about.quote')}"</p>
                                 </div>
                             </div>
 
                             <div>
-                                <h2 className="text-primary font-bold tracking-wider uppercase text-sm mb-3">Tentang Perusahaan</h2>
-                                <h3 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-6 leading-tight">Partner Teknologi Terpercaya Anda</h3>
+                                <h2 className="text-primary font-bold tracking-wider uppercase text-sm mb-3">{t('about.company_about_badge')}</h2>
+                                <h3 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-6 leading-tight">{t('about.company_title')}</h3>
                                 <p className="text-lg text-slate-600 mb-6 leading-relaxed">
-                                    Kami adalah perusahaan teknologi yang berfokus pada pengembangan sistem manajemen event terintegrasi. Dengan pengalaman bertahun-tahun, kami memahami kompleksitas penyelenggaraan acara dan menghadirkan solusi yang menyederhanakan proses tersebut.
+                                    {t('about.company_desc_1')}
                                 </p>
                                 <p className="text-lg text-slate-600 mb-8 leading-relaxed">
-                                    Platform kami dirancang untuk skalabilitas, keamanan, dan kemudahan penggunaan, memastikan setiap stakeholder - dari panitia hingga peserta - mendapatkan pengalaman terbaik.
+                                    {t('about.company_desc_2')}
                                 </p>
 
                                 <div className="grid sm:grid-cols-2 gap-6">
@@ -246,8 +248,8 @@ export default function About() {
                                             <i className="fas fa-shield-alt text-xl"></i>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-slate-900 text-lg">Keamanan Data</h4>
-                                            <p className="text-sm text-slate-500 mt-1">Standar keamanan enterprise grade untuk melindungi data Anda.</p>
+                                            <h4 className="font-bold text-slate-900 text-lg">{t('about.feature_security_title')}</h4>
+                                            <p className="text-sm text-slate-500 mt-1">{t('about.feature_security_desc')}</p>
                                         </div>
                                     </div>
                                     <div className="flex gap-4">
@@ -255,8 +257,8 @@ export default function About() {
                                             <i className="fas fa-rocket text-xl"></i>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-slate-900 text-lg">Performa Tinggi</h4>
-                                            <p className="text-sm text-slate-500 mt-1">Infrastruktur cloud yang dioptimalkan untuk kecepatan akses.</p>
+                                            <h4 className="font-bold text-slate-900 text-lg">{t('about.feature_performance_title')}</h4>
+                                            <p className="text-sm text-slate-500 mt-1">{t('about.feature_performance_desc')}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -269,19 +271,19 @@ export default function About() {
                 <section className="py-24 bg-slate-50">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center max-w-3xl mx-auto mb-16">
-                            <h2 className="text-primary font-bold tracking-wider uppercase text-sm mb-3">Fitur Unggulan</h2>
-                            <h3 className="text-4xl font-bold text-slate-900 mb-6">Solusi Lengkap End-to-End</h3>
-                            <p className="text-lg text-slate-600">Platform kami menyediakan semua alat yang Anda butuhkan untuk menyukseskan acara Anda.</p>
+                            <h2 className="text-primary font-bold tracking-wider uppercase text-sm mb-3">{t('about.features_badge')}</h2>
+                            <h3 className="text-4xl font-bold text-slate-900 mb-6">{t('about.features_title')}</h3>
+                            <p className="text-lg text-slate-600">{t('about.features_desc')}</p>
                         </div>
 
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {[
-                                { title: 'Manajemen Peserta', desc: 'Sistem registrasi online yang mulus dengan validasi otomatis.', icon: 'fa-users', color: 'bg-blue-500' },
-                                { title: 'Analitik Real-time', desc: 'Dashboard data komprehensif untuk memantau performa event.', icon: 'fa-chart-pie', color: 'bg-indigo-500' },
-                                { title: 'Sistem Pembayaran', desc: 'Integrasi payment gateway aman untuk transaksi tiket.', icon: 'fa-credit-card', color: 'bg-violet-500' },
-                                { title: 'Sertifikat Digital', desc: 'Generate sertifikat otomatis dengan QR code verifikasi.', icon: 'fa-certificate', color: 'bg-purple-500' },
-                                { title: 'Absensi QR', desc: 'Check-in cepat dan akurat menggunakan teknologi QR Code.', icon: 'fa-qrcode', color: 'bg-fuchsia-500' },
-                                { title: 'Laporan Otomatis', desc: 'Export data laporan lengkap dalam berbagai format.', icon: 'fa-file-alt', color: 'bg-pink-500' },
+                                { title: t('about.feature_1_title'), desc: t('about.feature_1_desc'), icon: 'fa-users', color: 'bg-blue-500' },
+                                { title: t('about.feature_2_title'), desc: t('about.feature_2_desc'), icon: 'fa-chart-pie', color: 'bg-indigo-500' },
+                                { title: t('about.feature_3_title'), desc: t('about.feature_3_desc'), icon: 'fa-credit-card', color: 'bg-violet-500' },
+                                { title: t('about.feature_4_title'), desc: t('about.feature_4_desc'), icon: 'fa-certificate', color: 'bg-purple-500' },
+                                { title: t('about.feature_5_title'), desc: t('about.feature_5_desc'), icon: 'fa-qrcode', color: 'bg-fuchsia-500' },
+                                { title: t('about.feature_6_title'), desc: t('about.feature_6_desc'), icon: 'fa-file-alt', color: 'bg-pink-500' },
                             ].map((item, idx) => (
                                 <div key={idx} className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 group">
                                     <div className={`w-14 h-14 rounded-2xl ${item.color} flex items-center justify-center text-white text-2xl mb-6 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform`}>
@@ -301,15 +303,15 @@ export default function About() {
                     <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-primary/10 to-transparent"></div>
 
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Siap Mengubah Cara Anda Mengelola Event?</h2>
-                        <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">Bergabunglah dengan ratusan organisasi yang telah mempercayakan manajemen event mereka kepada kami.</p>
+                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">{t('about.cta_title')}</h2>
+                        <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">{t('about.cta_desc')}</p>
 
                         <div className="flex flex-col sm:flex-row justify-center gap-4">
                             <a href="mailto:contact@eventcek.com" className="px-8 py-4 bg-white text-slate-900 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-lg">
-                                Hubungi Sales
+                                {t('about.contact_sales')}
                             </a>
                             <Link href="/register" className="px-8 py-4 bg-transparent border border-slate-600 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors">
-                                Coba Gratis Demo
+                                {t('about.try_demo')}
                             </Link>
                         </div>
                     </div>
@@ -319,7 +321,7 @@ export default function About() {
                 <footer className="bg-slate-950 py-12 border-t border-slate-800">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
                         <div className="text-slate-400 text-sm">
-                            &copy; {new Date().getFullYear()} EventCek Management System. All rights reserved.
+                            &copy; {new Date().getFullYear()} EventCek Management System. {t('about.footer_rights')}
                         </div>
                         <div className="flex gap-6">
                             <a href="#" className="text-slate-500 hover:text-white transition-colors"><i className="fab fa-facebook text-xl"></i></a>
