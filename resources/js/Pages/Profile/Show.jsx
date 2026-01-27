@@ -227,7 +227,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
     const handleFileChange = async (e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
-            
+
             // Limit file size to 2MB to prevent post_max_size issues
             if (file.size > 2 * 1024 * 1024) {
                 Swal.fire({
@@ -294,23 +294,23 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                             />
                         </div>
                         <div className="p-4 flex flex-col gap-4">
-                             <div>
+                            <div>
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">Zoom</label>
                                 <input
-                                  type="range"
-                                  value={zoom}
-                                  min={1}
-                                  max={3}
-                                  step={0.1}
-                                  aria-labelledby="Zoom"
-                                  onChange={(e) => setZoom(e.target.value)}
-                                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-amber-600"
+                                    type="range"
+                                    value={zoom}
+                                    min={1}
+                                    max={3}
+                                    step={0.1}
+                                    aria-labelledby="Zoom"
+                                    onChange={(e) => setZoom(e.target.value)}
+                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-amber-600"
                                 />
-                             </div>
-                             <div className="flex justify-end gap-3">
+                            </div>
+                            <div className="flex justify-end gap-3">
                                 <button onClick={() => setShowCropper(false)} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition">Batal</button>
                                 <button onClick={saveCroppedImage} className="px-4 py-2 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition shadow-lg shadow-amber-600/20">Simpan Foto</button>
-                             </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -753,7 +753,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                     <p className="text-white/80 text-sm mb-4">
                                         Upgrade ke Premium untuk akses fitur eksklusif dan batas lebih tinggi.
                                     </p>
-                                    <Link href="/pricing" className="block w-full py-3 bg-white text-primary font-bold text-center rounded-xl hover:bg-indigo-50 transition">
+                                    <Link href={route('subscriptions.pricing')} className="block w-full py-3 bg-white text-primary font-bold text-center rounded-xl hover:bg-indigo-50 transition">
                                         Upgrade Sekarang
                                     </Link>
                                 </div>

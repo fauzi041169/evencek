@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
+use Inertia\Inertia;
 
 class LoginController extends Controller
 {
@@ -486,6 +487,10 @@ class LoginController extends Controller
             return redirect('/')->withCookie($cookie);
         }
 
-        return redirect('/')->with('success', 'Anda berhasil logout.');
+        // Flash success message to the new session
+        session()->flash('success', 'Anda berhasil logout.');
+        
+        // Force hard reload to update CSRF token
+        return Inertia::location('/');
     }
 }

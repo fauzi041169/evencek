@@ -13,6 +13,7 @@ use Inertia\Inertia;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Midtrans\Transaction;
+use App\Models\Setting;
 
 class SubscriptionController extends Controller
 {

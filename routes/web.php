@@ -78,7 +78,7 @@ Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maint
 
 // Subscription Routes
 Route::prefix('subscriptions')->name('subscriptions.')->controller(SubscriptionController::class)->group(function () {
-    Route::get('/pricing', 'pricing')->name('pricing');
+    Route::get('/pricing', 'index')->name('pricing');
     Route::post('/subscribe', 'subscribe')->name('subscribe')->middleware('auth');
     
     // Payment callback (public)
