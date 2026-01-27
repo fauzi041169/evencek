@@ -22,7 +22,6 @@ class Activity extends Model
         'name',
         'activity_type',
         'description',
-        'materi',
         'category_id',
         'date',
         'end_date',

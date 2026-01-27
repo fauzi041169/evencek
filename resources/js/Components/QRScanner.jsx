@@ -28,7 +28,7 @@ export default function QRScanner({
     const [permissionError, setPermissionError] = useState(null);
     
     const scannerRef = useRef(null);
-    const containerId = "reader-" + Math.random().toString(36).substring(2, 9);
+    const [containerId] = useState("reader-" + Math.random().toString(36).substring(2, 9));
 
     useEffect(() => {
         // Get available cameras

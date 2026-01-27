@@ -43,10 +43,10 @@ class ActivityBatch extends Model
     {
         $pivot = 'activity_users';
         try {
-            if (Schema::hasTable('activitiusers')) {
-                $pivot = 'activitiusers';
-            } elseif (Schema::hasTable('activity_users')) {
+            if (Schema::hasTable('activity_users')) {
                 $pivot = 'activity_users';
+            } elseif (Schema::hasTable('activitiusers')) {
+                $pivot = 'activitiusers';
             }
         } catch (\Throwable $e) {
             $pivot = 'activity_users';

@@ -17,24 +17,6 @@ class ActivityUser extends Model
 
     protected $table = 'activity_users';
 
-    public function __construct(array $attributes = [])
-    {
-        parent::__construct($attributes);
-        // Fallback untuk nama tabel yang mungkin typo di database
-        try {
-            // Prefer 'activitiusers' if exists to match pivot selection in Activity::users()
-            if (\Illuminate\Support\Facades\Schema::hasTable('activitiusers')) {
-                $this->table = 'activitiusers';
-            } elseif (\Illuminate\Support\Facades\Schema::hasTable('activity_users')) {
-                $this->table = 'activity_users';
-            }
-        } catch (\Throwable $e) {
-            // Fallback default jika terjadi error koneksi saat boot
-            // Use the correct table name to avoid queries against a typo table
-            $this->table = 'activity_users';
-        }
-    }
-
     // Status constants
     const STATUS_VERIFICATION = 0;  // Sedang verifikasi
 

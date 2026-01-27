@@ -751,7 +751,15 @@ export default function Show({
 
                             {/* Action Buttons Row */}
                             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                                {pendingPayment ? (
+                                {isEnrolled ? (
+                                    <button
+                                        onClick={() => setIsBulkImportModalOpen(true)}
+                                        className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-emerald-500/90 backdrop-blur-sm text-white font-bold cursor-pointer border border-white/10 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
+                                    >
+                                        <i className="fas fa-user-plus"></i>
+                                        <span>Daftarkan Peserta Lain</span>
+                                    </button>
+                                ) : pendingPayment ? (
                                     <button
                                         onClick={handlePaymentClick}
                                         disabled={loadingPaymentModal}
@@ -759,14 +767,6 @@ export default function Show({
                                     >
                                         {loadingPaymentModal ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-credit-card"></i>}
                                         <span>Selesaikan Pembayaran</span>
-                                    </button>
-                                ) : isEnrolled ? (
-                                    <button
-                                        onClick={() => setIsBulkImportModalOpen(true)}
-                                        className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-emerald-500/90 backdrop-blur-sm text-white font-bold cursor-pointer border border-white/10 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
-                                    >
-                                        <i className="fas fa-user-plus"></i>
-                                        <span>Daftarkan Peserta Lain</span>
                                     </button>
                                 ) : registrationTarget ? (
                                     <>
@@ -954,27 +954,61 @@ export default function Show({
                                             Materi Kegiatan
                                         </h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {materials.map((material) => (
+                                            {materials.map((material) => {
+                                                const isPdf = material.file_type === 'pdf' || (material.file_path && material.file_path.toLowerCase().endsWith('.pdf'));
+                                                
+                                                let iconSrc = '/assets/images/icon/iconpdf.jpg';
+                                                if (material.file_type === 'ppt') iconSrc = '/assets/images/icon/iconppt.jpg';
+                                                else if (material.file_type === 'link' || material.file_type === 'youtube') iconSrc = '/assets/images/icon/iconlink.jpg';
+
+                                                return (
                                                 <div key={material.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition bg-gray-50 flex items-start gap-3">
-                                                    <div className="bg-white p-2 rounded-lg border border-gray-200 shrink-0 text-primary">
-                                                        <i className="fas fa-file-pdf text-xl"></i>
+                                                    <div className="shrink-0">
+                                                        <img src={iconSrc} alt="Icon" className="w-12 h-12 object-contain" />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="font-semibold text-gray-800 truncate mb-1">{material.title}</h4>
+                                                        <h4 className="font-semibold text-gray-800 truncate mb-1">{material.title || material.name}</h4>
                                                         <p className="text-xs text-gray-500 mb-2 line-clamp-2">{material.description || 'Tidak ada deskripsi'}</p>
-                                                        {material.file_path && (
-                                                            <a
-                                                                href={`/storage/${material.file_path}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
-                                                            >
-                                                                <i className="fas fa-download mr-1"></i> Unduh
-                                                            </a>
-                                                        )}
+                                                        
+                                                        <div className="flex items-center gap-3">
+                                                            {/* PDF Preview Link */}
+                                                            {isPdf && (
+                                                                <a
+                                                                    href={route('activity.preparation.view-material', { activityId: activity.id, materialId: material.id })}
+                                                                    className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
+                                                                >
+                                                                    <i className="fas fa-eye mr-1"></i> Preview
+                                                                </a>
+                                                            )}
+
+                                                            {/* Download Link (for all files) */}
+                                                            {material.file_type !== 'link' && material.file_type !== 'youtube' && (
+                                                                <a
+                                                                    href={route('activity.preparation.download-material', { activityId: activity.id, materialId: material.id })}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center text-xs font-medium text-gray-600 hover:text-primary"
+                                                                >
+                                                                    <i className="fas fa-download mr-1"></i> Unduh
+                                                                </a>
+                                                            )}
+                                                            
+                                                            {/* External Link */}
+                                                            {(material.file_type === 'link' || material.file_type === 'youtube') && (
+                                                                 <a
+                                                                    href={material.file_path}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
+                                                                >
+                                                                    <i className="fas fa-external-link-alt mr-1"></i> Buka Link
+                                                                </a>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}

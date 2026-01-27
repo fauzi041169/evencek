@@ -784,20 +784,42 @@ class ActivityController extends Controller
         // Resolve Card Setting (Design) - Prioritas: Batch -> First Batch -> Global
         $designModel = null;
 
-        // 1. Coba ambil dari batch spesifik
+        // Helper to check if setting has actual elements
+        $settingHasElements = function($setting) {
+            if (!$setting) return false;
+            
+            // Handle both Array and Object (Eloquent Model) access
+            $cs = null;
+            if (is_array($setting)) {
+                $cs = $setting['card_setting'] ?? null;
+            } elseif (is_object($setting)) {
+                $cs = $setting->card_setting ?? null;
+            }
+
+            if (empty($cs)) return false;
+
+            if (is_string($cs)) {
+                $cs = json_decode($cs, true);
+            }
+            
+            if (!is_array($cs)) return false;
+            
+            // Check for any key that is not 'card'
+            foreach (array_keys($cs) as $key) {
+                if ($key !== 'card') return true;
+            }
+            
+            return false;
+        };
+
+        // 1. Coba ambil dari batch spesifik (Prioritaskan yang punya elements)
         if ($cardBatchId) {
             $batchSettings = CardSettings::where('activity_id', $activity->id)
                 ->where('activity_batch_id', $cardBatchId)
                 ->first();
 
-            if ($batchSettings) {
-                $cs = $batchSettings->card_setting;
-                if (is_string($cs)) {
-                    $cs = json_decode($cs, true);
-                }
-                if (! empty($cs) && is_array($cs) && ! empty($cs['card'])) {
-                    $designModel = $batchSettings;
-                }
+            if ($batchSettings && $settingHasElements($batchSettings)) {
+                $designModel = $batchSettings;
             }
         }
 
@@ -809,31 +831,48 @@ class ActivityController extends Controller
                     ->where('activity_batch_id', $firstBatch->id)
                     ->first();
 
-                if ($firstBatchSettings) {
-                    $cs = $firstBatchSettings->card_setting;
-                    if (is_string($cs)) {
-                        $cs = json_decode($cs, true);
-                    }
-                    if (! empty($cs) && is_array($cs) && ! empty($cs['card'])) {
-                        $designModel = $firstBatchSettings;
-                    }
+                if ($firstBatchSettings && $settingHasElements($firstBatchSettings)) {
+                    $designModel = $firstBatchSettings;
                 }
             }
         }
 
-        // 3. Fallback to global setting
+        // 3. Fallback to global setting (Prioritaskan yang punya elements)
         if (! $designModel) {
             $globalDesign = CardSettings::where('activity_id', $activity->id)
                 ->whereNull('activity_batch_id')
                 ->first();
+            
             if ($globalDesign) {
-                $designModel = $globalDesign;
+                // If the global design has elements, use it.
+                // Or if we haven't found ANYTHING yet, take it as a baseline (even if empty, better than null)
+                // BUT, to avoid "zombie" global settings blocking the default injection, 
+                // we prefer it only if it has elements OR if it's the only option we really have.
+                // However, the "default element injection" logic at the end depends on empty($cardSetting).
+                // So if we pick an empty global setting here, the injection won't happen.
+                
+                if ($settingHasElements($globalDesign)) {
+                    $designModel = $globalDesign;
+                } elseif (!$designModel) {
+                     // Keep it as a candidate but don't stop searching for better ones in step 4?
+                     // Actually, step 4 searches for ANY setting with elements.
+                     // So let's store it tentatively.
+                     $designModel = $globalDesign;
+                }
             }
         }
 
-        // 4. Last resort: ambil sembarang setting
-        if (! $designModel) {
-            $designModel = CardSettings::where('activity_id', $activity->id)->first();
+        // 4. Last resort: kalau belum ketemu design yang *valid* (punya elements), cari sembarang setting lain yang punya element
+        // Check if our current candidate ($designModel) actually has elements.
+        if (!$designModel || !$settingHasElements($designModel)) {
+            // Cari setting apapun milik activity ini yang punya content
+            $allSettings = CardSettings::where('activity_id', $activity->id)->get();
+            foreach ($allSettings as $s) {
+                if ($settingHasElements($s)) {
+                    $designModel = $s;
+                    break;
+                }
+            }
         }
 
         $cardSetting = $designModel ? $designModel->card_setting : [];
@@ -869,14 +908,62 @@ class ActivityController extends Controller
             $cardSetting = [];
         }
 
-        // Ensure minimal structure for card setting to prevent frontend crash
-        if (empty($cardSetting) || ! isset($cardSetting['card'])) {
+        // Check if card setting has elements (keys other than 'card')
+        $hasElements = false;
+        if (!empty($cardSetting) && is_array($cardSetting)) {
+            foreach (array_keys($cardSetting) as $key) {
+                if ($key !== 'card') {
+                    $hasElements = true;
+                    break;
+                }
+            }
+        }
+
+        // Ensure minimal structure for card setting and provide default elements if empty or no elements
+        if (empty($cardSetting) || ! isset($cardSetting['card']) || ! $hasElements) {
+            $currentCardConfig = isset($cardSetting['card']) ? $cardSetting['card'] : [
+                'width_cm' => 5.4,
+                'height_cm' => 8.6,
+                'background' => null,
+            ];
+
+            $cardWidth = $currentCardConfig['width_cm'] ?? 5.4;
+            // $cardHeight = $currentCardConfig['height_cm'] ?? 8.6;
+            $cardWidthPx = $cardWidth * 37.795; // approx 204px
+
             $cardSetting = [
-                'card' => [
-                    'width_cm' => 5.4,
-                    'height_cm' => 8.6,
-                    'background' => null,
+                'card' => $currentCardConfig,
+                // Default Name Element
+                'element_name_default' => [
+                    'id' => 'element_name_default',
+                    'type' => 'text',
+                    'text' => 'Nama Peserta',
+                    'data_key' => 'name',
+                    'visible' => true,
+                    'font' => 'Inter', // Default font
+                    'size' => 14,
+                    'color' => '#000000',
+                    'weight' => 'bold',
+                    'align' => 'center',
+                    'width' => $cardWidthPx, // Full width
+                    'height' => 30,
+                    'left' => 0,
+                    'top' => 100, // Roughly 1/3 down
+                    'zIndex' => 10
                 ],
+                // Default QR Element
+                'element_qr_default' => [
+                    'id' => 'element_qr_default',
+                    'type' => 'qrcode',
+                    'text' => 'QR Code',
+                    'data_key' => 'qr',
+                    'visible' => true,
+                    'width' => 80,
+                    'height' => 80,
+                    'left' => ($cardWidthPx - 80) / 2, // Centered
+                    'top' => 150,
+                    'zIndex' => 10
+                ]
             ];
         }
 
