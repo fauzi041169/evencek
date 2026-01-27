@@ -1,13 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm, usePage } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 import Cropper from 'react-easy-crop';
 import Swal from 'sweetalert2';
 import getCroppedImg from '@/Utils/canvasUtils';
+import axios from 'axios';
 
 export default function MissingDataModal({ show, onClose, missingData = [], onSuccess }) {
+    const { t } = useTranslation();
     const { auth } = usePage().props;
     const [previewUrl, setPreviewUrl] = useState(auth?.user?.profile_photo_url || null);
+
+    // region states
+    const [provinces, setProvinces] = useState([]);
+    const [regencies, setRegencies] = useState([]);
+    const [districts, setDistricts] = useState([]);
 
     // Cropper State
     const [imageSrc, setImageSrc] = useState(null);
@@ -66,6 +74,42 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
         if (!hasFoto) {
             newData = [{ key: 'foto', label: 'Foto Profil', type: 'file' }, ...newData];
         }
+
+        // Define logical sort order
+        const sortOrder = [
+            'foto', 'photo',
+            'name', 'nama',
+            'email',
+            'gender', 'jenis_kelamin',
+            'no_hp', 'phone', 'whatsapp',
+            'province_id',
+            'regency_id',
+            'district_id',
+            'address', 'alamat',
+            'instansi',
+            'jabatan', 'job_title',
+            'pekerjaan',
+            'kategori', 'category'
+        ];
+
+        // Sort the fields
+        newData.sort((a, b) => {
+            const indexA = sortOrder.indexOf(a.key);
+            const indexB = sortOrder.indexOf(b.key);
+
+            // If both are in the list, sort by defined order
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+
+            // If only A is in list, it goes first
+            if (indexA !== -1) return -1;
+
+            // If only B is in list, it goes first
+            if (indexB !== -1) return 1;
+
+            // Otherwise keep relative order (or could sort alphabetically)
+            return 0;
+        });
+
         return newData;
     }, [missingData]);
 
@@ -82,6 +126,54 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
             setData(initialData);
         }
     }, [show, effectiveMissingData]);
+
+    // Fetch Provinces on Load
+    useEffect(() => {
+        if (show && effectiveMissingData.some(f => f.key === 'province_id')) {
+            axios.get(route('profile.ajax.provinces'))
+                .then(res => setProvinces(res.data))
+                .catch(err => console.error('Error fetching provinces:', err));
+        }
+    }, [show, effectiveMissingData]);
+
+    // Fetch Regencies when Province changes
+    useEffect(() => {
+        if (data.province_id) {
+            axios.get(route('profile.ajax.regencies', { province: data.province_id }))
+                .then(res => {
+                    setRegencies(res.data);
+                })
+                .catch(err => console.error('Error fetching regencies:', err));
+        } else {
+            setRegencies([]);
+            setDistricts([]);
+        }
+    }, [data.province_id]);
+
+    // Fetch Districts when Regency changes
+    useEffect(() => {
+        if (data.regency_id) {
+            axios.get(route('profile.ajax.districts', { regency: data.regency_id }))
+                .then(res => setDistricts(res.data))
+                .catch(err => console.error('Error fetching districts:', err));
+        } else {
+            setDistricts([]);
+        }
+    }, [data.regency_id]);
+
+    const handleFieldChange = (key, value) => {
+        const newData = { [key]: value };
+
+        // Cascade clear
+        if (key === 'province_id') {
+            newData.regency_id = '';
+            newData.district_id = '';
+        } else if (key === 'regency_id') {
+            newData.district_id = '';
+        }
+
+        setData((prevData) => ({ ...prevData, ...newData }));
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -309,9 +401,24 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                                     let options = originalField.options || [];
                                     let label = originalField.label || originalField.key.replace(/_/g, ' ');
 
+                                    // Special handling for region fields
+                                    if (originalField.key === 'province_id') {
+                                        isDropdown = true;
+                                        options = provinces;
+                                        label = t('regions.province');
+                                    } else if (originalField.key === 'regency_id') {
+                                        isDropdown = true;
+                                        options = regencies;
+                                        label = t('regions.regency');
+                                    } else if (originalField.key === 'district_id') {
+                                        isDropdown = true;
+                                        options = districts;
+                                        label = t('regions.district');
+                                    }
+
                                     // Check for custom dropdown syntax
                                     // Look for |Dropdown: pattern
-                                    const dropdownMatch = label.match(/\|Dropdown:(.*)/i) || (originalField.key && originalField.key.match(/\|Dropdown:(.*)/i));
+                                    const dropdownMatch = !isDropdown && (label.match(/\|Dropdown:(.*)/i) || (originalField.key && originalField.key.match(/\|Dropdown:(.*)/i)));
 
                                     if (dropdownMatch) {
                                         isDropdown = true;
@@ -344,7 +451,7 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                                                 <div className="relative">
                                                     <select
                                                         value={data[originalField.key] || ''}
-                                                        onChange={(e) => setData(originalField.key, e.target.value)}
+                                                        onChange={(e) => handleFieldChange(originalField.key, e.target.value)}
                                                         className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:ring-opacity-50 sm:text-sm transition-all outline-none appearance-none"
                                                         required
                                                     >
@@ -363,7 +470,7 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                                                 <input
                                                     type={originalField.type || 'text'}
                                                     value={data[originalField.key] || ''}
-                                                    onChange={(e) => setData(originalField.key, e.target.value)}
+                                                    onChange={(e) => handleFieldChange(originalField.key, e.target.value)}
                                                     className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:ring-opacity-50 sm:text-sm transition-all outline-none placeholder-gray-400"
                                                     placeholder={`Masukkan ${label}`}
                                                     required

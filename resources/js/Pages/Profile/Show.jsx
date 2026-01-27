@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Head, useForm, usePage, Link, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import MyQrCodeModal from '@/Components/MyQrCodeModal';
@@ -6,6 +7,7 @@ import Cropper from 'react-easy-crop';
 import Swal from 'sweetalert2';
 
 export default function ProfileShow({ auth, user, provinces = [] }) {
+    const { t } = useTranslation();
     const { props } = usePage();
     const flash = props.flash || {};
     const missingFields = Array.isArray(flash.missing_profile_fields) ? flash.missing_profile_fields : [];
@@ -644,7 +646,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                     <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Provinsi {isFieldRequired('province_id') && <span className="text-red-500">*</span>}
+                                                {t('regions.province')} {isFieldRequired('province_id') && <span className="text-red-500">*</span>}
                                             </label>
                                             <select
                                                 value={data.province_id}
@@ -656,7 +658,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                 disabled={!canEdit}
                                                 required={isFieldRequired('province_id')}
                                             >
-                                                <option value="">Pilih Provinsi</option>
+                                                <option value="">{t('regions.province')}</option>
                                                 {provinces.map(p => (
                                                     <option key={p.id} value={p.id}>{p.name}</option>
                                                 ))}
@@ -665,7 +667,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Kabupaten/Kota {isFieldRequired('regency_id') && <span className="text-red-500">*</span>}
+                                                {t('regions.regency')} {isFieldRequired('regency_id') && <span className="text-red-500">*</span>}
                                             </label>
                                             <select
                                                 value={data.regency_id}
@@ -677,7 +679,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                 disabled={!canEdit || loadingRegencies || !data.province_id}
                                                 required={isFieldRequired('regency_id')}
                                             >
-                                                <option value="">{loadingRegencies ? 'Memuat...' : 'Pilih Kota/Kab'}</option>
+                                                <option value="">{loadingRegencies ? 'Memuat...' : t('regions.regency')}</option>
                                                 {regencies.map(r => (
                                                     <option key={r.id} value={r.id}>{r.name}</option>
                                                 ))}
@@ -687,7 +689,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Kecamatan {isFieldRequired('district_id') && <span className="text-red-500">*</span>}
+                                                {t('regions.district')} {isFieldRequired('district_id') && <span className="text-red-500">*</span>}
                                             </label>
                                             <select
                                                 value={data.district_id}
@@ -696,7 +698,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                 disabled={!canEdit || loadingDistricts || !data.regency_id}
                                                 required={isFieldRequired('district_id')}
                                             >
-                                                <option value="">{loadingDistricts ? 'Memuat...' : 'Pilih Kecamatan'}</option>
+                                                <option value="">{loadingDistricts ? 'Memuat...' : t('regions.district')}</option>
                                                 {districts.map(d => (
                                                     <option key={d.id} value={d.id}>{d.name}</option>
                                                 ))}

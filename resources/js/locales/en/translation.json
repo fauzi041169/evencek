@@ -1,4 +1,9 @@
 {
+  "regions": {
+    "province": "Province",
+    "regency": "Regency/City",
+    "district": "District"
+  },
   "home": {
     "hero_title": "Professional Digital Event Management Platform",
     "hero_desc": "Manage registration, participants, committee, payments, attendance, cards, and certificates in one integrated secure and modern platform.",

@@ -1,4 +1,9 @@
 {
+    "regions": {
+        "province": "Provinsi",
+        "regency": "Kabupaten/Kota",
+        "district": "Kecamatan"
+    },
     "home": {
         "hero_title": "Platform Manajemen Event Digital Profesional",
         "hero_desc": "Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.",
