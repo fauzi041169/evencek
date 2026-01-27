@@ -369,115 +369,90 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                         )}
                     </div>
 
-                    <div className="px-8 pb-8 flex flex-col md:flex-row items-start -mt-16 gap-6 relative z-10">
-                        {/* Avatar */}
-                        <div className="relative group">
-                            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white bg-white shadow-xl overflow-hidden">
-                                <img
-                                    src={data.foto_file ? URL.createObjectURL(data.foto_file) : user.profile_photo_url}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                />
-                                {canEdit && (
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full" onClick={() => document.getElementById('avatarInput').click()}>
-                                        <i className="fas fa-camera text-white text-2xl"></i>
-                                    </div>
-                                )}
-                            </div>
-                            {canEdit && <input type="file" id="avatarInput" className="hidden" accept="image/*" onChange={handleFileChange} />}
-                        </div>
-
-                        <div className="flex-1 pb-2 text-center md:text-left mt-0 md:mt-20">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-1">{user.name}</h1>
-                            <p className="text-gray-500 font-medium mb-3">{user.email}</p>
-                            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                                {(user.roles || []).map((role, idx) => (
-                                    <span key={idx} className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${role.name === 'superadmin' ? 'bg-red-100 text-red-600' :
-                                        role.name === 'creator' ? 'bg-amber-100 text-amber-700' :
-                                            'bg-secondary/10 text-secondary'
-                                        }`}>
-                                        {role.name}
-                                    </span>
-                                ))}
-                                {(!user.roles || user.roles.length === 0) && (
-                                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-600">
-                                        {user.role || 'User'}
-                                    </span>
-                                )}
-                            </div>
-                            <p className="text-xs text-gray-400 font-medium mt-3 flex items-center justify-center md:justify-start gap-1">
-                                <i className="fas fa-calendar-alt"></i>
-                                Bergabung {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
-                            </p>
-                        </div>
-
-                        {/* Status & Kapasitas Akun - Display in the empty space requested */}
-                        <div className="hidden lg:flex flex-col gap-4 mt-0 md:mt-16 bg-white/60 backdrop-blur-xl p-5 rounded-[2rem] border border-white shadow-2xl shadow-gray-200/50 min-w-[280px] animate-in fade-in slide-in-from-right-8 duration-1000">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl ${user.role === 'superadmin' ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-red-200' :
-                                    user.role === 'creator' ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-amber-200' :
-                                        'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-blue-200'
-                                    }`}>
-                                    <i className={`fas fa-2x ${user.role === 'superadmin' ? 'fa-shield-halved' : user.role === 'creator' ? 'fa-crown' : 'fa-user-check'}`}></i>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 block mb-0.5">Status Pengguna</span>
-                                    <span className="text-xl font-black text-gray-900 uppercase tracking-tight leading-none truncate block">
-                                        {user.role || 'Member'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 pt-2">
-                                <div className="flex flex-col">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Tingkat Kapasitas</span>
-                                        <span className="text-[10px] font-black px-3 py-1 bg-amber-100 text-amber-700 rounded-full border border-amber-200 uppercase tracking-wider">
-                                            {user.subscription?.plan?.name || 'Gratis'}
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="bg-white/80 p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                            <i className="fas fa-users text-amber-500 mb-1 text-sm"></i>
-                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mb-0.5">Max Peserta</span>
-                                            <span className="text-sm font-black text-gray-900 leading-none">{user.subscription?.plan?.max_participants_per_activity || 'Unlimited'}</span>
+                    <div className="px-8 pb-8 -mt-20 relative z-10">
+                        <div className="flex flex-col lg:flex-row justify-between items-stretch gap-8">
+                            {/* Left Side: Avatar, Bio and QR Code */}
+                            <div className="flex flex-col gap-6">
+                                <div className="flex flex-col md:flex-row items-center md:items-end gap-6 mb-2">
+                                    {/* Avatar */}
+                                    <div className="relative group flex-shrink-0">
+                                        <div className="w-40 h-40 md:w-44 md:h-44 rounded-full border-[6px] border-white bg-white shadow-2xl overflow-hidden">
+                                            <img
+                                                src={data.foto_file ? URL.createObjectURL(data.foto_file) : user.profile_photo_url}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                            />
+                                            {canEdit && (
+                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full" onClick={() => document.getElementById('avatarInput').click()}>
+                                                    <i className="fas fa-camera text-white text-3xl"></i>
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="bg-white/80 p-3 rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                            <i className="fas fa-calendar-plus text-amber-500 mb-1 text-sm"></i>
-                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mb-0.5">Max Kegiatan</span>
-                                            <span className="text-sm font-black text-gray-900 leading-none">{user.subscription?.plan?.max_activities || 'Unlimited'}</span>
+                                        {canEdit && <input type="file" id="avatarInput" className="hidden" accept="image/*" onChange={handleFileChange} />}
+                                    </div>
+
+                                    {/* Bio Info */}
+                                    <div className="text-center md:text-left mb-4">
+                                        <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-none mb-2">{user.name}</h1>
+                                        <p className="text-gray-500 font-bold text-lg mb-3 tracking-tight">{user.email}</p>
+                                        <div className="flex items-center justify-center md:justify-start gap-2 text-[11px] font-black text-gray-400 uppercase tracking-widest">
+                                            <i className="fas fa-calendar-alt text-gray-300"></i>
+                                            <span>Bergabung {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</span>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Status Akun - Moved to Header */}
-                        <div className="absolute top-6 right-8 hidden md:block text-right">
-                            <div className="inline-flex flex-col items-end">
-                                <div className="flex items-center gap-2 mb-1 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-                                    <div className={`w-2 h-2 rounded-full ${user.email_verified_at ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
-                                    <span className={`text-xs font-bold ${user.email_verified_at ? 'text-green-600' : 'text-yellow-600'}`}>
-                                        {user.email_verified_at ? 'Akun Aktif' : 'Belum Verifikasi'}
-                                    </span>
+                                {/* QR Code Button - Clearly Positioned Below Avatar */}
+                                <div className="flex items-center justify-center md:justify-start">
+                                    <button
+                                        onClick={() => setShowQrModal(true)}
+                                        className="px-6 py-2.5 bg-[#F4F7FA] text-black rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100/50 hover:bg-gray-100 transition flex items-center gap-3 shadow-sm"
+                                    >
+                                        <i className="fas fa-qrcode text-sm"></i>
+                                        <span>QR Code</span>
+                                    </button>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Actions */}
-                        <div className="flex gap-3 mb-2 mt-0 md:mt-20">
-                            <button
-                                onClick={() => setShowQrModal(true)}
-                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition flex items-center gap-2"
-                            >
-                                <i className="fas fa-qrcode"></i>
-                                <span className="hidden sm:inline">QR Code</span>
-                            </button>
-                            {(auth.user?.roles || []).some(r => r.name === 'superadmin') && !isOwnProfile && (
-                                <Link href={`/user-management/${user.id}`} className="px-4 py-2 bg-secondary text-white rounded-xl font-medium hover:bg-blue-700 transition">
-                                    Manage User
-                                </Link>
-                            )}
+                            {/* Right Side: Status & Kapasitas Card - EXACT MOCKUP STYLE */}
+                            <div className="flex items-end justify-center lg:justify-end">
+                                <div className="bg-white p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] min-w-[320px] animate-in fade-in slide-in-from-right-8 duration-1000">
+                                    <div className="flex items-center gap-5 mb-6">
+                                        <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-br from-[#2D60FF] to-[#1E4DCC] flex items-center justify-center shadow-[0_10px_25px_-5px_rgba(45,96,255,0.4)]">
+                                            <i className="fas fa-user-check text-white text-2xl"></i>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Status Akun</span>
+                                                <div className="w-2 h-2 rounded-full bg-amber-400 border-2 border-amber-100 shadow-[0_0_8px_rgba(251,191,36,0.4)]"></div>
+                                            </div>
+                                            <span className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none block">
+                                                {user.role || 'GUEST'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-5 border-t border-gray-50 space-y-5">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-400">Kapasitas</span>
+                                            <span className="text-[10px] font-black px-3 py-1 bg-amber-50 text-amber-700 rounded-lg border border-amber-100 uppercase tracking-tighter shadow-sm">
+                                                {user.subscription?.plan?.name || 'FREE'}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-white px-4 py-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center transitionhover:shadow-md cursor-default">
+                                                <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2">Peserta</span>
+                                                <span className="text-xl font-black text-gray-800 leading-none">{user.subscription?.plan?.max_participants_per_activity || '∞'}</span>
+                                            </div>
+                                            <div className="bg-white px-4 py-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center transitionhover:shadow-md cursor-default">
+                                                <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2">Kegiatan</span>
+                                                <span className="text-xl font-black text-gray-800 leading-none">{user.subscription?.plan?.max_activities || '∞'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
