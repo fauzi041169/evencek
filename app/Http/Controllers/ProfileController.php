@@ -100,9 +100,22 @@ class ProfileController extends Controller
         $id = $id ?? Auth::id();
         $user = User::findOrFail($id);
 
-        // Perbaiki otorisasi: izinkan admin dan superadmin memperbarui profil siapa pun
         if (! auth()->check() || (auth()->id() !== $user->id && ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()))) {
             abort(403, 'Unauthorized action.');
+        }
+
+        // Sanitize region inputs to ensures they are null if empty/invalid string
+        $cleanRegions = [];
+        foreach (['province_id', 'regency_id', 'district_id'] as $key) {
+             if ($request->has($key)) {
+                 $val = $request->input($key);
+                 if ($val === '' || $val === 'null' || $val === 'undefined') {
+                     $cleanRegions[$key] = null;
+                 }
+             }
+        }
+        if (!empty($cleanRegions)) {
+            $request->merge($cleanRegions);
         }
 
         $request->validate([

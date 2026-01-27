@@ -101,10 +101,10 @@ export default function Show({
         openManualPaymentModal({ batch_id: filterBatch || selectedBatchId });
     };
 
-    // Access Control for View Configuration (Owner, Admin, Superadmin only)
+    // Access Control for View Configuration (Owner, Admin, Superadmin, and Management Access)
     const isOwner = currentUser && activity && currentUser.id === activity.user_id;
     const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin');
-    const canConfigureView = isOwner || isAdmin;
+    const canConfigureView = isOwner || isAdmin || canAccessManagement;
 
     const openManualPaymentModal = async (extraParams = {}) => {
         setLoadingPaymentModal(true);
@@ -956,57 +956,57 @@ export default function Show({
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {materials.map((material) => {
                                                 const isPdf = material.file_type === 'pdf' || (material.file_path && material.file_path.toLowerCase().endsWith('.pdf'));
-                                                
+
                                                 let iconSrc = '/assets/images/icon/iconpdf.jpg';
                                                 if (material.file_type === 'ppt') iconSrc = '/assets/images/icon/iconppt.jpg';
                                                 else if (material.file_type === 'link' || material.file_type === 'youtube') iconSrc = '/assets/images/icon/iconlink.jpg';
 
                                                 return (
-                                                <div key={material.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition bg-gray-50 flex items-start gap-3">
-                                                    <div className="shrink-0">
-                                                        <img src={iconSrc} alt="Icon" className="w-12 h-12 object-contain" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="font-semibold text-gray-800 truncate mb-1">{material.title || material.name}</h4>
-                                                        <p className="text-xs text-gray-500 mb-2 line-clamp-2">{material.description || 'Tidak ada deskripsi'}</p>
-                                                        
-                                                        <div className="flex items-center gap-3">
-                                                            {/* PDF Preview Link */}
-                                                            {isPdf && (
-                                                                <a
-                                                                    href={route('activity.preparation.view-material', { activityId: activity.id, materialId: material.id })}
-                                                                    className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
-                                                                >
-                                                                    <i className="fas fa-eye mr-1"></i> Preview
-                                                                </a>
-                                                            )}
+                                                    <div key={material.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition bg-gray-50 flex items-start gap-3">
+                                                        <div className="shrink-0">
+                                                            <img src={iconSrc} alt="Icon" className="w-12 h-12 object-contain" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="font-semibold text-gray-800 truncate mb-1">{material.title || material.name}</h4>
+                                                            <p className="text-xs text-gray-500 mb-2 line-clamp-2">{material.description || 'Tidak ada deskripsi'}</p>
 
-                                                            {/* Download Link (for all files) */}
-                                                            {material.file_type !== 'link' && material.file_type !== 'youtube' && (
-                                                                <a
-                                                                    href={route('activity.preparation.download-material', { activityId: activity.id, materialId: material.id })}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="inline-flex items-center text-xs font-medium text-gray-600 hover:text-primary"
-                                                                >
-                                                                    <i className="fas fa-download mr-1"></i> Unduh
-                                                                </a>
-                                                            )}
-                                                            
-                                                            {/* External Link */}
-                                                            {(material.file_type === 'link' || material.file_type === 'youtube') && (
-                                                                 <a
-                                                                    href={material.file_path}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
-                                                                >
-                                                                    <i className="fas fa-external-link-alt mr-1"></i> Buka Link
-                                                                </a>
-                                                            )}
+                                                            <div className="flex items-center gap-3">
+                                                                {/* PDF Preview Link */}
+                                                                {isPdf && (
+                                                                    <a
+                                                                        href={route('activity.preparation.view-material', { activityId: activity.id, materialId: material.id })}
+                                                                        className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
+                                                                    >
+                                                                        <i className="fas fa-eye mr-1"></i> Preview
+                                                                    </a>
+                                                                )}
+
+                                                                {/* Download Link (for all files) */}
+                                                                {material.file_type !== 'link' && material.file_type !== 'youtube' && (
+                                                                    <a
+                                                                        href={route('activity.preparation.download-material', { activityId: activity.id, materialId: material.id })}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex items-center text-xs font-medium text-gray-600 hover:text-primary"
+                                                                    >
+                                                                        <i className="fas fa-download mr-1"></i> Unduh
+                                                                    </a>
+                                                                )}
+
+                                                                {/* External Link */}
+                                                                {(material.file_type === 'link' || material.file_type === 'youtube') && (
+                                                                    <a
+                                                                        href={material.file_path}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
+                                                                    >
+                                                                        <i className="fas fa-external-link-alt mr-1"></i> Buka Link
+                                                                    </a>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
                                                 );
                                             })}
                                         </div>
@@ -1429,8 +1429,8 @@ export default function Show({
                     onClose={() => setIsMissingDataModalOpen(false)}
                     missingData={missingProfileData}
                     onSuccess={() => {
-                         setIsMissingDataModalOpen(false);
-                         window.location.reload();
+                        setIsMissingDataModalOpen(false);
+                        window.location.reload();
                     }}
                 />
 

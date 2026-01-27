@@ -10,11 +10,11 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
 
     // Helper to get file extension
     const getExtension = (filename) => {
-        return filename.split('.').pop().toLowerCase();
+        return filename ? filename.split('.').pop().toLowerCase() : '';
     };
 
-    const ext = getExtension(material.filename || '');
-    const type = viewerHint || 'unknown';
+    const ext = getExtension(material.file_name || material.file_path || '');
+    const type = viewerHint || material.file_type || 'unknown';
 
     useEffect(() => {
         // Handle DOCX Preview
@@ -28,10 +28,10 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
                     if (!window.docx) {
                         await loadScript('https://unpkg.com/docx-preview/dist/docx-preview.min.js');
                     }
-                    
+
                     const response = await fetch(materialUrl);
                     const blob = await response.blob();
-                    
+
                     if (window.docx && containerRef.current) {
                         window.docx.renderAsync(blob, containerRef.current)
                             .then(() => setLoading(false))
@@ -46,7 +46,7 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
                 }
             };
             loadDocx();
-        } 
+        }
         // Handle PPTX Preview
         else if ((type === 'ppt' || ext === 'pptx') && ext === 'pptx' && materialUrl) {
             const loadPptx = async () => {
@@ -78,17 +78,17 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
                             slideMode: false,
                             keyBoardShortCut: false,
                             slideModeConfig: {  //on slide mode (slideMode: true)
-                                first: 1, 
+                                first: 1,
                                 nav: false, /** true,false : show or not nav buttons*/
                                 navTxtColor: "white", /** color */
-                                navNextTxt:"&#8250;", //">"
+                                navNextTxt: "&#8250;", //">"
                                 navPrevTxt: "&#8249;", //"<"
                                 showPlayPauseBtn: false,/** true,false */
                                 keyBoardShortCut: false, /** true,false */
                                 showSlideNum: false, /** true,false */
                                 showTotalSlideNum: false, /** true,false */
                                 autoSlide: false, /** false or seconds (the pause time between slides) , F8 to active(keyBoardShortCut: true) */
-                                randomAutoSlide: false, /** true,false ,autoSlide:true */ 
+                                randomAutoSlide: false, /** true,false ,autoSlide:true */
                                 loop: false,  /** true,false */
                                 background: false, /** false or color*/
                                 transition: "default", /** transition type: "slid","fade","default","random" , to show transition efects :transitionTime > 0.5 */
@@ -129,8 +129,8 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
     };
 
     return (
-        <MainLayout title={`Materi: ${material.title}`}>
-            <Head title={`Materi: ${material.title}`} />
+        <MainLayout title={`Materi: ${material.name}`}>
+            <Head title={`Materi: ${material.name}`} />
 
             <div className="py-12 bg-gray-50 min-h-screen">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -138,23 +138,23 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                         <div className="p-6 bg-white border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
                             <div>
-                                <Link 
+                                <Link
                                     href={route('activity.show', activity.slug || activity.id)}
                                     className="text-sm text-primary hover:text-primary/90 flex items-center mb-2"
                                 >
                                     <ChevronLeft className="w-4 h-4 mr-1" />
                                     Kembali ke Detail Kegiatan
                                 </Link>
-                                <h1 className="text-2xl font-bold text-gray-800">{material.title}</h1>
+                                <h1 className="text-2xl font-bold text-gray-800">{material.name}</h1>
                                 <p className="text-gray-500 mt-1">
-                                    {material.type === 'link' ? 'Tautan Eksternal' : 'Dokumen'} 
-                                    {material.filename ? ` â€¢ ${material.filename}` : ''}
+                                    {material.file_type === 'link' ? 'Tautan Eksternal' : 'Dokumen'}
+                                    {material.file_name ? ` • ${material.file_name}` : ''}
                                 </p>
                             </div>
                             <div>
                                 {downloadUrl && (
-                                    <a 
-                                        href={downloadUrl} 
+                                    <a
+                                        href={downloadUrl}
                                         className="inline-flex items-center px-4 py-2 bg-primary border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary/90 active:bg-primary focus:outline-none focus:border-primary focus:ring ring-primary/30 disabled:opacity-25 transition ease-in-out duration-150"
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -170,15 +170,15 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
                     {/* Content Viewer */}
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6 bg-white border-b border-gray-200">
-                            
+
                             {/* PDF Viewer */}
                             {(type === 'pdf' || ext === 'pdf') && (
                                 <div className="aspect-[16/9] w-full bg-gray-100 rounded-lg overflow-hidden relative">
                                     {materialUrl ? (
-                                        <iframe 
-                                            src={materialUrl} 
+                                        <iframe
+                                            src={materialUrl}
                                             className="w-full h-full absolute inset-0"
-                                            title={material.title}
+                                            title={material.name}
                                         ></iframe>
                                     ) : (
                                         <div className="flex items-center justify-center h-full text-gray-500">
@@ -191,9 +191,9 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
                             {/* Image Viewer */}
                             {(['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) && (
                                 <div className="flex justify-center bg-gray-100 rounded-lg p-4">
-                                    <img 
-                                        src={materialUrl} 
-                                        alt={material.title} 
+                                    <img
+                                        src={materialUrl}
+                                        alt={material.name}
                                         className="max-w-full max-h-[80vh] object-contain rounded shadow"
                                     />
                                 </div>
@@ -214,9 +214,9 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
 
                             {/* DOCX Viewer */}
                             {(type === 'doc' || ext === 'docx') && ext === 'docx' && (
-                                <div 
+                                <div
                                     ref={containerRef}
-                                    id="docx-container" 
+                                    id="docx-container"
                                     className="rounded-xl border border-gray-100 p-4 bg-gray-50 min-h-[500px] overflow-y-auto"
                                 >
                                     {loading && <div className="flex items-center justify-center h-full text-gray-500">Memuat dokumen...</div>}
@@ -225,8 +225,8 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
 
                             {/* PPTX Viewer */}
                             {(type === 'ppt' || ext === 'pptx') && ext === 'pptx' && (
-                                <div 
-                                    id="pptx-container" 
+                                <div
+                                    id="pptx-container"
                                     ref={containerRef}
                                     className="rounded-xl border border-gray-100 p-2 bg-gray-50 min-h-[500px]"
                                 >
@@ -235,32 +235,32 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
                             )}
 
                             {/* Fallback / Other Types */}
-                            {(!['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'mp3', 'wav', 'ogg'].includes(ext) && 
-                              !(ext === 'docx') && 
-                              !(ext === 'pptx')
+                            {(!['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'mp3', 'wav', 'ogg'].includes(ext) &&
+                                !(ext === 'docx') &&
+                                !(ext === 'pptx')
                             ) && (
-                                <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mb-4">
-                                        <FileText className="w-10 h-10" />
+                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                        <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mb-4">
+                                            <FileText className="w-10 h-10" />
+                                        </div>
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">Preview tidak tersedia</h3>
+                                        <p className="text-gray-500 max-w-md mb-6">
+                                            Format file ini ({ext}) tidak mendukung preview langsung di browser.
+                                            Silakan unduh file untuk melihat isinya.
+                                        </p>
+                                        {downloadUrl && (
+                                            <a
+                                                href={downloadUrl}
+                                                className="inline-flex items-center px-4 py-2 bg-primary border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary/90 transition"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                <Download className="w-4 h-4 mr-2" />
+                                                Unduh File
+                                            </a>
+                                        )}
                                     </div>
-                                    <h3 className="text-lg font-medium text-gray-900 mb-2">Preview tidak tersedia</h3>
-                                    <p className="text-gray-500 max-w-md mb-6">
-                                        Format file ini ({ext}) tidak mendukung preview langsung di browser.
-                                        Silakan unduh file untuk melihat isinya.
-                                    </p>
-                                    {downloadUrl && (
-                                        <a 
-                                            href={downloadUrl} 
-                                            className="inline-flex items-center px-4 py-2 bg-primary border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary/90 transition"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            <Download className="w-4 h-4 mr-2" />
-                                            Unduh File
-                                        </a>
-                                    )}
-                                </div>
-                            )}
+                                )}
 
                             {/* Google Docs Embed for older Office files or fallbacks if needed - Keeping it simple for now based on Blade logic */}
                             {/* The Blade file had logic for Google Viewer or Office Online, but mainly relied on JS libraries for modern formats. 
@@ -269,7 +269,7 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
                                 Let's check if the Blade file used Google Viewer. 
                                 Based on analysis: "conditional rendering for DOCX (docx-preview/mammoth), PPTX (pptxjs), PDF (iframe/PDF.js)"
                             */}
-                            
+
                         </div>
                     </div>
                 </div>
