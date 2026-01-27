@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Head, Link, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 
 export default function Home({ heroSlides = [], stats = {}, partners = [], specialActivities = [], latestActivities = [], latestNews = [] }) {
+    const { t } = useTranslation();
     const { auth, appSettings } = usePage().props;
     const [currentSlide, setCurrentSlide] = useState(0);
     const mitraSliderRef = useRef(null);
@@ -64,10 +66,10 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
 
     const activeSlide = processedSlides[currentSlide] || {};
     // Force static content as requested to match the specific design
-    const heroTitle = "Platform Manajemen Event Digital Profesional";
-    const heroDesc = "Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.";
+    const heroTitle = t('home.hero_title');
+    const heroDesc = t('home.hero_desc');
     const heroLink = route('activity.index');
-    const heroLinkText = "Mulai Kelola Event";
+    const heroLinkText = t('home.start_managing');
 
     // Auto-advance hero slides
     useEffect(() => {
@@ -404,7 +406,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                         className="group px-10 py-5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-lg border border-white/20 backdrop-blur-md transition-all duration-300 flex items-center gap-3 hover:border-white/40 shadow-lg hover:shadow-xl"
                                     >
                                         <i className="fas fa-layer-group text-blue-300 group-hover:text-white transition-colors"></i>
-                                        Jelajahi Fitur
+                                        {t('home.explore_features')}
                                     </a>
                                 </div>
                             </div>
@@ -414,15 +416,15 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                         <div className="mt-14 flex flex-wrap items-center gap-x-8 gap-y-4 text-white/60 text-sm font-semibold tracking-wide uppercase reveal-left border-t border-white/10 pt-8" style={{ transitionDelay: '400ms' }}>
                             <div className="flex items-center gap-2.5">
                                 <div className="p-1.5 rounded-full bg-green-500/20 text-green-400"><i className="fas fa-check"></i></div>
-                                <span>Terpercaya</span>
+                                <span>{t('home.trusted')}</span>
                             </div>
                             <div className="flex items-center gap-2.5">
                                 <div className="p-1.5 rounded-full bg-blue-500/20 text-blue-400"><i className="fas fa-shield-alt"></i></div>
-                                <span>Data Aman</span>
+                                <span>{t('home.secure_data')}</span>
                             </div>
                             <div className="flex items-center gap-2.5">
                                 <div className="p-1.5 rounded-full bg-purple-500/20 text-purple-400"><i className="fas fa-bolt"></i></div>
-                                <span>Real-time</span>
+                                <span>{t('home.real_time')}</span>
                             </div>
                         </div>
                     </div>
@@ -452,7 +454,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                 fromColor="#7c3aed"
                                 toColor="#3b82f6"
                                 count={stats.totalUsers || 0}
-                                label="Total Pengguna"
+                                label={t('home.total_users')}
                                 className="reveal-left"
                             />
                             <StatCard
@@ -460,7 +462,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                 fromColor="#3b82f6"
                                 toColor="#7c3aed"
                                 count={stats.totalActivities || 0}
-                                label="Total Kegiatan"
+                                label={t('home.total_activities')}
                                 className="reveal-right"
                             />
                             <StatCard
@@ -468,7 +470,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                 fromColor="#7c3aed"
                                 toColor="#3b82f6"
                                 count={stats.totalCreators || 0}
-                                label="Total Kreator"
+                                label={t('home.total_creators')}
                                 className="reveal"
                             />
                         </div>
@@ -479,7 +481,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 <section id="mitra" className="py-16 bg-white relative">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                         <div className="mb-8 reveal">
-                            <h3 className="text-3xl font-black text-gray-900 text-center">Mitra Kami</h3>
+                            <h3 className="text-3xl font-black text-gray-900 text-center">{t('home.our_partners')}</h3>
                             <div className="mt-4 hidden sm:flex justify-center gap-3">
                                 <button type="button" onClick={() => scrollMitra(-1)} className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-300 ring-1 ring-gray-200">
                                     <i className="fas fa-chevron-left"></i>
@@ -517,7 +519,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                 </div>
                             </>
                         ) : (
-                            <p className="text-gray-600 text-center">Belum ada mitra terdaftar.</p>
+                            <p className="text-gray-600 text-center">{t('home.no_partners')}</p>
                         )}
                     </div>
                 </section>
@@ -532,57 +534,57 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                         <div className="text-center mb-20 reveal">
                             <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[#7c3aed]/10 to-[#3b82f6]/10 rounded-2xl mb-6 backdrop-blur-sm border border-[#7c3aed]/30">
                                 <div className="w-2 h-2 bg-[#7c3aed] rounded-full mr-3 animate-pulse"></div>
-                                <span className="text-[#7c3aed] font-semibold tracking-wide">FITUR UTAMA PLATFORM</span>
+                                <span className="text-[#7c3aed] font-semibold tracking-wide">{t('home.key_features_badge')}</span>
                             </div>
                             <h2 className="text-5xl sm:text-6xl font-black text-gray-900 mb-6 leading-tight">
-                                <span className="text-gray-900">Manajemen Event</span>
-                                <span className="text-[#7c3aed]"> Secara Total & Digital</span>
+                                <span className="text-gray-900">{t('home.main_feature_title_1')}</span>
+                                <span className="text-[#7c3aed]">{t('home.main_feature_title_2')}</span>
                             </h2>
                             <p className="text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
-                                Semua kebutuhan manajemen event Anda dalam satu platform terintegrasi
+                                {t('home.main_feature_subtitle')}
                             </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" data-stagger="features">
                             <FeatureCard
                                 icon="fas fa-user-check"
-                                title="Pendaftaran Digital"
-                                description="Sistem pendaftaran event online yang mudah dan cepat. Peserta dapat mendaftar kapan saja, di mana saja, dengan proses yang ter-record secara digital."
+                                title={t('home.feature_1_title')}
+                                description={t('home.feature_1_desc')}
                                 points={["Form pendaftaran otomatis", "Validasi data real-time", "Tracking status pendaftaran"]}
                                 className="reveal-left"
                             />
                             <FeatureCard
                                 icon="fas fa-users-cog"
-                                title="Manajemen Peserta & Panitia"
-                                description="Kelola peserta dan panitia dengan sistem terpusat. Import/export data, filter pencarian, dan manajemen peran yang ter-record lengkap."
+                                title={t('home.feature_2_title')}
+                                description={t('home.feature_2_desc')}
                                 points={["Manajemen database peserta", "Penugasan panitia event", "Import/Export Excel"]}
                                 className="reveal"
                             />
                             <FeatureCard
                                 icon="fas fa-id-card"
-                                title="Kartu Peserta Digital"
-                                description="Generate kartu peserta digital dengan QR code. Desain customizable, print ready, dan dapat diakses langsung oleh peserta secara digital."
+                                title={t('home.feature_3_title')}
+                                description={t('home.feature_3_desc')}
                                 points={["QR Code untuk absensi", "Desain customizable", "Print batch atau individual"]}
                                 className="reveal-right"
                             />
                             <FeatureCard
                                 icon="fas fa-certificate"
-                                title="Sertifikat Digital"
-                                description="Generate sertifikat digital otomatis untuk semua peserta. Desain profesional, verifikasi digital, dan pengiriman otomatis."
+                                title={t('home.feature_4_title')}
+                                description={t('home.feature_4_desc')}
                                 points={["Generate otomatis", "Desain profesional", "Verifikasi digital"]}
                                 className="reveal-pop"
                             />
                             <FeatureCard
                                 icon="fas fa-qrcode"
-                                title="Sistem Absensi Digital"
-                                description="Absensi menggunakan QR code scanner atau manual. Data absensi ter-record real-time dan dapat diekspor untuk laporan."
+                                title={t('home.feature_5_title')}
+                                description={t('home.feature_5_desc')}
                                 points={["Scan QR Code", "Realtime tracking", "Export laporan absensi"]}
                                 className="reveal-pop"
                             />
                             <FeatureCard
                                 icon="fas fa-database"
-                                title="Semua Ter-record Digital"
-                                description="Semua aktivitas event ter-record secara digital: pendaftaran, pembayaran, absensi, sertifikat, dan dokumentasi. Data aman dan dapat diakses kapan saja."
+                                title={t('home.feature_6_title')}
+                                description={t('home.feature_6_desc')}
                                 points={["History lengkap", "Backup otomatis", "Analytics & reporting"]}
                                 className="reveal-pop"
                             />
@@ -599,19 +601,19 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                         <div className="text-center mb-20 reveal">
                             <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[#7c3aed]/10 to-[#3b82f6]/10 rounded-2xl mb-6 backdrop-blur-sm border border-[#7c3aed]/30">
                                 <div className="w-2 h-2 bg-[#7c3aed] rounded-full mr-3 animate-pulse"></div>
-                                <span className="text-[#7c3aed] font-semibold tracking-wide">ALUR KERJA PLATFORM</span>
+                                <span className="text-[#7c3aed] font-semibold tracking-wide">{t('home.workflow_badge')}</span>
                             </div>
                             <h2 className="text-5xl sm:text-6xl font-black text-gray-900 mb-6 leading-tight">
-                                <span className="text-gray-900">Cara Kerja</span>
-                                <span className="text-[#7c3aed]"> Platform Kami</span>
+                                <span className="text-gray-900">{t('home.workflow_title_1')}</span>
+                                <span className="text-[#7c3aed]">{t('home.workflow_title_2')}</span>
                             </h2>
-                            <p className="text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed">Langkah-langkah mudah untuk mengelola event Anda secara digital</p>
+                            <p className="text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed">{t('home.workflow_subtitle')}</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch" data-stagger="workflow">
-                            <WorkflowStep number="1" title="Buat Event" description="Lengkapi nama, tanggal, lokasi, kuota, dan detail lainnya" className="reveal-left" />
-                            <WorkflowStep number="2" title="Buka Pendaftaran" description="Aktifkan pendaftaran digital, data langsung ter-record" className="reveal" />
-                            <WorkflowStep number="3" title="Kelola Peserta" description="Manajemen peserta & panitia, kartu dan sertifikat digital" className="reveal-right" />
-                            <WorkflowStep number="4" title="Event Berjalan" description="Absensi QR code, semua aktivitas ter-record dan dapat diekspor" className="reveal" />
+                            <WorkflowStep number="1" title={t('home.step_1_title')} description={t('home.step_1_desc')} className="reveal-left" />
+                            <WorkflowStep number="2" title={t('home.step_2_title')} description={t('home.step_2_desc')} className="reveal" />
+                            <WorkflowStep number="3" title={t('home.step_3_title')} description={t('home.step_3_desc')} className="reveal-right" />
+                            <WorkflowStep number="4" title={t('home.step_4_title')} description={t('home.step_4_desc')} className="reveal" />
                         </div>
                     </div>
                 </section>

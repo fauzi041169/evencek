@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 import Footer from '../Components/Footer';
 import Alerts from '../Components/Alerts';
 import LoginDropdown from '../Components/LoginDropdown';
 
 export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = false }) {
     const { props, url } = usePage();
+    const { t, i18n } = useTranslation();
     const { auth, flash, errors, appSettings } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -155,10 +157,10 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                             {/* Desktop Navigation */}
                             <nav className="hidden md:flex items-center space-x-3">
                                 {[
-                                    { name: 'Beranda', href: '/' },
-                                    { name: 'Tentang Kami', href: '/about' },
-                                    { name: 'Berita', href: '/news' },
-                                    { name: 'Kegiatan', href: '/activity' },
+                                    { name: t('nav.home'), href: '/' },
+                                    { name: t('nav.about'), href: '/about' },
+                                    { name: t('nav.news'), href: '/news' },
+                                    { name: t('nav.activities'), href: '/activity' },
                                 ].map((link) => {
                                     const isActive = url === link.href || (link.href !== '/' && url.startsWith(link.href));
                                     return (
@@ -192,6 +194,21 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
 
                         {/* Right Side */}
                         <div className="flex items-center space-x-2 lg:space-x-3 flex-shrink-0">
+                            {/* Language Switcher Desktop */}
+                            <div className="hidden md:flex items-center mr-2">
+                                <button
+                                    onClick={() => i18n.changeLanguage('id')}
+                                    className={`px-2 py-1 text-xs font-bold rounded-l-md border border-r-0 border-white/30 transition-colors ${i18n.language === 'id' ? 'bg-white text-primary' : 'bg-transparent text-white hover:bg-white/10'}`}
+                                >
+                                    ID
+                                </button>
+                                <button
+                                    onClick={() => i18n.changeLanguage('en')}
+                                    className={`px-2 py-1 text-xs font-bold rounded-r-md border border-white/30 transition-colors ${i18n.language === 'en' ? 'bg-white text-primary' : 'bg-transparent text-white hover:bg-white/10'}`}
+                                >
+                                    EN
+                                </button>
+                            </div>
                             {auth && auth.user ? (
                                 <div className="flex items-center gap-3">
                                     <div
@@ -364,10 +381,27 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                 {isMobileMenuOpen && (
                     <div className="md:hidden bg-white shadow-lg rounded-b-xl border-t border-gray-100 absolute w-full z-50">
                         <div className="px-2 pt-2 pb-3 space-y-1">
-                            <Link href="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Beranda</Link>
-                            <Link href="/about" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Tentang Kami</Link>
-                            <Link href="/news" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Berita</Link>
-                            <Link href="/activity" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Kegiatan</Link>
+                            <Link href="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">{t('nav.home')}</Link>
+                            <Link href="/about" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">{t('nav.about')}</Link>
+                            <Link href="/news" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">{t('nav.news')}</Link>
+                            <Link href="/activity" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">{t('nav.activities')}</Link>
+
+                            {/* Language Switcher Mobile */}
+                            <div className="px-3 py-2 flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-700">Bahasa:</span>
+                                <button
+                                    onClick={() => i18n.changeLanguage('id')}
+                                    className={`px-3 py-1 text-sm rounded-md transition-colors ${i18n.language === 'id' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+                                >
+                                    Indonesia
+                                </button>
+                                <button
+                                    onClick={() => i18n.changeLanguage('en')}
+                                    className={`px-3 py-1 text-sm rounded-md transition-colors ${i18n.language === 'en' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+                                >
+                                    English
+                                </button>
+                            </div>
 
                             {auth && auth.user && (
                                 <>
