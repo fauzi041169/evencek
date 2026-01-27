@@ -58,7 +58,8 @@ class LoginController extends Controller
             if ($user) {
                 // Cek apakah email sudah diverifikasi (kecuali untuk user yang login dengan Google)
                 if (! $user->email_verified_at && ! $user->google_id) {
-                    if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                    // Jika Request adalah AJAX/API murni dan BUKAN Inertia
+                    if (($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') && ! $request->header('X-Inertia')) {
                         return response()->json([
                             'errors' => [
                                 'login' => ['Email Anda belum diverifikasi. Silakan cek email Anda untuk link verifikasi atau klik resend di halaman login.'],
@@ -66,6 +67,7 @@ class LoginController extends Controller
                         ], 422);
                     }
 
+                    // Untuk Inertia atau standard request, gunakan back() with errors
                     return back()->withErrors([
                         'login' => 'Email Anda belum diverifikasi. Silakan cek email Anda untuk link verifikasi atau klik resend di halaman login.',
                     ])->onlyInput('login');

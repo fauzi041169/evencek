@@ -104,269 +104,252 @@ class ProfileController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // Sanitize region inputs to ensures they are null if empty/invalid string
-        $cleanRegions = [];
-        foreach (['province_id', 'regency_id', 'district_id'] as $key) {
-             if ($request->has($key)) {
-                 $val = $request->input($key);
-                 if ($val === '' || $val === 'null' || $val === 'undefined') {
-                     $cleanRegions[$key] = null;
+        try {
+            // Sanitize region inputs to ensures they are null if empty/invalid string
+            $cleanRegions = [];
+            foreach (['province_id', 'regency_id', 'district_id'] as $key) {
+                 if ($request->has($key)) {
+                     $val = $request->input($key);
+                     // Check for various empty/invalid states
+                     if ($val === '' || $val === 'null' || $val === 'undefined' || is_null($val)) {
+                         $cleanRegions[$key] = null;
+                     }
                  }
-             }
-        }
-        if (!empty($cleanRegions)) {
-            $request->merge($cleanRegions);
-        }
-
-        $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|email|unique:users,email,'.$user->id,
-            'no_hp' => 'nullable|string|max:20',
-            'nik' => 'nullable|string|max:20',
-            'pekerjaan' => 'nullable|string|max:100',
-            'instansi' => 'nullable|string|max:100',
-            'jabatan' => 'nullable|string|max:100',
-            'alamat' => 'nullable|string',
-            'province_id' => 'nullable|exists:provinces,id',
-            'regency_id' => 'nullable|exists:regencies,id',
-            'district_id' => 'nullable|exists:districts,id',
-            'foto_file' => 'nullable|image|mimes:jpeg,png,jpg|max:20480',
-            'cover_file' => 'nullable|image|mimes:jpeg,png,jpg|max:20480',
-            'foto_data' => 'nullable|string',
-            'jenis_kelamin' => 'nullable|string',
-            'birth_place' => 'nullable|string|max:100',
-            'birth_date' => 'nullable|date',
-        ], [
-            'name.required' => 'Nama harus diisi',
-            'name.max' => 'Nama tidak boleh lebih dari 255 karakter',
-            'email.required' => 'Email harus diisi',
-            'email.email' => 'Format email tidak valid',
-            'email.unique' => 'Email sudah terdaftar oleh user lain',
-            'no_hp.max' => 'Nomor HP tidak boleh lebih dari 20 karakter',
-            'nik.max' => 'NIK tidak boleh lebih dari 20 karakter',
-            'pekerjaan.max' => 'Pekerjaan tidak boleh lebih dari 100 karakter',
-            'instansi.max' => 'Instansi tidak boleh lebih dari 100 karakter',
-            'jabatan.max' => 'Jabatan tidak boleh lebih dari 100 karakter',
-            'province_id.exists' => 'Provinsi tidak valid',
-            'regency_id.exists' => 'Kabupaten/Kota tidak valid',
-            'district_id.exists' => 'Kecamatan tidak valid',
-            'foto_file.image' => 'File harus berupa gambar',
-            'foto_file.mimes' => 'Format gambar harus jpeg, png, atau jpg',
-            'foto_file.max' => 'Ukuran gambar maksimal 20MB',
-            'cover_file.image' => 'File sampul harus berupa gambar',
-            'cover_file.mimes' => 'Format sampul harus jpeg, png, atau jpg',
-            'cover_file.max' => 'Ukuran sampul maksimal 20MB',
-            'birth_date.date' => 'Format tanggal lahir tidak valid',
-        ]);
-
-        $profile = $user->profile;
-        $requiresPhoto = $request->boolean('require_photo');
-        $existingPhoto = $profile ? trim((string) $profile->foto) : '';
-        $hasExistingPhoto = $existingPhoto !== '' && $existingPhoto !== 'default-profile.png';
-        $incomingDeletesPhoto = $request->foto_data === 'delete';
-        $incomingHasPhoto = $request->hasFile('foto_file') || ($request->filled('foto_data') && $request->foto_data !== 'delete');
-
-        if ($requiresPhoto) {
-            if ($incomingDeletesPhoto) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Foto Profil wajib diunggah.',
-                    'errors' => ['foto_file' => ['Foto Profil wajib diunggah.']],
-                ], 422);
+            }
+            if (!empty($cleanRegions)) {
+                $request->merge($cleanRegions);
             }
 
-            if (! $hasExistingPhoto && ! $incomingHasPhoto) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Foto Profil wajib diunggah.',
-                    'errors' => ['foto_file' => ['Foto Profil wajib diunggah.']],
-                ], 422);
-            }
-        }
-
-        // REMOVED: Strict photo validation. 
-        // We now rely on specific activity requirements to enforce photo uploads if needed.
-        // The profile update itself should be flexible.
-
-        // Update user data including email if present
-        $userData = [];
-        if ($request->has('name')) {
-            $userData['name'] = $request->name;
-        }
-        if ($request->has('email')) {
-            $userData['email'] = $request->email;
-        }
-
-        if ($request->hasFile('cover_file')) {
             $request->validate([
-                'cover_file' => 'image|mimes:jpeg,png,jpg|max:20480',
+                'name' => 'sometimes|required|string|max:255',
+                'email' => 'sometimes|required|email|unique:users,email,'.$user->id,
+                'no_hp' => 'nullable|string|max:20',
+                'nik' => 'nullable|string|max:20',
+                'pekerjaan' => 'nullable|string|max:100',
+                'instansi' => 'nullable|string|max:100',
+                'jabatan' => 'nullable|string|max:100',
+                'alamat' => 'nullable|string',
+                'province_id' => 'nullable|exists:provinces,id',
+                'regency_id' => 'nullable|exists:regencies,id',
+                'district_id' => 'nullable|exists:districts,id',
+                'foto_file' => 'nullable|image|mimes:jpeg,png,jpg|max:20480',
+                'cover_file' => 'nullable|image|mimes:jpeg,png,jpg|max:20480',
+                'foto_data' => 'nullable|string',
+                'jenis_kelamin' => 'nullable|string',
+                'birth_place' => 'nullable|string|max:100',
+                'birth_date' => 'nullable|date',
+            ], [
+                'name.required' => 'Nama harus diisi',
+                'name.max' => 'Nama tidak boleh lebih dari 255 karakter',
+                'email.required' => 'Email harus diisi',
+                'email.email' => 'Format email tidak valid',
+                'email.unique' => 'Email sudah terdaftar oleh user lain',
+                'no_hp.max' => 'Nomor HP tidak boleh lebih dari 20 karakter',
+                'nik.max' => 'NIK tidak boleh lebih dari 20 karakter',
+                'pekerjaan.max' => 'Pekerjaan tidak boleh lebih dari 100 karakter',
+                'instansi.max' => 'Instansi tidak boleh lebih dari 100 karakter',
+                'jabatan.max' => 'Jabatan tidak boleh lebih dari 100 karakter',
+                'province_id.exists' => 'Provinsi tidak valid',
+                'regency_id.exists' => 'Kabupaten/Kota tidak valid',
+                'district_id.exists' => 'Kecamatan tidak valid',
+                'foto_file.image' => 'File harus berupa gambar',
+                'foto_file.mimes' => 'Format gambar harus jpeg, png, atau jpg',
+                'foto_file.max' => 'Ukuran gambar maksimal 20MB',
+                'cover_file.image' => 'File sampul harus berupa gambar',
+                'cover_file.mimes' => 'Format sampul harus jpeg, png, atau jpg',
+                'cover_file.max' => 'Ukuran sampul maksimal 20MB',
+                'birth_date.date' => 'Format tanggal lahir tidak valid',
             ]);
-        }
 
-        if (! empty($userData)) {
-            $user->update($userData);
-        }
+            $profile = $user->profile;
+            $requiresPhoto = $request->boolean('require_photo');
+            $existingPhoto = $profile ? trim((string) $profile->foto) : '';
+            $hasExistingPhoto = $existingPhoto !== '' && $existingPhoto !== 'default-profile.png';
+            $incomingDeletesPhoto = $request->foto_data === 'delete';
+            $incomingHasPhoto = $request->hasFile('foto_file') || ($request->filled('foto_data') && $request->foto_data !== 'delete');
 
-        // Handle profile update
-        $profileData = $request->only([
-            'no_hp', 'nik', 'pekerjaan', 'instansi', 'jabatan', 'alamat',
-            'birth_place', 'birth_date',
-            'province_id', 'regency_id', 'district_id',
-            'jenis_kelamin',
-        ]);
+            if ($requiresPhoto) {
+                if ($incomingDeletesPhoto) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Foto Profil wajib diunggah.',
+                        'errors' => ['foto_file' => ['Foto Profil wajib diunggah.']],
+                    ], 422);
+                }
 
-        // Support aliases
-        if ($request->has('tempat_lahir') && empty($profileData['birth_place'])) {
-            $profileData['birth_place'] = $request->tempat_lahir;
-        }
-        if ($request->has('tgl_lahir') && empty($profileData['birth_date'])) {
-            $profileData['birth_date'] = $request->tgl_lahir;
-        }
-
-        // Filter out null values to prevent overwriting existing data with null
-        // This is important for partial updates (e.g. from missing data form)
-        $profileData = array_filter($profileData, function ($value) {
-            return $value !== null;
-        });
-
-        // Explicitly handle region fields if they are null in the request (clearing the selection)
-        // This overrides the array_filter above for these specific fields
-        if ($request->has('province_id') && is_null($request->province_id)) {
-            $profileData['province_id'] = null;
-        }
-        if ($request->has('regency_id') && is_null($request->regency_id)) {
-            $profileData['regency_id'] = null;
-        }
-        if ($request->has('district_id') && is_null($request->district_id)) {
-            $profileData['district_id'] = null;
-        }
-
-        // Handle Custom Fields (Additional Data)
-        $standardFields = [
-            'name', 'email', 'password', 'password_confirmation',
-            'no_hp', 'nik', 'pekerjaan', 'instansi', 'jabatan', 'alamat',
-            'birth_place', 'birth_date', 'tempat_lahir', 'tgl_lahir',
-            'province_id', 'regency_id', 'district_id',
-            'jenis_kelamin', 'foto_file', 'foto_data', 'cover_file', '_token', '_method',
-        ];
-
-        $allInput = $request->except($standardFields);
-
-        // Remove empty values from additional data
-        $additionalData = array_filter($allInput, function ($value) {
-            return ! is_null($value) && $value !== '';
-        });
-
-        if (! empty($additionalData)) {
-            $existingAdditionalData = $profile->additional_data ?? [];
-            if (! is_array($existingAdditionalData)) {
-                $existingAdditionalData = [];
+                if (! $hasExistingPhoto && ! $incomingHasPhoto) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Foto Profil wajib diunggah.',
+                        'errors' => ['foto_file' => ['Foto Profil wajib diunggah.']],
+                    ], 422);
+                }
             }
-            $profileData['additional_data'] = array_merge($existingAdditionalData, $additionalData);
-        }
 
-        // Handle file upload (prioritas lebih tinggi dari base64)
-        if ($request->hasFile('foto_file')) {
-            $foto = $request->file('foto_file');
-            try {
-                // Simpan menggunakan Storage facade
+            // Update user data including email if present
+            $userData = [];
+            if ($request->has('name')) {
+                $userData['name'] = $request->name;
+            }
+            if ($request->has('email')) {
+                $userData['email'] = $request->email;
+            }
+
+            if ($request->hasFile('cover_file')) {
+                $request->validate([
+                    'cover_file' => 'image|mimes:jpeg,png,jpg|max:20480',
+                ]);
+            }
+
+            if (! empty($userData)) {
+                $user->update($userData);
+            }
+
+            // Handle profile update
+            $profileData = $request->only([
+                'no_hp', 'nik', 'pekerjaan', 'instansi', 'jabatan', 'alamat',
+                'birth_place', 'birth_date',
+                'province_id', 'regency_id', 'district_id',
+                'jenis_kelamin',
+            ]);
+
+            // Support aliases
+            if ($request->has('tempat_lahir') && empty($profileData['birth_place'])) {
+                $profileData['birth_place'] = $request->tempat_lahir;
+            }
+            if ($request->has('tgl_lahir') && empty($profileData['birth_date'])) {
+                $profileData['birth_date'] = $request->tgl_lahir;
+            }
+
+            // Filter out null values to prevent overwriting existing data with null
+            $profileData = array_filter($profileData, function ($value) {
+                return $value !== null;
+            });
+
+            // Explicitly handle region fields if they are null in the request (clearing the selection)
+            if ($request->has('province_id') && is_null($request->province_id)) {
+                $profileData['province_id'] = null;
+            }
+            if ($request->has('regency_id') && is_null($request->regency_id)) {
+                $profileData['regency_id'] = null;
+            }
+            if ($request->has('district_id') && is_null($request->district_id)) {
+                $profileData['district_id'] = null;
+            }
+
+            // Handle Custom Fields (Additional Data)
+            $standardFields = [
+                'name', 'email', 'password', 'password_confirmation',
+                'no_hp', 'nik', 'pekerjaan', 'instansi', 'jabatan', 'alamat',
+                'birth_place', 'birth_date', 'tempat_lahir', 'tgl_lahir',
+                'province_id', 'regency_id', 'district_id',
+                'jenis_kelamin', 'foto_file', 'foto_data', 'cover_file', '_token', '_method',
+            ];
+
+            $allInput = $request->except($standardFields);
+            $additionalData = array_filter($allInput, function ($value) {
+                return ! is_null($value) && $value !== '';
+            });
+
+            if (! empty($additionalData)) {
+                $existingAdditionalData = $profile->additional_data ?? [];
+                if (! is_array($existingAdditionalData)) {
+                    $existingAdditionalData = [];
+                }
+                $profileData['additional_data'] = array_merge($existingAdditionalData, $additionalData);
+            }
+
+            // Handle file upload
+            if ($request->hasFile('foto_file')) {
+                $foto = $request->file('foto_file');
                 $path = $foto->store('profile-photos', 'public');
-
-                // Save the filename/path to database
                 if (! $profile) {
-                    // Buat profile baru jika belum ada
                     $profile = new Profile;
                     $profile->user_id = $user->id;
                 }
-                // Model event will handle deleting the old file
                 $profile->foto = $path;
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Profile upload error (update): ' . $e->getMessage());
-                return redirect()->back()->withErrors(['foto_file' => 'Gagal upload foto. Cek log server/permission.'])->withInput();
-            }
-        } elseif ($request->filled('foto_data') && $request->foto_data != 'delete') {
-            // Handle base64 image from camera (hanya jika tidak ada file upload)
-            $image_data = $request->foto_data;
-            $image_array_1 = explode(';', $image_data);
-            $image_array_2 = explode(',', $image_array_1[1]);
-            $image_data = base64_decode($image_array_2[1]);
+            } elseif ($request->filled('foto_data') && $request->foto_data != 'delete') {
+                $image_data = $request->foto_data;
+                $image_array_1 = explode(';', $image_data);
+                $image_array_2 = explode(',', $image_array_1[1]);
+                $image_data = base64_decode($image_array_2[1]);
 
-            // Validate Base64 image content
-            $finfo = new \finfo(FILEINFO_MIME_TYPE);
-            $mimeType = $finfo->buffer($image_data);
-            
-            if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/jpg'])) {
-                 return redirect()->back()
-                    ->withErrors(['foto_file' => 'Format gambar dari kamera tidak valid.'])
-                    ->withInput();
-            }
+                $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                $mimeType = $finfo->buffer($image_data);
+                
+                if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/jpg'])) {
+                     return redirect()->back()
+                        ->withErrors(['foto_file' => 'Format gambar dari kamera tidak valid.'])
+                        ->withInput();
+                }
 
-            $fotoName = 'profile-photos/'.time().'_'.uniqid().'.jpg';
-            
-            \Illuminate\Support\Facades\Storage::disk('public')->put($fotoName, $image_data);
-
-            if (! $profile) {
-                // Buat profile baru jika belum ada
-                $profile = new Profile;
-                $profile->user_id = $user->id;
-            }
-            // Model event will handle deleting the old file
-            $profile->foto = $fotoName;
-        }
-
-        // Handle cover image upload
-        if ($request->hasFile('cover_file')) {
-            $cover = $request->file('cover_file');
-            try {
-                // Simpan menggunakan Storage facade
-                $path = $cover->store('profile-covers', 'public');
+                $fotoName = 'profile-photos/'.time().'_'.uniqid().'.jpg';
+                \Illuminate\Support\Facades\Storage::disk('public')->put($fotoName, $image_data);
 
                 if (! $profile) {
                     $profile = new Profile;
                     $profile->user_id = $user->id;
                 }
-                // Model event will handle deleting the old file
-                $profile->cover_image = $path;
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Cover upload error (update): ' . $e->getMessage());
-                return redirect()->back()->withErrors(['cover_file' => 'Gagal upload cover. Cek log server/permission.'])->withInput();
+                $profile->foto = $fotoName;
             }
-        }
 
-        // Handle photo deletion
-        if ($request->foto_data === 'delete') {
-            // Model event will handle deleting the file when we set it to null and save
+            if ($request->hasFile('cover_file')) {
+                $cover = $request->file('cover_file');
+                $path = $cover->store('profile-covers', 'public');
+                if (! $profile) {
+                    $profile = new Profile;
+                    $profile->user_id = $user->id;
+                }
+                $profile->cover_image = $path;
+            }
+
+            if ($request->foto_data === 'delete') {
+                if (! $profile) {
+                    $profile = new Profile;
+                    $profile->user_id = $user->id;
+                }
+                $profile->foto = null;
+            }
+
             if (! $profile) {
-                // Buat profile baru jika belum ada
                 $profile = new Profile;
                 $profile->user_id = $user->id;
             }
-            $profile->foto = null;
+
+            $profile->fill($profileData);
+            $profile->save();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Profile updated successfully.',
+                    'user' => $user->load('profile'),
+                ]);
+            }
+
+            if ($request->has('redirect_to') && $request->input('redirect_to')) {
+                return redirect($request->input('redirect_to'))->with('success', 'Profile updated successfully.');
+            }
+
+            return redirect()->back()->with('success', 'Profile updated successfully.');
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Re-throw validation exceptions to let Laravel handle them (422)
+            throw $e;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Profile Update Critical Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => 'Terjadi kesalahan server saat menyimpan profil: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
-
-        // Ensure profile object exists if not created by photo handling
-        if (! $profile) {
-            $profile = new Profile;
-            $profile->user_id = $user->id;
-        }
-
-        // Update or create profile
-        $profile->fill($profileData);
-        $profile->save();
-
-        if ($request->wantsJson()) {
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Profile updated successfully.',
-                'user' => $user->load('profile'),
-            ]);
-        }
-
-        if ($request->has('redirect_to') && $request->input('redirect_to')) {
-            return redirect($request->input('redirect_to'))->with('success', 'Profile updated successfully.');
-        }
-
-        return redirect()->back()->with('success', 'Profile updated successfully.');
     }
 
     public function updatePhoto(Request $request)
