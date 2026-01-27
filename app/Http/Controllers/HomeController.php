@@ -106,15 +106,34 @@ class HomeController extends Controller
                 $cfg3 = Setting::get('home_hero_background_3');
                 
                 foreach ([$cfg1, $cfg2, $cfg3] as $img) {
-                    if (!empty($img) && file_exists(public_path($img))) {
-                        $heroSlides[] = [
-                            'type' => 'static',
-                            'image' => asset($img),
-                            'title' => 'Platform Manajemen Event Digital Profesional',
-                            'description' => 'Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.',
-                            'link' => '/activity',
-                            'link_text' => 'Mulai Kelola Event'
-                        ];
+                    if (!empty($img)) {
+                        $imageUrl = null;
+                        
+                        // Scenario 1: Path already starts with assets/
+                        if (Str::startsWith($img, 'assets/')) {
+                            if (File::exists(public_path($img))) {
+                                $imageUrl = asset($img);
+                            }
+                        } 
+                        // Scenario 2: Path starts with storage/
+                        elseif (Str::startsWith($img, 'storage/')) {
+                            $imageUrl = asset($img);
+                        }
+                        // Scenario 3: Raw storage path (stored by our new logic)
+                        else {
+                            $imageUrl = asset('storage/' . $img);
+                        }
+
+                        if ($imageUrl) {
+                            $heroSlides[] = [
+                                'type' => 'static',
+                                'image' => $imageUrl,
+                                'title' => 'Platform Manajemen Event Digital Profesional',
+                                'description' => 'Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.',
+                                'link' => '/activity',
+                                'link_text' => 'Mulai Kelola Event'
+                            ];
+                        }
                     }
                 }
 

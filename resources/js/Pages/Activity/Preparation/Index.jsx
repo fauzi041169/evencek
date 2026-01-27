@@ -98,7 +98,10 @@ export default function PreparationIndex({
 
                         {/* Materials */}
                         <SectionContainer title="Materi & Dokumen" activity={activity}>
-                            <MaterialsSection activity={activity} materials={materials} />
+                            <MaterialsSection
+                                activity={activity}
+                                materials={materials.filter(m => m.file_type !== 'image')}
+                            />
                         </SectionContainer>
                     </div>
 
@@ -140,10 +143,13 @@ export default function PreparationIndex({
                         </div>
                     </div>
 
-                    {/* Gallery Section - Moved to bottom */}
+                    {/* Gallery Section - Only show images */}
                     <div className="mt-10">
-                        <SectionContainer title="Galeri & Materi" activity={activity}>
-                            <GallerySection activity={activity} materials={materials} />
+                        <SectionContainer title="Galeri Foto Kegiatan" activity={activity}>
+                            <GallerySection
+                                activity={activity}
+                                materials={materials.filter(m => m.file_type === 'image')}
+                            />
                         </SectionContainer>
                     </div>
                 </div>

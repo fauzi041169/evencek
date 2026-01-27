@@ -13,6 +13,8 @@ export default function Index({ activity, speakers: initialSpeakers }) {
     const [isSearching, setIsSearching] = useState(false);
     const [errors, setErrors] = useState({});
     const [flashMessage, setFlashMessage] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(null);
+    const [cvName, setCvName] = useState(null);
 
     const { data, setData, post, put, processing, reset } = useForm({
         name: '',
@@ -41,7 +43,7 @@ export default function Index({ activity, speakers: initialSpeakers }) {
             setSearchResults([]);
             return;
         }
-        
+
         setIsSearching(true);
         const timeout = setTimeout(() => {
             fetch(route('activity.speakers.search', activity.id) + '?q=' + encodeURIComponent(searchQuery))
@@ -94,20 +96,22 @@ export default function Index({ activity, speakers: initialSpeakers }) {
             },
             body: formData,
         })
-        .then(res => res.json())
-        .then(result => {
-            if (result.success) {
-                setShowCreateModal(false);
-                reset();
-                setErrors({});
-                router.reload();
-            } else {
-                setErrors(result.errors || {});
-            }
-        })
-        .catch(() => {
-            setErrors({ general: ['Terjadi kesalahan jaringan.'] });
-        });
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    setShowCreateModal(false);
+                    reset();
+                    setPhotoPreview(null);
+                    setCvName(null);
+                    setErrors({});
+                    router.reload();
+                } else {
+                    setErrors(result.errors || {});
+                }
+            })
+            .catch(() => {
+                setErrors({ general: ['Terjadi kesalahan jaringan.'] });
+            });
     };
 
     const handleEditSubmit = (e) => {
@@ -129,30 +133,32 @@ export default function Index({ activity, speakers: initialSpeakers }) {
             },
             body: formData,
         })
-        .then(res => res.json())
-        .then(result => {
-            if (result.success) {
-                setShowEditModal(false);
-                setEditingSpeaker(null);
-                reset();
-                setErrors({});
-                router.reload();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil',
-                    text: 'Data narasumber berhasil diperbarui!',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000
-                });
-            } else {
-                setErrors(result.errors || {});
-            }
-        })
-        .catch(() => {
-            setErrors({ general: ['Terjadi kesalahan jaringan.'] });
-        });
+            .then(res => res.json())
+            .then(result => {
+                if (result.success) {
+                    setShowEditModal(false);
+                    setEditingSpeaker(null);
+                    reset();
+                    setPhotoPreview(null);
+                    setCvName(null);
+                    setErrors({});
+                    router.reload();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Data narasumber berhasil diperbarui!',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                } else {
+                    setErrors(result.errors || {});
+                }
+            })
+            .catch(() => {
+                setErrors({ general: ['Terjadi kesalahan jaringan.'] });
+            });
     };
 
     const openEditModal = (speaker) => {
@@ -169,7 +175,18 @@ export default function Index({ activity, speakers: initialSpeakers }) {
             linkedin: speaker.linkedin || '',
             instagram: speaker.instagram || '',
         });
+        setPhotoPreview(null);
+        setCvName(null);
+        setErrors({});
         setShowEditModal(true);
+    };
+
+    const openCreateModal = () => {
+        reset();
+        setPhotoPreview(null);
+        setCvName(null);
+        setErrors({});
+        setShowCreateModal(true);
     };
 
     const handleDelete = (speaker) => {
@@ -192,7 +209,7 @@ export default function Index({ activity, speakers: initialSpeakers }) {
     return (
         <AcaraLayout activity={activity}>
             <Head title="Manajemen Narasumber" />
-            
+
             <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 pb-20">
                 {/* Header Section */}
                 <div className="bg-gradient-to-r from-primary via-purple-600 to-pink-600 border-b border-indigo-400 sticky top-0 z-30 shadow-lg">
@@ -213,12 +230,8 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                 </p>
                             </div>
                             <div className="flex items-center gap-3">
-                                <button 
-                                    onClick={() => {
-                                        reset();
-                                        setErrors({});
-                                        setShowCreateModal(true);
-                                    }}
+                                <button
+                                    onClick={openCreateModal}
                                     className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-all transform hover:scale-105 active:scale-95"
                                 >
                                     <i className="fas fa-plus-circle mr-2 text-lg"></i>
@@ -243,8 +256,8 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                             </div>
                             <h3 className="text-2xl font-bold text-gray-900 mb-2">Belum ada narasumber</h3>
                             <p className="text-gray-600 mb-8 max-w-sm mx-auto">Tambahkan narasumber untuk kegiatan ini agar peserta dapat melihat siapa yang akan mengisi acara.</p>
-                            <button 
-                                onClick={() => setShowCreateModal(true)}
+                            <button
+                                onClick={openCreateModal}
                                 className="inline-flex items-center px-6 py-3 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-gradient-to-r from-primary to-pink-600 hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transform hover:scale-105 transition-all"
                             >
                                 <i className="fas fa-plus mr-2"></i> Tambah Narasumber Sekarang
@@ -258,9 +271,9 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                     <div key={speaker.id} className={`bg-white rounded-2xl border-2 ${color.border} shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group transform hover:-translate-y-2 flex flex-col`}>
                                         <div className={`bg-gradient-to-br ${color.bg} relative flex-1 min-h-[450px]`}>
                                             {speaker.photo ? (
-                                                <img 
-                                                    src={route('activity.speakers.photo', speaker.id)} 
-                                                    alt={speaker.name} 
+                                                <img
+                                                    src={route('activity.speakers.photo', speaker.id)}
+                                                    alt={speaker.name}
                                                     className="w-full h-full object-cover object-top"
                                                 />
                                             ) : (
@@ -270,13 +283,13 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                             )}
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                             <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button 
+                                                <button
                                                     onClick={() => openEditModal(speaker)}
                                                     className="p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg text-secondary hover:bg-white hover:text-blue-700 transition-all transform hover:scale-110"
                                                 >
                                                     <i className="fas fa-edit"></i>
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => handleDelete(speaker)}
                                                     className="p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg text-red-600 hover:bg-white hover:text-red-700 transition-all transform hover:scale-110"
                                                 >
@@ -294,11 +307,11 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <i className="fas fa-building text-gray-400"></i>
                                                 {speaker.institution || '-'}
                                             </p>
-                                            
+
                                             {speaker.cv && (
                                                 <div className="mb-4">
-                                                    <a 
-                                                        href={route('activity.speakers.cv', speaker.id)} 
+                                                    <a
+                                                        href={route('activity.speakers.cv', speaker.id)}
                                                         target="_blank"
                                                         className="inline-flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-semibold hover:from-red-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
                                                     >
@@ -351,9 +364,27 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                     <i className="fas fa-times text-xl"></i>
                                 </button>
                             </div>
-                            
+
                             <div className="p-6 max-h-[85vh] overflow-y-auto">
-                                {/* Validation errors are handled globally */}
+                                {Object.keys(errors).length > 0 && (
+                                    <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-2xl p-5 shadow-sm animate-pulse">
+                                        <div className="flex items-start">
+                                            <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shadow-lg mr-4 flex-shrink-0">
+                                                <i className="fas fa-exclamation-triangle text-lg"></i>
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="text-sm font-black text-red-800 uppercase tracking-wider mb-1">Terjadi Kesalahan</h3>
+                                                <ul className="text-sm text-red-700 list-disc list-inside space-y-0.5 font-medium">
+                                                    {Object.entries(errors).map(([key, msgs]) => (
+                                                        Array.isArray(msgs) ? msgs.map((msg, i) => (
+                                                            <li key={`${key}-${i}`}>{msg}</li>
+                                                        )) : <li key={key}>{msgs}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <form onSubmit={handleCreateSubmit} className="space-y-8">
 
@@ -369,18 +400,18 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                                 <i className="fas fa-search text-violet-400"></i>
                                             </div>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                                className="block w-full pl-12 pr-4 py-4 rounded-xl border-2 border-violet-300 bg-white shadow-md focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all text-sm" 
+                                                className="block w-full pl-12 pr-4 py-4 rounded-xl border-2 border-violet-300 bg-white shadow-md focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all text-sm"
                                                 placeholder="Ketik nama atau email narasumber (minimal 2 karakter)..."
                                             />
                                             {searchResults.length > 0 && (
                                                 <div className="absolute z-[9999] w-full mt-2 bg-white border-2 border-violet-300 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
                                                     <div className="divide-y divide-gray-200">
                                                         {searchResults.map(speaker => (
-                                                            <div 
+                                                            <div
                                                                 key={speaker.id}
                                                                 onClick={() => selectSpeaker(speaker)}
                                                                 className="p-4 hover:bg-indigo-50 cursor-pointer transition-all border-l-4 border-transparent hover:border-indigo-500"
@@ -420,12 +451,12 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fas fa-user text-gray-400 mr-1"></i> Nama Lengkap <span className="text-red-500">*</span>
                                                 </label>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     value={data.name}
                                                     onChange={e => setData('name', e.target.value)}
-                                                    required 
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md" 
+                                                    required
+                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
                                                     placeholder="Contoh: Dr. Budi Santoso, M.Kom"
                                                 />
                                             </div>
@@ -433,11 +464,11 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fas fa-id-badge text-gray-400 mr-1"></i> Gelar / Jabatan
                                                 </label>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     value={data.title}
                                                     onChange={e => setData('title', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md" 
+                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
                                                     placeholder="Contoh: Kepala Dinas Pendidikan"
                                                 />
                                             </div>
@@ -445,22 +476,22 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fas fa-building text-gray-400 mr-1"></i> Instansi
                                                 </label>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     value={data.institution}
                                                     onChange={e => setData('institution', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md" 
+                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
                                                     placeholder="Contoh: Dinas Pendidikan Kota Bandung"
                                                 />
                                             </div>
                                             <div className="col-span-1 md:col-span-2">
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Biografi Singkat</label>
-                                                <textarea 
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi / Biografi Singkat</label>
+                                                <textarea
                                                     value={data.bio}
                                                     onChange={e => setData('bio', e.target.value)}
-                                                    rows="3" 
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md" 
-                                                    placeholder="Tuliskan biografi singkat narasumber..."
+                                                    rows="3"
+                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
+                                                    placeholder="Tuliskan deskripsi atau biografi singkat narasumber..."
                                                 ></textarea>
                                             </div>
                                         </div>
@@ -474,45 +505,62 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Foto Profile</label>
-                                                <label className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all group cursor-pointer block w-full">
-                                                    <div className="space-y-1 text-center">
-                                                        <div className="w-12 h-12 mx-auto bg-secondary/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all group cursor-pointer block w-full relative overflow-hidden min-h-[160px]">
+                                                    {photoPreview ? (
+                                                        <div className="absolute inset-0 z-0">
+                                                            <img src={photoPreview} className="w-full h-full object-cover opacity-20" alt="Preview" />
+                                                        </div>
+                                                    ) : null}
+                                                    <div className="space-y-1 text-center relative z-10">
+                                                        <div className="w-12 h-12 mx-auto bg-secondary/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-white/80 shadow-sm">
                                                             <i className="fas fa-image text-blue-500 text-xl"></i>
                                                         </div>
                                                         <div className="flex text-sm text-gray-600 justify-center pt-2">
-                                                            <span className="relative rounded-md font-medium text-secondary hover:text-blue-500">
-                                                                <span>Upload file</span>
+                                                            <span className="relative rounded-md font-bold text-secondary hover:text-blue-500">
+                                                                {photoPreview ? 'Ganti Foto' : 'Upload Foto'}
                                                             </span>
                                                         </div>
-                                                        <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                                                        <p className="text-xs text-gray-500 font-medium">PNG, JPG up to 10MB</p>
                                                     </div>
-                                                    <input 
-                                                        type="file" 
-                                                        accept="image/*" 
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
                                                         className="sr-only"
-                                                        onChange={e => setData('photo', e.target.files[0])}
+                                                        onChange={e => {
+                                                            const file = e.target.files[0];
+                                                            setData('photo', file);
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onloadend = () => setPhotoPreview(reader.result);
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        }}
                                                     />
                                                 </label>
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Upload CV (PDF)</label>
-                                                <label className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-red-500 hover:bg-red-50 transition-all group cursor-pointer block w-full">
+                                                <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-red-500 hover:bg-red-50 transition-all group cursor-pointer block w-full min-h-[160px]">
                                                     <div className="space-y-1 text-center">
-                                                        <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                        <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
                                                             <i className="fas fa-file-pdf text-red-500 text-xl"></i>
                                                         </div>
                                                         <div className="flex text-sm text-gray-600 justify-center pt-2">
-                                                            <span className="relative rounded-md font-medium text-red-600 hover:text-red-500">
-                                                                <span>Upload PDF</span>
+                                                            <span className="relative rounded-md font-bold text-red-600 hover:text-red-500">
+                                                                {cvName ? cvName : 'Upload PDF'}
                                                             </span>
                                                         </div>
-                                                        <p className="text-xs text-gray-500">PDF up to 5MB</p>
+                                                        <p className="text-xs text-gray-500 font-medium">PDF up to 5MB</p>
                                                     </div>
-                                                    <input 
-                                                        type="file" 
-                                                        accept="application/pdf" 
+                                                    <input
+                                                        type="file"
+                                                        accept="application/pdf"
                                                         className="sr-only"
-                                                        onChange={e => setData('cv', e.target.files[0])}
+                                                        onChange={e => {
+                                                            const file = e.target.files[0];
+                                                            setData('cv', file);
+                                                            if (file) setCvName(file.name);
+                                                        }}
                                                     />
                                                 </label>
                                             </div>
@@ -532,12 +580,12 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fas fa-envelope text-gray-400 mr-1"></i> Email <span className="text-red-500">*</span>
                                                 </label>
-                                                <input 
-                                                    type="email" 
+                                                <input
+                                                    type="email"
                                                     value={data.email}
                                                     onChange={e => setData('email', e.target.value)}
-                                                    required 
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md" 
+                                                    required
+                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
                                                     placeholder="contoh@email.com"
                                                 />
                                             </div>
@@ -545,11 +593,11 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fas fa-phone text-gray-400 mr-1"></i> No. HP/WA
                                                 </label>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     value={data.phone}
                                                     onChange={e => setData('phone', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md" 
+                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
                                                     placeholder="08123456789"
                                                 />
                                             </div>
@@ -557,11 +605,11 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fab fa-linkedin text-blue-700 mr-1"></i> LinkedIn URL
                                                 </label>
-                                                <input 
-                                                    type="url" 
+                                                <input
+                                                    type="url"
                                                     value={data.linkedin}
                                                     onChange={e => setData('linkedin', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md" 
+                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
                                                     placeholder="https://linkedin.com/in/username"
                                                 />
                                             </div>
@@ -569,11 +617,11 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fab fa-instagram text-pink-600 mr-1"></i> Instagram URL
                                                 </label>
-                                                <input 
-                                                    type="url" 
+                                                <input
+                                                    type="url"
                                                     value={data.instagram}
                                                     onChange={e => setData('instagram', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md" 
+                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
                                                     placeholder="https://instagram.com/username"
                                                 />
                                             </div>
@@ -581,15 +629,15 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                     </div>
 
                                     <div className="flex items-center justify-end gap-3 pt-6 border-t-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 -mx-6 -mb-6 px-6 py-5 rounded-b-2xl">
-                                        <button 
-                                            type="button" 
+                                        <button
+                                            type="button"
                                             onClick={() => setShowCreateModal(false)}
                                             className="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all transform hover:scale-105"
                                         >
                                             <i className="fas fa-times mr-2"></i> Batal
                                         </button>
-                                        <button 
-                                            type="submit" 
+                                        <button
+                                            type="submit"
                                             disabled={processing}
                                             className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary via-pink-600 to-rose-600 text-white font-bold hover:from-purple-700 hover:via-pink-700 hover:to-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 shadow-xl transition-all transform hover:scale-105 active:scale-95"
                                         >
@@ -652,11 +700,11 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fas fa-user text-gray-400 mr-1"></i> Nama Lengkap <span className="text-red-500">*</span>
                                                 </label>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     value={data.name}
                                                     onChange={e => setData('name', e.target.value)}
-                                                    required 
+                                                    required
                                                     className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
                                                 />
                                             </div>
@@ -664,8 +712,8 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fas fa-id-badge text-gray-400 mr-1"></i> Gelar / Jabatan
                                                 </label>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     value={data.title}
                                                     onChange={e => setData('title', e.target.value)}
                                                     className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
@@ -675,20 +723,21 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fas fa-building text-gray-400 mr-1"></i> Instansi
                                                 </label>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     value={data.institution}
                                                     onChange={e => setData('institution', e.target.value)}
                                                     className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
                                                 />
                                             </div>
                                             <div className="col-span-1 md:col-span-2">
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Biografi Singkat</label>
-                                                <textarea 
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi / Biografi Singkat</label>
+                                                <textarea
                                                     value={data.bio}
                                                     onChange={e => setData('bio', e.target.value)}
-                                                    rows="3" 
+                                                    rows="3"
                                                     className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
+                                                    placeholder="Tuliskan deskripsi atau biografi singkat narasumber..."
                                                 ></textarea>
                                             </div>
                                         </div>
@@ -702,39 +751,60 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Foto Profile</label>
-                                                <label className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-yellow-500 hover:bg-yellow-50 transition-all group cursor-pointer block w-full">
-                                                    <div className="space-y-1 text-center">
-                                                        <div className="w-12 h-12 mx-auto bg-yellow-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-yellow-500 hover:bg-yellow-50 transition-all group cursor-pointer block w-full relative overflow-hidden min-h-[160px]">
+                                                    {photoPreview ? (
+                                                        <div className="absolute inset-0 z-0">
+                                                            <img src={photoPreview} className="w-full h-full object-cover opacity-20" alt="Preview" />
+                                                        </div>
+                                                    ) : null}
+                                                    <div className="space-y-1 text-center relative z-10">
+                                                        <div className="w-12 h-12 mx-auto bg-yellow-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-white/80 shadow-sm">
                                                             <i className="fas fa-image text-yellow-500 text-xl"></i>
                                                         </div>
                                                         <div className="flex text-sm text-gray-600 justify-center pt-2">
-                                                            <span className="font-medium text-yellow-600">{editingSpeaker.photo ? 'Ganti foto' : 'Upload foto'}</span>
+                                                            <span className="font-bold text-yellow-600 tracking-tight">
+                                                                {photoPreview ? 'Ganti Foto' : (editingSpeaker.photo ? 'Update Foto' : 'Upload Foto')}
+                                                            </span>
                                                         </div>
                                                     </div>
-                                                    <input 
-                                                        type="file" 
-                                                        accept="image/*" 
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
                                                         className="sr-only"
-                                                        onChange={e => setData('photo', e.target.files[0])}
+                                                        onChange={e => {
+                                                            const file = e.target.files[0];
+                                                            setData('photo', file);
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onloadend = () => setPhotoPreview(reader.result);
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        }}
                                                     />
                                                 </label>
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Upload CV (PDF)</label>
-                                                <label className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-red-500 hover:bg-red-50 transition-all group cursor-pointer block w-full">
+                                                <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-red-500 hover:bg-red-50 transition-all group cursor-pointer block w-full min-h-[160px]">
                                                     <div className="space-y-1 text-center">
-                                                        <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                        <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
                                                             <i className="fas fa-file-pdf text-red-500 text-xl"></i>
                                                         </div>
                                                         <div className="flex text-sm text-gray-600 justify-center pt-2">
-                                                            <span className="font-medium text-red-600">{editingSpeaker.cv ? 'Ganti CV' : 'Upload CV'}</span>
+                                                            <span className="font-bold text-red-600 tracking-tight">
+                                                                {cvName ? cvName : (editingSpeaker.cv ? 'Update CV' : 'Upload CV')}
+                                                            </span>
                                                         </div>
                                                     </div>
-                                                    <input 
-                                                        type="file" 
-                                                        accept="application/pdf" 
+                                                    <input
+                                                        type="file"
+                                                        accept="application/pdf"
                                                         className="sr-only"
-                                                        onChange={e => setData('cv', e.target.files[0])}
+                                                        onChange={e => {
+                                                            const file = e.target.files[0];
+                                                            setData('cv', file);
+                                                            if (file) setCvName(file.name);
+                                                        }}
                                                     />
                                                 </label>
                                             </div>
@@ -751,11 +821,11 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fas fa-envelope text-gray-400 mr-1"></i> Email <span className="text-red-500">*</span>
                                                 </label>
-                                                <input 
-                                                    type="email" 
+                                                <input
+                                                    type="email"
                                                     value={data.email}
                                                     onChange={e => setData('email', e.target.value)}
-                                                    required 
+                                                    required
                                                     className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
                                                 />
                                             </div>
@@ -763,8 +833,8 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fas fa-phone text-gray-400 mr-1"></i> No. HP/WA
                                                 </label>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     value={data.phone}
                                                     onChange={e => setData('phone', e.target.value)}
                                                     className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
@@ -774,8 +844,8 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fab fa-linkedin text-blue-700 mr-1"></i> LinkedIn URL
                                                 </label>
-                                                <input 
-                                                    type="url" 
+                                                <input
+                                                    type="url"
                                                     value={data.linkedin}
                                                     onChange={e => setData('linkedin', e.target.value)}
                                                     className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
@@ -785,8 +855,8 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                     <i className="fab fa-instagram text-pink-600 mr-1"></i> Instagram URL
                                                 </label>
-                                                <input 
-                                                    type="url" 
+                                                <input
+                                                    type="url"
                                                     value={data.instagram}
                                                     onChange={e => setData('instagram', e.target.value)}
                                                     className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
@@ -796,15 +866,15 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                                     </div>
 
                                     <div className="flex items-center justify-end gap-3 pt-6 border-t-2 border-orange-200 bg-gradient-to-r from-amber-50 to-orange-50 -mx-6 -mb-6 px-6 py-5 rounded-b-2xl">
-                                        <button 
-                                            type="button" 
+                                        <button
+                                            type="button"
                                             onClick={() => setShowEditModal(false)}
                                             className="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all transform hover:scale-105"
                                         >
                                             <i className="fas fa-times mr-2"></i> Batal
                                         </button>
-                                        <button 
-                                            type="submit" 
+                                        <button
+                                            type="submit"
                                             disabled={processing}
                                             className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 text-white font-bold hover:from-amber-700 hover:via-orange-700 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 shadow-xl transition-all transform hover:scale-105 active:scale-95"
                                         >

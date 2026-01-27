@@ -255,9 +255,11 @@ export default function Management({
         <AcaraLayout
             title={`Manajemen Absensi - ${selectedActivity.name}`}
             activity={selectedActivity}
+            fluid={true}
+            noPadding={true}
         >
-            <div className="bg-gray-50 min-h-screen p-6">
-                <div className="max-w-7xl mx-auto px-4 py-6">
+            <div className="bg-gray-50 min-h-screen">
+                <div className="w-full mx-auto px-4 py-4">
                     {/* Activity Header */}
                     <div className="mb-6">
                         <h2 className="text-2xl font-bold text-gray-900">{selectedActivity.name}</h2>
@@ -305,7 +307,7 @@ export default function Management({
                                 <span className="text-sm text-gray-600">{presentCount} dari {totalParticipants} peserta</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div 
+                                <div
                                     className="bg-green-500 h-3 rounded-full transition-all duration-300"
                                     style={{ width: `${attendancePercentage}%` }}
                                 ></div>
@@ -320,7 +322,7 @@ export default function Management({
                                 <div className="bg-blue-500 px-4 py-3 flex justify-between items-center">
                                     <h3 className="text-white font-bold">List Absen</h3>
                                     {canManageAttendance && (
-                                        <button 
+                                        <button
                                             onClick={() => setShowAddModal(true)}
                                             className="bg-white text-secondary px-3 py-1 rounded-lg text-sm font-semibold hover:bg-gray-100"
                                         >
@@ -331,20 +333,18 @@ export default function Management({
                                 <div className="divide-y divide-gray-100">
                                     {attendances && attendances.length > 0 ? (
                                         attendances.map((attendance, index) => (
-                                            <div 
+                                            <div
                                                 key={attendance.id}
-                                                className={`p-3 cursor-pointer hover:bg-gray-50 transition-all ${
-                                                    selectedAttendanceId === attendance.id 
-                                                        ? 'bg-red-50 border-l-4 border-red-500' 
-                                                        : 'border-l-4 border-transparent'
-                                                }`}
+                                                className={`p-3 cursor-pointer hover:bg-gray-50 transition-all ${selectedAttendanceId === attendance.id
+                                                    ? 'bg-red-50 border-l-4 border-red-500'
+                                                    : 'border-l-4 border-transparent'
+                                                    }`}
                                                 onClick={() => handleAttendanceClick(attendance.id)}
                                             >
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="flex items-start gap-2 flex-1 min-w-0">
-                                                        <span className={`w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-xs font-bold text-white mt-1 ${
-                                                            selectedAttendanceId === attendance.id ? 'bg-red-500' : 'bg-gray-500'
-                                                        }`}>
+                                                        <span className={`w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-xs font-bold text-white mt-1 ${selectedAttendanceId === attendance.id ? 'bg-red-500' : 'bg-gray-500'
+                                                            }`}>
                                                             {index + 1}
                                                         </span>
                                                         <div className="flex flex-col min-w-0 w-full">
@@ -362,7 +362,7 @@ export default function Management({
                                                     </div>
                                                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                                                         {hasType(attendance, 'QR Mandiri') && (
-                                                            <button 
+                                                            <button
                                                                 onClick={() => showQRCode(attendance.id, selectedActivity.name, attendance.name)}
                                                                 className="p-1.5 bg-blue-500 text-white rounded hover:bg-secondary"
                                                                 title="Tampilkan QR Code"
@@ -371,7 +371,7 @@ export default function Management({
                                                             </button>
                                                         )}
                                                         {hasType(attendance, 'Manual') && (
-                                                            <button 
+                                                            <button
                                                                 onClick={() => handleMarkAllPresent(attendance.id)}
                                                                 className="p-1.5 bg-green-500 text-white rounded hover:bg-green-600"
                                                                 title="Absen Semua"
@@ -380,7 +380,7 @@ export default function Management({
                                                             </button>
                                                         )}
                                                         {hasType(attendance, 'QR Manual') && (
-                                                            <Link 
+                                                            <Link
                                                                 href={route('attendance.scan', { activity: selectedActivity.id, attendance: attendance.id })}
                                                                 className="p-1.5 bg-blue-500 text-white rounded hover:bg-secondary"
                                                                 title="Scan QR"
@@ -395,7 +395,7 @@ export default function Management({
                                                         >
                                                             <i className="fas fa-chart-bar text-xs"></i>
                                                         </Link>
-                                                        <button 
+                                                        <button
                                                             onClick={() => handleDeleteAttendance(attendance.id, attendance.name)}
                                                             className="p-1.5 bg-red-500 text-white rounded hover:bg-red-600"
                                                             title="Hapus"
@@ -419,35 +419,53 @@ export default function Management({
                         <div className="lg:col-span-2">
                             <div className="bg-white rounded-xl shadow overflow-hidden">
                                 <div className="p-4 border-b">
-                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                        <h3 className="font-bold text-gray-900">
-                                            {selectedAttendance 
-                                                ? `Daftar Absen: ${selectedAttendance.name}`
-                                                : 'Daftar Peserta Aktivitas'
-                                            }
-                                        </h3>
-                                        {selectedAttendanceId && (
-                                            <div className="flex gap-1">
-                                                <button 
-                                                    onClick={() => handleStatusFilter('')}
-                                                    className={`px-3 py-1 rounded text-sm ${!statusFilter ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}
-                                                >
-                                                    Semua
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleStatusFilter('present')}
-                                                    className={`px-3 py-1 rounded text-sm ${statusFilter === 'present' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-700'}`}
-                                                >
-                                                    Hadir
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleStatusFilter('absent')}
-                                                    className={`px-3 py-1 rounded text-sm ${statusFilter === 'absent' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700'}`}
-                                                >
-                                                    Tidak Hadir
-                                                </button>
-                                            </div>
-                                        )}
+                                    <div className="flex flex-col gap-4">
+                                        <div>
+                                            <h3 className="font-bold text-gray-900 text-lg">
+                                                {selectedAttendance
+                                                    ? `Daftar Absen: ${selectedAttendance.name}`
+                                                    : 'Daftar Peserta Aktivitas'
+                                                }
+                                            </h3>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
+                                            {selectedAttendanceId && (
+                                                <div className="flex gap-2 flex-shrink-0">
+                                                    <button
+                                                        onClick={() => handleStatusFilter('')}
+                                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${!statusFilter ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
+                                                    >
+                                                        Semua
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStatusFilter('present')}
+                                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusFilter === 'present' ? 'bg-green-600 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
+                                                    >
+                                                        Hadir
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStatusFilter('absent')}
+                                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusFilter === 'absent' ? 'bg-red-600 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}
+                                                    >
+                                                        Tidak Hadir
+                                                    </button>
+                                                </div>
+                                            )}
+                                            <a
+                                                href={route('attendance.download', {
+                                                    activity_id: selectedActivity.id,
+                                                    attendance_id: selectedAttendanceId,
+                                                    batch_id: selectedAttendance?.activity_batch_id
+                                                })}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex-shrink-0 inline-flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 shadow-sm transition-all ml-auto"
+                                            >
+                                                <i className="fas fa-file-excel"></i>
+                                                <span className="hidden sm:inline">Download Excel</span>
+                                                <span className="sm:hidden">Excel</span>
+                                            </a>
+                                        </div>
                                     </div>
 
                                     {/* Search */}
@@ -457,7 +475,7 @@ export default function Management({
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                                                     <i className="fas fa-search"></i>
                                                 </span>
-                                                <input 
+                                                <input
                                                     type="search"
                                                     value={search}
                                                     onChange={(e) => setSearch(e.target.value)}
@@ -466,7 +484,7 @@ export default function Management({
                                                 />
                                             </div>
                                         </div>
-                                        <select 
+                                        <select
                                             value={perPage}
                                             onChange={(e) => handlePerPageChange(e.target.value)}
                                             className="px-3 py-2 border rounded-lg"
@@ -481,12 +499,12 @@ export default function Management({
 
                                 {/* Table */}
                                 <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[1000px]">
+                                    <table className="w-full">
                                         <thead className="bg-gray-50">
                                             <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Nama</th>
-                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell whitespace-nowrap">Provinsi</th>
-                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell whitespace-nowrap">Kabupaten</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell">Provinsi</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell">Kabupaten</th>
                                                 {selectedAttendanceId && (
                                                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Status</th>
                                                 )}
@@ -500,33 +518,32 @@ export default function Management({
                                                 participants.data.map((participant) => {
                                                     const status = getAttendanceStatus(participant);
                                                     const isPresent = status?.status === 1;
-                                                    
+
                                                     return (
                                                         <tr key={participant.id} className="hover:bg-gray-50">
-                                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                            <td className="px-4 py-3 align-top">
                                                                 <strong>{participant.user?.name || '-'}</strong>
                                                             </td>
-                                                            <td className="px-4 py-3 hidden md:table-cell text-gray-600 whitespace-nowrap">
+                                                            <td className="px-4 py-3 hidden md:table-cell text-gray-600 align-top">
                                                                 {participant.user?.profile?.province?.name || '-'}
                                                             </td>
-                                                            <td className="px-4 py-3 hidden md:table-cell text-gray-600 whitespace-nowrap">
+                                                            <td className="px-4 py-3 hidden md:table-cell text-gray-600 align-top">
                                                                 {participant.user?.profile?.regency?.name || '-'}
                                                             </td>
                                                             {selectedAttendanceId && (
-                                                                <td className="px-4 py-3 text-center whitespace-nowrap">
-                                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                                                        isPresent 
-                                                                            ? 'bg-green-100 text-green-800' 
-                                                                            : 'bg-red-100 text-red-800'
-                                                                    }`}>
+                                                                <td className="px-4 py-3 text-center whitespace-nowrap align-top">
+                                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isPresent
+                                                                        ? 'bg-green-100 text-green-800'
+                                                                        : 'bg-red-100 text-red-800'
+                                                                        }`}>
                                                                         <i className={`fas ${isPresent ? 'fa-check-circle' : 'fa-times-circle'} mr-1`}></i>
                                                                         {isPresent ? 'Hadir' : 'Tidak Hadir'}
                                                                     </span>
                                                                 </td>
                                                             )}
                                                             {selectedAttendanceId && isManualType && (
-                                                                <td className="px-4 py-3 text-center whitespace-nowrap">
-                                                                    <input 
+                                                                <td className="px-4 py-3 text-center whitespace-nowrap align-top">
+                                                                    <input
                                                                         type="checkbox"
                                                                         checked={isPresent}
                                                                         onChange={(e) => handleAttendanceCheckbox(participant.user_id, e.target.checked)}
@@ -560,13 +577,12 @@ export default function Management({
                                                     key={i}
                                                     onClick={() => link.url && router.visit(link.url)}
                                                     disabled={!link.url}
-                                                    className={`px-3 py-1 rounded text-sm ${
-                                                        link.active 
-                                                            ? 'bg-blue-500 text-white' 
-                                                            : link.url 
-                                                                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
-                                                                : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                                                    }`}
+                                                    className={`px-3 py-1 rounded text-sm ${link.active
+                                                        ? 'bg-blue-500 text-white'
+                                                        : link.url
+                                                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                            : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                                                        }`}
                                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                                 />
                                             ))}
@@ -595,7 +611,7 @@ export default function Management({
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">
                                         Nama Absen <span className="text-red-500">*</span>
                                     </label>
-                                    <input 
+                                    <input
                                         type="text"
                                         value={data.name}
                                         onChange={(e) => setData('name', e.target.value)}
@@ -636,7 +652,7 @@ export default function Management({
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Deskripsi</label>
-                                    <textarea 
+                                    <textarea
                                         value={data.description}
                                         onChange={(e) => setData('description', e.target.value)}
                                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -647,7 +663,7 @@ export default function Management({
                             </div>
 
                             <div className="mt-6 flex justify-end">
-                                <button 
+                                <button
                                     type="submit"
                                     disabled={processing}
                                     className="px-6 py-2 bg-secondary text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
@@ -679,13 +695,13 @@ export default function Management({
                             <p className="text-sm text-gray-500">Tampilkan QR code ini kepada peserta untuk di-scan</p>
                         </div>
                         <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
-                            <button 
+                            <button
                                 onClick={() => setShowQRModal(false)}
                                 className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
                             >
                                 Tutup
                             </button>
-                            <a 
+                            <a
                                 href={qrData.url}
                                 download="qr-code-absensi.png"
                                 className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-blue-700"

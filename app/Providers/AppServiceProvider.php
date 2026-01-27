@@ -46,7 +46,7 @@ class AppServiceProvider extends ServiceProvider
 
             if (Schema::hasTable('settings')) {
                 $favicon = \App\Models\Setting::get('app_favicon');
-                $faviconUrl = $favicon ? (str_starts_with($favicon, 'http') ? $favicon : asset($favicon)) : asset('favicon.ico');
+                $faviconUrl = $favicon ? (str_starts_with($favicon, 'http') ? $favicon : (str_starts_with($favicon, 'storage/') || str_starts_with($favicon, 'assets/') ? asset($favicon) : asset('storage/' . $favicon))) : asset('favicon.ico');
                 View::share('appFavicon', $faviconUrl);
             }
         } catch (\Throwable $e) {

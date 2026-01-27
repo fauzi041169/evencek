@@ -3,7 +3,7 @@
     --color-navbar-link-hover-bg: #bcf5cd;
     --color-info: #06b6d4;
     --color-navbar-link-active-border: #ffcf66;
-    --color-navbar-opacity: 0.76;
+    --color-navbar-opacity: 1;
     --color-success: #10b981;
     --color-navbar-link-active-card: #fa9200;
     --color-card-blue: #f0f7ff;
@@ -15,7 +15,7 @@
     --color-card-green: #f0fdf4;
     --color-hero-start: #7c3aed;
     --color-warning: #f59e0b;
-    --color-navbar-end: #a3fe58;
-    --color-navbar-start: #2718f7;
+    --color-navbar-end: #e46f01;
+    --color-navbar-start: #0e00d6;
     --color-navbar-brand-text: #f0f0f0;
 }

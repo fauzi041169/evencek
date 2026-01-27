@@ -7,12 +7,11 @@ export default function GallerySection({ activity, materials }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {materials.map((material) => (
                     <div key={material.id} className="group relative bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                        {/* Assuming material has file_path or url. Adjust based on model */}
                         <div className="aspect-w-16 aspect-h-9 bg-gray-200">
-                            {material.type === 'image' ? (
-                                <img 
-                                    src={`/storage/${material.file_path}`} 
-                                    alt={material.name} 
+                            {material.file_type === 'image' ? (
+                                <img
+                                    src={route('activity.preparation.serve-material', [activity.uid || activity.id, material.uid || material.id])}
+                                    alt={material.name}
                                     className="object-cover w-full h-full"
                                 />
                             ) : (
@@ -31,10 +30,13 @@ export default function GallerySection({ activity, materials }) {
                         </div>
                     </div>
                 ))}
-                
+
                 {materials.length === 0 && (
-                    <div className="col-span-full text-center py-8 text-gray-500">
-                        Belum ada materi atau foto di galeri.
+                    <div className="col-span-full text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-gray-300">
+                            <i className="fas fa-images text-2xl"></i>
+                        </div>
+                        <p className="text-gray-500 font-medium">Belum ada foto kegiatan di galeri.</p>
                     </div>
                 )}
             </div>

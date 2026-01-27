@@ -12,9 +12,26 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
     const [isSearching, setIsSearching] = useState(false);
     const [editMode, setEditMode] = useState(false);
 
-    const getStorageUrl = (url) => {
-        if (!url) return null;
-        return url.startsWith('http') ? url : `/storage/${url}`;
+    const getStorageUrl = (path) => {
+        if (!path) return null;
+        if (path.startsWith('http')) return path;
+
+        let cleanPath = path.startsWith('/') ? path.substring(1) : path;
+
+        // Handle double storage/
+        if (cleanPath.startsWith('storage/storage/')) {
+            cleanPath = cleanPath.substring(8);
+        }
+
+        if (cleanPath.startsWith('storage/')) {
+            return '/' + cleanPath;
+        }
+
+        if (cleanPath.startsWith('assets/')) {
+            return '/' + cleanPath;
+        }
+
+        return `/storage/${cleanPath}`;
     };
 
     const heroAnim = appSettings?.hero_animation_style || 'blob';
@@ -204,11 +221,12 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                     `}</style>
                     {/* Background Elements */}
                     <div className="absolute inset-0">
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 via-slate-900/95 to-slate-900 z-10"></div>
+                        {/* Gradient Overlay - Adjusted for visibility */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-slate-900/50 to-slate-900/80 z-10"></div>
 
                         {heroBg1 ? (
                             <div
-                                className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-overlay z-[1]"
+                                className="absolute inset-0 bg-cover bg-center opacity-60 mix-blend-overlay z-[1]"
                                 style={{ backgroundImage: `url('${getStorageUrl(heroBg1)}')` }}
                             />
                         ) : (
@@ -670,21 +688,21 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                         e.preventDefault();
                                                         e.stopPropagation();
                                                         Swal.fire({
-                                                        title: 'Hapus Kegiatan?',
-                                                        text: "Data kegiatan akan dihapus permanen.",
-                                                        icon: 'warning',
-                                                        showCancelButton: true,
-                                                        confirmButtonColor: '#d33',
-                                                        cancelButtonColor: '#3085d6',
-                                                        confirmButtonText: 'Ya, Hapus!',
-                                                        cancelButtonText: 'Batal'
-                                                    }).then((result) => {
-                                                        if (result.isConfirmed) {
-                                                            router.delete(route('activity.destroy', activity.id), {
-                                                                preserveScroll: true,
-                                                            });
-                                                        }
-                                                    });
+                                                            title: 'Hapus Kegiatan?',
+                                                            text: "Data kegiatan akan dihapus permanen.",
+                                                            icon: 'warning',
+                                                            showCancelButton: true,
+                                                            confirmButtonColor: '#d33',
+                                                            cancelButtonColor: '#3085d6',
+                                                            confirmButtonText: 'Ya, Hapus!',
+                                                            cancelButtonText: 'Batal'
+                                                        }).then((result) => {
+                                                            if (result.isConfirmed) {
+                                                                router.delete(route('activity.destroy', activity.id), {
+                                                                    preserveScroll: true,
+                                                                });
+                                                            }
+                                                        });
                                                     }}
                                                     className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded-xl shadow-lg hover:bg-red-600 hover:scale-110 transition-all duration-200"
                                                     title="Hapus Kegiatan"

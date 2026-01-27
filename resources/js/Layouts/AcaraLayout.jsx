@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import Alerts from '../Components/Alerts';
 
-export default function AcaraLayout({ children, activity, title = 'Acara', fluid = false }) {
+export default function AcaraLayout({ children, activity, title = 'Acara', fluid = false, noPadding = false }) {
     const { auth, flash, errors } = usePage().props;
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [currentActivityId, setCurrentActivityId] = useState(null);
@@ -61,8 +61,8 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
         <Link
             href={href}
             className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group mb-1 ${active
-                    ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-md'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-md'
+                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                 }`}
         >
             <i className={`${icon} w-5 text-center text-lg transition-transform group-hover:scale-110 ${active ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}></i>
@@ -343,7 +343,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                 </nav>
 
                 {/* Main Content */}
-                <main className="flex-1 p-4 md:p-6 lg:p-8">
+                <main className={`flex-1 ${noPadding ? '' : 'p-4 md:p-6 lg:p-8'}`}>
                     <div className={`${fluid ? 'w-full' : 'max-w-7xl'} mx-auto`}>
                         <div className="mb-6">
                             <Alerts flash={flash} errors={errors} />

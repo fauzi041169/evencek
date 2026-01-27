@@ -59,7 +59,14 @@ class SettingController extends Controller
 
         $heroBackgrounds = array_map(function ($item) {
             $path = $item['path'] ?? 'assets/images/hero/defoult.webp';
-            $item['url'] = asset($path);
+            
+            // If path doesn't start with assets/ or storage/, and it's not a URL, it's likely a storage path
+            if (!Str::startsWith($path, ['assets/', 'storage/', 'http://', 'https://'])) {
+                $item['url'] = asset('storage/' . $path);
+            } else {
+                $item['url'] = asset($path);
+            }
+            
             return $item;
         }, $heroBackgrounds);
 
@@ -71,9 +78,31 @@ class SettingController extends Controller
             : 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2248%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2248%22 height=%2248%22/%3E%3C/svg%3E';
 
         $appLogoUrl = (string) $appLogo;
-        $appLogoUrl = $appLogoUrl !== '' && file_exists(public_path($appLogoUrl)) ? asset($appLogoUrl) : $logoFallback;
+        if ($appLogoUrl !== '') {
+            if (Str::startsWith($appLogoUrl, 'assets/')) {
+                $appLogoUrl = File::exists(public_path($appLogoUrl)) ? asset($appLogoUrl) : $logoFallback;
+            } elseif (Str::startsWith($appLogoUrl, 'storage/')) {
+                $appLogoUrl = asset($appLogoUrl);
+            } else {
+                // Assume it's a storage path without prefix
+                $appLogoUrl = asset('storage/' . $appLogoUrl);
+            }
+        } else {
+            $appLogoUrl = $logoFallback;
+        }
         $appFaviconUrl = (string) $appFavicon;
-        $appFaviconUrl = $appFaviconUrl !== '' && file_exists(public_path($appFaviconUrl)) ? asset($appFaviconUrl) : $faviconFallback;
+        if ($appFaviconUrl !== '') {
+            if (Str::startsWith($appFaviconUrl, 'assets/')) {
+                $appFaviconUrl = File::exists(public_path($appFaviconUrl)) ? asset($appFaviconUrl) : $faviconFallback;
+            } elseif (Str::startsWith($appFaviconUrl, 'storage/')) {
+                $appFaviconUrl = asset($appFaviconUrl);
+            } else {
+                // Assume it's a storage path without prefix
+                $appFaviconUrl = asset('storage/' . $appFaviconUrl);
+            }
+        } else {
+            $appFaviconUrl = $faviconFallback;
+        }
 
         $navbarOpacity = Setting::get('color_navbar_opacity', '1');
         $heroAnimationStyle = Setting::get('hero_animation_style', 'circles');
@@ -209,16 +238,15 @@ class SettingController extends Controller
             if ($request->hasFile('favicon')) {
                 $favicon = $request->file('favicon');
                 $path = $favicon->store('settings', 'public');
-                $faviconPath = 'storage/' . $path;
+                $faviconPath = $path; // Save without storage/ prefix
 
                 // Delete old favicon if exists and different
                 $oldFavicon = Setting::get('app_favicon');
                 if ($oldFavicon && $oldFavicon !== $faviconPath) {
-                    if (Str::startsWith($oldFavicon, 'storage/')) {
-                        $storagePath = Str::replaceFirst('storage/', '', $oldFavicon);
-                        if (Storage::disk('public')->exists($storagePath)) {
-                            Storage::disk('public')->delete($storagePath);
-                        }
+                    // Normalize path for deletion
+                    $storagePath = Str::replaceFirst('storage/', '', $oldFavicon);
+                    if (Storage::disk('public')->exists($storagePath)) {
+                        Storage::disk('public')->delete($storagePath);
                     } elseif (File::exists(public_path($oldFavicon))) {
                         File::delete(public_path($oldFavicon));
                     }
@@ -244,16 +272,15 @@ class SettingController extends Controller
                 if ($request->hasFile($inputName)) {
                     $hero = $request->file($inputName);
                     $path = $hero->store('settings/hero', 'public');
-                    $heroPath = 'storage/' . $path;
+                    $heroPath = $path; // Save without storage/ prefix
 
                     // Delete old file if exists and different
                     $oldHero = Setting::get($settingKey);
                     if ($oldHero && $oldHero !== $heroPath) {
-                        if (Str::startsWith($oldHero, 'storage/')) {
-                            $storagePath = Str::replaceFirst('storage/', '', $oldHero);
-                            if (Storage::disk('public')->exists($storagePath)) {
-                                Storage::disk('public')->delete($storagePath);
-                            }
+                        // Normalize path for deletion
+                        $storagePath = Str::replaceFirst('storage/', '', $oldHero);
+                        if (Storage::disk('public')->exists($storagePath)) {
+                            Storage::disk('public')->delete($storagePath);
                         } elseif (File::exists(public_path($oldHero))) {
                             File::delete(public_path($oldHero));
                         }

@@ -346,37 +346,46 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                 {/* Header Profile Card */}
                 <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-8 relative group/cover">
                     {/* Cover Placeholder */}
-                    <div className="h-48 bg-gradient-to-r from-gray-900 to-gray-800 relative overflow-hidden">
+                    <div className="h-40 md:h-48 bg-gradient-to-r from-gray-900 to-gray-800 relative overflow-hidden">
                         {/* Preview Cover if uploaded, else existing cover, else default pattern */}
                         {data.cover_file ? (
                             <img src={URL.createObjectURL(data.cover_file)} className="w-full h-full object-cover" />
-                        ) : user.profile?.cover_image ? (
-                            <img src={`/assets/images/profilecover/${user.profile.cover_image}`} className="w-full h-full object-cover" />
+                        ) : user.profile?.cover_image_url ? (
+                            <img src={user.profile.cover_image_url} className="w-full h-full object-cover" />
                         ) : (
                             <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}></div>
                         )}
 
                         {canEdit && (
-                            <div className="absolute inset-0 bg-black/0 group-hover/cover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover/cover:opacity-100">
+                            <>
+                                {/* Desktop Hover Overlay */}
+                                <div className="hidden md:flex absolute inset-0 bg-black/0 group-hover/cover:bg-black/30 transition-all items-center justify-center opacity-0 group-hover/cover:opacity-100">
+                                    <button
+                                        onClick={() => document.getElementById('coverInput').click()}
+                                        className="px-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-white text-sm font-medium hover:bg-white/30 transition shadow-lg"
+                                    >
+                                        <i className="fas fa-camera mr-2"></i> Ganti Sampul
+                                    </button>
+                                </div>
+                                {/* Mobile Always Visible Button */}
                                 <button
                                     onClick={() => document.getElementById('coverInput').click()}
-                                    className="px-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-white text-sm font-medium hover:bg-white/30 transition shadow-lg"
+                                    className="md:hidden absolute bottom-3 right-3 p-2 bg-black/40 backdrop-blur-md border border-white/20 rounded-full text-white text-xs hover:bg-black/50 transition shadow-lg"
                                 >
-                                    <i className="fas fa-camera mr-2"></i> Ganti Sampul
+                                    <i className="fas fa-camera"></i>
                                 </button>
                                 <input type="file" id="coverInput" className="hidden" accept="image/*" onChange={handleCoverChange} />
-                            </div>
+                            </>
                         )}
                     </div>
 
-                    <div className="px-8 pb-8 -mt-24 relative z-10">
-                        <div className="flex flex-col lg:flex-row items-start justify-between gap-8">
-                            {/* Left & Middle Section: Avatar + Bio */}
-                            <div className="flex flex-col md:flex-row items-center md:items-start gap-8 flex-1">
-                                {/* Group: Avatar & QR Button */}
-                                <div className="flex flex-col items-center gap-5">
-                                    <div className="relative group flex-shrink-0">
-                                        <div className="w-44 h-44 rounded-full border-[6px] border-white bg-white shadow-2xl overflow-hidden">
+                    <div className="px-4 pb-6 md:px-8 md:pb-8 -mt-16 md:-mt-20 relative z-10 w-full">
+                        <div className="flex flex-col lg:flex-row justify-between items-start gap-10">
+                            <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 w-full md:w-auto">
+                                <div className="flex flex-col items-center gap-4 flex-shrink-0">
+                                    {/* Avatar */}
+                                    <div className="relative group">
+                                        <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-[4px] md:border-[6px] border-white bg-white shadow-2xl overflow-hidden">
                                             <img
                                                 src={data.foto_file ? URL.createObjectURL(data.foto_file) : user.profile_photo_url}
                                                 className="w-full h-full object-cover"
@@ -384,14 +393,24 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             />
                                             {canEdit && (
                                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full" onClick={() => document.getElementById('avatarInput').click()}>
-                                                    <i className="fas fa-camera text-white text-3xl"></i>
+                                                    <i className="fas fa-camera text-white text-2xl md:text-3xl"></i>
                                                 </div>
                                             )}
                                         </div>
-                                        {canEdit && <input type="file" id="avatarInput" className="hidden" accept="image/*" onChange={handleFileChange} />}
+                                        {canEdit && (
+                                            <>
+                                                <input type="file" id="avatarInput" className="hidden" accept="image/*" onChange={handleFileChange} />
+                                                <button
+                                                    onClick={() => document.getElementById('avatarInput').click()}
+                                                    className="md:hidden absolute bottom-0 right-0 w-8 h-8 bg-amber-500 rounded-full text-white flex items-center justify-center shadow-lg border-2 border-white"
+                                                >
+                                                    <i className="fas fa-camera text-xs"></i>
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
 
-                                    {/* QR Code Button - Clean Style Like Mockup */}
+                                    {/* Tombol QR di bawah Avatar */}
                                     <button
                                         onClick={() => setShowQrModal(true)}
                                         className="px-6 py-2.5 bg-[#F8FAFC] text-gray-700 rounded-2xl font-black text-[11px] uppercase tracking-widest border border-gray-100 hover:bg-gray-100 transition shadow-sm flex items-center gap-3"
@@ -401,20 +420,20 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                     </button>
                                 </div>
 
-                                {/* Bio Info - Positioned next to Avatar */}
-                                <div className="pt-28 text-center md:text-left">
-                                    <h1 className="text-[38px] font-black text-gray-900 tracking-tight leading-none mb-2">{user.name}</h1>
-                                    <p className="text-gray-500 font-bold text-lg mb-4 tracking-tight">{user.email}</p>
-                                    <div className="flex items-center justify-center md:justify-start gap-2.5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                                {/* Label Nama & Email (Anchored Left) */}
+                                <div className="pb-6 md:pb-14 text-center md:text-left w-full md:w-auto flex flex-col items-center md:items-start">
+                                    <h1 className="text-2xl md:text-[40px] font-black text-gray-900 tracking-tight leading-none mb-2 md:mb-1">{user.name}</h1>
+                                    <p className="text-gray-500 font-bold text-base md:text-lg mb-4 tracking-tight">{user.email}</p>
+                                    <div className="flex items-center gap-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1.5 rounded-full md:bg-transparent md:px-0 md:py-0">
                                         <i className="fas fa-calendar-alt text-gray-300"></i>
                                         <span>Bergabung {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Right Section: Status Card - Exact Mockup Style */}
-                            <div className="pt-28 w-full lg:w-auto">
-                                <div className="bg-white p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] min-w-[320px] animate-in fade-in slide-in-from-right-8 duration-700">
+                            {/* KANAN: Kartu Status (Compact) */}
+                            <div className="pt-4 lg:pt-14 flex-shrink-0 w-full lg:w-auto">
+                                <div className="bg-white p-5 md:p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] w-full lg:w-[340px] animate-in fade-in slide-in-from-right-8 duration-700">
                                     <div className="flex items-center gap-5 mb-6">
                                         <div className="w-16 h-16 rounded-[1.25rem] bg-[#3B82F6] flex items-center justify-center shadow-[0_10px_20px_-5px_rgba(59,130,246,0.3)]">
                                             <i className="fas fa-user-check text-white text-2xl"></i>
@@ -439,13 +458,13 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-white px-4 py-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                                <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2">Peserta</span>
-                                                <span className="text-xl font-black text-gray-800 leading-none">{user.subscription?.plan?.max_participants_per_activity || '∞'}</span>
+                                            <div className="bg-white px-2 py-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
+                                                <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1.5">Peserta</span>
+                                                <span className="text-xl font-black text-gray-800 leading-none">{user.subscription?.plan?.max_participants_per_activity >= 999999 ? '∞' : (user.subscription?.plan?.max_participants_per_activity || '∞')}</span>
                                             </div>
-                                            <div className="bg-white px-4 py-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-                                                <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2">Kegiatan</span>
-                                                <span className="text-xl font-black text-gray-800 leading-none">{user.subscription?.plan?.max_activities || '∞'}</span>
+                                            <div className="bg-white px-2 py-4 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
+                                                <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1.5">Kegiatan</span>
+                                                <span className="text-xl font-black text-gray-800 leading-none">{user.subscription?.plan?.max_activities >= 999999 ? '∞' : (user.subscription?.plan?.max_activities || '∞')}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -453,367 +472,367 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Tabs Navigation */}
-                <div className="px-8 mt-2 border-t border-gray-100 flex gap-8 overflow-x-auto">
-                    <button
-                        onClick={() => setActiveTab('overview')}
-                        className={`py-4 font-medium text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'overview' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                    >
-                        Overview & Edit
-                    </button>
-                    {canEdit && (
+                    {/* Tabs Navigation */}
+                    <div className="px-4 md:px-8 mt-2 border-t border-gray-100 flex gap-8 overflow-x-auto hide-scrollbar">
                         <button
-                            onClick={() => setActiveTab('security')}
-                            className={`py-4 font-medium text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'security' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setActiveTab('overview')}
+                            className={`py-4 font-medium text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'overview' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                         >
-                            Keamanan
+                            Overview & Edit
                         </button>
-                    )}
+                        {canEdit && (
+                            <button
+                                onClick={() => setActiveTab('security')}
+                                className={`py-4 font-medium text-sm border-b-2 transition whitespace-nowrap ${activeTab === 'security' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Keamanan
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-                {/* Main Content */}
-                <div className="lg:col-span-2 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mt-6 md:mt-8">
+                    {/* Main Content */}
+                    <div className="lg:col-span-2 space-y-8">
 
-                    {activeTab === 'overview' && (
-                        <form onSubmit={submitProfile} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-gray-800">Informasi Pribadi</h2>
-                                {canEdit && (
+                        {activeTab === 'overview' && (
+                            <form onSubmit={submitProfile} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 md:p-8">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-xl font-bold text-gray-800">Informasi Pribadi</h2>
+                                    {canEdit && (
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="px-5 py-2 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                                        >
+                                            {isSubmitting ? (
+                                                <>
+                                                    <i className="fas fa-circle-notch animate-spin"></i>
+                                                    Menyimpan...
+                                                </>
+                                            ) : 'Simpan Perubahan'}
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Nama Lengkap {isFieldRequired('name') && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.name}
+                                            onChange={(e) => setData('name', e.target.value)}
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('name') && !data.name ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            placeholder="Nama Lengkap Anda"
+                                            disabled={!canEdit}
+                                            required={isFieldRequired('name')}
+                                        />
+                                        {errors.name && <div className="text-red-500 text-xs mt-1">{errors.name}</div>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Email {isFieldRequired('email') && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={data.email}
+                                            onChange={(e) => setData('email', e.target.value)}
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('email') && !data.email ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            placeholder="email@example.com"
+                                            disabled={!canEdit}
+                                            required={isFieldRequired('email')}
+                                        />
+                                        {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            No. HP / WhatsApp {isFieldRequired('no_hp') && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.no_hp}
+                                            onChange={(e) => setData('no_hp', e.target.value)}
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('no_hp') && !data.no_hp ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            placeholder="08xxxxxxxxxx"
+                                            disabled={!canEdit}
+                                            required={isFieldRequired('no_hp')}
+                                        />
+                                        {errors.no_hp && <div className="text-red-500 text-xs mt-1">{errors.no_hp}</div>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Pekerjaan {isFieldRequired('pekerjaan') && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.pekerjaan}
+                                            onChange={(e) => setData('pekerjaan', e.target.value)}
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('pekerjaan') && !data.pekerjaan ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            placeholder="Pekerjaan Anda"
+                                            disabled={!canEdit}
+                                            required={isFieldRequired('pekerjaan')}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Jabatan {isFieldRequired('jabatan') && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.jabatan}
+                                            onChange={(e) => setData('jabatan', e.target.value)}
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('jabatan') && !data.jabatan ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            placeholder="Jabatan (Opsional)"
+                                            disabled={!canEdit}
+                                            required={isFieldRequired('jabatan')}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Jenis Kelamin {isFieldRequired('jenis_kelamin') && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <select
+                                            value={data.jenis_kelamin}
+                                            onChange={(e) => setData('jenis_kelamin', e.target.value)}
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('jenis_kelamin') && !data.jenis_kelamin ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            disabled={!canEdit}
+                                            required={isFieldRequired('jenis_kelamin')}
+                                        >
+                                            <option value="L">Laki-laki</option>
+                                            <option value="P">Perempuan</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Tanggal Lahir {isFieldRequired('birth_date') && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={data.tanggal_lahir}
+                                            onChange={(e) => setData('tanggal_lahir', e.target.value)}
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('birth_date') && !data.tanggal_lahir ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            disabled={!canEdit}
+                                            required={isFieldRequired('birth_date')}
+                                        />
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Alamat Lengkap {isFieldRequired('alamat') && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <textarea
+                                            value={data.alamat}
+                                            onChange={(e) => setData('alamat', e.target.value)}
+                                            rows="3"
+                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('alamat') && !data.alamat ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            placeholder="Alamat lengkap domisili saat ini..."
+                                            disabled={!canEdit}
+                                            required={isFieldRequired('alamat')}
+                                        ></textarea>
+                                    </div>
+
+                                    {/* Region Selects */}
+                                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Provinsi {isFieldRequired('province_id') && <span className="text-red-500">*</span>}
+                                            </label>
+                                            <select
+                                                value={data.province_id}
+                                                onChange={(e) => {
+                                                    setData(d => ({ ...d, province_id: e.target.value, regency_id: '', district_id: '' }));
+                                                    fetchRegencies(e.target.value);
+                                                }}
+                                                className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('province_id') && !data.province_id) || errors.province_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                                disabled={!canEdit}
+                                                required={isFieldRequired('province_id')}
+                                            >
+                                                <option value="">Pilih Provinsi</option>
+                                                {provinces.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                            {errors.province_id && <div className="text-red-500 text-xs mt-1">{errors.province_id}</div>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Kabupaten/Kota {isFieldRequired('regency_id') && <span className="text-red-500">*</span>}
+                                            </label>
+                                            <select
+                                                value={data.regency_id}
+                                                onChange={(e) => {
+                                                    setData(d => ({ ...d, regency_id: e.target.value, district_id: '' }));
+                                                    fetchDistricts(e.target.value);
+                                                }}
+                                                className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('regency_id') && !data.regency_id) || errors.regency_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                                disabled={!canEdit || loadingRegencies || !data.province_id}
+                                                required={isFieldRequired('regency_id')}
+                                            >
+                                                <option value="">{loadingRegencies ? 'Memuat...' : 'Pilih Kota/Kab'}</option>
+                                                {regencies.map(r => (
+                                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                                ))}
+                                            </select>
+                                            {errors.regency_id && <div className="text-red-500 text-xs mt-1">{errors.regency_id}</div>}
+                                            {!data.province_id && data.regency_id && <div className="text-amber-600 text-[10px] mt-1 italic font-medium">Pilih Provinsi terlebih dahulu untuk memvalidasi data ini.</div>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                Kecamatan {isFieldRequired('district_id') && <span className="text-red-500">*</span>}
+                                            </label>
+                                            <select
+                                                value={data.district_id}
+                                                onChange={(e) => setData('district_id', e.target.value)}
+                                                className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('district_id') && !data.district_id) || errors.district_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                                disabled={!canEdit || loadingDistricts || !data.regency_id}
+                                                required={isFieldRequired('district_id')}
+                                            >
+                                                <option value="">{loadingDistricts ? 'Memuat...' : 'Pilih Kecamatan'}</option>
+                                                {districts.map(d => (
+                                                    <option key={d.id} value={d.id}>{d.name}</option>
+                                                ))}
+                                            </select>
+                                            {errors.district_id && <div className="text-red-500 text-xs mt-1">{errors.district_id}</div>}
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        )}
+
+                        {activeTab === 'security' && canEdit && (
+                            <form onSubmit={submitPassword} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 md:p-8">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-xl font-bold text-gray-800">Ubah Password</h2>
                                     <button
                                         type="submit"
-                                        disabled={isSubmitting}
-                                        className="px-5 py-2 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                                        disabled={passProcessing}
+                                        className="px-5 py-2 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition disabled:opacity-70 disabled:cursor-not-allowed"
                                     >
-                                        {isSubmitting ? (
-                                            <>
-                                                <i className="fas fa-circle-notch animate-spin"></i>
-                                                Menyimpan...
-                                            </>
-                                        ) : 'Simpan Perubahan'}
+                                        {passProcessing ? 'Menyimpan...' : 'Update Password'}
                                     </button>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Nama Lengkap {isFieldRequired('name') && <span className="text-red-500">*</span>}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={data.name}
-                                        onChange={(e) => setData('name', e.target.value)}
-                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('name') && !data.name ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                        placeholder="Nama Lengkap Anda"
-                                        disabled={!canEdit}
-                                        required={isFieldRequired('name')}
-                                    />
-                                    {errors.name && <div className="text-red-500 text-xs mt-1">{errors.name}</div>}
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Email {isFieldRequired('email') && <span className="text-red-500">*</span>}
-                                    </label>
-                                    <input
-                                        type="email"
-                                        value={data.email}
-                                        onChange={(e) => setData('email', e.target.value)}
-                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('email') && !data.email ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                        placeholder="email@example.com"
-                                        disabled={!canEdit}
-                                        required={isFieldRequired('email')}
-                                    />
-                                    {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
-                                </div>
+                                <div className="space-y-6 max-w-xl">
+                                    {isOwnProfile && (
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Password Saat Ini</label>
+                                            <input
+                                                type="password"
+                                                value={passData.current_password}
+                                                onChange={(e) => setPassData('current_password', e.target.value)}
+                                                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                                placeholder="••••••••"
+                                            />
+                                            {passErrors.current_password && <div className="text-red-500 text-xs mt-1">{passErrors.current_password}</div>}
+                                        </div>
+                                    )}
 
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        No. HP / WhatsApp {isFieldRequired('no_hp') && <span className="text-red-500">*</span>}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={data.no_hp}
-                                        onChange={(e) => setData('no_hp', e.target.value)}
-                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('no_hp') && !data.no_hp ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                        placeholder="08xxxxxxxxxx"
-                                        disabled={!canEdit}
-                                        required={isFieldRequired('no_hp')}
-                                    />
-                                    {errors.no_hp && <div className="text-red-500 text-xs mt-1">{errors.no_hp}</div>}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Pekerjaan {isFieldRequired('pekerjaan') && <span className="text-red-500">*</span>}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={data.pekerjaan}
-                                        onChange={(e) => setData('pekerjaan', e.target.value)}
-                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('pekerjaan') && !data.pekerjaan ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                        placeholder="Pekerjaan Anda"
-                                        disabled={!canEdit}
-                                        required={isFieldRequired('pekerjaan')}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Jabatan {isFieldRequired('jabatan') && <span className="text-red-500">*</span>}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={data.jabatan}
-                                        onChange={(e) => setData('jabatan', e.target.value)}
-                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('jabatan') && !data.jabatan ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                        placeholder="Jabatan (Opsional)"
-                                        disabled={!canEdit}
-                                        required={isFieldRequired('jabatan')}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Jenis Kelamin {isFieldRequired('jenis_kelamin') && <span className="text-red-500">*</span>}
-                                    </label>
-                                    <select
-                                        value={data.jenis_kelamin}
-                                        onChange={(e) => setData('jenis_kelamin', e.target.value)}
-                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('jenis_kelamin') && !data.jenis_kelamin ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                        disabled={!canEdit}
-                                        required={isFieldRequired('jenis_kelamin')}
-                                    >
-                                        <option value="L">Laki-laki</option>
-                                        <option value="P">Perempuan</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Tanggal Lahir {isFieldRequired('birth_date') && <span className="text-red-500">*</span>}
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={data.tanggal_lahir}
-                                        onChange={(e) => setData('tanggal_lahir', e.target.value)}
-                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('birth_date') && !data.tanggal_lahir ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                        disabled={!canEdit}
-                                        required={isFieldRequired('birth_date')}
-                                    />
-                                </div>
-
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Alamat Lengkap {isFieldRequired('alamat') && <span className="text-red-500">*</span>}
-                                    </label>
-                                    <textarea
-                                        value={data.alamat}
-                                        onChange={(e) => setData('alamat', e.target.value)}
-                                        rows="3"
-                                        className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('alamat') && !data.alamat ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                        placeholder="Alamat lengkap domisili saat ini..."
-                                        disabled={!canEdit}
-                                        required={isFieldRequired('alamat')}
-                                    ></textarea>
-                                </div>
-
-                                {/* Region Selects */}
-                                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Provinsi {isFieldRequired('province_id') && <span className="text-red-500">*</span>}
-                                        </label>
-                                        <select
-                                            value={data.province_id}
-                                            onChange={(e) => {
-                                                setData(d => ({ ...d, province_id: e.target.value, regency_id: '', district_id: '' }));
-                                                fetchRegencies(e.target.value);
-                                            }}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('province_id') && !data.province_id) || errors.province_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                            disabled={!canEdit}
-                                            required={isFieldRequired('province_id')}
-                                        >
-                                            <option value="">Pilih Provinsi</option>
-                                            {provinces.map(p => (
-                                                <option key={p.id} value={p.id}>{p.name}</option>
-                                            ))}
-                                        </select>
-                                        {errors.province_id && <div className="text-red-500 text-xs mt-1">{errors.province_id}</div>}
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Kabupaten/Kota {isFieldRequired('regency_id') && <span className="text-red-500">*</span>}
-                                        </label>
-                                        <select
-                                            value={data.regency_id}
-                                            onChange={(e) => {
-                                                setData(d => ({ ...d, regency_id: e.target.value, district_id: '' }));
-                                                fetchDistricts(e.target.value);
-                                            }}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('regency_id') && !data.regency_id) || errors.regency_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                            disabled={!canEdit || loadingRegencies || !data.province_id}
-                                            required={isFieldRequired('regency_id')}
-                                        >
-                                            <option value="">{loadingRegencies ? 'Memuat...' : 'Pilih Kota/Kab'}</option>
-                                            {regencies.map(r => (
-                                                <option key={r.id} value={r.id}>{r.name}</option>
-                                            ))}
-                                        </select>
-                                        {errors.regency_id && <div className="text-red-500 text-xs mt-1">{errors.regency_id}</div>}
-                                        {!data.province_id && data.regency_id && <div className="text-amber-600 text-[10px] mt-1 italic font-medium">Pilih Provinsi terlebih dahulu untuk memvalidasi data ini.</div>}
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                            Kecamatan {isFieldRequired('district_id') && <span className="text-red-500">*</span>}
-                                        </label>
-                                        <select
-                                            value={data.district_id}
-                                            onChange={(e) => setData('district_id', e.target.value)}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('district_id') && !data.district_id) || errors.district_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                            disabled={!canEdit || loadingDistricts || !data.regency_id}
-                                            required={isFieldRequired('district_id')}
-                                        >
-                                            <option value="">{loadingDistricts ? 'Memuat...' : 'Pilih Kecamatan'}</option>
-                                            {districts.map(d => (
-                                                <option key={d.id} value={d.id}>{d.name}</option>
-                                            ))}
-                                        </select>
-                                        {errors.district_id && <div className="text-red-500 text-xs mt-1">{errors.district_id}</div>}
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
-                    )}
-
-                    {activeTab === 'security' && canEdit && (
-                        <form onSubmit={submitPassword} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-gray-800">Ubah Password</h2>
-                                <button
-                                    type="submit"
-                                    disabled={passProcessing}
-                                    className="px-5 py-2 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition disabled:opacity-70 disabled:cursor-not-allowed"
-                                >
-                                    {passProcessing ? 'Menyimpan...' : 'Update Password'}
-                                </button>
-                            </div>
-
-                            <div className="space-y-6 max-w-xl">
-                                {isOwnProfile && (
-                                    <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Password Saat Ini</label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Password Baru</label>
                                         <input
                                             type="password"
-                                            value={passData.current_password}
-                                            onChange={(e) => setPassData('current_password', e.target.value)}
+                                            value={passData.new_password}
+                                            onChange={(e) => setPassData('new_password', e.target.value)}
                                             className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
                                             placeholder="••••••••"
                                         />
-                                        {passErrors.current_password && <div className="text-red-500 text-xs mt-1">{passErrors.current_password}</div>}
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Minimal 8 karakter. Disarankan menggunakan kombinasi huruf besar, huruf kecil, angka, dan simbol.
+                                        </p>
+                                        {passErrors.new_password && <div className="text-red-500 text-xs mt-1">{passErrors.new_password}</div>}
                                     </div>
-                                )}
 
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Password Baru</label>
-                                    <input
-                                        type="password"
-                                        value={passData.new_password}
-                                        onChange={(e) => setPassData('new_password', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
-                                        placeholder="••••••••"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Minimal 8 karakter. Disarankan menggunakan kombinasi huruf besar, huruf kecil, angka, dan simbol.
-                                    </p>
-                                    {passErrors.new_password && <div className="text-red-500 text-xs mt-1">{passErrors.new_password}</div>}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Konfirmasi Password Baru</label>
+                                        <input
+                                            type="password"
+                                            value={passData.new_password_confirmation}
+                                            onChange={(e) => setPassData('new_password_confirmation', e.target.value)}
+                                            className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                            placeholder="••••••••"
+                                        />
+                                        {passErrors.new_password_confirmation && <div className="text-red-500 text-xs mt-1">{passErrors.new_password_confirmation}</div>}
+                                    </div>
                                 </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Konfirmasi Password Baru</label>
-                                    <input
-                                        type="password"
-                                        value={passData.new_password_confirmation}
-                                        onChange={(e) => setPassData('new_password_confirmation', e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
-                                        placeholder="••••••••"
-                                    />
-                                    {passErrors.new_password_confirmation && <div className="text-red-500 text-xs mt-1">{passErrors.new_password_confirmation}</div>}
-                                </div>
-                            </div>
-                        </form>
-                    )}
-                </div>
-
-                {/* Sidebar Info - Subscription & Stats */}
-                <div className="space-y-8">
-                    {/* Subscription Card - Fixed visibility and enhanced aesthetics */}
-                    <div className="bg-slate-900 rounded-3xl shadow-xl p-8 text-white relative overflow-hidden">
-                        {/* Vibrant decorative gradients */}
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/30 rounded-full blur-[80px] -mr-32 -mt-32"></div>
-                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/20 rounded-full blur-[80px] -ml-32 -mb-32"></div>
-
-                        <div className="relative z-10">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-lg">Status Langganan</h3>
-                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                                    <i className="fas fa-crown text-amber-400"></i>
-                                </div>
-                            </div>
-
-                            <div className="mb-6">
-                                <span className={`inline-block px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${user.subscription?.isActive ? 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/20' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}>
-                                    {user.subscription?.isActive ? (user.subscription.plan?.name || 'Premium') : 'FREE PLAN'}
-                                </span>
-                            </div>
-
-                            {user.subscription?.isActive ? (
-                                <div className="space-y-4">
-                                    <p className="text-slate-300 text-sm leading-relaxed">
-                                        Langganan Anda aktif hingga <span className="text-white font-bold">{new Date(user.subscription.ends_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>.
-                                    </p>
-                                    <Link href="/subscriptions/manage" className="block w-full py-3.5 bg-white text-slate-900 font-bold text-center rounded-2xl hover:bg-gray-100 transition-all shadow-lg hover:shadow-white/10 active:scale-[0.98]">
-                                        Kelola Langganan
-                                    </Link>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <p className="text-slate-300 text-sm leading-relaxed">
-                                        Upgrade ke Premium untuk akses fitur eksklusif, batas lebih tinggi, dan analitik lengkap.
-                                    </p>
-                                    <Link href={route('subscriptions.pricing')} className="block w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 font-black text-center rounded-2xl hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-400/20 active:scale-[0.98]">
-                                        Upgrade Sekarang
-                                    </Link>
-                                </div>
-                            )}
-                        </div>
+                            </form>
+                        )}
                     </div>
 
-                    {/* Quick Stats */}
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
-                        <h3 className="font-bold text-gray-800 mb-4">Statistik Singkat</h3>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
-                                        <i className="fas fa-calendar-check"></i>
+                    {/* Sidebar Info - Subscription & Stats */}
+                    <div className="space-y-8">
+                        {/* Subscription Card - Fixed visibility and enhanced aesthetics */}
+                        <div className="bg-slate-900 rounded-3xl shadow-xl p-6 md:p-8 text-white relative overflow-hidden">
+                            {/* Vibrant decorative gradients */}
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/30 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+                            <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/20 rounded-full blur-[80px] -ml-32 -mb-32"></div>
+
+                            <div className="relative z-10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-bold text-lg">Status Langganan</h3>
+                                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                                        <i className="fas fa-crown text-amber-400"></i>
                                     </div>
-                                    <span className="text-sm font-medium text-gray-600">Total Kegiatan</span>
                                 </div>
-                                <span className="font-bold text-gray-900">{user.activities_count || 0}</span>
+
+                                <div className="mb-6">
+                                    <span className={`inline-block px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${user.subscription?.isActive ? 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-400/20' : 'bg-slate-800 text-slate-300 border border-slate-700'}`}>
+                                        {user.subscription?.isActive ? (user.subscription.plan?.name || 'Premium') : 'FREE PLAN'}
+                                    </span>
+                                </div>
+
+                                {user.subscription?.isActive ? (
+                                    <div className="space-y-4">
+                                        <p className="text-slate-300 text-sm leading-relaxed">
+                                            Langganan Anda aktif hingga <span className="text-white font-bold">{new Date(user.subscription.ends_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>.
+                                        </p>
+                                        <Link href="/subscriptions/manage" className="block w-full py-3.5 bg-white text-slate-900 font-bold text-center rounded-2xl hover:bg-gray-100 transition-all shadow-lg hover:shadow-white/10 active:scale-[0.98]">
+                                            Kelola Langganan
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <p className="text-slate-300 text-sm leading-relaxed">
+                                            Upgrade ke Premium untuk akses fitur eksklusif, batas lebih tinggi, dan analitik lengkap.
+                                        </p>
+                                        <Link href={route('subscriptions.pricing')} className="block w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 font-black text-center rounded-2xl hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-400/20 active:scale-[0.98]">
+                                            Upgrade Sekarang
+                                        </Link>
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                                        <i className="fas fa-users"></i>
+                        </div>
+
+                        {/* Quick Stats */}
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                            <h3 className="font-bold text-gray-800 mb-4">Statistik Singkat</h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                                            <i className="fas fa-calendar-check"></i>
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-600">Total Kegiatan</span>
                                     </div>
-                                    <span className="text-sm font-medium text-gray-600">Partisipasi</span>
+                                    <span className="font-bold text-gray-900">{user.activities_count || 0}</span>
                                 </div>
-                                <span className="font-bold text-gray-900">{user.participations_count || 0}</span>
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                            <i className="fas fa-users"></i>
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-600">Partisipasi</span>
+                                    </div>
+                                    <span className="font-bold text-gray-900">{user.participations_count || 0}</span>
+                                </div>
                             </div>
                         </div>
                     </div>

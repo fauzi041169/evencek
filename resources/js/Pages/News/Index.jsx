@@ -89,13 +89,13 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
     const hexToRgba = (hex, alpha) => {
         if (!hex) return `rgba(124, 58, 237, ${alpha})`; // default purple
         let c;
-        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
-            c= hex.substring(1).split('');
-            if(c.length== 3){
-                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+        if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+            c = hex.substring(1).split('');
+            if (c.length == 3) {
+                c = [c[0], c[0], c[1], c[1], c[2], c[2]];
             }
-            c= '0x'+c.join('');
-            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+            c = '0x' + c.join('');
+            return 'rgba(' + [(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',') + ',' + alpha + ')';
         }
         return hex;
     }
@@ -131,7 +131,23 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
     const getImageUrl = (image) => {
         if (!image) return '/assets/images/hero/defoult.webp';
         if (image.startsWith('http')) return image;
-        return `/storage/${image}`;
+
+        let cleanPath = image.startsWith('/') ? image.substring(1) : image;
+
+        // Handle double storage/
+        if (cleanPath.startsWith('storage/storage/')) {
+            cleanPath = cleanPath.substring(8);
+        }
+
+        if (cleanPath.startsWith('storage/')) {
+            return '/' + cleanPath;
+        }
+
+        if (cleanPath.startsWith('assets/')) {
+            return '/' + cleanPath;
+        }
+
+        return `/storage/${cleanPath}`;
     };
 
     return (
@@ -248,33 +264,34 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                 }
             `}</style>
 
-            <div className="relative" style={{fontFamily: "'Inter','Poppins','Montserrat',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'"}}>
-                
+            <div className="relative" style={{ fontFamily: "'Inter','Poppins','Montserrat',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'" }}>
+
                 {/* Hero Section */}
                 <div className="relative bg-slate-900 overflow-hidden min-h-[500px] flex items-center">
                     {/* Background Elements */}
                     <div className="absolute inset-0">
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/90 via-slate-900/95 to-slate-900 z-10"></div>
+                        {/* Gradient Overlay - Adjusted for better visibility of background image */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-slate-900/80 z-10"></div>
                         <img
                             src={appSettings?.hero_background_1 ? getImageUrl(appSettings.hero_background_1) : "/assets/images/begron/bg-pattern.png"}
                             alt="Background Pattern"
-                            className="w-full h-full object-cover opacity-20 mix-blend-overlay"
+                            className="w-full h-full object-cover opacity-60 mix-blend-overlay"
                             onError={(e) => e.target.style.display = 'none'}
                         />
                         {/* Dynamic Animations based on Settings */}
                         {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (
                             <>
-                                <div 
+                                <div
                                     className="absolute top-[-10%] right-[-5%] w-96 h-96 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob z-10 pointer-events-none"
                                     style={{ backgroundColor: hexToRgba(appSettings?.colors?.primary, 0.2) }}
                                 ></div>
-                                <div 
+                                <div
                                     className="absolute bottom-[-10%] left-[-5%] w-96 h-96 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10 pointer-events-none"
                                     style={{ backgroundColor: hexToRgba(appSettings?.colors?.secondary, 0.2) }}
                                 ></div>
                             </>
                         )}
-                        
+
                         {heroAnim === 'rain' && (
                             <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
                                 {[...Array(30)].map((_, i) => (
@@ -287,7 +304,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                 ))}
                             </div>
                         )}
-                        
+
                         {heroAnim === 'particles' && (
                             <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
                                 {[...Array(30)].map((_, i) => (
@@ -312,7 +329,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                             <p className="text-xl text-slate-300 mb-10 leading-relaxed">
                                 Informasi terbaru seputar kegiatan dan event terkini untuk Anda.
                             </p>
-                            
+
                             {/* Search Box adapted for Hero */}
                             <div className="max-w-2xl mx-auto relative group">
                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl opacity-30 group-hover:opacity-50 transition-opacity blur-md"></div>
@@ -343,8 +360,8 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                 {/* Stats Section */}
                 <section className="py-10 bg-white relative z-10 -mt-8 mx-4 sm:mx-8 rounded-3xl shadow-xl border border-gray-100 max-w-5xl lg:mx-auto">
                     <div className="flex flex-wrap justify-center items-center gap-8 sm:gap-16">
-                         <Reveal direction="up" className="flex items-center gap-4">
-                            <div 
+                        <Reveal direction="up" className="flex items-center gap-4">
+                            <div
                                 className="inline-flex items-center justify-center w-14 h-14 rounded-2xl text-secondary ring-1"
                                 style={{ backgroundColor: hexToRgba(appSettings?.colors?.secondary, 0.05), '--tw-ring-color': hexToRgba(appSettings?.colors?.secondary, 0.1) }}
                             >
@@ -357,11 +374,11 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                 <div className="text-sm font-semibold text-gray-500">Total Berita</div>
                             </div>
                         </Reveal>
-                        
+
                         <div className="hidden sm:block w-px h-12 bg-gray-200"></div>
 
                         <Reveal direction="up" className="flex items-center gap-4" delay={100}>
-                            <div 
+                            <div
                                 className="inline-flex items-center justify-center w-14 h-14 rounded-2xl text-primary ring-1"
                                 style={{ backgroundColor: hexToRgba(appSettings?.colors?.primary, 0.1), '--tw-ring-color': hexToRgba(appSettings?.colors?.primary, 0.2) }}
                             >
@@ -382,193 +399,192 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                         {/* Header & Search removed from here as it is now in Hero */}
 
                         {/* Featured News (Only show on main index, not search results) */}
-                    {!latestNews && featuredNews && featuredNews.length > 0 && (
-                        <div className="mb-12">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-6 border-l-4 border-secondary pl-3">
-                                Berita Utama
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                {featuredNews.map((news, index) => (
-                                    <div key={news.id} className={`group bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 ${index === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}>
-                                        <div className={`relative ${index === 0 ? 'h-64 md:h-96' : 'h-64 md:h-48'}`}>
-                                            <img 
-                                                src={getImageUrl(news.image)} 
-                                                alt={news.title}
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                            />
-                                            <div className="absolute top-0 right-0 bg-secondary text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                                                {news.category?.name || 'Umum'}
-                                            </div>
-                                            {/* Mobile Title Overlay */}
-                                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
-                                                <h3 className={`font-bold text-white mb-1 ${index === 0 ? 'text-xl' : 'text-lg'} line-clamp-2`}>
-                                                    {news.title}
-                                                </h3>
-                                                <div className="text-white/80 text-xs flex items-center">
-                                                    <i className="far fa-calendar-alt mr-2"></i>
-                                                    {formatDate(news.published_at || news.created_at)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="p-6 hidden md:block">
-                                            <div className="flex items-center text-sm text-gray-500 mb-2">
-                                                <i className="far fa-calendar-alt mr-2"></i>
-                                                {formatDate(news.published_at || news.created_at)}
-                                            </div>
-                                            <Link href={route('news.show', news.slug)} className="block">
-                                                <h3 className={`font-bold text-gray-900 mb-2 group-hover:text-secondary transition-colors ${index === 0 ? 'text-2xl' : 'text-lg'}`}>
-                                                    {news.title}
-                                                </h3>
-                                            </Link>
-                                            <p className="text-gray-600 line-clamp-2 mb-4">
-                                                {news.excerpt || (news.content || '').replace(/<[^>]+>/g, '').substring(0, 100) + '...'}
-                                            </p>
-                                            <Link href={route('news.show', news.slug)} className="inline-flex items-center text-secondary font-semibold hover:text-primary">
-                                                Baca Selengkapnya
-                                                <i className="fas fa-arrow-right ml-2 text-xs"></i>
-                                            </Link>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* All News / Search Results */}
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-800 border-l-4 border-primary pl-3">
-                                {latestNews ? 'Hasil Pencarian' : 'Semua Berita'}
-                            </h2>
-                            {totalNews && <span className="text-gray-500 text-sm">{totalNews} Berita</span>}
-                        </div>
-
-                        {newsList.data.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                {newsList.data.map((news) => (
-                                    <div key={news.id} className={`bg-white rounded-lg shadow hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full relative ${editMode ? 'border-2 border-warning ring-2 ring-warning ring-offset-2' : ''}`}>
-                                        {editMode && (
-                                            <div className="absolute top-4 right-4 z-30 flex space-x-2">
-                                                <Link 
-                                                    href={route('news.edit', news.slug || news.id)} 
-                                                    className="w-8 h-8 flex items-center justify-center bg-warning text-white rounded-lg shadow-lg hover:bg-warning/90 hover:scale-110 transition-all duration-200"
-                                                    title="Edit Berita"
-                                                >
-                                                    <i className="fas fa-edit text-sm"></i>
-                                                </Link>
-                                                <button 
-                                                    onClick={(e) => { 
-                                                        e.preventDefault(); 
-                                                        Swal.fire({
-                                                            title: 'Apakah Anda yakin?',
-                                                            text: "Ingin menghapus berita ini?",
-                                                            icon: 'warning',
-                                                            showCancelButton: true,
-                                                            confirmButtonColor: '#d33',
-                                                            cancelButtonColor: '#3085d6',
-                                                            confirmButtonText: 'Ya, Hapus!',
-                                                            cancelButtonText: 'Batal'
-                                                        }).then((result) => {
-                                                            if (result.isConfirmed) {
-                                                                router.delete(route('news.destroy', news.id), {
-                                                                    preserveScroll: true,
-                                                                });
-                                                            }
-                                                        });
-                                                    }} 
-                                                    className="w-8 h-8 flex items-center justify-center bg-danger text-white rounded-lg shadow-lg hover:bg-danger/90 hover:scale-110 transition-all duration-200"
-                                                    title="Hapus Berita"
-                                                >
-                                                    <i className="fas fa-trash text-sm"></i>
-                                                </button>
-                                            </div>
-                                        )}
-                                        <div className="relative h-64 md:h-48">
-                                            <img 
-                                                src={getImageUrl(news.image)} 
-                                                alt={news.title}
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4">
-                                                <span className="text-white text-xs bg-primary px-2 py-1 rounded inline-block mb-2 md:mb-0">
+                        {!latestNews && featuredNews && featuredNews.length > 0 && (
+                            <div className="mb-12">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-6 border-l-4 border-secondary pl-3">
+                                    Berita Utama
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    {featuredNews.map((news, index) => (
+                                        <div key={news.id} className={`group bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 ${index === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}>
+                                            <div className={`relative ${index === 0 ? 'h-64 md:h-96' : 'h-64 md:h-48'}`}>
+                                                <img
+                                                    src={getImageUrl(news.image)}
+                                                    alt={news.title}
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                />
+                                                <div className="absolute top-0 right-0 bg-secondary text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
                                                     {news.category?.name || 'Umum'}
-                                                </span>
+                                                </div>
                                                 {/* Mobile Title Overlay */}
-                                                <div className="md:hidden">
-                                                    <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
+                                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
+                                                    <h3 className={`font-bold text-white mb-1 ${index === 0 ? 'text-xl' : 'text-lg'} line-clamp-2`}>
                                                         {news.title}
                                                     </h3>
                                                     <div className="text-white/80 text-xs flex items-center">
-                                                        <i className="far fa-clock mr-1"></i>
+                                                        <i className="far fa-calendar-alt mr-2"></i>
                                                         {formatDate(news.published_at || news.created_at)}
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="p-5 flex-1 hidden md:flex flex-col">
-                                            <div className="text-xs text-gray-500 mb-2 flex items-center">
-                                                <i className="far fa-clock mr-1"></i>
-                                                {formatDate(news.published_at || news.created_at)}
-                                            </div>
-                                            <Link href={route('news.show', news.slug)} className="block mb-2">
-                                                <h3 className="text-lg font-bold text-gray-900 line-clamp-2 hover:text-primary transition-colors">
-                                                    {news.title}
-                                                </h3>
-                                            </Link>
-                                            <p className="text-gray-600 text-sm line-clamp-3 mb-4 flex-1">
-                                                {news.excerpt || (news.content || '').replace(/<[^>]+>/g, '').substring(0, 80) + '...'}
-                                            </p>
-                                            <div className="pt-4 border-t border-gray-100 mt-auto">
-                                                <Link href={route('news.show', news.slug)} className="text-primary text-sm font-semibold hover:text-secondary flex items-center justify-between">
-                                                    Baca Artikel
-                                                    <i className="fas fa-chevron-right text-xs"></i>
+                                            <div className="p-6 hidden md:block">
+                                                <div className="flex items-center text-sm text-gray-500 mb-2">
+                                                    <i className="far fa-calendar-alt mr-2"></i>
+                                                    {formatDate(news.published_at || news.created_at)}
+                                                </div>
+                                                <Link href={route('news.show', news.slug)} className="block">
+                                                    <h3 className={`font-bold text-gray-900 mb-2 group-hover:text-secondary transition-colors ${index === 0 ? 'text-2xl' : 'text-lg'}`}>
+                                                        {news.title}
+                                                    </h3>
+                                                </Link>
+                                                <p className="text-gray-600 line-clamp-2 mb-4">
+                                                    {news.excerpt || (news.content || '').replace(/<[^>]+>/g, '').substring(0, 100) + '...'}
+                                                </p>
+                                                <Link href={route('news.show', news.slug)} className="inline-flex items-center text-secondary font-semibold hover:text-primary">
+                                                    Baca Selengkapnya
+                                                    <i className="fas fa-arrow-right ml-2 text-xs"></i>
                                                 </Link>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-12 bg-white rounded-xl shadow-sm">
-                                <i className="far fa-newspaper text-5xl text-gray-300 mb-4"></i>
-                                <h3 className="text-xl font-medium text-gray-900">Tidak ada berita ditemukan</h3>
-                                <p className="text-gray-500 mt-2">Coba kata kunci lain atau kembali nanti.</p>
-                            </div>
-                        )}
-
-                        {/* Pagination */}
-                        {newsList.links && newsList.links.length > 3 && (
-                            <div className="mt-8 flex justify-center">
-                                <div className="flex flex-wrap gap-1">
-                                    {newsList.links.map((link, i) => (
-                                        link.url ? (
-                                            <Link
-                                                key={i}
-                                                href={link.url}
-                                                className={`px-4 py-2 text-sm rounded-md transition-colors ${
-                                                    link.active
-                                                        ? 'bg-secondary text-white'
-                                                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                                                }`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                                preserveState
-                                            />
-                                        ) : (
-                                            <span
-                                                key={i}
-                                                className="px-4 py-2 text-sm rounded-md transition-colors bg-white text-gray-400 border border-gray-200 cursor-not-allowed"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        )
                                     ))}
                                 </div>
                             </div>
                         )}
+
+                        {/* All News / Search Results */}
+                        <div>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold text-gray-800 border-l-4 border-primary pl-3">
+                                    {latestNews ? 'Hasil Pencarian' : 'Semua Berita'}
+                                </h2>
+                                {totalNews && <span className="text-gray-500 text-sm">{totalNews} Berita</span>}
+                            </div>
+
+                            {newsList.data.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    {newsList.data.map((news) => (
+                                        <div key={news.id} className={`bg-white rounded-lg shadow hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full relative ${editMode ? 'border-2 border-warning ring-2 ring-warning ring-offset-2' : ''}`}>
+                                            {editMode && (
+                                                <div className="absolute top-4 right-4 z-30 flex space-x-2">
+                                                    <Link
+                                                        href={route('news.edit', news.slug || news.id)}
+                                                        className="w-8 h-8 flex items-center justify-center bg-warning text-white rounded-lg shadow-lg hover:bg-warning/90 hover:scale-110 transition-all duration-200"
+                                                        title="Edit Berita"
+                                                    >
+                                                        <i className="fas fa-edit text-sm"></i>
+                                                    </Link>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            Swal.fire({
+                                                                title: 'Apakah Anda yakin?',
+                                                                text: "Ingin menghapus berita ini?",
+                                                                icon: 'warning',
+                                                                showCancelButton: true,
+                                                                confirmButtonColor: '#d33',
+                                                                cancelButtonColor: '#3085d6',
+                                                                confirmButtonText: 'Ya, Hapus!',
+                                                                cancelButtonText: 'Batal'
+                                                            }).then((result) => {
+                                                                if (result.isConfirmed) {
+                                                                    router.delete(route('news.destroy', news.id), {
+                                                                        preserveScroll: true,
+                                                                    });
+                                                                }
+                                                            });
+                                                        }}
+                                                        className="w-8 h-8 flex items-center justify-center bg-danger text-white rounded-lg shadow-lg hover:bg-danger/90 hover:scale-110 transition-all duration-200"
+                                                        title="Hapus Berita"
+                                                    >
+                                                        <i className="fas fa-trash text-sm"></i>
+                                                    </button>
+                                                </div>
+                                            )}
+                                            <div className="relative h-64 md:h-48">
+                                                <img
+                                                    src={getImageUrl(news.image)}
+                                                    alt={news.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4">
+                                                    <span className="text-white text-xs bg-primary px-2 py-1 rounded inline-block mb-2 md:mb-0">
+                                                        {news.category?.name || 'Umum'}
+                                                    </span>
+                                                    {/* Mobile Title Overlay */}
+                                                    <div className="md:hidden">
+                                                        <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
+                                                            {news.title}
+                                                        </h3>
+                                                        <div className="text-white/80 text-xs flex items-center">
+                                                            <i className="far fa-clock mr-1"></i>
+                                                            {formatDate(news.published_at || news.created_at)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="p-5 flex-1 hidden md:flex flex-col">
+                                                <div className="text-xs text-gray-500 mb-2 flex items-center">
+                                                    <i className="far fa-clock mr-1"></i>
+                                                    {formatDate(news.published_at || news.created_at)}
+                                                </div>
+                                                <Link href={route('news.show', news.slug)} className="block mb-2">
+                                                    <h3 className="text-lg font-bold text-gray-900 line-clamp-2 hover:text-primary transition-colors">
+                                                        {news.title}
+                                                    </h3>
+                                                </Link>
+                                                <p className="text-gray-600 text-sm line-clamp-3 mb-4 flex-1">
+                                                    {news.excerpt || (news.content || '').replace(/<[^>]+>/g, '').substring(0, 80) + '...'}
+                                                </p>
+                                                <div className="pt-4 border-t border-gray-100 mt-auto">
+                                                    <Link href={route('news.show', news.slug)} className="text-primary text-sm font-semibold hover:text-secondary flex items-center justify-between">
+                                                        Baca Artikel
+                                                        <i className="fas fa-chevron-right text-xs"></i>
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+                                    <i className="far fa-newspaper text-5xl text-gray-300 mb-4"></i>
+                                    <h3 className="text-xl font-medium text-gray-900">Tidak ada berita ditemukan</h3>
+                                    <p className="text-gray-500 mt-2">Coba kata kunci lain atau kembali nanti.</p>
+                                </div>
+                            )}
+
+                            {/* Pagination */}
+                            {newsList.links && newsList.links.length > 3 && (
+                                <div className="mt-8 flex justify-center">
+                                    <div className="flex flex-wrap gap-1">
+                                        {newsList.links.map((link, i) => (
+                                            link.url ? (
+                                                <Link
+                                                    key={i}
+                                                    href={link.url}
+                                                    className={`px-4 py-2 text-sm rounded-md transition-colors ${link.active
+                                                            ? 'bg-secondary text-white'
+                                                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                                        }`}
+                                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                                    preserveState
+                                                />
+                                            ) : (
+                                                <span
+                                                    key={i}
+                                                    className="px-4 py-2 text-sm rounded-md transition-colors bg-white text-gray-400 border border-gray-200 cursor-not-allowed"
+                                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                                />
+                                            )
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        </div>
-    </WebLayout>
-);
+        </WebLayout>
+    );
 }
 

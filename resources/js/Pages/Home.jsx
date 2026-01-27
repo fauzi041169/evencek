@@ -29,8 +29,27 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     const getStorageUrl = (path) => {
         if (!path) return null;
         if (path.startsWith('http')) return path;
-        if (path.startsWith('storage/')) return '/' + path;
-        return '/' + path;
+
+        // Remove leading slash for consistency during processing
+        let cleanPath = path.startsWith('/') ? path.substring(1) : path;
+
+        // Fix potential double storage prefix which causing 404
+        if (cleanPath.startsWith('storage/storage/')) {
+            cleanPath = cleanPath.substring(8); // Remove first 'storage/'
+        }
+
+        // Ensure it starts with /storage/ if it doesn't already
+        if (cleanPath.startsWith('storage/')) {
+            return '/' + cleanPath;
+        }
+
+        // If it's a known assets path, just return with leading slash
+        if (cleanPath.startsWith('assets/')) {
+            return '/' + cleanPath;
+        }
+
+        // Otherwise, assume it needs the storage prefix
+        return '/storage/' + cleanPath;
     };
 
     // Process hero slides to ensure uniform format, prioritizing global setting if available
@@ -38,9 +57,9 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
         ? [{ image: getStorageUrl(heroBg1) }]
         : (heroSlides.length > 0 ? heroSlides.map(slide => {
             if (typeof slide === 'string') {
-                return { image: slide };
+                return { image: getStorageUrl(slide) };
             }
-            return slide;
+            return { ...slide, image: getStorageUrl(slide.image) };
         }) : [{ image: '/assets/images/hero/defoult.webp' }]);
 
     const activeSlide = processedSlides[currentSlide] || {};

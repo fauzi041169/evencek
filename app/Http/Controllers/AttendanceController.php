@@ -855,7 +855,10 @@ class AttendanceController extends Controller
             $sheetTitle = 'Daftar Absen: '.$selectedAttendance->name;
             $filename = 'absen_'.Str::slug($selectedAttendance->name, '_').'_activity_'.$activity->id.'.xlsx';
 
-            foreach ($participants as $i => $participant) {
+            $statusFilter = $request->query('status_filter');
+            $rowNumber = 1;
+
+            foreach ($participants as $participant) {
                 // Gunakan eager loaded records
                 $userRecords = optional($participant->user)->attendanceRecords;
                 $record = $userRecords ? $userRecords->where('attendance_id', $selectedAttendance->id)
@@ -864,13 +867,22 @@ class AttendanceController extends Controller
                     ->first() : null;
 
                 $isPresent = (bool) $record;
+
+                // Filter logic
+                if ($statusFilter === 'present' && !$isPresent) {
+                    continue;
+                }
+                if ($statusFilter === 'absent' && $isPresent) {
+                    continue;
+                }
+
                 $timestamp = null;
                 if ($record) {
                     $timestamp = $record->created_at ?? $record->updated_at ?? ($record->marked_at ?? null);
                 }
 
                 $exportData[] = [
-                    'No' => $i + 1,
+                    'No' => $rowNumber++,
                     'Nama' => $participant->user->name ?? '-',
                     'Instansi' => optional($participant->user->profile)->instansi ?? '-',
                     'Provinsi' => optional(optional($participant->user->profile)->province)->name ?? '-',

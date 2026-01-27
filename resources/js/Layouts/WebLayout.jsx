@@ -44,16 +44,37 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
     const getLogoUrl = (logoPath) => {
         if (!logoPath) return '/assets/images/logo.png';
         if (logoPath.startsWith('http')) return logoPath;
-        // Fix for missing storage symlink: map storage/assets to assets
-        if (logoPath.startsWith('storage/assets/')) {
-            return '/' + logoPath.replace('storage/', '');
+
+        // Remove leading / if any
+        let cleanPath = logoPath.startsWith('/') ? logoPath.substring(1) : logoPath;
+
+        // Handle double storage/ if it somehow got in
+        if (cleanPath.startsWith('storage/storage/')) {
+            cleanPath = cleanPath.substring(8);
         }
-        return `/${logoPath}`;
+
+        // Fix for missing storage symlink: map storage/assets to assets
+        if (cleanPath.startsWith('storage/assets/')) {
+            return '/' + cleanPath.replace('storage/', '');
+        }
+
+        // If it starts with storage/, return as is with leading /
+        if (cleanPath.startsWith('storage/')) {
+            return '/' + cleanPath;
+        }
+
+        // If it starts with assets/, return as is with leading /
+        if (cleanPath.startsWith('assets/')) {
+            return '/' + cleanPath;
+        }
+
+        // Default: try storage prefix
+        return '/storage/' + cleanPath;
     };
 
     const navClasses = `fixed top-0 left-0 right-0 z-[9999] transition-all duration-300 ${transparentNavbar && !scrolled
-            ? 'bg-transparent py-4'
-            : 'navbar-gradient shadow-md bg-gradient-to-r from-primary to-secondary backdrop-blur-md bg-opacity-95'
+        ? 'bg-transparent py-4'
+        : 'navbar-gradient shadow-md bg-gradient-to-r from-primary to-secondary backdrop-blur-md bg-opacity-95'
         }`;
 
     // Helper untuk warna text navbar

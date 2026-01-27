@@ -25,8 +25,23 @@ export default function About() {
     const getStorageUrl = (path) => {
         if (!path) return null;
         if (path.startsWith('http')) return path;
-        if (path.startsWith('storage/')) return '/' + path;
-        return '/' + path;
+
+        let cleanPath = path.startsWith('/') ? path.substring(1) : path;
+
+        // Handle double storage/
+        if (cleanPath.startsWith('storage/storage/')) {
+            cleanPath = cleanPath.substring(8);
+        }
+
+        if (cleanPath.startsWith('storage/')) {
+            return '/' + cleanPath;
+        }
+
+        if (cleanPath.startsWith('assets/')) {
+            return '/' + cleanPath;
+        }
+
+        return `/storage/${cleanPath}`;
     };
 
     useEffect(() => {
@@ -90,7 +105,7 @@ export default function About() {
 
                         {appSettings?.hero_background_1 && (
                             <div
-                                className="absolute inset-0 bg-cover bg-center opacity-40 transition-opacity duration-500 z-0"
+                                className="absolute inset-0 bg-cover bg-center opacity-60 transition-opacity duration-500 z-0"
                                 style={{ backgroundImage: `url('${getStorageUrl(appSettings.hero_background_1)}')` }}
                             />
                         )}
@@ -98,8 +113,8 @@ export default function About() {
                             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
                         )}
 
-                        {/* Gradient Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 via-indigo-900/40 to-slate-900/95 z-10"></div>
+                        {/* Gradient Overlay - Adjusted for better visibility */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-slate-900/50 to-slate-900/80 z-10"></div>
 
                         {/* Dynamic Animations based on Settings */}
                         {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (
