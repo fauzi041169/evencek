@@ -369,14 +369,14 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                         )}
                     </div>
 
-                    <div className="px-8 pb-8 -mt-20 relative z-10">
-                        <div className="flex flex-col lg:flex-row justify-between items-stretch gap-8">
-                            {/* Left Side: Avatar, Bio and QR Code */}
-                            <div className="flex flex-col gap-6">
-                                <div className="flex flex-col md:flex-row items-center md:items-end gap-6 mb-2">
+                    <div className="px-8 pb-8 -mt-20 relative z-10 w-full">
+                        <div className="flex flex-col lg:flex-row justify-between items-end gap-8">
+                            {/* Left Section: Avatar, Bio, and QR Button */}
+                            <div className="flex flex-col gap-6 flex-1">
+                                <div className="flex flex-col md:flex-row items-center md:items-center gap-8 mb-2">
                                     {/* Avatar */}
                                     <div className="relative group flex-shrink-0">
-                                        <div className="w-40 h-40 md:w-44 md:h-44 rounded-full border-[6px] border-white bg-white shadow-2xl overflow-hidden">
+                                        <div className="w-40 h-40 md:w-44 md:h-44 rounded-full border-[6px] border-white bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden">
                                             <img
                                                 src={data.foto_file ? URL.createObjectURL(data.foto_file) : user.profile_photo_url}
                                                 className="w-full h-full object-cover"
@@ -392,21 +392,21 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                     </div>
 
                                     {/* Bio Info */}
-                                    <div className="text-center md:text-left mb-4">
+                                    <div className="text-center md:text-left pt-16">
                                         <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-none mb-2">{user.name}</h1>
                                         <p className="text-gray-500 font-bold text-lg mb-3 tracking-tight">{user.email}</p>
-                                        <div className="flex items-center justify-center md:justify-start gap-2 text-[11px] font-black text-gray-400 uppercase tracking-widest">
+                                        <div className="flex items-center justify-center md:justify-start gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                             <i className="fas fa-calendar-alt text-gray-300"></i>
                                             <span>Bergabung {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* QR Code Button - Clearly Positioned Below Avatar */}
+                                {/* QR Code Button - Positioned exactly below avatar circle */}
                                 <div className="flex items-center justify-center md:justify-start">
                                     <button
                                         onClick={() => setShowQrModal(true)}
-                                        className="px-6 py-2.5 bg-[#F4F7FA] text-black rounded-2xl font-black text-xs uppercase tracking-widest border border-gray-100/50 hover:bg-gray-100 transition flex items-center gap-3 shadow-sm"
+                                        className="px-6 py-2.5 bg-[#F4F7FA] text-gray-900 rounded-2xl font-black text-[11px] uppercase tracking-widest border border-gray-100 hover:bg-gray-100 transition shadow-sm flex items-center gap-3"
                                     >
                                         <i className="fas fa-qrcode text-sm"></i>
                                         <span>QR Code</span>
@@ -414,17 +414,17 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                 </div>
                             </div>
 
-                            {/* Right Side: Status & Kapasitas Card - EXACT MOCKUP STYLE */}
-                            <div className="flex items-end justify-center lg:justify-end">
-                                <div className="bg-white p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] min-w-[320px] animate-in fade-in slide-in-from-right-8 duration-1000">
+                            {/* Right Section: Status Card - EXACT MOCKUP STYLE */}
+                            <div className="flex items-end justify-center lg:justify-end pb-4">
+                                <div className="bg-white p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_30px_60px_-12px_rgba(0,0,0,0.08)] min-w-[320px] animate-in fade-in slide-in-from-right-8 duration-700">
                                     <div className="flex items-center gap-5 mb-6">
-                                        <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-br from-[#2D60FF] to-[#1E4DCC] flex items-center justify-center shadow-[0_10px_25px_-5px_rgba(45,96,255,0.4)]">
+                                        <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-br from-[#2D60FF] to-[#1E4DCC] flex items-center justify-center shadow-[0_10px_20px_-5px_rgba(45,96,255,0.3)]">
                                             <i className="fas fa-user-check text-white text-2xl"></i>
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Status Akun</span>
-                                                <div className="w-2 h-2 rounded-full bg-amber-400 border-2 border-amber-100 shadow-[0_0_8px_rgba(251,191,36,0.4)]"></div>
+                                                <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]"></div>
                                             </div>
                                             <span className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none block">
                                                 {user.role || 'GUEST'}
