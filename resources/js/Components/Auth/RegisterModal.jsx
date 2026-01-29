@@ -76,7 +76,7 @@ export default function RegisterModal({ isOpen, onClose }) {
                                         name="email"
                                         id="register-email"
                                         required
-                                        placeholder="nama@email.com"
+                                        placeholder={t('auth.email_placeholder')}
                                         className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                         value={data.email}
                                         onChange={(e) => setData('email', e.target.value)}

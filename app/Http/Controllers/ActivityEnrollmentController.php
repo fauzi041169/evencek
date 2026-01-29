@@ -353,6 +353,38 @@ class ActivityEnrollmentController extends Controller
                     ->with('missing_profile_fields', $missingFieldKeys);
             }
 
+            // Validate Custom Activity Fields
+            if ($activity->custom_fields && is_array($activity->custom_fields)) {
+                $missingCustomFields = [];
+                $currentCustomData = $request->input('custom_data', []);
+                
+                foreach ($activity->custom_fields as $field) {
+                    // Check if required field is missing or empty
+                    if (!empty($field['is_required'])) {
+                        $key = $field['key'] ?? null;
+                        if ($key && (
+                            !isset($currentCustomData[$key]) || 
+                            $currentCustomData[$key] === '' || 
+                            $currentCustomData[$key] === null
+                        )) {
+                            $missingCustomFields[] = $field['label'] ?? $key;
+                        }
+                    }
+                }
+
+                if (!empty($missingCustomFields)) {
+                    $msg = 'Data tambahan berikut wajib diisi: ' . implode(', ', $missingCustomFields);
+                    if ($wantsJson) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => $msg,
+                            'missing_custom_fields' => $missingCustomFields
+                        ], 422);
+                    }
+                    return redirect()->back()->with('error', $msg);
+                }
+            }
+
             // Check if user is already enrolled in this batch (or activity if no batch)
             $existingEnrollment = ActivityUser::where('user_id', auth()->id())
                 ->where('activity_id', $activityId);

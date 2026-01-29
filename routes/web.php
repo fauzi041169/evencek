@@ -68,6 +68,23 @@ Route::get('/fix-storage-link', function () {
         return 'Error: ' . $e->getMessage();
     }
 });
+Route::get('/fix-session', function () {
+    try {
+        session()->flush();
+        Auth::logout();
+        return redirect('/')->with('success', 'Session cleared. Please login again.');
+    } catch (\Exception $e) {
+        return 'Error: ' . $e->getMessage();
+    }
+});
+Route::get('/fix-logo', function () {
+    try {
+        \App\Models\Setting::set('app_logo', '/assets/images/logo.png');
+        return 'Logo reset to default.';
+    } catch (\Exception $e) {
+        return 'Error: ' . $e->getMessage();
+    }
+});
 Route::get('/', [HomeController::class, 'index'])->name('home');
 // Fix for 404 on /login - redirect to home with login modal
 Route::get('/login', function() {
@@ -360,7 +377,6 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/participants/import', 'importParticipants')->name('import-participants');
         Route::post('/participants/check', 'checkParticipants')->name('check-participants');
         Route::get('/participants/get-import-template', 'getImportTemplate')->name('get-import-template');
-        Route::post('/participants/save-import-template', 'saveImportTemplate')->name('save-import-template');
         Route::get('/participants/import', 'importParticipantsGet')->name('import-participants.get');
         Route::get('/participants/template', 'downloadParticipantsTemplate')->name('download-participants-template');
         Route::get('/participants/import-result-excel', 'downloadImportResultExcel')->name('download-import-result-excel');

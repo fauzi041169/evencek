@@ -13,6 +13,7 @@ import LoginModal from '@/Components/Auth/LoginModal';
 import CommentSection from './Components/CommentSection';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import CustomFieldsFormModal from '@/Components/Activity/CustomFieldsFormModal';
 
 export default function Show({
     activity,
@@ -57,6 +58,10 @@ export default function Show({
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentModalData, setPaymentModalData] = useState(null);
     const [loadingPaymentModal, setLoadingPaymentModal] = useState(false);
+
+    // Custom Fields Logic
+    const [isCustomFieldsModalOpen, setIsCustomFieldsModalOpen] = useState(false);
+    const [pendingEnrollmentData, setPendingEnrollmentData] = useState(null);
 
     // Visibility Logic
     const [visibleSections, setVisibleSections] = useState(activity.visible_sections || {});
@@ -167,6 +172,103 @@ export default function Show({
         }
     };
 
+    const processEnrollment = async (type, force = false, customData = {}) => {
+        if (registrationTarget.type === 'link' || registrationTarget.type === 'form') {
+            try {
+                const payload = {
+                    modal: true,
+                    batch_id: activeBatch?.id,
+                    custom_data: customData
+                };
+
+                const response = await axios.post(registrationTarget.url, payload, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    }
+                });
+
+                if (response.data.success) {
+                    if (response.data.redirect_url) {
+                        const isMidtransUrl = response.data.redirect_url.includes('/midtrans/payment/');
+
+                        if (isMidtransUrl && window.snap) {
+                            try {
+                                const paymentResponse = await axios.get(response.data.redirect_url, {
+                                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                                    params: { modal: 'true', is_ajax: 'true' }
+                                });
+
+                                if (paymentResponse.data.snapToken) {
+                                    window.snap.pay(paymentResponse.data.snapToken, {
+                                        onSuccess: () => window.location.reload(),
+                                        onPending: () => window.location.reload(),
+                                        onError: () => window.location.reload(),
+                                        onClose: () => window.location.reload()
+                                    });
+                                    return;
+                                }
+                            } catch (err) {
+                                console.error("Failed to fetch Snap Token, falling back to redirect", err);
+                            }
+                        }
+
+                        window.location.href = response.data.redirect_url;
+                        return;
+                    } else if (response.data.snapToken && window.snap) {
+                        window.snap.pay(response.data.snapToken, {
+                            onSuccess: () => window.location.reload(),
+                            onPending: () => window.location.reload(),
+                            onError: () => window.location.reload(),
+                            onClose: () => window.location.reload()
+                        });
+                    } else {
+                        window.location.reload();
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: response.data.message || 'Gagal memproses pendaftaran.'
+                    });
+                }
+            } catch (error) {
+                if (error.response && error.response.status === 422) {
+                    if (error.response.data.missing_data) {
+                        setLocalMissingProfileData(error.response.data.missing_data);
+                        setIsMissingDataModalOpen(true);
+                        sessionStorage.setItem('pending_enrollment', JSON.stringify({
+                            activityId: activity.id,
+                            type: type
+                        }));
+                        return;
+                    }
+
+                    if (error.response.data.missing_fields) {
+                        await Swal.fire({
+                            icon: 'warning',
+                            title: 'Profil Belum Lengkap',
+                            text: 'Mohon lengkapi data profil Anda terlebih dahulu.'
+                        });
+                        window.location.reload();
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: error.response.data.message || 'Gagal memproses pendaftaran.'
+                        });
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: 'Terjadi kesalahan saat memproses pendaftaran.'
+                    });
+                }
+            }
+        }
+    };
+
     const handleEnroll = async (type = 'mandiri', force = false) => {
         setRegistrationTypeModalOpen(false);
 
@@ -176,7 +278,6 @@ export default function Show({
                     auth?.user?.profile_photo_url?.includes('ui-avatars.com');
 
                 if (!force && ((missingProfileFields && missingProfileFields.length > 0) || hasDefaultPhoto)) {
-                    // Save intent for auto-enroll after profile update
                     sessionStorage.setItem('pending_enrollment', JSON.stringify({
                         activityId: activity.id,
                         type: type
@@ -186,123 +287,25 @@ export default function Show({
                     return;
                 }
 
-                // Cek apakah kegiatan berbayar
-                const currentPrice = activeBatch?.price !== undefined && activeBatch?.price !== null
-                    ? Number(activeBatch.price)
-                    : Number(activity.price);
-
-                // Jika berbayar, arahkan langsung ke form pembayaran
-                if (currentPrice > 0) {
-                    openManualPaymentModal();
+                // Check for Custom Fields
+                if (activity.custom_fields && Array.isArray(activity.custom_fields) && activity.custom_fields.length > 0) {
+                    setPendingEnrollmentData({ type, force });
+                    setIsCustomFieldsModalOpen(true);
                     return;
                 }
 
-                if (registrationTarget.type === 'link' || registrationTarget.type === 'form') {
-                    // Gunakan Axios untuk menangani respons JSON dan redirect ke pembayaran (modal/page)
-                    try {
-                        // Ensure we use axios directly
-                        const response = await axios.post(registrationTarget.url, {
-                            modal: true, // Meminta respons JSON
-                            batch_id: activeBatch?.id
-                        }, {
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json',
-                            }
-                        });
-
-                        if (response.data.success) {
-                            if (response.data.redirect_url) {
-                                // Check if it's a Midtrans payment URL to show modal instead of redirecting
-                                const isMidtransUrl = response.data.redirect_url.includes('/midtrans/payment/');
-
-                                if (isMidtransUrl && window.snap) {
-                                    try {
-                                        // Fetch the Snap Token from the payment page endpoint
-                                        const paymentResponse = await axios.get(response.data.redirect_url, {
-                                            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                                            params: { modal: 'true', is_ajax: 'true' }
-                                        });
-
-                                        if (paymentResponse.data.snapToken) {
-                                            window.snap.pay(paymentResponse.data.snapToken, {
-                                                onSuccess: () => window.location.reload(),
-                                                onPending: () => window.location.reload(),
-                                                onError: () => window.location.reload(),
-                                                onClose: () => window.location.reload()
-                                            });
-                                            return;
-                                        }
-                                    } catch (err) {
-                                        console.error("Failed to fetch Snap Token, falling back to redirect", err);
-                                    }
-                                }
-
-                                // Jika ada redirect URL (misal ke halaman pembayaran), arahkan user ke sana
-                                window.location.href = response.data.redirect_url;
-                                return;
-                            } else if (response.data.snapToken && window.snap) {
-                                // Jika backend mengembalikan token Snap langsung (opsional)
-                                window.snap.pay(response.data.snapToken, {
-                                    onSuccess: () => window.location.reload(),
-                                    onPending: () => window.location.reload(),
-                                    onError: () => window.location.reload(),
-                                    onClose: () => window.location.reload()
-                                });
-                            } else {
-                                // Jika sukses tanpa redirect (misal kegiatan gratis), reload untuk update status
-                                window.location.reload();
-                            }
-                        } else {
-                            // Handle if success is false but no error status code
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Gagal',
-                                text: response.data.message || 'Gagal memproses pendaftaran.'
-                            });
-                        }
-                    } catch (error) {
-                        if (error.response && error.response.status === 422) {
-                            // Fix: Handle verification loop by updating modal state directly
-                            if (error.response.data.missing_data) {
-                                setLocalMissingProfileData(error.response.data.missing_data);
-                                setIsMissingDataModalOpen(true);
-
-                                // Save intent again
-                                sessionStorage.setItem('pending_enrollment', JSON.stringify({
-                                    activityId: activity.id,
-                                    type: type
-                                }));
-                                return;
-                            }
-
-                            // Jika error validasi (misal data belum lengkap yang terlewat), refresh atau tampilkan pesan
-                            if (error.response.data.missing_fields) {
-                                // Harusnya sudah dicek di awal, tapi untuk jaga-jaga
-                                await Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Profil Belum Lengkap',
-                                    text: 'Mohon lengkapi data profil Anda terlebih dahulu.'
-                                });
-                                window.location.reload();
-                            } else {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Gagal',
-                                    text: error.response.data.message || 'Gagal memproses pendaftaran.'
-                                });
-                            }
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Gagal',
-                                text: 'Terjadi kesalahan saat memproses pendaftaran.'
-                            });
-                        }
-                    }
-                }
+                // Proceed directly if no custom fields
+                processEnrollment(type, force);
             }
         }, 100);
+    };
+
+    const handleCustomFieldsSubmit = (formData) => {
+        setIsCustomFieldsModalOpen(false);
+        if (pendingEnrollmentData) {
+            processEnrollment(pendingEnrollmentData.type, pendingEnrollmentData.force, formData);
+            setPendingEnrollmentData(null);
+        }
     };
 
     // Calculate Modal Scale
@@ -1434,6 +1437,13 @@ export default function Show({
                     }}
                 />
 
+                <CustomFieldsFormModal
+                    isOpen={isCustomFieldsModalOpen}
+                    onClose={() => setIsCustomFieldsModalOpen(false)}
+                    customFields={activity.custom_fields}
+                    onSubmit={handleCustomFieldsSubmit}
+                />
+
                 {/* Manual Payment Modal */}
                 <ManualPaymentModal
                     show={showPaymentModal}
@@ -1449,6 +1459,7 @@ export default function Show({
                     isOpen={isBulkImportModalOpen}
                     onClose={() => setIsBulkImportModalOpen(false)}
                     activityId={activity.id}
+                    activity={activity}
                     onSuccess={() => {
                         setIsBulkImportModalOpen(false);
                         router.reload();

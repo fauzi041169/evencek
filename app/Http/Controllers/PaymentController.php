@@ -2378,17 +2378,27 @@ class PaymentController extends Controller
                     }
 
                     // Activate Enrollment for all related users
+                    // Activate Enrollment for all related users
+                    // Fix: When manually verifying, we trust the admin's approval. 
+                    // Use the greater of allowed_count OR the total number of linked users.
+                    // This fixes issues where re-uploads add members but the old payment record has a stale loop limit.
                     $limit = (is_array($meta) ? (int) ($meta['allowed_count'] ?? count($uids)) : count($uids));
+                    if (count($uids) > $limit) {
+                        $limit = count($uids);
+                    }
+                    
                     $count = 0;
                     foreach ($uids as $uid) {
                         if ($uid == $payment->user_id) {
                             continue;
                         } // Already done above
 
+                        // Limit check removed practically by setting limit to count($uids) above
+                        // but kept for safety if logic changes
                         if ($count >= $limit) {
                             break;
                         }
-                        $existingMember = ActivityUser::where('user_id', (int) $uid)
+                        $existingMember = ActivityUser::where('user_id', $uid)
                             ->where('activity_id', $payment->activity_id)
                             ->orderBy('id', 'desc')
                             ->first();
@@ -2399,7 +2409,7 @@ class PaymentController extends Controller
                             $existingMember->save();
                         } else {
                             $bulkMatch = [
-                                'user_id' => (int) $uid,
+                                'user_id' => $uid,
                                 'activity_id' => $payment->activity_id,
                             ];
                             if ($payment->activity_batch_id) {

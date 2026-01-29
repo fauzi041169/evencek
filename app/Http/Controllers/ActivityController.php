@@ -12,6 +12,7 @@ use App\Models\ActivityContent;
 use App\Models\ActivityDivision;
 use App\Models\ActivityHotelRoom;
 use App\Models\ActivityHotelRoomAssignment;
+use App\Models\CustomField;
 use App\Models\ActivityMaterial;
 use App\Models\ActivityParticipantGroup;
 use App\Models\ActivityRecord;
@@ -1588,6 +1589,7 @@ class ActivityController extends Controller
         $title = 'Edit Aktivitas';
         $titlepage = 'Edit Aktivitas';
         $activity = Activity::findOrFail($id);
+        $activity->append('custom_fields');
 
         // Batasi hanya untuk creator murni; admin/superadmin bebas edit
         // Cast to int to avoid strict-type mismatch between string/int ids in production
@@ -1699,6 +1701,7 @@ class ActivityController extends Controller
             'currentAutomaticTotalCount' => $currentAutomaticTotalCount,
             'manualLimit' => $manualLimit,
             'manualLimitExceeded' => $manualLimitExceeded,
+            'globalCustomFields' => \App\Models\CustomField::all(),
         ]);
     }
 
@@ -1762,6 +1765,7 @@ class ActivityController extends Controller
             'visible_sections' => 'nullable|array',
             'import_template' => 'nullable|string|max:2000',
             'column_settings' => 'nullable|array',
+            'custom_fields' => 'nullable|array',
         ]);
 
         // Custom validation for end_time
@@ -1857,6 +1861,41 @@ class ActivityController extends Controller
             if (isset($validated['pendaftaran'])) {
                 $activity->pendaftaran = $validated['pendaftaran'];
                 $activity->save();
+            }
+
+            // Sync Custom Fields
+            if (isset($validated['custom_fields'])) {
+                $fieldIds = [];
+                foreach ($validated['custom_fields'] as $fieldData) {
+                    $label = $fieldData['label'] ?? 'Unknown';
+                    $key = $fieldData['key'] ?? \Illuminate\Support\Str::slug($label, '_');
+                    $type = $fieldData['type'] ?? 'text';
+                    $options = $fieldData['options'] ?? null;
+                    $isRequired = !empty($fieldData['is_required']);
+
+                    $customField = CustomField::firstOrCreate(
+                        ['key' => $key],
+                        [
+                            'label' => $label,
+                            'type' => $type,
+                            'options' => $options
+                        ]
+                    );
+
+                    // Update existing field if type or options changed (optional, but good for global consistency)
+                    if ($customField->label !== $label || $customField->type !== $type || $customField->options !== $options) {
+                        $customField->update([
+                            'label' => $label,
+                            'type' => $type,
+                            'options' => $options
+                        ]);
+                    }
+
+                    $fieldIds[$customField->id] = ['is_required' => $isRequired];
+                }
+                $activity->customFields()->sync($fieldIds);
+            } else {
+                $activity->customFields()->detach();
             }
 
             DB::commit();
@@ -2365,10 +2404,8 @@ class ActivityController extends Controller
             'activePlanName' => $activePlanName,
             'activePlanSlug' => $activePlanSlug,
             'defaultCategoryId' => $defaultCategoryId,
-            'defaultDate' => $defaultDate,
-            'defaultStartTime' => $defaultStartTime,
-            'defaultEndDate' => $defaultEndDate,
-            'defaultEndTime' => $defaultEndTime
+            'defaultEndTime' => $defaultEndTime,
+            'globalCustomFields' => CustomField::all(),
         ]);
     }
 
@@ -2403,6 +2440,7 @@ class ActivityController extends Controller
                 'image' => 'nullable|image|max:5120',
                 'mandatory_profile_fields' => 'nullable|array',
                 'manual_payment_details' => 'nullable|array',
+                'custom_fields' => 'nullable|array',
             ]);
 
             // Custom validation for end_time
@@ -2516,6 +2554,39 @@ class ActivityController extends Controller
                 'manual_payment_details' => $validated['manual_payment_details'] ?? null,
             ]);
 
+            // Sync Custom Fields
+            if (isset($validated['custom_fields'])) {
+                $fieldIds = [];
+                foreach ($validated['custom_fields'] as $fieldData) {
+                    $label = $fieldData['label'] ?? 'Unknown';
+                    $key = $fieldData['key'] ?? \Illuminate\Support\Str::slug($label, '_');
+                    $type = $fieldData['type'] ?? 'text';
+                    $options = $fieldData['options'] ?? null;
+                    $isRequired = !empty($fieldData['is_required']);
+
+                    $customField = CustomField::firstOrCreate(
+                        ['key' => $key],
+                        [
+                            'label' => $label,
+                            'type' => $type,
+                            'options' => $options
+                        ]
+                    );
+
+                    // Update if exists (global management)
+                    if ($customField->label !== $label || $customField->type !== $type || $customField->options !== $options) {
+                        $customField->update([
+                            'label' => $label,
+                            'type' => $type,
+                            'options' => $options
+                        ]);
+                    }
+
+                    $fieldIds[$customField->id] = ['is_required' => $isRequired];
+                }
+                $activity->customFields()->sync($fieldIds);
+            }
+
             DB::commit();
 
             return redirect()->route('activity.list')
@@ -2602,24 +2673,30 @@ class ActivityController extends Controller
         }
     }
 
-    private function buildParticipantQuery(Request $request, Activity $activity)
+    private function buildParticipantQuery(Request $request, Activity $activity, $includeCommittee = false)
     {
         $query = $activity->users();
 
         // Filter out committee members
-        try {
-            $committeeUserIds = ActivityCommitteeStructure::where('activity_id', $activity->id)
-                ->whereNotNull('user_id')
-                ->pluck('user_id')
-                ->toArray();
-            
-            if (!empty($committeeUserIds)) {
-                $query->whereNotIn('users.id', $committeeUserIds);
-            }
-        } catch (\Throwable $e) {}
+        if (! $includeCommittee) {
+            try {
+                $committeeUserIds = ActivityCommitteeStructure::where('activity_id', $activity->id)
+                    ->whereNotNull('user_id')
+                    ->pluck('user_id')
+                    ->toArray();
 
-        // Filter only active participants
-        $query->wherePivot('status', ActivityUser::STATUS_ACTIVE);
+                if (! empty($committeeUserIds)) {
+                    $query->whereNotIn('users.id', $committeeUserIds);
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        // Filter by status
+        $status = $request->input('participant_status');
+        if ($status !== null && $status !== '') {
+            $query->wherePivot('status', $status);
+        }
 
         // Filter by batch
         $batchId = $request->input('batch_id');
@@ -2693,11 +2770,29 @@ class ActivityController extends Controller
         $userIds = [];
         $activityUserIds = [];
 
+        \Log::info('DELETE DEBUG: Start', [
+            'select_all' => $request->boolean('select_all'),
+            'inputs' => $request->all(),
+            'user_ids_input' => $request->input('user_ids'),
+        ]);
+
         if ($request->boolean('select_all')) {
-            $userIds = $this->buildParticipantQuery($request, $activity)
+            $query = $this->buildParticipantQuery($request, $activity, true);
+            
+            \Log::info('DELETE DEBUG: Query', [
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings()
+            ]);
+
+            $userIds = $query
                 ->pluck('users.id')
                 ->map(fn($id) => (string) $id)
                 ->toArray();
+            
+            \Log::info('DELETE DEBUG: Result', [
+                'count' => count($userIds),
+                'ids_sample' => array_slice($userIds, 0, 10)
+            ]);
         } else {
             // Normalisasi ID yang dikirim dari form (bisa berisi user_id atau activity_user.id)
             $rawIds = array_values(array_filter($request->input('user_ids', []), function ($id) {
@@ -6768,13 +6863,18 @@ class ActivityController extends Controller
                 return $userIds;
             }
 
+            \Log::info('Expanding user deletion to groups', ['groups' => $groupIds]);
+
             // Get all user IDs for these groups
             $groupUserIds = ActivityUser::where('activity_id', $activityId)
                 ->whereIn('activity_participant_group_id', $groupIds)
                 ->pluck('user_id')
                 ->toArray();
 
-            return array_values(array_unique(array_merge($userIds, $groupUserIds)));
+            $merged = array_values(array_unique(array_merge($userIds, $groupUserIds)));
+            \Log::info('Expanded user IDs', ['original' => count($userIds), 'new' => count($merged)]);
+
+            return $merged;
         } catch (\Exception $e) {
             \Log::error('Error expanding user IDs with groups: '.$e->getMessage());
 

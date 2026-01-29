@@ -41,6 +41,8 @@ class Activity extends Model
         'mandatory_profile_fields',
         'manual_payment_details',
         'visible_sections',
+        'visible_sections',
+        // 'custom_fields', // Removed, using relationship
     ];
 
     protected $casts = [
@@ -57,7 +59,33 @@ class Activity extends Model
         'mandatory_profile_fields' => 'array',
         'manual_payment_details' => 'array',
         'hero_pinned' => 'boolean',
+        // 'custom_fields' => 'array', // Removed
     ];
+
+    public function customFields()
+    {
+        return $this->belongsToMany(CustomField::class, 'activity_custom_field')
+            ->withPivot('is_required')
+            ->withTimestamps();
+    }
+
+    /**
+     * Accessor to get custom fields in a format compatible with legacy code.
+     * This mimics the old JSON array structure.
+     */
+    public function getCustomFieldsAttribute()
+    {
+        return $this->customFields()->get()->map(function ($field) {
+            return [
+                'id' => $field->id,
+                'label' => $field->label,
+                'key' => $field->key,
+                'type' => $field->type,
+                'options' => $field->options,
+                'is_required' => (bool) $field->pivot->is_required,
+            ];
+        })->toArray();
+    }
 
     // Registration status constants
     const REGISTRATION_NOT_OPENED = 0;

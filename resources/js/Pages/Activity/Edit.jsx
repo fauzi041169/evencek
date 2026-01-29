@@ -5,13 +5,13 @@ import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { INDONESIAN_BANKS } from '../../Constants/BankList';
 
-export default function Edit({ 
+export default function Edit({
     activity,
-    categories, 
-    subscriptionLimits, 
-    canCreate, 
-    currentManualTotalCount, 
-    currentAutomaticTotalCount, 
+    categories,
+    subscriptionLimits,
+    canCreate,
+    currentManualTotalCount,
+    currentAutomaticTotalCount,
     savedBankAccounts,
     savedBankAccount,
     effectiveStatus,
@@ -19,7 +19,8 @@ export default function Edit({
     profileFields,
     mandatoryFields,
     manualLimit,
-    manualLimitExceeded
+    manualLimitExceeded,
+    globalCustomFields = []
 }) {
     const { auth } = usePage().props;
     const [previewImage, setPreviewImage] = useState(activity.image ? `/storage/activities/${activity.image}` : null);
@@ -42,8 +43,128 @@ export default function Edit({
         image: null, // New image upload
         mandatory_profile_fields: mandatoryFields || [],
         show_price: Boolean(activity.show_price),
-        manual_payment_details: activity.manual_payment_details || []
+        manual_payment_details: activity.manual_payment_details || [],
+        custom_fields: activity.custom_fields || []
     });
+
+    // Custom Fields Helpers
+    const addCustomField = (predefined = null) => {
+        if (predefined) {
+            // Check if already exists in current data
+            const exists = data.custom_fields.some(f => f.key === predefined.key);
+            if (exists) {
+                Swal.fire('Info', 'Field ini sudah ditambahkan.', 'info');
+                return;
+            }
+            setData('custom_fields', [
+                ...data.custom_fields,
+                {
+                    ...predefined,
+                    is_required: false,
+                    is_optional: true
+                }
+            ]);
+            return;
+        }
+
+        setData('custom_fields', [
+            ...data.custom_fields,
+            {
+                key: `custom_${Date.now()}`,
+                label: '',
+                type: 'text',
+                options: '',
+                is_required: false,
+                is_optional: true
+            }
+        ]);
+    };
+
+    const removeCustomField = (index) => {
+        const newFields = [...data.custom_fields];
+        newFields.splice(index, 1);
+        setData('custom_fields', newFields);
+    };
+
+    const updateCustomField = (index, field, value) => {
+        const newFields = [...data.custom_fields];
+        newFields[index][field] = value;
+
+        // Auto-generate key from label if not set manually (simple slugify)
+        if (field === 'label') {
+            if (!newFields[index].key_manually_set) {
+                const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                if (slug) newFields[index].key = slug;
+            }
+
+            // Check for duplicates within CURRENT form
+            const isDuplicateInternal = newFields.some((f, i) =>
+                i !== index &&
+                f.label.trim().toLowerCase() === value.trim().toLowerCase()
+            );
+
+            // Check for duplicates in GLOBAL fields
+            // Only if the current field is NOT one of the global fields being reused (we assume if it has an ID it might be linked, but for now we just check label name)
+            // Ideally we check if this field was added via "Select Global", but complex.
+            // Simple check: if a global field exists with this label (case-insensitive), warn user.
+            const isGlobalConflict = globalCustomFields.some(gf =>
+                gf.label.trim().toLowerCase() === value.trim().toLowerCase()
+            );
+
+            // Check for conflict with Profile Fields
+            const isProfileFieldConflict = profileFields ? Object.values(profileFields).some(pfLabel =>
+                pfLabel.trim().toLowerCase() === value.trim().toLowerCase()
+            ) : false;
+
+            if (isDuplicateInternal) {
+                newFields[index].error_label = 'Nama kolom ini sudah ada dalam kegiatan ini.';
+            } else if (isGlobalConflict) {
+                newFields[index].error_label = 'Nama kolom ini sudah ada di Global Field. Silakan pilih dari menu "Pilih Global".';
+            } else if (isProfileFieldConflict) {
+                newFields[index].error_label = 'Nama kolom ini bertabrakan dengan Data Profil Wajib. Silakan gunakan nama lain.';
+            } else {
+                newFields[index].error_label = null;
+            }
+        }
+
+        // Handle mutual exclusivity of required/optional (though optional is just !required, usually)
+        // User asked for indicators for both. Let's imply Optional = !Required.
+        if (field === 'is_required') {
+            newFields[index].is_optional = !value;
+        }
+        if (field === 'is_optional') {
+            newFields[index].is_required = !value;
+        }
+
+        setData('custom_fields', newFields);
+    };
+
+    // Helper to add option to dropdown
+    const addOption = (index) => {
+        const newFields = [...data.custom_fields];
+        const currentOptions = newFields[index].options ? newFields[index].options.split(',').map(s => s.trim()) : [];
+        currentOptions.push(`Pilihan ${currentOptions.length + 1}`);
+        newFields[index].options = currentOptions.join(', ');
+        setData('custom_fields', newFields);
+    };
+
+    // Helper to remove option from dropdown
+    const removeOption = (fieldIndex, optionIndex) => {
+        const newFields = [...data.custom_fields];
+        const currentOptions = newFields[fieldIndex].options ? newFields[fieldIndex].options.split(',').map(s => s.trim()) : [];
+        currentOptions.splice(optionIndex, 1);
+        newFields[fieldIndex].options = currentOptions.join(', ');
+        setData('custom_fields', newFields);
+    };
+
+    // Helper to update specific option text
+    const updateOptionText = (fieldIndex, optionIndex, newValue) => {
+        const newFields = [...data.custom_fields];
+        const currentOptions = newFields[fieldIndex].options ? newFields[fieldIndex].options.split(',').map(s => s.trim()) : [];
+        currentOptions[optionIndex] = newValue;
+        newFields[fieldIndex].options = currentOptions.join(', ');
+        setData('custom_fields', newFields);
+    };
 
     // Helper to add a new bank account
     const addBankAccount = () => {
@@ -111,10 +232,10 @@ export default function Edit({
             if (!exists) {
                 setData('manual_payment_details', [
                     ...data.manual_payment_details,
-                    { 
-                        bank_name: savedAccount.bank_name, 
-                        account_number: savedAccount.account_number, 
-                        account_name: savedAccount.account_name 
+                    {
+                        bank_name: savedAccount.bank_name,
+                        account_number: savedAccount.account_number,
+                        account_name: savedAccount.account_name
                     }
                 ]);
             }
@@ -142,6 +263,18 @@ export default function Edit({
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // Check for custom field errors
+        const hasCustomFieldErrors = data.custom_fields.some(f => f.error_label);
+        if (hasCustomFieldErrors) {
+            Swal.fire({
+                title: 'Validasi Gagal',
+                text: 'Terdapat nama kolom ganda pada Data Tambahan. Harap perbaiki sebelum menyimpan.',
+                icon: 'error'
+            });
+            return;
+        }
+
         post(route('activity.update', activity.id), {
             forceFormData: true,
         });
@@ -203,13 +336,13 @@ export default function Edit({
                                     <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
                                         <i className="fas fa-tasks mr-2 text-secondary"></i>Nama Aktivitas
                                     </label>
-                                    <input 
-                                        type="text" 
+                                    <input
+                                        type="text"
                                         className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
                                         id="name"
                                         value={data.name}
                                         onChange={e => setData('name', e.target.value)}
-                                        placeholder="Masukkan nama aktivitas" 
+                                        placeholder="Masukkan nama aktivitas"
                                         required
                                     />
                                     {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
@@ -234,7 +367,7 @@ export default function Edit({
                                             <i className="fas fa-shapes mr-2 text-secondary"></i>Jenis Kegiatan
                                         </label>
                                         <div className="relative">
-                                            <select 
+                                            <select
                                                 className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.activity_type ? 'border-red-500' : 'border-gray-300'}`}
                                                 id="activity_type"
                                                 value={data.activity_type}
@@ -258,8 +391,8 @@ export default function Edit({
                                         <label htmlFor="date" className="block text-sm font-semibold text-gray-700 mb-2">
                                             <i className="far fa-calendar-alt mr-2 text-secondary"></i>Tanggal Mulai
                                         </label>
-                                        <input 
-                                            type="date" 
+                                        <input
+                                            type="date"
                                             className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.date ? 'border-red-500' : 'border-gray-300'}`}
                                             id="date"
                                             value={data.date}
@@ -272,8 +405,8 @@ export default function Edit({
                                         <label htmlFor="start_time" className="block text-sm font-semibold text-gray-700 mb-2">
                                             <i className="far fa-clock mr-2 text-secondary"></i>Waktu Mulai
                                         </label>
-                                        <input 
-                                            type="time" 
+                                        <input
+                                            type="time"
                                             className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.start_time ? 'border-red-500' : 'border-gray-300'}`}
                                             id="start_time"
                                             value={data.start_time}
@@ -286,8 +419,8 @@ export default function Edit({
                                         <label htmlFor="end_date" className="block text-sm font-semibold text-gray-700 mb-2">
                                             <i className="far fa-calendar-check mr-2 text-secondary"></i>Tanggal Selesai
                                         </label>
-                                        <input 
-                                            type="date" 
+                                        <input
+                                            type="date"
                                             className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.end_date ? 'border-red-500' : 'border-gray-300'}`}
                                             id="end_date"
                                             value={data.end_date}
@@ -300,8 +433,8 @@ export default function Edit({
                                         <label htmlFor="end_time" className="block text-sm font-semibold text-gray-700 mb-2">
                                             <i className="far fa-clock mr-2 text-secondary"></i>Waktu Selesai
                                         </label>
-                                        <input 
-                                            type="time" 
+                                        <input
+                                            type="time"
                                             className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.end_time ? 'border-red-500' : 'border-gray-300'}`}
                                             id="end_time"
                                             value={data.end_time}
@@ -317,13 +450,13 @@ export default function Edit({
                                     <label htmlFor="location" className="block text-sm font-semibold text-gray-700 mb-2">
                                         <i className="fas fa-map-marker-alt mr-2 text-secondary"></i>Lokasi
                                     </label>
-                                    <input 
-                                        type="text" 
+                                    <input
+                                        type="text"
                                         className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.location ? 'border-red-500' : 'border-gray-300'}`}
                                         id="location"
                                         value={data.location}
                                         onChange={e => setData('location', e.target.value)}
-                                        placeholder="Masukkan lokasi kegiatan" 
+                                        placeholder="Masukkan lokasi kegiatan"
                                         required
                                     />
                                     {errors.location && <p className="mt-1 text-xs text-red-500">{errors.location}</p>}
@@ -339,8 +472,8 @@ export default function Edit({
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                 <span className="text-gray-500 sm:text-sm">Rp</span>
                                             </div>
-                                            <input 
-                                                type="number" 
+                                            <input
+                                                type="number"
                                                 className={`w-full pl-10 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.price ? 'border-red-500' : 'border-gray-300'}`}
                                                 id="price"
                                                 value={data.price}
@@ -352,9 +485,9 @@ export default function Edit({
                                         {errors.price && <p className="mt-1 text-xs text-red-500">{errors.price}</p>}
 
                                         <div className="mt-2 flex items-center">
-                                            <input 
-                                                type="checkbox" 
-                                                id="show_price" 
+                                            <input
+                                                type="checkbox"
+                                                id="show_price"
                                                 className="rounded border-gray-300 text-secondary shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                                                 checked={data.show_price}
                                                 onChange={e => setData('show_price', e.target.checked)}
@@ -368,7 +501,7 @@ export default function Edit({
                                             <i className="fas fa-money-check-alt mr-2 text-secondary"></i>Metode Pembayaran
                                         </label>
                                         <div className="relative">
-                                            <select 
+                                            <select
                                                 className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.payment_method_type ? 'border-red-500' : 'border-gray-300'}`}
                                                 id="payment_method_type"
                                                 value={data.payment_method_type}
@@ -382,13 +515,13 @@ export default function Edit({
                                             </div>
                                         </div>
                                         <p className="text-xs text-gray-500 mt-1">
-                                            {data.payment_method_type === 'manual' 
-                                                ? 'Pembayaran dicek manual oleh admin.' 
+                                            {data.payment_method_type === 'manual'
+                                                ? 'Pembayaran dicek manual oleh admin.'
                                                 : 'Pembayaran diverifikasi otomatis oleh sistem.'}
                                         </p>
                                         {data.payment_method_type === 'manual' && (
                                             <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                                                
+
                                                 {/* Saved Accounts Selection */}
                                                 {savedBankAccounts && savedBankAccounts.length > 0 && (
                                                     <div className="mb-4 pb-4 border-b border-gray-200">
@@ -399,7 +532,7 @@ export default function Edit({
                                                                     acc => acc.account_number === saved.account_number && acc.bank_name === saved.bank_name
                                                                 );
                                                                 const bankLabel = INDONESIAN_BANKS.find(b => b.code === saved.bank_name)?.name || saved.bank_name;
-                                                                
+
                                                                 return (
                                                                     <label key={idx} className="flex items-center space-x-3 p-2 bg-white rounded border border-gray-200 hover:bg-blue-50 cursor-pointer">
                                                                         <input
@@ -520,7 +653,7 @@ export default function Edit({
                                             <i className="fas fa-globe mr-2 text-secondary"></i>Status Publikasi
                                         </label>
                                         <div className="relative">
-                                            <select 
+                                            <select
                                                 className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.status ? 'border-red-500' : 'border-gray-300'}`}
                                                 id="status"
                                                 value={data.status}
@@ -541,7 +674,7 @@ export default function Edit({
                                             <i className="fas fa-door-open mr-2 text-secondary"></i>Status Pendaftaran
                                         </label>
                                         <div className="relative">
-                                            <select 
+                                            <select
                                                 className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.pendaftaran ? 'border-red-500' : 'border-gray-300'}`}
                                                 id="pendaftaran"
                                                 value={data.pendaftaran}
@@ -564,7 +697,7 @@ export default function Edit({
                                     <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-2">
                                         <i className="fas fa-align-left mr-2 text-secondary"></i>Deskripsi
                                     </label>
-                                    <textarea 
+                                    <textarea
                                         className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
                                         id="description"
                                         rows="4"
@@ -578,27 +711,178 @@ export default function Edit({
                                 {/* Mandatory Profile Fields */}
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        <i className="fas fa-id-card mr-2 text-secondary"></i>Data Profil Wajib Peserta
+                                        <i className="fas fa-user-check mr-2 text-secondary"></i>Data Profil Wajib
                                     </label>
-                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 max-h-60 overflow-y-auto">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                                        <p className="text-sm text-secondary mb-3 font-medium">Pilih data profil yang wajib dilengkapi peserta sebelum mendaftar:</p>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                                             {Object.entries(profileFields).map(([key, label]) => (
-                                                <div key={key} className="flex items-center">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        id={`field_${key}`} 
-                                                        className="rounded border-gray-300 text-secondary shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                                <label key={key} className="inline-flex items-center bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm hover:bg-gray-50 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded text-secondary focus:ring-blue-500 border-gray-300"
+                                                        value={key}
                                                         checked={data.mandatory_profile_fields.includes(key)}
-                                                        onChange={(e) => handleCheckboxChange(key, e.target.checked)}
+                                                        onChange={e => handleCheckboxChange(key, e.target.checked)}
                                                     />
-                                                    <label htmlFor={`field_${key}`} className="ml-2 text-sm text-gray-700 cursor-pointer">
-                                                        {label}
-                                                    </label>
-                                                </div>
+                                                    <span className="ml-2 text-sm text-gray-700">{label}</span>
+                                                </label>
                                             ))}
                                         </div>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-2">*Peserta wajib melengkapi data ini sebelum mendaftar.</p>
+                                </div>
+
+                                {/* Custom Fields Section */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="block text-sm font-semibold text-gray-700">
+                                            <i className="fas fa-table mr-2 text-secondary"></i>Kolom Data Tambahan (Custom)
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => addCustomField()}
+                                                className="text-xs sm:text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-md hover:bg-blue-200 transition-colors flex items-center font-medium"
+                                            >
+                                                <i className="fas fa-plus mr-1"></i> Tambah Baru
+                                            </button>
+
+                                            {globalCustomFields && globalCustomFields.length > 0 && (
+                                                <div className="relative group/picker inline-block">
+                                                    <button
+                                                        type="button"
+                                                        className="text-xs sm:text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors flex items-center border border-gray-300 font-medium"
+                                                    >
+                                                        <i className="fas fa-list-ul mr-1"></i> Pilih Global ({globalCustomFields.length})
+                                                    </button>
+                                                    <div className="hidden group-hover/picker:block absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto p-2">
+                                                        <p className="text-[10px] font-bold text-gray-500 uppercase px-2 py-1 mb-1 border-b border-gray-100 italic">Tersedia:</p>
+                                                        {globalCustomFields.map(gf => (
+                                                            <button
+                                                                key={gf.id}
+                                                                type="button"
+                                                                onClick={() => addCustomField(gf)}
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded-md transition-colors flex flex-col"
+                                                            >
+                                                                <span className="font-semibold text-gray-700">{gf.label}</span>
+                                                                <span className="text-[10px] text-gray-400 capitalize">{gf.type} • {gf.key}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {data.custom_fields.length === 0 ? (
+                                        <div className="bg-gray-50 p-6 rounded-xl border-2 border-dashed border-gray-300 text-center">
+                                            <p className="text-gray-500 text-sm mb-2">Belum ada kolom tambahan.</p>
+                                            <p className="text-xs text-gray-400">Gunakan kolom tambahan untuk meminta data khusus dari peserta.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {data.custom_fields.map((field, index) => (
+                                                <div key={index} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeCustomField(index)}
+                                                        className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors p-1"
+                                                    >
+                                                        <i className="fas fa-times"></i>
+                                                    </button>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                                                        <div className="md:col-span-4">
+                                                            <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase">Label Field <span className="text-red-500">*</span></label>
+                                                            <input
+                                                                type="text"
+                                                                value={field.label}
+                                                                onChange={(e) => updateCustomField(index, 'label', e.target.value)}
+                                                                className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${field.error_label ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                                                                placeholder="Contoh: Ukuran Kaos"
+                                                                required
+                                                            />
+                                                            {field.error_label && (
+                                                                <p className="mt-1 text-xs text-red-600 font-medium">
+                                                                    <i className="fas fa-exclamation-circle mr-1"></i>
+                                                                    {field.error_label}
+                                                                </p>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="md:col-span-3">
+                                                            <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase">Tipe Data</label>
+                                                            <select
+                                                                value={field.type}
+                                                                onChange={(e) => updateCustomField(index, 'type', e.target.value)}
+                                                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                            >
+                                                                <option value="text">Text (Isian Singkat)</option>
+                                                                <option value="textarea">Text Area (Uraian)</option>
+                                                                <option value="dropdown">Dropdown (Pilihan)</option>
+                                                                <option value="number">Angka</option>
+                                                                <option value="date">Tanggal</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div className="md:col-span-5 flex items-center pt-5">
+                                                            <div className="flex items-center space-x-6">
+                                                                <label className="flex items-center cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="rounded text-blue-600 focus:ring-blue-500 mr-2"
+                                                                        checked={field.is_required}
+                                                                        onChange={(e) => updateCustomField(index, 'is_required', e.target.checked)}
+                                                                    />
+                                                                    <span className="text-sm text-gray-700 font-medium">Wajib Diisi</span>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+
+                                                        {field.type === 'dropdown' && (
+                                                            <div className="md:col-span-12">
+                                                                <div className="flex justify-between items-center mb-1">
+                                                                    <label className="block text-xs font-semibold text-gray-500 uppercase">Pilihan Opsi <span className="text-red-500">*</span></label>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => addOption(index)}
+                                                                        className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded hover:bg-blue-100 transition-colors border border-blue-200"
+                                                                    >
+                                                                        <i className="fas fa-plus mr-1"></i>Tambah Opsi
+                                                                    </button>
+                                                                </div>
+                                                                <div className="space-y-2 max-h-40 overflow-y-auto pr-1 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                                                                    {field.options && field.options.split(',').map((opt, optIdx) => (
+                                                                        <div key={optIdx} className="flex gap-2">
+                                                                            <input
+                                                                                type="text"
+                                                                                value={opt.trim()}
+                                                                                onChange={(e) => updateOptionText(index, optIdx, e.target.value)}
+                                                                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                                                placeholder={`Pilihan ${optIdx + 1}`}
+                                                                                required
+                                                                            />
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => removeOption(index, optIdx)}
+                                                                                className="text-gray-400 hover:text-red-500 p-1 flex-shrink-0"
+                                                                                title="Hapus Opsi"
+                                                                            >
+                                                                                <i className="fas fa-trash-alt text-xs"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                    {(!field.options || field.options.length === 0) && (
+                                                                        <p className="text-xs text-red-500 italic text-center py-2">Minimal satu opsi harus ditambahkan untuk tipe Dropdown.</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Image Upload */}
@@ -606,15 +890,15 @@ export default function Edit({
                                     <label htmlFor="image" className="block text-sm font-semibold text-gray-700 mb-2">
                                         <i className="fas fa-image mr-2 text-secondary"></i>Banner Kegiatan
                                     </label>
-                                    
+
                                     <div className="flex flex-col sm:flex-row gap-4 items-start">
                                         {/* Preview Area */}
                                         <div className="w-full sm:w-1/3 aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center relative group">
                                             {previewImage ? (
-                                                <img 
-                                                    src={previewImage} 
-                                                    alt="Preview" 
-                                                    className="w-full h-full object-cover" 
+                                                <img
+                                                    src={previewImage}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-cover"
                                                 />
                                             ) : (
                                                 <div className="text-gray-400 flex flex-col items-center">
@@ -626,8 +910,8 @@ export default function Edit({
 
                                         {/* Upload Area */}
                                         <div className="flex-1 w-full">
-                                            <input 
-                                                type="file" 
+                                            <input
+                                                type="file"
                                                 id="image"
                                                 accept="image/*"
                                                 className="block w-full text-sm text-gray-500
@@ -649,8 +933,8 @@ export default function Edit({
 
                                 {/* Submit Button */}
                                 <div className="pt-4 border-t border-gray-100 flex justify-end">
-                                    <button 
-                                        type="submit" 
+                                    <button
+                                        type="submit"
                                         disabled={processing}
                                         className={`w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-800 transition-all font-semibold text-sm sm:text-base flex items-center justify-center ${processing ? 'opacity-70 cursor-not-allowed' : ''}`}
                                     >

@@ -53,10 +53,14 @@ export default function Sidebar({ collapsed = false }) {
             <div className={`logo-panel px-4 py-6 border-b border-white/10 flex justify-center items-center`}>
                 <Link href="/" className="flex justify-center items-center w-full">
                     <img
-                        src={appSettings?.app_logo ? (appSettings.app_logo.startsWith('http') ? appSettings.app_logo : `/${appSettings.app_logo}`) : '/assets/images/logo.png'}
+                        src={appSettings?.app_logo && (appSettings.app_logo.startsWith('http') || appSettings.app_logo.startsWith('/')) ? appSettings.app_logo : (appSettings?.app_logo ? `/${appSettings.app_logo}` : '/assets/images/logo.png')}
                         alt="Logo"
                         className={`object-contain transition-all duration-300 ${collapsed ? 'h-10 w-10' : 'h-24 w-auto max-w-full'}`}
-                        onError={(e) => { e.target.src = '/assets/images/logo.png'; }}
+                        onError={(e) => {
+                            if (e.target.src !== window.location.origin + '/assets/images/logo.png') {
+                                e.target.src = '/assets/images/logo.png';
+                            }
+                        }}
                     />
                 </Link>
             </div>

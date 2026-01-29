@@ -7,7 +7,8 @@ import LoginDropdown from '../Components/LoginDropdown';
 
 export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = false }) {
     const { props, url } = usePage();
-    const { t, i18n } = useTranslation();
+    const { t: tOrig, i18n } = useTranslation();
+    const t = tOrig || ((key) => key); // Fallback to avoid crash
     const { auth, flash, errors, appSettings } = props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);

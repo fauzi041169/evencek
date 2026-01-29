@@ -7,7 +7,7 @@ import WebLayout from '@/Layouts/WebLayout';
 export default function ManualForm({ activity, paymentMethods = [], bulk_import_payment, is_modal, defaultSenderName, return_to, onSuccess }) {
     const { flash } = usePage().props;
     const { data, setData, post, processing, errors } = useForm({
-        payment_method_id: '',
+        payment_method_id: paymentMethods.length > 0 ? paymentMethods[0].id : '',
         sender_name: bulk_import_payment?.sender_name || defaultSenderName || '',
         payment_proof: null,
         is_bulk: bulk_import_payment ? 1 : 0,
@@ -60,7 +60,7 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
 
             <form onSubmit={submit} className="space-y-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Pilih Metode Transfer</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Metode Transfer</label>
                     {paymentMethods.length === 0 ? (
                         <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-4">
                             Tidak ada metode pembayaran tersedia.
@@ -107,38 +107,63 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Upload Bukti Pembayaran</label>
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:bg-gray-50 transition-colors">
-                        <div className="space-y-1 text-center">
-                            <div className="flex justify-center mb-2">
-                                <Upload className="h-10 w-10 text-gray-400" />
+                    <label
+                        className={`w-full mt-1 flex flex-col items-center justify-center border-2 border-dashed rounded-xl transition-all cursor-pointer group relative overflow-hidden ${data.previewUrl
+                                ? 'border-indigo-500 bg-indigo-50 p-2'
+                                : 'px-6 pt-5 pb-6 bg-indigo-50 border-indigo-400 hover:bg-indigo-100 hover:border-indigo-500'
+                            }`}
+                        style={{ minHeight: data.previewUrl ? '200px' : 'auto' }}
+                    >
+                        {data.previewUrl ? (
+                            <div className="relative w-full h-full flex flex-col items-center">
+                                <img
+                                    src={data.previewUrl}
+                                    alt="Payment Proof Preview"
+                                    className="max-h-[300px] w-auto object-contain rounded-lg shadow-md"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                                    <p className="text-white font-medium flex items-center gap-2">
+                                        <Upload className="w-5 h-5" /> Ganti Gambar
+                                    </p>
+                                </div>
+                                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-white rounded-full shadow-sm border border-indigo-100 mb-1 z-10">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <p className="text-sm text-indigo-800 font-medium truncate max-w-[200px]">
+                                        {data.payment_proof?.name || 'Gambar Terpilih'}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="flex text-sm text-gray-600">
-                                <label
-                                    htmlFor="file-upload"
-                                    className="relative cursor-pointer bg-white rounded-md font-medium text-secondary hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
-                                >
-                                    <span>Upload file</span>
-                                    <input
-                                        id="file-upload"
-                                        name="file-upload"
-                                        type="file"
-                                        className="sr-only"
-                                        accept="image/jpeg,image/png,image/jpg"
-                                        onChange={(e) => setData('payment_proof', e.target.files[0])}
-                                    />
-                                </label>
-                                <p className="pl-1">atau drag and drop</p>
-                            </div>
-                            <p className="text-xs text-gray-500">
-                                PNG, JPG, JPEG up to 2MB
-                            </p>
-                            {data.payment_proof && (
-                                <p className="text-sm text-emerald-600 font-medium mt-2">
-                                    File terpilih: {data.payment_proof.name}
+                        ) : (
+                            <div className="space-y-1 text-center pointer-events-none">
+                                <div className="flex justify-center mb-2">
+                                    <Upload className="h-10 w-10 text-indigo-500 group-hover:scale-110 transition-transform" />
+                                </div>
+                                <div className="text-sm text-indigo-700 font-medium">
+                                    <span>Klik area ini untuk upload file</span>
+                                    <span className="text-indigo-500 font-normal ml-1">atau drag and drop</span>
+                                </div>
+                                <p className="text-xs text-indigo-400">
+                                    PNG, JPG, JPEG up to 2MB
                                 </p>
-                            )}
-                        </div>
-                    </div>
+                            </div>
+                        )}
+                        <input
+                            id="file-upload"
+                            name="file-upload"
+                            type="file"
+                            className="sr-only"
+                            accept="image/jpeg,image/png,image/jpg"
+                            onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const url = URL.createObjectURL(file);
+                                    setData(data => ({ ...data, payment_proof: file, previewUrl: url }));
+                                } else {
+                                    setData(data => ({ ...data, payment_proof: null, previewUrl: null }));
+                                }
+                            }}
+                        />
+                    </label>
                     {errors.payment_proof && <p className="text-xs text-red-600 mt-1">{errors.payment_proof}</p>}
                 </div>
 
@@ -153,7 +178,7 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
                         </span>
                     ) : (
                         <span className="flex items-center justify-center gap-2">
-                            <Send className="w-5 h-5" /> Kirim Pembayaran
+                            <Send className="w-5 h-5" /> Kirim Bukti Pembayaran
                         </span>
                     )}
                 </button>

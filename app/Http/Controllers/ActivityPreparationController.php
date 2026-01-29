@@ -1740,12 +1740,9 @@ class ActivityPreparationController extends Controller
                 ['value' => 'profile:birth_place', 'label' => 'Tempat Lahir'],
                 ['value' => 'profile:birth_date', 'label' => 'Tanggal Lahir (YYYY-MM-DD)'],
                 ['value' => 'profile:address', 'label' => 'Alamat Lengkap'],
-                ['value' => 'province', 'label' => 'Provinsi (Nama)'],
-                ['value' => 'regency', 'label' => 'Kabupaten/Kota (Nama)'],
-                ['value' => 'district', 'label' => 'Kecamatan (Nama)'],
-                ['value' => 'profile:province_id', 'label' => 'Provinsi (ID)'],
-                ['value' => 'profile:regency_id', 'label' => 'Kabupaten/Kota (ID)'],
-                ['value' => 'profile:district_id', 'label' => 'Kecamatan (ID)'],
+                ['value' => 'province', 'label' => 'Provinsi'],
+                ['value' => 'regency', 'label' => 'Kabupaten/Kota'],
+                ['value' => 'district', 'label' => 'Kecamatan'],
                 ['value' => 'profile:institution', 'label' => 'Instansi'],
                 ['value' => 'profile:occupation', 'label' => 'Pekerjaan'],
                 ['value' => 'profile:position', 'label' => 'Jabatan'],
@@ -2507,11 +2504,14 @@ class ActivityPreparationController extends Controller
             'new_participants' => 0,
             'already_registered' => 0,
             'total_bill' => 0,
+            'invalid' => 0,
         ];
+        $previewPendingCount = 0;
         $successes = [];
         $failures = [];
         $pendingUserIds = [];
         $isPaidEvent = (float) ($activity->price ?? 0) > 0;
+        $isPreview = $request->boolean('preview') || $request->boolean('check_only');
 
         Log::info('Import Participants Check Paid Status', [
             'activity_id' => $activityId,
@@ -2683,13 +2683,15 @@ class ActivityPreparationController extends Controller
 
                 if (! $email) {
                     $skipped++;
-                    $failures[] = ['row' => $i, 'email' => '', 'reason' => 'Email kosong'];
+                    $stats['invalid']++;
+                    $failures[] = ['row' => $i, 'email' => '', 'error' => 'Email kosong'];
 
                     continue;
                 }
                 if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     $skipped++;
-                    $failures[] = ['row' => $i, 'email' => $email, 'reason' => 'Format email tidak valid (RFC)'];
+                    $stats['invalid']++;
+                    $failures[] = ['row' => $i, 'email' => $email, 'error' => 'Format email tidak valid (RFC)'];
 
                     continue;
                 }
@@ -2757,134 +2759,109 @@ class ActivityPreparationController extends Controller
                 $districtId = null;
 
                 $getCellValue = function ($colIndex) use ($row) {
-                    if ($colIndex === false) {
-                        return '';
-                    }
+                    if ($colIndex === false) return '';
                     return trim((string) ($row[$colIndex] ?? ''));
                 };
 
-                $provinceRawId = $getCellValue($colMap['province_id']);
-                $regencyRawId = $getCellValue($colMap['regency_id']);
-                $districtRawId = $getCellValue($colMap['district_id']);
+                $extractId = function ($value) {
+                    if (empty($value)) return null;
+                    // Extract numeric part if it looks like "1101 (Something)"
+                    if (preg_match('/^(\d+)/', trim((string)$value), $matches)) {
+                        return $matches[1];
+                    }
+                    return trim((string)$value);
+                };
 
-                $provinceRawName = $getCellValue($colMap['province']);
-                $regencyRawName = $getCellValue($colMap['regency']);
-                $districtRawName = $getCellValue($colMap['district']);
+                $provinceRaw = $getCellValue($colMap['province_id']) ?: $getCellValue($colMap['province']);
+                $regencyRaw = $getCellValue($colMap['regency_id']) ?: $getCellValue($colMap['regency']);
+                $districtRaw = $getCellValue($colMap['district_id']) ?: $getCellValue($colMap['district']);
 
-                if ($provinceRawId !== '') {
-                    $provinceIdCandidate = $provinceRawId;
-                    if (Province::whereKey($provinceIdCandidate)->exists()) {
-                        $provinceId = $provinceIdCandidate;
-                    } elseif (is_numeric($provinceRawId)) {
-                        $provinceIdCandidate = (int) $provinceRawId;
-                        if (Province::whereKey($provinceIdCandidate)->exists()) {
-                            $provinceId = $provinceIdCandidate;
-                        } else {
-                            $failures[] = ['row' => $i, 'email' => $email, 'reason' => 'Province ID tidak valid'];
-                            $skipped++;
-                            continue;
-                        }
+                // Process Province
+                if (!empty($provinceRaw)) {
+                    $provinceMatch = null;
+                    if (is_numeric($extractId($provinceRaw))) {
+                        $provinceMatch = Province::find($extractId($provinceRaw));
                     }
-                }
- 
-                if ($regencyRawId !== '') {
-                    $regencyIdCandidate = $regencyRawId;
-                    $regencyQuery = Regency::whereKey($regencyIdCandidate);
-                    if ($provinceId) {
-                        $regencyQuery->where('province_id', $provinceId);
+                    if (!$provinceMatch) {
+                        $provinceMatch = RegionMatcher::matchProvince($provinceRaw, 0.7);
                     }
-                    if ($regencyQuery->exists()) {
-                        $regencyId = $regencyIdCandidate;
-                    } elseif (is_numeric($regencyRawId)) {
-                        $regencyIdCandidate = (int) $regencyRawId;
-                        $regencyQuery = Regency::whereKey($regencyIdCandidate);
-                        if ($provinceId) {
-                            $regencyQuery->where('province_id', $provinceId);
-                        }
-                        if ($regencyQuery->exists()) {
-                            $regencyId = $regencyIdCandidate;
-                        } else {
-                            $failures[] = ['row' => $i, 'email' => $email, 'reason' => 'Regency ID tidak valid'];
-                            $skipped++;
-                            continue;
-                        }
-                    }
-                }
- 
-                if ($districtRawId !== '') {
-                    $districtIdCandidate = $districtRawId;
-                    $districtQuery = District::whereKey($districtIdCandidate);
-                    if ($regencyId) {
-                        $districtQuery->where('regency_id', $regencyId);
-                    }
-                    if ($districtQuery->exists()) {
-                        $districtId = $districtIdCandidate;
-                    } elseif (is_numeric($districtRawId)) {
-                        $districtIdCandidate = (int) $districtRawId;
-                        $districtQuery = District::whereKey($districtIdCandidate);
-                        if ($regencyId) {
-                            $districtQuery->where('regency_id', $regencyId);
-                        }
-                        if ($districtQuery->exists()) {
-                            $districtId = $districtIdCandidate;
-                        } else {
-                            $failures[] = ['row' => $i, 'email' => $email, 'reason' => 'District ID tidak valid'];
-                            $skipped++;
-                            continue;
-                        }
-                    }
-                }
 
-                $provinceNameForMatch = '';
-                $regencyNameForMatch = '';
-                $districtNameForMatch = '';
-
-                if ($provinceId === null) {
-                    if ($provinceRawId !== '' && ! is_numeric($provinceRawId)) {
-                        $provinceNameForMatch = $provinceRawId;
+                    if ($provinceMatch) {
+                        $provinceId = $provinceMatch->id;
                     } else {
-                        $provinceNameForMatch = $provinceRawName;
+                        $failures[] = ['row' => $i, 'email' => $email, 'error' => 'Nama Provinsi tidak valid atau tidak ditemukan: ' . $provinceRaw];
+                        $skipped++;
+                        continue;
                     }
                 }
 
-                if ($regencyId === null) {
-                    if ($regencyRawId !== '' && ! is_numeric($regencyRawId)) {
-                        $regencyNameForMatch = $regencyRawId;
+                // Process Regency
+                if (!empty($regencyRaw)) {
+                    $regencyMatch = null;
+                    if (is_numeric($extractId($regencyRaw))) {
+                        $regencyMatch = Regency::whereKey($extractId($regencyRaw));
+                        if ($provinceId) $regencyMatch->where('province_id', $provinceId);
+                        $regencyMatch = $regencyMatch->first();
+                    }
+                    if (!$regencyMatch) {
+                        $regencyMatch = RegionMatcher::matchRegency($regencyRaw, $provinceId, 0.7);
+                    }
+
+                    if ($regencyMatch) {
+                        $regencyId = $regencyMatch->id;
+                        if (!$provinceId) $provinceId = $regencyMatch->province_id;
                     } else {
-                        $regencyNameForMatch = $regencyRawName;
+                        $provName = $provinceId ? Province::find($provinceId)->name : 'Provinsi terpilih';
+                        $failures[] = [
+                            'row' => $i, 
+                            'email' => $email, 
+                            'error' => "Nama Kabupaten/Kota \"$regencyRaw\" tidak ditemukan" . ($provinceId ? " di $provName" : "")
+                        ];
+                        $skipped++;
+                        continue;
                     }
                 }
 
-                if ($districtId === null) {
-                    if ($districtRawId !== '' && ! is_numeric($districtRawId)) {
-                        $districtNameForMatch = $districtRawId;
+                // Process District
+                if (!empty($districtRaw)) {
+                    $districtMatch = null;
+                    if (is_numeric($extractId($districtRaw))) {
+                        $districtMatch = District::whereKey($extractId($districtRaw));
+                        if ($regencyId) $districtMatch->where('regency_id', $regencyId);
+                        $districtMatch = $districtMatch->first();
+                    }
+                    if (!$districtMatch) {
+                        $districtMatch = RegionMatcher::matchDistrict($districtRaw, $regencyId, 0.7);
+                    }
+
+                    if ($districtMatch) {
+                        $districtId = $districtMatch->id;
+                        if (!$regencyId) {
+                            $regencyId = $districtMatch->regency_id;
+                            if (!$provinceId) {
+                                $reg = Regency::find($regencyId);
+                                if ($reg) $provinceId = $reg->province_id;
+                            }
+                        }
                     } else {
-                        $districtNameForMatch = $districtRawName;
+                        $regName = $regencyId ? Regency::find($regencyId)->name : 'Kabupaten terpilih';
+                        $failures[] = [
+                            'row' => $i, 
+                            'email' => $email, 
+                            'error' => "Nama Kecamatan \"$districtRaw\" tidak ditemukan" . ($regencyId ? " di $regName" : "")
+                        ];
+                        $skipped++;
+                        continue;
                     }
                 }
 
-                if ($provinceNameForMatch !== '' || $regencyNameForMatch !== '' || $districtNameForMatch !== '') {
-                    $matchedRegions = RegionMatcher::matchRegions($provinceNameForMatch, $regencyNameForMatch, $districtNameForMatch, 0.6);
-                    if ($provinceId === null && ! empty($matchedRegions['province_id'])) {
-                        $provinceId = $matchedRegions['province_id'];
-                    }
-                    if ($regencyId === null && ! empty($matchedRegions['regency_id'])) {
-                        $regencyId = $matchedRegions['regency_id'];
-                    }
-                    if ($districtId === null && ! empty($matchedRegions['district_id'])) {
-                        $districtId = $matchedRegions['district_id'];
-                    }
-                }
 
-                if ($provinceId === null && $provinceNameForMatch !== '' && ($otherProvince === null || $otherProvince === '')) {
-                    $otherProvince = $provinceNameForMatch;
-                }
-                if ($regencyId === null && $regencyNameForMatch !== '' && ($otherRegency === null || $otherRegency === '')) {
-                    $otherRegency = $regencyNameForMatch;
-                }
-                if ($districtId === null && $districtNameForMatch !== '' && ($otherDistrict === null || $otherDistrict === '')) {
-                    $otherDistrict = $districtNameForMatch;
-                }
+                // Ensure other_ fields are null if real ID matched
+                if ($provinceId) $otherProvince = null;
+                if ($regencyId) $otherRegency = null;
+                if ($districtId) $otherDistrict = null;
+
+
 
                 $user = $existingUsers->get($email);
 
@@ -2943,6 +2920,9 @@ class ActivityPreparationController extends Controller
                     ];
                     $inserted++;
                     $stats['new_users']++;
+                    if ($isPaidEvent && ! $markPaid) {
+                        $previewPendingCount++;
+                    }
                     $successes[] = ['row' => $i, 'email' => $email, 'action' => 'created_and_sent_verification'];
                 } else {
                     $action = 'existing_user';
@@ -2950,8 +2930,10 @@ class ActivityPreparationController extends Controller
 
                     // Update user name if provided and different (exclude email/password)
                     if ($name && $name !== $user->name) {
-                        $user->name = $name;
-                        $user->save();
+                        if (! $isPreview) {
+                            $user->name = $name;
+                            $user->save();
+                        }
                     }
 
                     // Create profile if not exists or update if exists
@@ -3002,17 +2984,26 @@ class ActivityPreparationController extends Controller
                                 $profileDirty = true;
                             }
                         }
-                        if ($provinceId && $profile->province_id != $provinceId) {
-                            $profile->province_id = $provinceId;
-                            $profileDirty = true;
+                        if ($provinceId) {
+                            if ($profile->province_id != $provinceId || $profile->other_province !== null) {
+                                $profile->province_id = $provinceId;
+                                $profile->other_province = null;
+                                $profileDirty = true;
+                            }
                         }
-                        if ($regencyId && $profile->regency_id != $regencyId) {
-                            $profile->regency_id = $regencyId;
-                            $profileDirty = true;
+                        if ($regencyId) {
+                            if ($profile->regency_id != $regencyId || $profile->other_regency !== null) {
+                                $profile->regency_id = $regencyId;
+                                $profile->other_regency = null;
+                                $profileDirty = true;
+                            }
                         }
-                        if ($districtId && $profile->district_id != $districtId) {
-                            $profile->district_id = $districtId;
-                            $profileDirty = true;
+                        if ($districtId) {
+                            if ($profile->district_id != $districtId || $profile->other_district !== null) {
+                                $profile->district_id = $districtId;
+                                $profile->other_district = null;
+                                $profileDirty = true;
+                            }
                         }
 
                         if (! empty($rowData['custom_data'])) {
@@ -3039,7 +3030,9 @@ class ActivityPreparationController extends Controller
                         }
 
                         if ($profileDirty) {
-                            $profile->save();
+                            if (! $isPreview) {
+                                $profile->save();
+                            }
                             $action = 'updated_profile';
                         }
                     }
@@ -3063,14 +3056,28 @@ class ActivityPreparationController extends Controller
                         $mergedCustomData = array_merge($existingCustomData, $newCustomData);
                         $isCustomDataChanged = json_encode($existingCustomData) !== json_encode($mergedCustomData);
 
-                        if ($isCustomDataChanged) {
-                            if (Schema::hasColumn('activity_users', 'custom_data')) {
-                                $activityUser->custom_data = $mergedCustomData;
+                        // Fix: Update Group ID if provided (to support re-upload/merging to group)
+                        $isGroupChanged = false;
+                        if ($typeId && $activityUser->activity_participant_group_id != $typeId) {
+                            $activityUser->activity_participant_group_id = $typeId;
+                            $isGroupChanged = true;
+                        }
+
+                        if ($isCustomDataChanged || $isGroupChanged) {
+                            if (! $isPreview) {
+                                if ($isCustomDataChanged && Schema::hasColumn('activity_users', 'custom_data')) {
+                                    $activityUser->custom_data = $mergedCustomData;
+                                }
                                 $activityUser->save();
-                                $action = ($action === 'updated_profile') ? 'updated_profile_and_data' : 'updated_data';
-                            } else {
-                                Log::warning('Attempted to save custom_data but column missing', ['activity_user_id' => $activityUser->id]);
                             }
+                            
+                            if ($isGroupChanged) {
+                                $action = ($action === 'updated_profile') ? 'updated_profile_and_group' : 'updated_group';
+                            } else {
+                                $action = ($action === 'updated_profile') ? 'updated_profile_and_data' : 'updated_data'; 
+                            }
+                        } elseif ($action === 'updated_profile') {
+                             // Keep action as updated_profile if only profile changed
                         }
 
                         if ($action === 'existing_user') {
@@ -3081,6 +3088,16 @@ class ActivityPreparationController extends Controller
                             $updated++;
                             $stats['already_registered']++;
                             $successes[] = ['row' => $i, 'email' => $email, 'action' => $action];
+                        }
+                        
+                        // Fix: Include existing PENDING/VERIFICATION users in the bill if re-uploading
+                        if ($isPaidEvent && ! $markPaid) {
+                            if ($activityUser->status == ActivityUser::STATUS_PENDING || $activityUser->status == ActivityUser::STATUS_VERIFICATION) {
+                                // Prevent duplicates if logic is retried
+                                if (!in_array($user->id, $pendingUserIds)) {
+                                    $pendingUserIds[] = $user->id;
+                                }
+                            }
                         }
 
                         continue;
@@ -3102,7 +3119,7 @@ class ActivityPreparationController extends Controller
                     if ($isPaidEvent) {
                         $linkStatus = $markPaid ? ActivityUser::STATUS_ACTIVE : ActivityUser::STATUS_PENDING;
                     } else {
-                        $linkStatus = ActivityUser::STATUS_VERIFICATION;
+                        $linkStatus = ActivityUser::STATUS_ACTIVE;
                     }
                     // Generate custom UID untuk ActivityUser (karena ActivityUser::insert() tidak memicu event model)
                     $activityUserUid = $this->generateActivityUserUid();
@@ -3157,6 +3174,7 @@ class ActivityPreparationController extends Controller
                     if ($isPaidEvent) {
                         if (! $markPaid) {
                             $pendingUserIds[] = $user->id;
+                            $previewPendingCount++;
                             $successes[] = ['row' => $i, 'email' => $email, 'action' => 'linked_pending_payment'];
                         } else {
                             $successes[] = ['row' => $i, 'email' => $email, 'action' => 'linked_paid'];
@@ -3168,7 +3186,7 @@ class ActivityPreparationController extends Controller
             }
 
             // Batch insert users baru
-            if (! empty($usersToCreate)) {
+            if (! empty($usersToCreate) && ! $isPreview) {
                 // Insert dalam chunk untuk menghindari query terlalu besar
                 $chunks = array_chunk($usersToCreate, 100);
                 foreach ($chunks as $chunk) {
@@ -3200,7 +3218,7 @@ class ActivityPreparationController extends Controller
                 if ($isPaidEvent) {
                     $linkStatus = $markPaid ? ActivityUser::STATUS_ACTIVE : ActivityUser::STATUS_PENDING;
                 } else {
-                    $linkStatus = ActivityUser::STATUS_VERIFICATION;
+                    $linkStatus = ActivityUser::STATUS_ACTIVE;
                 }
                 foreach ($newUsers as $email => $newUser) {
                     $rowData = $emailToRowData[$email];
@@ -3254,13 +3272,16 @@ class ActivityPreparationController extends Controller
                     $stats['new_participants']++;
 
                     if ($isPaidEvent && ! $markPaid) {
-                        $pendingUserIds[] = $newUser->id;
+                        if ($newUser) {
+                            $pendingUserIds[] = $newUser->id;
+                        }
+                        $previewPendingCount++;
                     }
                 }
             }
 
             // Batch insert ActivityUser
-            if (! empty($activityUsersToCreate)) {
+            if (! empty($activityUsersToCreate) && ! $isPreview) {
                 $chunks = array_chunk($activityUsersToCreate, 100);
                 foreach ($chunks as $chunk) {
                     ActivityUser::insert($chunk);
@@ -3268,7 +3289,7 @@ class ActivityPreparationController extends Controller
             }
 
             // Batch insert Profiles
-            if (! empty($profilesToCreate)) {
+            if (! empty($profilesToCreate) && ! $isPreview) {
                 $chunks = array_chunk($profilesToCreate, 100);
                 foreach ($chunks as $chunk) {
                     Profile::insert($chunk);
@@ -3285,7 +3306,7 @@ class ActivityPreparationController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Gagal memproses file: '.$e->getMessage(),
-                    'failures' => [['row' => 1, 'email' => '', 'reason' => $e->getMessage()]],
+                    'failures' => [['row' => 1, 'email' => '', 'error' => $e->getMessage()]],
                 ], 400);
             }
 
@@ -3297,7 +3318,7 @@ class ActivityPreparationController extends Controller
             $message .= ' Tagihan pembayaran telah dibuat otomatis ('.($markPaid ? 'Lunas' : 'Pending').').';
         }
 
-        $stats['total_bill'] = count($pendingUserIds) * ($activity->price ?? 0);
+        $stats['total_bill'] = ($isPreview ? $previewPendingCount : count($pendingUserIds)) * ($activity->price ?? 0);
 
         $importResult = [
             'success' => true,
@@ -3312,12 +3333,24 @@ class ActivityPreparationController extends Controller
             'stats' => $stats,
             'debug_info' => [
                 'is_paid_event' => $isPaidEvent,
+                'is_preview' => $isPreview,
                 'mark_paid' => $markPaid,
                 'pending_count' => count($pendingUserIds),
                 'activity_price' => $activity->price,
                 'total_bill' => $stats['total_bill']
             ]
         ];
+
+        // Return preview response early
+        if ($isPreview) {
+            $importResult['is_preview'] = true;
+            $importResult['bulk_payment_available'] = $isPaidEvent && ! $markPaid;
+            $importResult['preview_pending_count'] = $previewPendingCount;
+            
+            if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+                return response()->json($importResult, 200);
+            }
+        }
 
         $returnTo = (string) $request->input('return_to', '');
 
@@ -3355,6 +3388,7 @@ class ActivityPreparationController extends Controller
             session()->put('import_result', $importResult);
             session()->flash('show_import_result_once', true);
             $importResult['bulk_payment_available'] = true;
+            $importResult['stats']['total_bill'] = $totalAmount;
             if ($returnTo) {
                 session(['import_return_to' => $returnTo]);
             } else {
@@ -3535,152 +3569,188 @@ class ActivityPreparationController extends Controller
         if (! $activity) {
             $activity = Activity::findOrFail($activityId);
         }
-        $activityId = $activity->id;
 
-        // Template retrieval doesn't need special permission - allow all logged-in users
-        // to see the template for their own import activities
+        // Map short keys to full keys used in frontend/import logic
+        $keyMap = [
+            'name' => 'user:name',
+            'nama lengkap' => 'user:name',
+            'nama' => 'user:name',
+            'email' => 'user:email',
+            'password' => 'user:password',
+            'no_hp' => 'profile:no_hp',
+            'no hp' => 'profile:no_hp',
+            'no hp/wa' => 'profile:no_hp',
+            'no hp / wa' => 'profile:no_hp',
+            'nik' => 'profile:nik',
+            'instansi' => 'profile:institution',
+            'institution' => 'profile:institution',
+            'jabatan' => 'profile:position',
+            'position' => 'profile:position',
+            'alamat' => 'profile:address',
+            'alamat lengkap' => 'profile:address',
+            'address' => 'profile:address',
+            'jenis_kelamin' => 'profile:gender',
+            'jenis kelamin' => 'profile:gender',
+            'jenis kelamin (l/p)' => 'profile:gender',
+            'gender' => 'profile:gender',
+            'birth_place' => 'profile:birth_place',
+            'tempat lahir' => 'profile:birth_place',
+            'birth_date' => 'profile:birth_date',
+            'tanggal lahir' => 'profile:birth_date',
+            'tanggal lahir (yyyy-mm-dd)' => 'profile:birth_date',
+            'province_id' => 'province',
+            'province' => 'province',
+            'provinsi' => 'province',
+            'regency_id' => 'regency',
+            'regency' => 'regency',
+            'kabupaten/kota' => 'regency',
+            'kabupaten / kota' => 'regency',
+            'kabupaten_kota' => 'regency',
+            'kabupaten' => 'regency',
+            'kota' => 'regency',
+            'district_id' => 'district',
+            'district' => 'district',
+            'kecamatan' => 'district',
+        ];
 
-        $template = $activity->import_template ?? 'email,name,password';
+        // Start with base template
+        $templateStr = $activity->import_template ?: 'user:email,user:name,user:password';
+        $columns = array_map('trim', explode(',', $templateStr));
 
-        return response()->json(['template' => $template]);
-    }
-
-    public function saveImportTemplate(Request $request, $activityId)
-    {
-        if (! auth()->check()) {
-            if ($request->expectsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Silakan login terlebih dahulu.',
-                ], 401);
+        // Helper to normalize a column string (e.g. "name*|opt" -> "user:name*|opt")
+        $normalizeCol = function($col) use ($keyMap) {
+            $base = $col;
+            $suffix = '';
+            
+            if (str_contains($base, '|')) {
+                $parts = explode('|', $base, 2);
+                $base = $parts[0];
+                $suffix = '|' . $parts[1];
             }
-            abort(401, 'Silakan login terlebih dahulu.');
-        }
-
-        $activity = Activity::where('uid', $activityId)->first();
-        if (! $activity) {
-            $activity = Activity::findOrFail($activityId);
-        }
-
-        $userId = auth()->id();
-        $user = auth()->user();
-        $isAdmin = $user->isAdmin() || $user->isSuperAdmin();
-        $isCreator = $user->isCreator();
-        $canManage = $activity->canManageRegistration($userId);
-
-        Log::info('saveImportTemplate:request', [
-            'user_id' => $userId,
-            'activity_id' => $activityId,
-            'resolved_activity_id' => $activity->id,
-            'activity_user_id' => $activity->user_id,
-            'is_admin' => $isAdmin,
-            'is_creator' => $isCreator,
-            'can_manage' => $canManage,
-            'raw_template' => $request->input('template'),
-        ]);
-
-        if (! $isAdmin && ! $isCreator) {
-            Log::error('Permission denied for saveImportTemplate', [
-                'user_id' => $userId,
-                'activity_id' => $activityId,
-                'activity_user_id' => $activity->user_id,
-                'is_admin' => $isAdmin,
-                'is_creator' => $isCreator,
-                'can_manage' => $canManage,
-            ]);
-            if ($request->expectsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Anda tidak memiliki izin untuk menyimpan template impor.',
-                    'flags' => [
-                        'is_admin' => $isAdmin,
-                        'is_creator' => $isCreator,
-                        'can_manage' => $canManage,
-                    ],
-                ], 403);
+            
+            $isRequired = false;
+            if (str_ends_with($base, '*')) {
+                $base = substr($base, 0, -1);
+                $isRequired = true;
             }
-            abort(403, 'Anda tidak memiliki izin untuk menyimpan template impor.');
-        }
+            
+            $lowerBase = strtolower(trim($base));
+            $normalizedBase = $keyMap[$lowerBase] ?? $base; // Use mapped key or keep original
+            
+            return $normalizedBase . ($isRequired ? '*' : '') . $suffix;
+        };
 
-        $data = $request->validate([
-            'template' => 'nullable|string|max:2000',
-        ]);
+        // 1. Normalize Initial Columns
+        $columns = array_map($normalizeCol, $columns);
+        $columns = array_values(array_unique($columns));
 
-        if (! Schema::hasColumn('activities', 'import_template')) {
-            Log::error('saveImportTemplate:missing_import_template_column', [
-                'user_id' => $userId,
-                'activity_id' => $activity->id,
-            ]);
-            if ($request->expectsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Kolom import_template belum ada di database. Jalankan migrasi database di server Anda.',
-                ], 500);
-            }
-            abort(500, 'Kolom import_template belum ada di database. Jalankan migrasi database di server Anda.');
-        }
+        // Helper to check existence in normalized columns
+        $findIndex = function($targetKey, $cols) {
+            $targetBase = $targetKey;
+             if (str_contains($targetBase, '|')) $targetBase = explode('|', $targetBase)[0];
+             if (str_ends_with($targetBase, '*')) $targetBase = substr($targetBase, 0, -1);
+             $targetBase = strtolower(trim($targetBase));
+             
+             foreach ($cols as $i => $col) {
+                 $colBase = $col;
+                 if (str_contains($colBase, '|')) $colBase = explode('|', $colBase)[0];
+                 if (str_ends_with($colBase, '*')) $colBase = substr($colBase, 0, -1);
+                 $colBase = strtolower(trim($colBase));
+                 
+                 if ($colBase === $targetBase) return $i;
+             }
+             return -1;
+        };
 
-        $template = $data['template'] ?? null;
-        if ($template !== null) {
-            $parts = array_values(array_filter(array_map('trim', explode(',', $template)), function ($v) {
-                return $v !== '';
-            }));
-            $seen = [];
-            $duplicates = [];
-            foreach ($parts as $v) {
-                $base = $v;
-                if ($base !== '' && substr($base, -1) === '*') {
-                    $base = substr($base, 0, -1);
-                }
-                $optPos = strpos($base, '{');
-                if ($optPos !== false) {
-                    $base = substr($base, 0, $optPos);
-                }
-                $norm = strtolower(trim($base));
-                if ($norm === '') {
-                    continue;
-                }
-                if (isset($seen[$norm])) {
-                    $duplicates[$norm] = $base;
+        // 2. Add/Merge Mandatory Profile Fields
+        if ($activity->mandatory_profile_fields && is_array($activity->mandatory_profile_fields)) {
+            foreach ($activity->mandatory_profile_fields as $fieldKey) {
+                if (!is_string($fieldKey) || empty($fieldKey) || $fieldKey === 'foto') continue;
+
+                $normalizedKey = $keyMap[strtolower($fieldKey)] ?? strtolower($fieldKey);
+                
+                $idx = $findIndex($normalizedKey, $columns);
+                if ($idx !== -1) {
+                    if (!str_contains($columns[$idx], '*')) {
+                        // Insert * before options pipe
+                        if (str_contains($columns[$idx], '|')) {
+                            $parts = explode('|', $columns[$idx], 2);
+                            $columns[$idx] = $parts[0] . '*' . '|' . $parts[1];
+                        } else {
+                            $columns[$idx] .= '*';
+                        }
+                    }
                 } else {
-                    $seen[$norm] = $base;
+                    $columns[] = $normalizedKey . '*';
                 }
-            }
-            if (! empty($duplicates)) {
-                $names = array_values(array_unique(array_values($duplicates)));
-                $message = 'Nama kolom berikut duplikat: '.implode(', ', $names).'. Gunakan nama yang unik.';
-                Log::warning('saveImportTemplate:duplicate_columns', [
-                    'user_id' => $userId,
-                    'activity_id' => $activity->id,
-                    'duplicates' => $names,
-                    'raw_template' => $template,
-                ]);
-                if ($request->expectsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => $message,
-                        'errors' => [
-                            'template' => [$message],
-                        ],
-                    ], 422);
-                }
-                abort(422, $message);
             }
         }
 
-        $activity->import_template = $template !== '' ? $template : null;
-        $activity->save();
+        // 3. Add Custom Fields
+        if ($activity->custom_fields && is_array($activity->custom_fields)) {
+            foreach ($activity->custom_fields as $field) {
+                $label = $field['label'] ?? '';
+                if (!$label) continue;
+                
+                // Construct strictly from definition
+                $header = $label;
+                if (!empty($field['is_required'])) {
+                    $header .= '*';
+                }
+                if (($field['type'] ?? '') === 'dropdown' && !empty($field['options'])) {
+                    $header .= '|dropdown:' . $field['options'];
+                }
+                
+                // Compare using label (which is the key for custom fields)
+                // Note: normalizedCol above kept 'unknown' keys as-is.
+                if ($findIndex($label, $columns) === -1) {
+                    $columns[] = $header;
+                }
+            }
+        }
 
-        Log::info('saveImportTemplate:saved', [
-            'user_id' => $userId,
-            'activity_id' => $activity->id,
-            'template_len' => strlen((string) $activity->import_template),
-        ]);
+        // 4. Final Aggressive Deduplication and Normalization
+        $finalColumns = [];
+        $seenBases = [];
 
-        return response()->json([
-            'status' => 'success',
-            'template_len' => strlen((string) $activity->import_template),
-        ]);
+        foreach ($columns as $col) {
+            $base = $col;
+            $options = '';
+            if (str_contains($base, '|')) {
+                $parts = explode('|', $base, 2);
+                $base = $parts[0];
+                $options = '|' . $parts[1];
+            }
+            $isRequired = false;
+            if (str_ends_with($base, '*')) {
+                $base = substr($base, 0, -1);
+                $isRequired = true;
+            }
+            $cleanBase = strtolower(trim($base));
+            
+            // Re-normalize base just in case
+            $cleanBase = $keyMap[$cleanBase] ?? $cleanBase;
+
+            if (isset($seenBases[$cleanBase])) {
+                $existingIdx = $seenBases[$cleanBase];
+                // Updates existing column to be required if strictly needed
+                if ($isRequired && !str_contains($finalColumns[$existingIdx], '*')) {
+                   $existingCol = $finalColumns[$existingIdx];
+                   if (str_contains($existingCol, '|')) {
+                       $parts = explode('|', $existingCol, 2);
+                       $finalColumns[$existingIdx] = $parts[0] . '*' . '|' . $parts[1];
+                   } else {
+                       $finalColumns[$existingIdx] .= '*';
+                   }
+                }
+            } else {
+                $seenBases[$cleanBase] = count($finalColumns);
+                // Reconstruct column using proper base
+                $finalColumns[] = $cleanBase . ($isRequired ? '*' : '') . $options;
+            }
+        }
+
+        return response()->json(['template' => implode(',', $finalColumns)]);
     }
 
     public function downloadParticipantsTemplate($activityId)
@@ -3691,16 +3761,173 @@ class ActivityPreparationController extends Controller
         }
         $activityId = $activity->id;
         
-        // Allow any authenticated user to download the template
-        // This is needed for potential participants to prepare their data for registration
+        // Map short keys to full keys
+        $keyMap = [
+            'name' => 'user:name',
+            'nama lengkap' => 'user:name',
+            'nama' => 'user:name',
+            'email' => 'user:email',
+            'password' => 'user:password',
+            'no_hp' => 'profile:no_hp',
+            'no hp' => 'profile:no_hp',
+            'no hp/wa' => 'profile:no_hp',
+            'no hp / wa' => 'profile:no_hp',
+            'nik' => 'profile:nik',
+            'instansi' => 'profile:institution',
+            'institution' => 'profile:institution',
+            'jabatan' => 'profile:position',
+            'position' => 'profile:position',
+            'alamat' => 'profile:address',
+            'alamat lengkap' => 'profile:address',
+            'address' => 'profile:address',
+            'jenis_kelamin' => 'profile:gender',
+            'jenis kelamin' => 'profile:gender',
+            'jenis kelamin (l/p)' => 'profile:gender',
+            'gender' => 'profile:gender',
+            'birth_place' => 'profile:birth_place',
+            'tempat lahir' => 'profile:birth_place',
+            'birth_date' => 'profile:birth_date',
+            'tanggal lahir' => 'profile:birth_date',
+            'tanggal lahir (yyyy-mm-dd)' => 'profile:birth_date',
+            'province_id' => 'province',
+            'province' => 'province',
+            'provinsi' => 'province',
+            'regency_id' => 'regency',
+            'regency' => 'regency',
+            'kabupaten/kota' => 'regency',
+            'kabupaten / kota' => 'regency',
+            'kabupaten_kota' => 'regency',
+            'kabupaten' => 'regency',
+            'kota' => 'regency',
+            'district_id' => 'district',
+            'district' => 'district',
+            'kecamatan' => 'district',
+        ];
 
-        $template = $activity->import_template ?: 'email,name,password';
-        $columns = array_values(array_filter(array_map('trim', explode(',', $template))));
+        $templateStr = $activity->import_template ?: 'user:email,user:name,user:password';
+        $columns = array_map('trim', explode(',', $templateStr));
 
-        // Mandatory fields are no longer automatically merged to ensure template matches user configuration
-        // This ensures the downloaded file columns match exactly what is displayed in the import modal
+        // Helper to normalize
+        $normalizeCol = function($col) use ($keyMap) {
+            $base = $col;
+            $suffix = '';
+            if (str_contains($base, '|')) {
+                $parts = explode('|', $base, 2);
+                $base = $parts[0];
+                $suffix = '|' . $parts[1];
+            }
+            $isRequired = false;
+            if (str_ends_with($base, '*')) {
+                $base = substr($base, 0, -1);
+                $isRequired = true;
+            }
+            $lowerBase = strtolower(trim($base));
+            $normalizedBase = $keyMap[$lowerBase] ?? $base; 
+            return $normalizedBase . ($isRequired ? '*' : '') . $suffix;
+        };
 
+        // 1. Normalize Initial
+        $columns = array_map($normalizeCol, $columns);
+        $columns = array_values(array_unique($columns));
 
+        $findIndex = function($targetKey, $cols) {
+            $targetBase = $targetKey;
+             if (str_contains($targetBase, '|')) $targetBase = explode('|', $targetBase)[0];
+             if (str_ends_with($targetBase, '*')) $targetBase = substr($targetBase, 0, -1);
+             $targetBase = strtolower(trim($targetBase));
+             
+             foreach ($cols as $i => $col) {
+                 $colBase = $col;
+                 if (str_contains($colBase, '|')) $colBase = explode('|', $colBase)[0];
+                 if (str_ends_with($colBase, '*')) $colBase = substr($colBase, 0, -1);
+                 $colBase = strtolower(trim($colBase));
+                 
+                 if ($colBase === $targetBase) return $i;
+             }
+             return -1;
+        };
+
+        // 2. Add Mandatory
+        if ($activity->mandatory_profile_fields && is_array($activity->mandatory_profile_fields)) {
+            foreach ($activity->mandatory_profile_fields as $fieldKey) {
+                if (!is_string($fieldKey) || empty($fieldKey) || $fieldKey === 'foto') continue;
+
+                $normalizedKey = $keyMap[strtolower($fieldKey)] ?? $fieldKey;
+                $idx = $findIndex($normalizedKey, $columns);
+                if ($idx !== -1) {
+                    if (!str_contains($columns[$idx], '*')) {
+                        if (str_contains($columns[$idx], '|')) {
+                            $parts = explode('|', $columns[$idx], 2);
+                            $columns[$idx] = $parts[0] . '*' . '|' . $parts[1];
+                        } else {
+                            $columns[$idx] .= '*';
+                        }
+                    }
+                } else {
+                    $columns[] = $normalizedKey . '*';
+                }
+            }
+        }
+
+        // 3. Add Custom
+        if ($activity->custom_fields && is_array($activity->custom_fields)) {
+            foreach ($activity->custom_fields as $field) {
+                $label = $field['label'] ?? '';
+                if (!$label) continue;
+                
+                $header = $label;
+                if (!empty($field['is_required'])) { $header .= '*'; }
+                if (($field['type'] ?? '') === 'dropdown' && !empty($field['options'])) { $header .= '|dropdown:' . $field['options']; }
+                
+                // Pre-Normalize custom field label check
+                $normalizedLabel = $keyMap[strtolower(trim($label))] ?? trim($label);
+                if ($findIndex($normalizedLabel, $columns) === -1) {
+                    $columns[] = $header;
+                }
+            }
+        }
+
+        // 4. Final Aggressive Deduplication and Normalization
+        $finalColumns = [];
+        $seenBases = [];
+
+        foreach ($columns as $col) {
+            $base = $col;
+            $options = '';
+            if (str_contains($base, '|')) {
+                $parts = explode('|', $base, 2);
+                $base = $parts[0];
+                $options = '|' . $parts[1];
+            }
+            $isRequired = false;
+            if (str_ends_with($base, '*')) {
+                $base = substr($base, 0, -1);
+                $isRequired = true;
+            }
+            $cleanBase = strtolower(trim($base));
+            
+            // Re-normalize base just in case
+            $cleanBase = $keyMap[$cleanBase] ?? $cleanBase;
+
+            if (isset($seenBases[$cleanBase])) {
+                $existingIdx = $seenBases[$cleanBase];
+                if ($isRequired && !str_contains($finalColumns[$existingIdx], '*')) {
+                   $existingCol = $finalColumns[$existingIdx];
+                   if (str_contains($existingCol, '|')) {
+                       $parts = explode('|', $existingCol, 2);
+                       $finalColumns[$existingIdx] = $parts[0] . '*' . '|' . $parts[1];
+                   } else {
+                       $finalColumns[$existingIdx] .= '*';
+                   }
+                }
+            } else {
+                $seenBases[$cleanBase] = count($finalColumns);
+                 // Reconstruct column using proper base
+                $finalColumns[] = $cleanBase . ($isRequired ? '*' : '') . $options;
+            }
+        }
+        $columns = $finalColumns;
+        
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
@@ -3784,9 +4011,12 @@ class ActivityPreparationController extends Controller
             'institution' => 'Nama Instansi',
             'jenis_kelamin' => 'Laki-laki',
             'gender' => 'Laki-laki',
-            'province_id' => '11 (Lihat ID Wilayah)',
-            'regency_id' => '1101 (Lihat ID Wilayah)',
-            'district_id' => '1101010 (Lihat ID Wilayah)',
+            'province_id' => '11',
+            'province' => 'ACEH',
+            'regency_id' => '1101',
+            'regency' => 'KABUPATEN ACEH SELATAN',
+            'district_id' => '1101010',
+            'district' => 'BAKONGAN',
             'nik' => '1234567890123456',
             'birth_place' => 'Jakarta',
             'birth_date' => '1990-01-01',

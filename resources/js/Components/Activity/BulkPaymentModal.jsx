@@ -61,6 +61,7 @@ export default function BulkPaymentModal({ show, onClose, activity, importResult
                         defaultSenderName={defaultSenderName}
                         defaultSenderBank={defaultSenderBank}
                         return_to={return_to}
+                        onSuccess={onClose}
                     />
                 )}
             </div>

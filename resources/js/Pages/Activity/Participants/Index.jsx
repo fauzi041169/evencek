@@ -11,9 +11,10 @@ import {
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 import kebabCase from 'lodash/kebabCase';
-import ImportModals from './Modals/ImportModals';
+import BulkImportModal from '@/Components/Activity/BulkImportModal';
+import BulkPaymentModal from '@/Components/Activity/BulkPaymentModal';
 import ParticipantEditModal from './Modals/ParticipantEditModal';
-import RegionLookupModal from './Modals/RegionLookupModal';
+
 import GroupAssignModal from './Modals/GroupAssignModal';
 import GroupsManageModal from './Modals/GroupsManageModal';
 import RoomsModal from './Modals/RoomsModal';
@@ -80,12 +81,12 @@ const columnLabels = {
 
 export default function Index({
     activity,
-    participants,
-    filters,
+    participants = { data: [], links: [], total: 0, from: 0, to: 0, per_page: 15 },
+    filters = {},
     batches,
-    provinces,
-    regencies,
-    districts,
+    provinces = [],
+    regencies = [],
+    districts = [],
     instansiOptions,
     pekerjaanOptions,
     jabatanOptions,
@@ -121,6 +122,12 @@ export default function Index({
     const currentUser = auth?.user;
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
 
+    // Ensure props are safe to use (handle null explicity)
+    const safeParticipants = participants || { data: [], links: [], total: 0, from: 0, to: 0, per_page: 15 };
+    const safeProvinces = provinces || [];
+    const safeRegencies = regencies || [];
+    const safeDistricts = districts || [];
+
     const [search, setSearch] = useState(filters.search || '');
     const [selectedIds, setSelectedIds] = useState([]);
     const [selectAllMatching, setSelectAllMatching] = useState(false);
@@ -128,7 +135,7 @@ export default function Index({
 
     // Modal states
     const [showImportModals, setShowImportModals] = useState(false);
-    const [showRegionLookup, setShowRegionLookup] = useState(false);
+
     const [showGroupAssignModal, setShowGroupAssignModal] = useState(false);
     const [showGroupsManageModal, setShowGroupsManageModal] = useState(false);
     const [showRoomsModal, setShowRoomsModal] = useState(false);
@@ -136,6 +143,8 @@ export default function Index({
     const [selectedPaymentParticipant, setSelectedPaymentParticipant] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingParticipant, setEditingParticipant] = useState(null);
+    const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
+    const [bulkImportResult, setBulkImportResult] = useState(null);
 
     // Filter states
     const [selectedBatch, setSelectedBatch] = useState(filters.batch_id || '');
@@ -146,26 +155,26 @@ export default function Index({
 
     // Calculate selected unverified count
     const selectedUnverifiedCount = React.useMemo(() => {
-        if (!participants?.data) return 0;
-        return participants.data.filter(p => selectedIds.includes(p.id) && !p.user?.email_verified_at).length;
-    }, [selectedIds, participants]);
+        if (!safeParticipants?.data) return 0;
+        return safeParticipants.data.filter(p => selectedIds.includes(p.id) && !p.user?.email_verified_at).length;
+    }, [selectedIds, safeParticipants]);
 
     // Get Selected User IDs (mapped from ActivityUser IDs)
     const selectedUserIds = React.useMemo(() => {
-        if (!participants?.data) return [];
-        return participants.data
+        if (!safeParticipants?.data) return [];
+        return safeParticipants.data
             .filter(p => selectedIds.includes(p.id))
             .map(p => p.user?.id || p.user_id)
             .filter(id => id); // Remove null/undefined
-    }, [selectedIds, participants]);
+    }, [selectedIds, safeParticipants]);
 
     // Derived custom keys
     const [availableCustomKeys] = useState(() => {
         if (customKeys && customKeys.length > 0) return customKeys;
 
         const extracted = new Map(); // Use Map to store lower->display
-        if (participants && participants.data) {
-            participants.data.forEach(p => {
+        if (safeParticipants && safeParticipants.data) {
+            safeParticipants.data.forEach(p => {
                 if (p.custom_data) {
                     Object.keys(p.custom_data).forEach(k => {
                         const nk = normalizeCustomKey(k);
@@ -189,8 +198,8 @@ export default function Index({
             options[key] = new Set();
         });
 
-        if (participants && participants.data) {
-            participants.data.forEach(p => {
+        if (safeParticipants && safeParticipants.data) {
+            safeParticipants.data.forEach(p => {
                 if (p.custom_data) {
                     Object.keys(p.custom_data).forEach(dataKey => {
                         const normalizedDataKey = normalizeCustomKey(dataKey);
@@ -214,7 +223,7 @@ export default function Index({
         });
 
         return result;
-    }, [participants, availableCustomKeys]);
+    }, [safeParticipants, availableCustomKeys]);
 
     const handleStatusClick = (participant) => {
         // Prioritize the directly loaded payment for this activity
@@ -238,8 +247,8 @@ export default function Index({
 
     // Sync selectedPaymentParticipant when participants data updates (e.g. after upload)
     useEffect(() => {
-        if (selectedPaymentParticipant && participants?.data) {
-            const updatedParticipant = participants.data.find(p => p.id === selectedPaymentParticipant.participant.id);
+        if (selectedPaymentParticipant && safeParticipants?.data) {
+            const updatedParticipant = safeParticipants.data.find(p => p.id === selectedPaymentParticipant.participant.id);
             if (updatedParticipant) {
                 // Try to get payment from direct relationship first, then fallback to user payments
                 const updatedPayment = updatedParticipant.payment ||
@@ -255,7 +264,7 @@ export default function Index({
                 }
             }
         }
-    }, [participants]);
+    }, [safeParticipants]);
 
 
     // Helper to get custom value by normalized key
@@ -376,7 +385,7 @@ export default function Index({
         const activityId = activity?.uid || activity?.id;
 
         // Map selected ActivityUser IDs to User IDs
-        const userIdsToVerify = participants.data
+        const userIdsToVerify = safeParticipants.data
             .filter(p => selectedIds.includes(p.id))
             .map(p => p.user?.id || p.user_id)
             .filter(id => id); // Remove null/undefined
@@ -389,7 +398,7 @@ export default function Index({
         Swal.fire({
             title: 'Verifikasi Email?',
             text: selectAllMatching
-                ? `Apakah Anda yakin ingin memverifikasi SEMUA ${participants.total} peserta?`
+                ? `Apakah Anda yakin ingin memverifikasi SEMUA ${safeParticipants.total} peserta?`
                 : `Apakah Anda yakin ingin memverifikasi email ${userIdsToVerify.length} peserta terpilih?`,
             icon: 'question',
             showCancelButton: true,
@@ -427,7 +436,7 @@ export default function Index({
         Swal.fire({
             title: 'Hapus Peserta?',
             text: selectAllMatching
-                ? `Apakah Anda yakin ingin menghapus SEMUA ${participants.total} peserta? Data yang dihapus tidak dapat dikembalikan.`
+                ? `Apakah Anda yakin ingin menghapus SEMUA ${safeParticipants.total} peserta? Data yang dihapus tidak dapat dikembalikan.`
                 : `Apakah Anda yakin ingin menghapus ${selectedIds.length} peserta terpilih? Data yang dihapus tidak dapat dikembalikan.`,
             icon: 'warning',
             showCancelButton: true,
@@ -443,10 +452,12 @@ export default function Index({
                     batch_id: filters.batch_id
                 }, {
                     preserveScroll: true,
-                    onSuccess: () => {
+                    onSuccess: (page) => {
                         setSelectedIds([]);
                         setSelectAllMatching(false);
-                        Swal.fire('Terhapus!', 'Peserta berhasil dihapus.', 'success');
+                        if (!page.props.flash?.error) {
+                            Swal.fire('Terhapus!', 'Peserta berhasil dihapus.', 'success');
+                        }
                     }
                 });
             }
@@ -459,7 +470,7 @@ export default function Index({
         const activityId = activity?.uid || activity?.id;
 
         // Map selected ActivityUser IDs to User IDs
-        const userIdsToProcess = participants.data
+        const userIdsToProcess = safeParticipants.data
             .filter(p => selectedIds.includes(p.id))
             .map(p => p.user?.id || p.user_id)
             .filter(id => id);
@@ -467,7 +478,7 @@ export default function Index({
         Swal.fire({
             title: 'Isi Jenis Kelamin Otomatis?',
             text: selectAllMatching
-                ? `Sistem akan mencoba mengisi jenis kelamin SEMUA ${participants.total} peserta yang kosong menggunakan AI.`
+                ? `Sistem akan mencoba mengisi jenis kelamin SEMUA ${safeParticipants.total} peserta yang kosong menggunakan AI.`
                 : `Sistem akan mencoba mengisi jenis kelamin ${selectedIds.length} peserta terpilih yang kosong menggunakan AI.`,
             icon: 'question',
             showCancelButton: true,
@@ -520,7 +531,7 @@ export default function Index({
         Swal.fire({
             title: `Jadikan ${targetType.name}?`,
             text: selectAllMatching
-                ? `Apakah Anda yakin ingin mengubah peran SEMUA ${participants.total} peserta menjadi ${targetType.name}?`
+                ? `Apakah Anda yakin ingin mengubah peran SEMUA ${safeParticipants.total} peserta menjadi ${targetType.name}?`
                 : `Apakah Anda yakin ingin mengubah peran ${selectedIds.length} peserta terpilih menjadi ${targetType.name}?`,
             icon: 'question',
             showCancelButton: true,
@@ -694,7 +705,7 @@ export default function Index({
         if (e.target.checked) {
             // Select ALL matching data (across all pages) unconditionally
             setSelectAllMatching(true);
-            setSelectedIds(participants.data.map(p => p.id));
+            setSelectedIds(safeParticipants.data.map(p => p.id));
         } else {
             setSelectedIds([]);
             setSelectAllMatching(false);
@@ -710,7 +721,7 @@ export default function Index({
             setSelectedIds(newSelected);
 
             // If all items on the current page are selected, and there's only 1 page, we are "All Matching"
-            if (participants.total <= participants.per_page && newSelected.length === participants.total) {
+            if (safeParticipants.total <= safeParticipants.per_page && newSelected.length === safeParticipants.total) {
                 setSelectAllMatching(true);
             }
         }
@@ -718,14 +729,14 @@ export default function Index({
 
     // Auto-select items on page change if selectAllMatching is active
     useEffect(() => {
-        if (selectAllMatching && participants.data) {
-            setSelectedIds(participants.data.map(p => p.id));
+        if (selectAllMatching && safeParticipants.data) {
+            setSelectedIds(safeParticipants.data.map(p => p.id));
         }
-    }, [participants.data, selectAllMatching]);
+    }, [safeParticipants.data, selectAllMatching]);
 
     const filteredRegencies = selectedProvince
-        ? regencies.filter(r => r.province_id === selectedProvince)
-        : regencies;
+        ? safeRegencies.filter(r => r.province_id === selectedProvince)
+        : safeRegencies;
 
     const localStatusOptions = [
         { value: '0', label: 'Menunggu Verifikasi' },
@@ -753,7 +764,7 @@ export default function Index({
                             </div>
                             <div>
                                 <div className="text-sm text-white/90 font-medium">Total Peserta</div>
-                                <div className="text-3xl font-bold tracking-tight">{participants.total}</div>
+                                <div className="text-3xl font-bold tracking-tight">{safeParticipants.total}</div>
                             </div>
                         </div>
                     </div>
@@ -1207,8 +1218,8 @@ export default function Index({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {participants.data.length > 0 ? (
-                                    participants.data.map((participant) => (
+                                {safeParticipants.data.length > 0 ? (
+                                    safeParticipants.data.map((participant) => (
                                         <tr key={participant.id} className="hover:bg-slate-50/80 transition-colors group">
                                             {visibleColumns['col-index'] && (
                                                 <td className="px-4 py-4">
@@ -1254,7 +1265,7 @@ export default function Index({
                                                         const p = participant.user?.profile;
                                                         if (!p) return '-';
                                                         return p.province?.name
-                                                            || provinces.find(ref => String(ref.id) === String(p.province_id))?.name
+                                                            || safeProvinces.find(ref => String(ref.id) === String(p.province_id))?.name
                                                             || p.other_province
                                                             || '-';
                                                     })()}
@@ -1266,7 +1277,7 @@ export default function Index({
                                                         const p = participant.user?.profile;
                                                         if (!p) return '-';
                                                         return p.regency?.name
-                                                            || regencies.find(ref => String(ref.id) === String(p.regency_id))?.name
+                                                            || safeRegencies.find(ref => String(ref.id) === String(p.regency_id))?.name
                                                             || p.other_regency
                                                             || '-';
                                                     })()}
@@ -1278,7 +1289,7 @@ export default function Index({
                                                         const p = participant.user?.profile;
                                                         if (!p) return '-';
                                                         return p.district?.name
-                                                            || districts.find(ref => String(ref.id) === String(p.district_id))?.name
+                                                            || safeDistricts.find(ref => String(ref.id) === String(p.district_id))?.name
                                                             || p.other_district
                                                             || '-';
                                                     })()}
@@ -1477,21 +1488,32 @@ export default function Index({
             </div>
 
             {/* Modals */}
-            <ImportModals
-                show={showImportModals}
+            <BulkImportModal
+                isOpen={showImportModals}
                 onClose={() => setShowImportModals(false)}
+                activityId={activity.uid || activity.id}
                 activity={activity}
-                onRegionLookup={() => setShowRegionLookup(true)}
+                onSuccess={() => {
+                    setShowImportModals(false);
+                    router.reload({ only: ['participants', 'participantsStats', 'filters'] });
+                }}
+                onPaymentRequest={(result) => {
+                    setBulkImportResult(result);
+                    setShowImportModals(false);
+                    setIsBulkPaymentModalOpen(true);
+                }}
                 return_to="participants"
             />
 
-            <RegionLookupModal
-                isOpen={showRegionLookup}
-                onClose={() => setShowRegionLookup(false)}
-                provinces={provinces}
-                regencies={regencies}
-                districts={districts}
+            <BulkPaymentModal
+                show={isBulkPaymentModalOpen}
+                onClose={() => setIsBulkPaymentModalOpen(false)}
+                activity={activity}
+                importResult={bulkImportResult}
+                return_to="participants"
             />
+
+
 
             <GroupAssignModal
                 show={showGroupAssignModal}
@@ -1542,7 +1564,7 @@ export default function Index({
                 }}
                 user={editingParticipant}
                 activity={activity}
-                provinces={provinces}
+                provinces={safeProvinces}
             />
         </AcaraLayout>
     );

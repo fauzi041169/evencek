@@ -1,9 +1,9 @@
 import React, { Fragment, useState, useEffect } from 'react';
 import axios from 'axios';
 import { Dialog, Transition } from '@headlessui/react';
-import { X, Clipboard, Upload, FileSpreadsheet, CheckCircle, AlertCircle, HelpCircle, MapPin } from 'lucide-react';
+import { X, Clipboard, Upload, FileSpreadsheet, CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
 import { usePage } from '@inertiajs/react';
-import RegionLookupModal from './RegionLookupModal';
+
 
 const DEFAULT_TEMPLATE_OPTIONS = [
     { value: 'user:name', label: 'Nama Lengkap' },
@@ -15,14 +15,17 @@ const DEFAULT_TEMPLATE_OPTIONS = [
     { value: 'profile:birth_place', label: 'Tempat Lahir' },
     { value: 'profile:birth_date', label: 'Tanggal Lahir (YYYY-MM-DD)' },
     { value: 'profile:address', label: 'Alamat Lengkap' },
-    { value: 'province', label: 'Provinsi (Nama/ID)' },
-    { value: 'regency', label: 'Kota/kabupaten (Nama/ID)' },
-    { value: 'district', label: 'Kecamatan (Nama/ID)' },
+    { value: 'province', label: 'Provinsi' },
+    { value: 'regency', label: 'Kabupaten/Kota' },
+    { value: 'district', label: 'Kecamatan' },
+    { value: 'province_id', label: 'Provinsi' },
+    { value: 'regency_id', label: 'Kabupaten/Kota' },
+    { value: 'district_id', label: 'Kecamatan' },
     { value: 'profile:institution', label: 'Instansi' },
     { value: 'profile:position', label: 'Jabatan' },
 ];
 
-export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess, onPaymentRequest, return_to }) {
+export default function BulkImportModal({ isOpen, onClose, activityId, activity, onSuccess, onPaymentRequest, return_to }) {
     const { props } = usePage();
     const [pastedText, setPastedText] = useState('');
     const [previewData, setPreviewData] = useState([]);
@@ -30,14 +33,16 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
     const [isImporting, setIsImporting] = useState(false);
     const [importResult, setImportResult] = useState(null);
     const [importErrors, setImportErrors] = useState(null);
-    const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
     const [fileHasHeader, setFileHasHeader] = useState(true);
 
     const [templateOptions, setTemplateOptions] = useState(DEFAULT_TEMPLATE_OPTIONS);
     const [templateColumns, setTemplateColumns] = useState([]);
 
     const [mapping, setMapping] = useState({});
-    const [step, setStep] = useState('paste'); // paste, map, preview
+    const [step, setStep] = useState('paste'); // paste, map, preview, check
+    const [checkData, setCheckData] = useState(null);
+
+    const isPaidActivity = activity ? parseFloat(activity.price || 0) > 0 : false;
 
     // Reset state when modal opens/closes
     useEffect(() => {
@@ -64,9 +69,32 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                 const clean = col.replace('*', '');
                                 if (!newOptions.find(o => o.value === clean)) {
                                     // Try to format label nicely
+                                    const labelMap = {
+                                        'province': 'Provinsi',
+                                        'regency': 'Kabupaten/Kota',
+                                        'district': 'Kecamatan',
+                                        'province_id': 'Provinsi',
+                                        'regency_id': 'Kabupaten/Kota',
+                                        'district_id': 'Kecamatan',
+                                        'no_hp': 'No HP/WA',
+                                        'nik': 'NIK',
+                                        'address': 'Alamat',
+                                        'institution': 'Instansi',
+                                        'position': 'Jabatan'
+                                    };
+
                                     let label = clean;
-                                    if (clean.startsWith('profile:')) label = clean.replace('profile:', '') + ' (Profile)';
-                                    else if (clean.startsWith('user:')) label = clean.replace('user:', '') + ' (User)';
+                                    const bare = clean.replace('profile:', '').replace('user:', '');
+
+                                    if (labelMap[bare]) {
+                                        label = labelMap[bare];
+                                    } else if (clean.startsWith('profile:')) {
+                                        label = clean.replace('profile:', '').replace(/_/g, ' ');
+                                        label = label.charAt(0).toUpperCase() + label.slice(1);
+                                    } else if (clean.startsWith('user:')) {
+                                        label = clean.replace('user:', '').replace(/_/g, ' ');
+                                        label = label.charAt(0).toUpperCase() + label.slice(1);
+                                    }
 
                                     newOptions.push({ value: clean, label: label });
                                 }
@@ -181,10 +209,12 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
         }));
     };
 
-    const handleImport = async () => {
+    const handleImport = async (forceFull = false) => {
         setIsImporting(true);
         setImportResult(null);
         setImportErrors(null);
+
+        const isPreview = isPaidActivity && !forceFull && step === 'preview';
 
         try {
 
@@ -216,6 +246,9 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
             if (return_to) {
                 formData.append('return_to', return_to);
             }
+            if (isPreview) {
+                formData.append('preview', '1');
+            }
             // formData.append('mapping', JSON.stringify(mapping)); // Not needed as we baked it into the CSV header
 
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -235,12 +268,14 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
 
             const result = await response.json();
 
-            if (result.success) {
-                // Determine counts based on result structure (blade uses result-linked, inserted, skipped, failed)
-                // The backend response might be different, let's assume standard Laravel response or specific one.
-                // We'll set the whole result to state and render based on it.
-                setImportResult(result);
-                // if (onSuccess) onSuccess(); // Do not close immediately, let user see stats
+            if (result.success || result.status === 'success') {
+                if (result.is_preview) {
+                    setCheckData(result);
+                    setStep('check');
+                } else {
+                    setImportResult(result.stats ? result : (result.data || result));
+                    // if (onSuccess) onSuccess(); // Do not close immediately, let user see stats
+                }
             } else {
                 console.error('[DEBUG] Import Failed:', result);
                 setImportErrors(result.errors || [{ row: 0, email: 'Unknown', name: 'Unknown', error: result.message || 'Import failed' }]);
@@ -320,14 +355,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                         </div>
 
                                                         <div className="flex gap-2 mb-4">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setIsRegionModalOpen(true)}
-                                                                className="inline-flex items-center gap-2 rounded-lg bg-purple-600 text-white px-3 py-2 text-sm font-medium hover:bg-purple-700 transition-colors"
-                                                            >
-                                                                <MapPin className="w-4 h-4" />
-                                                                Lihat Kode Wilayah
-                                                            </button>
+
                                                             <a
                                                                 href={route('activity.preparation.download-participants-template', activityId)}
                                                                 target="_blank"
@@ -511,7 +539,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                                 Kembali
                                                             </button>
                                                             <button
-                                                                onClick={handleImport}
+                                                                onClick={() => handleImport(false)}
                                                                 disabled={isImporting}
                                                                 className="inline-flex items-center gap-2 rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
                                                             >
@@ -521,12 +549,86 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                                         </svg>
-                                                                        Mengimpor...
+                                                                        {isPaidActivity ? 'Cek Validasi...' : 'Mengimpor...'}
                                                                     </>
                                                                 ) : (
                                                                     <>
                                                                         <Upload className="w-4 h-4" />
-                                                                        Mulai Impor
+                                                                        {isPaidActivity ? 'Cek Validasi' : 'Mulai Impor'}
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {step === 'check' && checkData && (
+                                                    <div className="mt-4">
+                                                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+                                                            <div className="flex items-center gap-3 mb-4">
+                                                                <CheckCircle className="w-6 h-6 text-emerald-600" />
+                                                                <h4 className="text-lg font-bold text-emerald-800">Pratinjau Hasil Impor</h4>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                                                <div className="text-center">
+                                                                    <div className="text-xl font-bold text-emerald-700">{checkData.stats?.new_users || 0}</div>
+                                                                    <div className="text-[10px] text-emerald-600 uppercase font-bold">User Baru</div>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <div className="text-xl font-bold text-blue-700">{checkData.stats?.existing_users || 0}</div>
+                                                                    <div className="text-[10px] text-blue-600 uppercase font-bold">User Lama</div>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <div className="text-xl font-bold text-amber-700">{checkData.stats?.already_registered || 0}</div>
+                                                                    <div className="text-[10px] text-amber-600 uppercase font-bold">Terdaftar</div>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <div className="text-xl font-bold text-red-700">{checkData.stats?.invalid || 0}</div>
+                                                                    <div className="text-[10px] text-red-600 uppercase font-bold">Gagal/Skip</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {Number(checkData.stats?.total_bill || 0) > 0 && (
+                                                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center gap-4">
+                                                                <div className="bg-amber-100 rounded-full p-3">
+                                                                    <AlertCircle className="w-6 h-6 text-amber-600" />
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="text-sm font-bold text-amber-800">Tagihan Pembayaran</h4>
+                                                                    <div className="text-2xl font-black text-amber-900">
+                                                                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(checkData.stats.total_bill)}
+                                                                    </div>
+                                                                    <p className="text-xs text-amber-700">Tagihan akan dibuat otomatis untuk setiap peserta baru.</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex justify-between items-center bg-gray-50 -mx-6 -mb-6 p-6 mt-6">
+                                                            <button
+                                                                onClick={() => setStep('preview')}
+                                                                className="text-gray-600 hover:text-gray-900 font-medium text-sm"
+                                                                disabled={isImporting}
+                                                            >
+                                                                Kembali
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleImport(true)}
+                                                                disabled={isImporting}
+                                                                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white px-6 py-2.5 text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-500/30"
+                                                            >
+                                                                {isImporting ? (
+                                                                    <>
+                                                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                        </svg>
+                                                                        Memproses...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <CheckCircle className="w-4 h-4" />
+                                                                        Konfirmasi & Impor Sekarang
                                                                     </>
                                                                 )}
                                                             </button>
@@ -618,7 +720,40 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                         <p>Silakan klik tombol "Lanjut ke Pembayaran" untuk menyelesaikan pendaftaran {importResult.stats?.new_participants || importResult.linked} peserta baru.</p>
                                                     </div>
                                                 )}
-
+                                                {/* Failure List (if any) */}
+                                                {importResult.failures && importResult.failures.length > 0 && (
+                                                    <div className="mt-8 text-left">
+                                                        <div className="flex items-center gap-2 text-red-600 mb-3 ml-1">
+                                                            <AlertCircle className="w-5 h-5" />
+                                                            <h4 className="text-sm font-bold uppercase tracking-wider">Detail Kesalahan ({importResult.failures.length})</h4>
+                                                        </div>
+                                                        <div className="overflow-hidden border border-red-100 rounded-xl bg-red-50/30">
+                                                            <div className="max-h-60 overflow-y-auto">
+                                                                <table className="min-w-full divide-y divide-red-100">
+                                                                    <thead className="bg-red-50/50 sticky top-0 backdrop-blur-sm">
+                                                                        <tr>
+                                                                            <th className="px-4 py-2 text-left text-[10px] font-bold text-red-800 uppercase tracking-widest">Baris</th>
+                                                                            <th className="px-4 py-2 text-left text-[10px] font-bold text-red-800 uppercase tracking-widest">Email</th>
+                                                                            <th className="px-4 py-2 text-left text-[10px] font-bold text-red-800 uppercase tracking-widest">Alasan Kesalahan</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody className="divide-y divide-red-100">
+                                                                        {importResult.failures.map((err, i) => (
+                                                                            <tr key={i} className="hover:bg-red-50/50 transition-colors">
+                                                                                <td className="px-4 py-2.5 text-xs font-mono text-red-900 leading-relaxed font-bold">{err.row || i + 1}</td>
+                                                                                <td className="px-4 py-2.5 text-xs text-red-700 leading-relaxed truncate max-w-[150px]" title={err.email}>{err.email || '-'}</td>
+                                                                                <td className="px-4 py-2.5 text-xs text-red-600 leading-relaxed font-medium">
+                                                                                    {err.error || err.reason || (typeof err === 'string' ? err : 'Terjadi kesalahan tidak diketahui')}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                        <p className="mt-2 text-[10px] text-red-400 italic ml-1">* Silakan perbaiki data pada baris di atas dan impor kembali.</p>
+                                                    </div>
+                                                )}
 
                                             </div>
                                         )}
@@ -629,7 +764,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                     <AlertCircle className="w-6 h-6" />
                                                     <h3 className="text-lg font-bold">Gagal Mengimpor</h3>
                                                 </div>
-                                                <div className="overflow-auto max-h-96 border border-red-200 rounded-lg">
+                                                <div className="overflow-auto max-h-96 border border-red-200 rounded-lg shadow-sm">
                                                     <table className="min-w-full divide-y divide-red-200">
                                                         <thead className="bg-red-50">
                                                             <tr>
@@ -642,7 +777,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                                                                 <tr key={i}>
                                                                     <td className="px-4 py-2 text-sm text-gray-900">{err.row || i + 1}</td>
                                                                     <td className="px-4 py-2 text-sm text-red-600">
-                                                                        {typeof err === 'string' ? err : (err.error || JSON.stringify(err))}
+                                                                        {err.error || err.reason || (typeof err === 'string' ? err : JSON.stringify(err))}
                                                                     </td>
                                                                 </tr>
                                                             )) : (
@@ -693,10 +828,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, onSuccess
                 </Dialog>
             </Transition>
 
-            <RegionLookupModal
-                isOpen={isRegionModalOpen}
-                onClose={() => setIsRegionModalOpen(false)}
-            />
+
         </>
     );
 }
