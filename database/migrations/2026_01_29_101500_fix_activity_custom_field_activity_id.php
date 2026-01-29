@@ -13,10 +13,15 @@ return new class extends Migration
     public function up(): void
     {
         // 1. Drop existing foreign key
-        Schema::table('activity_custom_field', function (Blueprint $table) {
-            // Drop foreign key using array syntax which guesses the name 'activity_custom_field_activity_id_foreign'
-            $table->dropForeign(['activity_id']);
-        });
+        try {
+            Schema::table('activity_custom_field', function (Blueprint $table) {
+                // Drop foreign key using array syntax which guesses the name 'activity_custom_field_activity_id_foreign'
+                $table->dropForeign(['activity_id']);
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Ignore if foreign key doesn't exist (SQLSTATE 42000 / Error 1091)
+            // We want to proceed with column modification anyway
+        }
 
         // 2. Modify column type to CHAR(6) to match activities.id
         // We use DB::statement because ->change() requires doctrine/dbal which might not be installed
