@@ -801,15 +801,7 @@ export default function Show({
 
                             {/* Action Buttons Row */}
                             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                                {isEnrolled ? (
-                                    <button
-                                        onClick={() => setIsBulkImportModalOpen(true)}
-                                        className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-emerald-500/90 backdrop-blur-sm text-white font-bold cursor-pointer border border-white/10 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
-                                    >
-                                        <i className="fas fa-user-plus"></i>
-                                        <span>{t('activities.register_others')}</span>
-                                    </button>
-                                ) : pendingPayment ? (
+                                {pendingPayment ? (
                                     <button
                                         onClick={handlePaymentClick}
                                         disabled={loadingPaymentModal}
@@ -818,37 +810,24 @@ export default function Show({
                                         {loadingPaymentModal ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-credit-card"></i>}
                                         <span>{t('activities.finish_payment')}</span>
                                     </button>
-                                ) : registrationTarget ? (
-                                    <>
-                                        {registrationTarget.type === 'disabled' ? (
-                                            <span className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gray-500/50 backdrop-blur-sm text-white font-bold cursor-not-allowed border border-white/10">
-                                                <i className="fas fa-ban"></i>
-                                                {registrationTarget.label}
-                                            </span>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (registrationTarget.type === 'login_modal') {
-                                                        setIsLoginModalOpen(true);
-                                                    } else {
-                                                        setRegistrationTypeModalOpen(true);
-                                                    }
-                                                }}
-                                                className="inline-flex items-center gap-3 h-14 px-8 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold hover:shadow-lg hover:shadow-orange-500/30 transition-all transform hover:-translate-y-1"
-                                            >
-                                                <i className="fas fa-user-plus text-xl"></i>
-                                                <span>{registrationTarget.label}</span>
-                                            </button>
-                                        )}
-                                    </>
+                                ) : registrationTarget?.type === 'disabled' ? (
+                                    <span className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gray-500/50 backdrop-blur-sm text-white font-bold cursor-not-allowed border border-white/10">
+                                        <i className="fas fa-ban"></i>
+                                        {registrationTarget.label}
+                                    </span>
                                 ) : (
                                     <button
-                                        onClick={() => setRegistrationTypeModalOpen(true)}
-                                        className="inline-flex items-center gap-3 h-14 px-8 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold hover:shadow-lg hover:shadow-orange-500/30 transition-all transform hover:-translate-y-1"
+                                        onClick={() => {
+                                            if (auth?.user) {
+                                                setIsBulkImportModalOpen(true);
+                                            } else {
+                                                setIsLoginModalOpen(true);
+                                            }
+                                        }}
+                                        className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-emerald-500/90 backdrop-blur-sm text-white font-bold cursor-pointer border border-white/10 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
                                     >
-                                        <i className="fas fa-user-plus text-xl"></i>
-                                        <span>{t('activities.register_now')}</span>
+                                        <i className="fas fa-user-plus"></i>
+                                        <span>{t('activities.register_others')}</span>
                                     </button>
                                 )}
 
