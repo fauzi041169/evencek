@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useForm, usePage } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import { useTranslation } from 'react-i18next';
 
 const CommentItem = ({ comment, activityId, depth = 0 }) => {
+    const { t, i18n } = useTranslation();
     const { auth } = usePage().props;
     const [isReplying, setIsReplying] = useState(false);
     const { data, setData, post, processing, reset, errors } = useForm({
@@ -20,8 +22,8 @@ const CommentItem = ({ comment, activityId, depth = 0 }) => {
                 reset();
                 Swal.fire({
                     icon: 'success',
-                    title: 'Berhasil',
-                    text: 'Balasan berhasil dikirim',
+                    title: t('activities.success'),
+                    text: t('activities.reply_sent'),
                     timer: 1500,
                     showConfirmButton: false,
                 });
@@ -31,7 +33,8 @@ const CommentItem = ({ comment, activityId, depth = 0 }) => {
 
     const formatDate = (dateString) => {
         const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-        return new Date(dateString).toLocaleDateString('id-ID', options);
+        const locale = i18n.language === 'en' ? 'en-US' : 'id-ID';
+        return new Date(dateString).toLocaleDateString(locale, options);
     };
 
     // Limit nesting depth to prevent UI breaking
@@ -73,7 +76,7 @@ const CommentItem = ({ comment, activityId, depth = 0 }) => {
                             onClick={() => setIsReplying(!isReplying)}
                             className="text-sm text-gray-500 hover:text-indigo-600 font-medium transition"
                         >
-                            <i className="fas fa-reply mr-1"></i> Balas
+                            <i className="fas fa-reply mr-1"></i> {t('activities.reply')}
                         </button>
                     )}
                 </div>
@@ -85,7 +88,7 @@ const CommentItem = ({ comment, activityId, depth = 0 }) => {
                                 value={data.body}
                                 onChange={(e) => setData('body', e.target.value)}
                                 className="w-full rounded-xl border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 shadow-sm text-sm"
-                                placeholder={`Balas komentar ${comment.user?.name}...`}
+                                placeholder={t('activities.reply_to_comment', { name: comment.user?.name })}
                                 rows="3"
                                 required
                             ></textarea>
@@ -96,14 +99,14 @@ const CommentItem = ({ comment, activityId, depth = 0 }) => {
                                     onClick={() => setIsReplying(false)}
                                     className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
                                 >
-                                    Batal
+                                    {t('activities.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={processing}
                                     className="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
                                 >
-                                    {processing ? 'Mengirim...' : 'Kirim Balasan'}
+                                    {processing ? t('activities.sending') : t('activities.send_reply')}
                                 </button>
                             </div>
                         </form>
@@ -129,6 +132,7 @@ const CommentItem = ({ comment, activityId, depth = 0 }) => {
 };
 
 export default function CommentSection({ activity, comments }) {
+    const { t, i18n } = useTranslation();
     const { auth } = usePage().props;
     const { data, setData, post, processing, reset, errors } = useForm({
         body: '',
@@ -146,8 +150,8 @@ export default function CommentSection({ activity, comments }) {
                 reset();
                 Swal.fire({
                     icon: 'success',
-                    title: 'Berhasil',
-                    text: 'Komentar berhasil dikirim',
+                    title: t('activities.success'),
+                    text: t('activities.comment_sent'),
                     timer: 1500,
                     showConfirmButton: false,
                 });
@@ -164,7 +168,7 @@ export default function CommentSection({ activity, comments }) {
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     <i className="fas fa-comments text-indigo-500"></i>
-                    Komentar & Ulasan
+                    {t('activities.comment_reviews')}
                     <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                         {totalComments}
                     </span>
@@ -181,11 +185,11 @@ export default function CommentSection({ activity, comments }) {
             {/* New Comment Form */}
             {auth.user ? (
                 <div className="mb-8 bg-gray-50 rounded-xl p-4 border border-gray-100">
-                    <h4 className="font-medium text-gray-900 mb-3">Tulis Komentar</h4>
+                    <h4 className="font-medium text-gray-900 mb-3">{t('activities.write_comment')}</h4>
                     <form onSubmit={handleSubmit}>
                         {/* Rating Input */}
                         <div className="mb-4">
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Rating</label>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">{t('activities.rating')}</label>
                             <div className="flex items-center gap-1">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button
@@ -200,7 +204,7 @@ export default function CommentSection({ activity, comments }) {
                                     </button>
                                 ))}
                                 <span className="ml-2 text-sm text-gray-600 font-medium">
-                                    {hoverRating || data.rating ? (hoverRating || data.rating) + '.0' : 'Pilih rating'}
+                                    {hoverRating || data.rating ? (hoverRating || data.rating) + '.0' : t('activities.select_rating')}
                                 </span>
                             </div>
                         </div>
@@ -209,7 +213,7 @@ export default function CommentSection({ activity, comments }) {
                             value={data.body}
                             onChange={(e) => setData('body', e.target.value)}
                             className="w-full rounded-xl border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
-                            placeholder="Bagikan pendapat atau pertanyaan Anda tentang kegiatan ini..."
+                            placeholder={t('activities.share_opinion')}
                             rows="3"
                             required
                         ></textarea>
@@ -222,19 +226,19 @@ export default function CommentSection({ activity, comments }) {
                                 className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 shadow-md hover:shadow-lg transition-all"
                             >
                                 <i className="fas fa-paper-plane mr-2"></i>
-                                {processing ? 'Mengirim...' : 'Kirim Komentar'}
+                                {processing ? t('activities.sending') : t('activities.send_comment')}
                             </button>
                         </div>
                     </form>
                 </div>
             ) : (
                 <div className="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-200 text-center">
-                    <p className="text-gray-600 mb-3">Silakan masuk untuk menulis komentar.</p>
+                    <p className="text-gray-600 mb-3">{t('activities.login_to_write_comment')}</p>
                     <a
                         href={route('login')}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                     >
-                        Masuk / Daftar
+                        {t('activities.login_register')}
                     </a>
                 </div>
             )}
@@ -250,7 +254,7 @@ export default function CommentSection({ activity, comments }) {
                         <div className="mb-3">
                             <i className="fas fa-comments text-4xl text-gray-200"></i>
                         </div>
-                        <p>Belum ada komentar. Jadilah yang pertama berkomentar!</p>
+                        <p>{t('activities.be_first_comment')}</p>
                     </div>
                 )}
             </div>

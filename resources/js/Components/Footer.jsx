@@ -1,18 +1,13 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
+import { useTranslation } from 'react-i18next';
 
-export default function Footer({ 
-    appName = 'ADZKIATEKNO', 
+export default function Footer({
+    appName = 'ADZKIATEKNO',
     appLogo = null,
     tagline = 'Technology Solutions',
-    description = 'Solusi teknologi terpadu untuk mengembangkan bisnis Anda dengan layanan pembuatan website, aplikasi mobile, sistem informasi, dan game edukasi yang inovatif.',
-    services = [
-        { label: 'Pembuatan Website', href: '#' },
-        { label: 'Aplikasi Mobile', href: '#' },
-        { label: 'Sistem Informasi', href: '#' },
-        { label: 'Game Edukasi', href: '#' },
-        { label: 'Konsultasi IT', href: '#' },
-    ],
+    description = null,
+    services = null,
     contact = {
         address: 'Jl. Pendidikan No. 123, Jakarta Selatan, Indonesia',
         phone: '(021) 1234-5678',
@@ -26,12 +21,24 @@ export default function Footer({
         instagram: '#'
     }
 }) {
+    const { t } = useTranslation();
+
+    // Use translations if props are not provided
+    const footerDescription = description || t('footer.description');
+    const footerServices = services || [
+        { label: t('footer.service_website'), href: '#' },
+        { label: t('footer.service_mobile'), href: '#' },
+        { label: t('footer.service_system'), href: '#' },
+        { label: t('footer.service_game'), href: '#' },
+        { label: t('footer.service_it'), href: '#' },
+    ];
+
     // Try multiple logo paths as fallback
     const logoSrc = appLogo ? (
-        appLogo.startsWith('http') ? appLogo : 
-        appLogo.startsWith('storage/') ? `/${appLogo}` :
-        appLogo.startsWith('/') ? appLogo : 
-        `/storage/${appLogo}`
+        appLogo.startsWith('http') ? appLogo :
+            appLogo.startsWith('storage/') ? `/${appLogo}` :
+                appLogo.startsWith('/') ? appLogo :
+                    `/storage/${appLogo}`
     ) : '/assets/images/logo.png';
 
     return (
@@ -40,7 +47,7 @@ export default function Footer({
             <svg className="absolute top-0 left-0 w-full h-16" viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M0,16 C240,48 360,32 720,16 C1080,0 1200,32 1440,64 L1440,0 L0,0 Z" fill="#ffffff"></path>
             </svg>
-            
+
             <div className="container mx-auto px-4 md:px-8 lg:px-12">
                 {/* Top Content Row - 3 Columns */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
@@ -49,9 +56,9 @@ export default function Footer({
                         {/* Logo and Company Name */}
                         <div className="flex items-center mb-4">
                             <div className="footer-logo">
-                                <img 
-                                    src={logoSrc} 
-                                    alt={`${appName} Logo`} 
+                                <img
+                                    src={logoSrc}
+                                    alt={`${appName} Logo`}
                                     className="h-16 w-16 object-cover rounded-lg"
                                     onError={(e) => { e.target.style.display = 'none'; e.target.nextElementSibling.style.display = 'flex'; }}
                                 />
@@ -64,12 +71,12 @@ export default function Footer({
                                 <p className="text-sm mt-0">{tagline}</p>
                             </div>
                         </div>
-                        
+
                         {/* Description */}
                         <p className="text-sm mb-6 text-gray-200 leading-relaxed">
-                            {description}
+                            {footerDescription}
                         </p>
-                        
+
                         {/* Social Media Icons */}
                         <div className="flex space-x-3">
                             {socialLinks.facebook && (
@@ -94,12 +101,12 @@ export default function Footer({
                             )}
                         </div>
                     </div>
-                    
-                    {/* Column 2: Layanan Kami */}
+
+                    {/* Column 2: Services */}
                     <div className="text-center md:text-left">
-                        <h4 className="text-xl font-bold mb-4">Layanan Kami</h4>
+                        <h4 className="text-xl font-bold mb-4">{t('footer.services_title')}</h4>
                         <ul className="space-y-2">
-                            {services.map((service, index) => (
+                            {footerServices.map((service, index) => (
                                 <li key={index}>
                                     <a href={service.href} className="text-gray-200 hover:text-white transition-colors">
                                         {service.label}
@@ -108,10 +115,10 @@ export default function Footer({
                             ))}
                         </ul>
                     </div>
-                    
-                    {/* Column 3: Kontak Kami */}
+
+                    {/* Column 3: Contact Us */}
                     <div className="text-right md:text-right">
-                        <h4 className="text-xl font-bold mb-4">Kontak Kami</h4>
+                        <h4 className="text-xl font-bold mb-4">{t('footer.contact_title')}</h4>
                         <ul className="space-y-3">
                             <li className="flex items-center justify-end">
                                 <span className="text-gray-200">{contact.address}</span>
@@ -132,13 +139,13 @@ export default function Footer({
                         </ul>
                     </div>
                 </div>
-                
+
                 {/* Divider */}
                 <hr className="border-t border-gray-400 border-opacity-30 my-6" />
-                
+
                 {/* Copyright */}
                 <div className="text-center">
-                    <p className="text-sm">© {new Date().getFullYear()} {appName}. All rights reserved. Powered by Innovation.</p>
+                    <p className="text-sm">© {new Date().getFullYear()} {appName}. {t('footer.rights')}</p>
                 </div>
             </div>
         </footer>

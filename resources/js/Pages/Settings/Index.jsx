@@ -32,6 +32,11 @@ export default function Index({
     );
     const [opacityPercent, setOpacityPercent] = useState(Math.round(parseFloat(navbarOpacity || '1') * 100));
 
+    // File size limits (in bytes)
+    const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
+    const MAX_FAVICON_SIZE = 1 * 1024 * 1024; // 1MB
+    const MAX_HERO_SIZE = 4 * 1024 * 1024; // 4MB
+
     const { data, setData, post, processing, errors } = useForm({
         app_name: appName || '',
         logo: null,
@@ -50,22 +55,42 @@ export default function Index({
         setData('colors_text', { ...data.colors_text, [key]: value });
     };
 
-    const handleFilePreview = (file, setter) => {
+    const validateFileSize = (file, maxSize, typeName) => {
+        if (file.size > maxSize) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ukuran File Terlalu Besar',
+                text: `Ukuran ${typeName} maksimal ${maxSize / 1024 / 1024}MB`,
+            });
+            return false;
+        }
+        return true;
+    };
+
+    const handleFilePreview = (file, setter, fieldName, maxSize, typeName) => {
         if (!file) {
             return;
         }
+        if (!validateFileSize(file, maxSize, typeName)) {
+            // Reset input value (hard to do directly with React controlled input without ref, but preventing setData is key)
+            return;
+        }
+        
         const url = URL.createObjectURL(file);
         setter(url);
+        setData(fieldName, file);
     };
 
     const handleHeroFile = (key, file) => {
+        if (!file) return;
+        if (!validateFileSize(file, MAX_HERO_SIZE, 'Background Hero')) return;
+
         setData(key, file);
-        handleFilePreview(file, (url) =>
-            setHeroPreviews((prev) => ({
-                ...prev,
-                [key]: url,
-            }))
-        );
+        const url = URL.createObjectURL(file);
+        setHeroPreviews((prev) => ({
+            ...prev,
+            [key]: url,
+        }));
     };
 
     const submit = (e) => {
@@ -135,8 +160,7 @@ export default function Index({
                                                 accept="image/*"
                                                 onChange={(e) => {
                                                     const file = e.target.files[0];
-                                                    setData('logo', file);
-                                                    handleFilePreview(file, setLogoPreview);
+                                                    handleFilePreview(file, setLogoPreview, 'logo', MAX_LOGO_SIZE, 'Logo Aplikasi');
                                                 }}
                                                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
                                             />
@@ -153,8 +177,7 @@ export default function Index({
                                                 accept="image/*,.ico"
                                                 onChange={(e) => {
                                                     const file = e.target.files[0];
-                                                    setData('favicon', file);
-                                                    handleFilePreview(file, setFaviconPreview);
+                                                    handleFilePreview(file, setFaviconPreview, 'favicon', MAX_FAVICON_SIZE, 'Favicon Aplikasi');
                                                 }}
                                                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
                                             />

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Footer from '../Components/Footer';
 import Alerts from '../Components/Alerts';
 import LoginDropdown from '../Components/LoginDropdown';
+import Modal from '../Components/Modal';
 
 export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = false }) {
     const { props, url } = usePage();
@@ -113,6 +114,19 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                 ::-webkit-scrollbar-track { background: #f1f5f9; }
                 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
                 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+                /* Bottom Nav Animations */
+                .nav-item-active i {
+                    animation: nav-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                }
+                @keyframes nav-bounce {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.4) translateY(-4px); }
+                    100% { transform: scale(1.2) translateY(-2px); }
+                }
+                .active-indicator {
+                    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+                }
             `}} />
 
             {/* Flash Messages */}
@@ -126,10 +140,10 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     <div className="flex justify-between items-center h-16">
                         {/* Left Side */}
                         <div className="flex items-center flex-1 min-w-0">
-                            {/* Mobile Menu Button */}
+                            {/* Mobile Menu Button - HIDDEN because using Bottom Nav */}
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className="md:hidden mr-3 p-2 text-white hover:bg-white/10 rounded-full focus:outline-none transition-colors"
+                                className="hidden md:hidden mr-3 p-2 text-white hover:bg-white/10 rounded-full focus:outline-none transition-colors"
                             >
                                 <i className="fas fa-bars"></i>
                             </button>
@@ -158,10 +172,10 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                             {/* Desktop Navigation */}
                             <nav className="hidden md:flex items-center space-x-3">
                                 {[
-                                    { name: t('nav.home'), href: '/' },
-                                    { name: t('nav.about'), href: '/about' },
-                                    { name: t('nav.news'), href: '/news' },
-                                    { name: t('nav.activities'), href: '/activity' },
+                                    { name: t('nav.home'), href: '/', icon: 'fa-home' },
+                                    { name: t('nav.about'), href: '/about', icon: 'fa-info-circle' },
+                                    { name: t('nav.news'), href: '/news', icon: 'fa-newspaper' },
+                                    { name: t('nav.activities'), href: '/activity', icon: 'fa-calendar-alt' },
                                 ].map((link) => {
                                     const isActive = url === link.href || (link.href !== '/' && url.startsWith(link.href));
                                     return (
@@ -177,10 +191,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                             `}
                                         >
                                             <span className="relative z-10 flex items-center gap-2">
-                                                {link.name === 'Beranda' && <i className="fas fa-home opacity-80"></i>}
-                                                {link.name === 'Tentang Kami' && <i className="fas fa-info-circle opacity-80"></i>}
-                                                {link.name === 'Berita' && <i className="fas fa-newspaper opacity-80"></i>}
-                                                {link.name === 'Kegiatan' && <i className="fas fa-calendar-alt opacity-80"></i>}
+                                                <i className={`fas ${link.icon} opacity-80`}></i>
                                                 {link.name}
                                             </span>
                                             {isActive && (
@@ -271,10 +282,10 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                                                     : 'bg-white/20 text-white hover:bg-white/30'
                                                                 }
                                                         `}
-                                                            title={editMode ? 'Matikan Mode Edit' : 'Aktifkan Mode Edit'}
+                                                            title={editMode ? t('nav.stop') : t('nav.edit')}
                                                         >
                                                             <i className={`fas ${editMode ? 'fa-times' : 'fa-edit'}`}></i>
-                                                            <span>{editMode ? 'Stop' : 'Edit'}</span>
+                                                            <span>{editMode ? t('nav.stop') : t('nav.edit')}</span>
                                                         </button>
                                                     </div>
                                                 </div>
@@ -286,13 +297,13 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                                             <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary mr-3 group-hover:bg-primary group-hover:text-white transition-colors">
                                                                 <i className="fas fa-tachometer-alt"></i>
                                                             </div>
-                                                            Dashboard
+                                                            {t('nav.dashboard')}
                                                         </Link>
                                                         <Link href={`/profile/${auth.user.id}`} className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 rounded-xl hover:bg-primary/5 hover:text-primary transition-colors group">
                                                             <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary/10 text-primary mr-3 group-hover:bg-primary group-hover:text-white transition-colors">
                                                                 <i className="fas fa-user"></i>
                                                             </div>
-                                                            Profil Saya
+                                                            {t('nav.profile')}
                                                         </Link>
 
                                                         {auth.user.role === 'superadmin' && (
@@ -300,7 +311,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                                                 <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 mr-3 group-hover:bg-gray-600 group-hover:text-white transition-colors">
                                                                     <i className="fas fa-cog"></i>
                                                                 </div>
-                                                                Pengaturan
+                                                                {t('nav.settings')}
                                                             </Link>
                                                         )}
 
@@ -310,13 +321,13 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                                             <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-success/10 text-success mr-3 group-hover:bg-success group-hover:text-white transition-colors">
                                                                 <i className="fas fa-download"></i>
                                                             </div>
-                                                            Download APK
+                                                            {t('nav.download_apk')}
                                                         </Link>
                                                         <Link href="/scan-qr" className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 rounded-xl hover:bg-primary/5 hover:text-primary transition-colors group">
                                                             <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-info/10 text-info mr-3 group-hover:bg-info group-hover:text-white transition-colors">
                                                                 <i className="fas fa-qrcode"></i>
                                                             </div>
-                                                            Scan QR Code
+                                                            {t('nav.scan_qr')}
                                                         </Link>
                                                         <button
                                                             onClick={() => {
@@ -347,7 +358,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                                             <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-warning/10 text-warning mr-3 group-hover:bg-warning group-hover:text-white transition-colors">
                                                                 <i className="fas fa-broom"></i>
                                                             </div>
-                                                            Bersihkan Cache
+                                                            {t('nav.clear_cache')}
                                                         </button>
 
                                                         <div className="border-t border-gray-100 my-1 mx-2"></div>
@@ -363,7 +374,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                                             <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-danger/10 text-danger mr-3 group-hover:bg-danger group-hover:text-white transition-colors">
                                                                 {loggingOut ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sign-out-alt"></i>}
                                                             </div>
-                                                            {loggingOut ? 'Logging out...' : 'Logout'}
+                                                            {loggingOut ? 'Logging out...' : t('nav.logout')}
                                                         </Link>
                                                     </div>
                                                 </div>
@@ -378,138 +389,185 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     </div>
                 </div>
 
-                {/* Mobile Menu */}
-                {isMobileMenuOpen && (
-                    <div className="md:hidden bg-white shadow-lg rounded-b-xl border-t border-gray-100 absolute w-full z-50">
-                        <div className="px-2 pt-2 pb-3 space-y-1">
-                            <Link href="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">{t('nav.home')}</Link>
-                            <Link href="/about" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">{t('nav.about')}</Link>
-                            <Link href="/news" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">{t('nav.news')}</Link>
-                            <Link href="/activity" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">{t('nav.activities')}</Link>
-
-                            {/* Language Switcher Mobile */}
-                            <div className="px-3 py-2 flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-700">Bahasa:</span>
-                                <button
-                                    onClick={() => i18n.changeLanguage('id')}
-                                    className={`px-3 py-1 text-sm rounded-md transition-colors ${i18n.language === 'id' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
-                                >
-                                    Indonesia
-                                </button>
-                                <button
-                                    onClick={() => i18n.changeLanguage('en')}
-                                    className={`px-3 py-1 text-sm rounded-md transition-colors ${i18n.language === 'en' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
-                                >
-                                    English
-                                </button>
+                {/* Simple Mobile Menu Modal */}
+                <Modal show={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} maxWidth="md">
+                    <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl relative border border-gray-100 mx-4 sm:mx-auto">
+                        {/* Modal Header - Compact & Elegant */}
+                        <div className="navbar-gradient px-6 py-5 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 flex items-center justify-center bg-white/20 rounded-2xl backdrop-blur-md border border-white/20">
+                                    <i className="fas fa-compass text-white text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-black text-sm uppercase tracking-widest leading-none mb-1">{t('nav.menu') || 'NAVIGASI'}</h3>
+                                    <p className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Eksplorasi Menu</p>
+                                </div>
                             </div>
+                            <button
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all active:scale-90"
+                            >
+                                <i className="fas fa-times text-lg"></i>
+                            </button>
+                        </div>
 
-                            {auth && auth.user && (
-                                <>
-                                    <div className="border-t border-gray-200 my-2"></div>
-                                    <div className="px-3 py-2">
-                                        <p className="text-sm font-semibold text-gray-800">{auth.user.name}</p>
-                                        <p className="text-xs text-purple-600 font-medium capitalize">{auth.user.role}</p>
-                                    </div>
-                                    <Link href="/dashboard" className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
-                                        <i className="fas fa-tachometer-alt w-5 text-gray-500"></i>
-                                        <span className="ml-3">Dashboard</span>
-                                    </Link>
-                                    <Link href={`/profile/${auth.user.id}`} className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
-                                        <i className="fas fa-user w-5 text-gray-500"></i>
-                                        <span className="ml-3">Profil Saya</span>
-                                    </Link>
-
-                                    {/* Mode Edit Switch */}
-                                    <div className="flex items-center justify-between px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleEditMode(); }}>
-                                        <div className="flex items-center">
-                                            <i className="fas fa-edit w-5 text-gray-500"></i>
-                                            <span className="ml-3">Mode Edit</span>
-                                        </div>
-                                        <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${editMode ? 'bg-secondary' : 'bg-gray-200'}`}>
-                                            <span className={`${editMode ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`} />
-                                        </div>
-                                    </div>
-
-                                    {auth.user.role === 'superadmin' && (
-                                        <Link href="/settings" className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
-                                            <i className="fas fa-cog w-5 text-gray-500"></i>
-                                            <span className="ml-3">Pengaturan</span>
+                        {/* Modal Body - Simple & Clean */}
+                        <div className="p-5 bg-gray-50/50">
+                            <div className="space-y-5">
+                                {/* Navigation Links */}
+                                <div className="grid gap-2">
+                                    {[
+                                        { name: t('nav.home'), href: '/', icon: 'fa-home', color: 'text-blue-500 bg-blue-50 shadow-blue-100/50' },
+                                        { name: t('nav.about'), href: '/about', icon: 'fa-info-circle', color: 'text-indigo-500 bg-indigo-50 shadow-indigo-100/50' },
+                                        { name: t('nav.news'), href: '/news', icon: 'fa-newspaper', color: 'text-purple-500 bg-purple-50 shadow-purple-100/50' },
+                                        { name: t('nav.activities'), href: '/activity', icon: 'fa-calendar-day', color: 'text-pink-500 bg-pink-50 shadow-pink-100/50' },
+                                    ].map((link) => (
+                                        <Link
+                                            key={link.name}
+                                            href={link.href}
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                            className={`flex items-center p-3.5 rounded-[1.25rem] transition-all duration-300 group border-2 ${url === link.href ? 'bg-white border-primary/20 shadow-xl shadow-primary/5' : 'bg-white/50 border-transparent hover:bg-white hover:border-gray-200 hover:shadow-lg'}`}
+                                        >
+                                            <div className={`w-11 h-11 flex items-center justify-center rounded-2xl ${link.color} font-bold transition-all duration-300 shadow-lg group-hover:scale-110 group-hover:rotate-3`}>
+                                                <i className={`fas ${link.icon} text-lg`}></i>
+                                            </div>
+                                            <div className="ml-4">
+                                                <span className={`block font-black text-sm transition-colors ${url === link.href ? 'text-primary' : 'text-gray-600 group-hover:text-gray-900'}`}>{link.name}</span>
+                                                {url === link.href && <span className="text-[10px] font-bold text-primary/60 uppercase">Sedang Dibuka</span>}
+                                            </div>
+                                            <i className={`fas fa-chevron-right ml-auto text-xs transition-transform duration-300 ${url === link.href ? 'text-primary' : 'text-gray-300 group-hover:translate-x-1'}`}></i>
                                         </Link>
-                                    )}
-                                    <Link href="/download-apk" className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
-                                        <i className="fas fa-download w-5 text-gray-500"></i>
-                                        <span className="ml-3">Download APK</span>
-                                    </Link>
-                                    <Link href="/scan-qr" className="flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
-                                        <i className="fas fa-qrcode w-5 text-gray-500"></i>
-                                        <span className="ml-3">Scan QR Code</span>
-                                    </Link>
-                                    <button
-                                        onClick={() => {
-                                            Swal.fire({
-                                                title: 'Bersihkan Cache?',
-                                                text: "Halaman akan dimuat ulang setelah cache dibersihkan.",
-                                                icon: 'warning',
-                                                showCancelButton: true,
-                                                confirmButtonColor: '#3085d6',
-                                                cancelButtonColor: '#d33',
-                                                confirmButtonText: 'Ya, Bersihkan!',
-                                                cancelButtonText: 'Batal'
-                                            }).then((result) => {
-                                                if (result.isConfirmed) {
-                                                    if ('caches' in window) {
-                                                        caches.keys().then(names => {
-                                                            names.forEach(name => caches.delete(name));
-                                                        });
-                                                    }
-                                                    localStorage.clear();
-                                                    sessionStorage.clear();
-                                                    window.location.reload(true);
-                                                }
-                                            });
-                                        }}
-                                        className="flex items-center w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                                    >
-                                        <i className="fas fa-broom w-5 text-gray-500"></i>
-                                        <span className="ml-3">Bersihkan Cache Browser</span>
-                                    </button>
-                                    <Link
-                                        as="button"
-                                        method="post"
-                                        href={route('logout')}
-                                        disabled={loggingOut}
-                                        onClick={() => setLoggingOut(true)}
-                                        className={`flex items-center w-full text-left px-3 py-2 rounded-md text-base font-medium text-danger hover:bg-danger/10 ${loggingOut ? 'opacity-50 cursor-wait' : ''}`}
-                                    >
-                                        <i className={`fas ${loggingOut ? 'fa-spinner fa-spin' : 'fa-sign-out-alt'} w-5 text-danger`}></i>
-                                        <span className="ml-3">{loggingOut ? 'Logging out...' : 'Logout'}</span>
-                                    </Link>
-                                </>
-                            )}
+                                    ))}
+                                </div>
 
-                            {(!auth || !auth.user) && (
-                                <>
-                                    <div className="border-t border-gray-200 my-2"></div>
-                                    <a href="/login" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Masuk</a>
-                                    <a href="/register" className="block px-3 py-2 rounded-md text-base font-medium text-primary hover:text-primary/90 hover:bg-primary/10">Daftar</a>
-                                </>
-                            )}
+                                {/* Language Selector - Premium UI */}
+                                <div className="bg-white p-5 rounded-[1.5rem] shadow-xl shadow-gray-200/50 border border-gray-100">
+                                    <div className="flex items-center gap-3 mb-4 px-1">
+                                        <div className="w-1.5 h-6 bg-primary rounded-full"></div>
+                                        <span className="text-xs font-black text-gray-800 uppercase tracking-widest">{t('nav.language') || 'PILIH BAHASA'}</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => i18n.changeLanguage('id')}
+                                            className={`group relative flex flex-col items-center justify-center gap-2 py-4 rounded-2xl transition-all duration-300 overflow-hidden border-2 ${i18n.language === 'id' ? 'border-primary bg-primary/5' : 'border-gray-50 bg-gray-50/50 hover:bg-white hover:border-gray-200'}`}
+                                        >
+                                            <img src="https://flagcdn.com/w80/id.png" alt="ID" className="w-8 h-5 object-cover rounded shadow-sm group-hover:scale-110 transition-transform" />
+                                            <span className={`text-[10px] font-black tracking-widest ${i18n.language === 'id' ? 'text-primary' : 'text-gray-400'}`}>INDONESIA</span>
+                                            {i18n.language === 'id' && <div className="absolute top-1 right-1"><i className="fas fa-check-circle text-primary text-[10px]"></i></div>}
+                                        </button>
+                                        <button
+                                            onClick={() => i18n.changeLanguage('en')}
+                                            className={`group relative flex flex-col items-center justify-center gap-2 py-4 rounded-2xl transition-all duration-300 overflow-hidden border-2 ${i18n.language === 'en' ? 'border-primary bg-primary/5' : 'border-gray-50 bg-gray-50/50 hover:bg-white hover:border-gray-200'}`}
+                                        >
+                                            <img src="https://flagcdn.com/w80/us.png" alt="US" className="w-8 h-5 object-cover rounded shadow-sm group-hover:scale-110 transition-transform" />
+                                            <span className={`text-[10px] font-black tracking-widest ${i18n.language === 'en' ? 'text-primary' : 'text-gray-400'}`}>ENGLISH</span>
+                                            {i18n.language === 'en' && <div className="absolute top-1 right-1"><i className="fas fa-check-circle text-primary text-[10px]"></i></div>}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Branding - Clean */}
+                        <div className="py-4 px-8 bg-gray-50 border-t border-gray-100 flex items-center justify-center gap-3">
+                            <img
+                                src={getLogoUrl(settings.app_logo)}
+                                alt="Logo"
+                                className="h-4 w-auto grayscale opacity-50"
+                            />
+                            <div className="w-1 h-1 rounded-full bg-gray-300"></div>
+                            <span className="text-[9px] font-black text-gray-300 uppercase tracking-[0.4em]">{settings.app_name || 'EVENTCEK'}</span>
                         </div>
                     </div>
-                )}
+                </Modal>
             </nav>
 
             {/* Content Spacer for Fixed Navbar */}
-            <div className={hasHeaderSpacer ? "pt-14" : ""}>
+            <div className={`flex-grow ${hasHeaderSpacer ? "pt-14" : ""}`}>
                 {children}
             </div>
 
             {/* Footer */}
-            <Footer
-                appName={settings.app_name || 'ADZKIATEKNO'}
-                appLogo={getLogoUrl(settings.app_logo)}
-            />
+            <div className="pb-24 md:pb-0">
+                <Footer
+                    appName={settings.app_name || 'ADZKIATEKNO'}
+                    appLogo={getLogoUrl(settings.app_logo)}
+                />
+            </div>
+
+            {/* Premium Mobile Bottom Navigation Bar - Bulging Center Mode */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none">
+                {/* The Bar Background with Notch Effect */}
+                <div className="relative bg-white shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)] border-t border-gray-100 flex items-stretch justify-around px-2 pt-2 pb-safe-offset-2 pointer-events-auto h-20">
+
+                    {/* Left Group */}
+                    <div className="flex w-2/5 justify-around items-center">
+                        <Link href="/about" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url.startsWith('/about') ? 'text-primary' : 'text-gray-400'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${url.startsWith('/about') ? 'bg-primary/10' : ''}`}>
+                                <i className="fas fa-info-circle text-lg"></i>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-tighter">About</span>
+                        </Link>
+                        <Link href="/news" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url.startsWith('/news') ? 'text-primary' : 'text-gray-400'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${url.startsWith('/news') ? 'bg-primary/10' : ''}`}>
+                                <i className="fas fa-newspaper text-lg"></i>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-tighter">News</span>
+                        </Link>
+                    </div>
+
+                    {/* Center Bulge - HOME */}
+                    <div className="relative w-1/5 flex justify-center">
+                        <div className="absolute -top-10 w-20 h-20 bg-gray-50/50 backdrop-blur-sm rounded-full flex items-center justify-center pt-2">
+                            <Link
+                                href="/"
+                                className={`w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-xl transition-all duration-500 transform active:scale-90
+                                    ${url === '/'
+                                        ? 'bg-primary text-white scale-110 rotate-[360deg] shadow-primary/30'
+                                        : 'bg-white text-gray-500 hover:text-primary'
+                                    }
+                                `}
+                            >
+                                <i className="fas fa-home text-2xl mb-0.5"></i>
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${url === '/' ? 'text-white' : 'text-gray-400'}`}>Home</span>
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Right Group */}
+                    <div className="flex w-2/5 justify-around items-center">
+                        <Link href="/activity" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url.startsWith('/activity') ? 'text-primary' : 'text-gray-400'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${url.startsWith('/activity') ? 'bg-primary/10' : ''}`}>
+                                <i className="fas fa-calendar-alt text-lg"></i>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-tighter">Activity</span>
+                        </Link>
+
+                        {auth && auth.user ? (
+                            <Link href="/dashboard" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url.startsWith('/dashboard') || url.startsWith('/profile') ? 'text-primary' : 'text-gray-400'}`}>
+                                <div className={`w-9 h-9 rounded-xl overflow-hidden border-2 transition-all ${url.startsWith('/dashboard') || url.startsWith('/profile') ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200'}`}>
+                                    <img
+                                        src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                        alt="Profile"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                    />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-tighter">Account</span>
+                            </Link>
+                        ) : (
+                            <Link href="/login" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url === '/login' ? 'text-primary' : 'text-gray-400'}`}>
+                                <div className={`p-2 rounded-xl transition-all ${url === '/login' ? 'bg-primary/10' : ''}`}>
+                                    <i className="fas fa-user-circle text-lg"></i>
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-tighter">Login</span>
+                            </Link>
+                        )}
+                    </div>
+                </div>
+                {/* Safe Area Fill */}
+                <div className="h-safe bg-white"></div>
+            </div>
         </div>
     );
 }

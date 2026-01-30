@@ -14,7 +14,8 @@ import PaymentModalWrapper from '@/Pages/Payments/PaymentModal';
 import ChatWidget from '@/Components/Activity/ChatWidget';
 import GalleryLightbox from '@/Components/Activity/GalleryLightbox';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id, enUS } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 import Swal from 'sweetalert2';
 
 export default function Detail({
@@ -40,6 +41,7 @@ export default function Detail({
     flash,
     contactPersons = []
 }) {
+    const { t, i18n } = useTranslation();
     const { auth, appSettings } = usePage().props;
     const user = auth?.user;
 
@@ -206,6 +208,7 @@ export default function Detail({
         if (!start) return '';
         const startDate = new Date(start);
         const endDate = end ? new Date(end) : null;
+        const currentLocale = i18n.language === 'en' ? enUS : id;
 
         if (endDate && endDate > startDate) {
             // Same year check
@@ -213,16 +216,16 @@ export default function Detail({
                 // Same month check
                 if (startDate.getMonth() === endDate.getMonth()) {
                     // Format: Senin, 26 - Rabu, 28 Januari 2026
-                    return `${format(startDate, 'EEEE, d', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
+                    return `${format(startDate, 'EEEE, d', { locale: currentLocale })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: currentLocale })}`;
                 }
                 // Different month: Senin, 26 Januari - Rabu, 3 Februari 2026
-                return `${format(startDate, 'EEEE, d MMMM', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
+                return `${format(startDate, 'EEEE, d MMMM', { locale: currentLocale })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: currentLocale })}`;
             }
             // Different year: Senin, 26 Des 2025 - Rabu, 2 Jan 2026
-            return `${format(startDate, 'EEEE, d MMMM yyyy', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
+            return `${format(startDate, 'EEEE, d MMMM yyyy', { locale: currentLocale })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: currentLocale })}`;
         }
         // Single date: Senin, 26 Januari 2026
-        return format(startDate, 'EEEE, d MMMM yyyy', { locale: id });
+        return format(startDate, 'EEEE, d MMMM yyyy', { locale: currentLocale });
     };
 
     const formatTimeRange = (start, end) => {
@@ -428,8 +431,8 @@ export default function Detail({
                             // Handle if success is false but no error status code
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Gagal',
-                                text: response.data.message || 'Gagal memproses pendaftaran.'
+                                title: t('activities.error'),
+                                text: response.data.message || t('activities.registration_failed')
                             });
                         }
                     } catch (error) {
@@ -455,23 +458,23 @@ export default function Detail({
                                 // Harusnya sudah dicek di awal, tapi untuk jaga-jaga
                                 await Swal.fire({
                                     icon: 'warning',
-                                    title: 'Profil Belum Lengkap',
-                                    text: 'Mohon lengkapi data profil Anda terlebih dahulu.'
+                                    title: t('activities.complete_profile_warning'),
+                                    text: t('activities.complete_profile_warning')
                                 });
                                 window.location.reload();
                             } else {
                                 Swal.fire({
                                     icon: 'error',
-                                    title: 'Gagal',
-                                    text: error.response.data.message || 'Terjadi kesalahan saat mendaftar.'
+                                    title: t('activities.error'),
+                                    text: error.response.data.message || t('activities.registration_failed')
                                 });
                             }
                         } else {
                             console.error('Enroll error:', error);
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Error',
-                                text: 'Terjadi kesalahan sistem. Silakan coba lagi.'
+                                title: t('activities.error'),
+                                text: t('activities.system_error')
                             });
                         }
                     }
@@ -510,11 +513,11 @@ export default function Detail({
 
     const togglePriceVisibility = async () => {
         const result = await Swal.fire({
-            title: 'Ubah visibilitas harga?',
+            title: t('activities.change_visibility_title'),
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Ya, Ubah',
-            cancelButtonText: 'Batal'
+            confirmButtonText: t('activities.confirm_change'),
+            cancelButtonText: t('activities.cancel')
         });
 
         if (!result.isConfirmed) return;
@@ -526,8 +529,8 @@ export default function Detail({
                 setShowPrice(!showPrice);
                 Swal.fire({
                     icon: 'success',
-                    title: 'Berhasil',
-                    text: page.props.flash?.message || 'Visibilitas harga berhasil diubah',
+                    title: t('activities.success'),
+                    text: page.props.flash?.message || t('activities.visibility_changed'),
                     timer: 1500,
                     showConfirmButton: false
                 });
@@ -535,8 +538,8 @@ export default function Detail({
             onError: () => {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Gagal',
-                    text: 'Terjadi kesalahan saat mengubah visibilitas harga'
+                    title: t('activities.error'),
+                    text: t('activities.visibility_change_failed')
                 });
             }
         });
@@ -546,8 +549,8 @@ export default function Detail({
         navigator.clipboard.writeText(window.location.href);
         Swal.fire({
             icon: 'success',
-            title: 'Berhasil',
-            text: 'Link berhasil disalin!',
+            title: t('activities.success'),
+            text: t('activities.link_copied'),
             timer: 1500,
             showConfirmButton: false
         });
@@ -744,7 +747,7 @@ export default function Detail({
                                         <i className="fas fa-calendar-alt text-sm"></i>
                                     </div>
                                     <div className="text-left min-w-0">
-                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Waktu Pelaksanaan</p>
+                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">{t('activities.implementation_time')}</p>
                                         <p className="text-xs sm:text-sm font-semibold text-white break-words">
                                             {formatDateRange(activity.date || activity.start_date, activity.end_date)}
                                         </p>
@@ -762,7 +765,7 @@ export default function Detail({
                                         <i className="fas fa-map-marker-alt text-sm"></i>
                                     </div>
                                     <div className="text-left min-w-0">
-                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Lokasi</p>
+                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">{t('activities.location')}</p>
                                         <p className="text-xs sm:text-sm font-semibold text-white truncate max-w-[150px]" title={activity.location}>{activity.location}</p>
                                     </div>
                                 </div>
@@ -773,25 +776,25 @@ export default function Detail({
                                         <i className="fas fa-tag text-sm"></i>
                                     </div>
                                     <div className="text-left min-w-0">
-                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Harga</p>
+                                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">{t('activities.price')}</p>
                                         <div className="flex items-center gap-2">
                                             {Number(activity.price) > 0 ? (
                                                 <>
                                                     <p className="text-xs sm:text-sm font-semibold text-white">
-                                                        {(showPrice || canEdit) ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : 'Sembunyi'}
+                                                        {(showPrice || canEdit) ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : t('activities.hidden')}
                                                     </p>
                                                     {canEdit && (
                                                         <button
                                                             onClick={(e) => { e.preventDefault(); togglePriceVisibility(); }}
                                                             className="w-4 h-4 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                                                            title={showPrice ? 'Sembunyikan' : 'Tampilkan'}
+                                                            title={showPrice ? t('activities.hide') : t('activities.show')}
                                                         >
                                                             <i className={`fas ${showPrice ? 'fa-eye' : 'fa-eye-slash'} text-[8px] text-gray-300`}></i>
                                                         </button>
                                                     )}
                                                 </>
                                             ) : (
-                                                <p className="text-xs sm:text-sm font-semibold text-emerald-400">GRATIS</p>
+                                                <p className="text-xs sm:text-sm font-semibold text-emerald-400">{t('activities.free')}</p>
                                             )}
                                         </div>
                                     </div>
@@ -834,17 +837,17 @@ export default function Detail({
                                 className="h-14 px-6 rounded-full glass-button text-white font-medium hover:bg-white/20 inline-flex items-center gap-2 relative"
                             >
                                 <i className="fas fa-share-alt"></i>
-                                <span className="hidden sm:inline">Bagikan</span>
+                                <span className="hidden sm:inline">{t('activities.share')}</span>
                                 {isShareMenuOpen && (
                                     <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 text-left text-gray-800 animate-fade-up z-50 overflow-hidden">
                                         <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                            Bagikan ke
+                                            {t('activities.share_to')}
                                         </div>
                                         <button type="button" onClick={copyShareLink} className="flex items-center w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors text-gray-700">
-                                            <i className="fas fa-link text-gray-400 mr-3 w-4 text-center"></i> Salin Link
+                                            <i className="fas fa-link text-gray-400 mr-3 w-4 text-center"></i> {t('activities.copy_link')}
                                         </button>
                                         <button type="button" onClick={shareNative} className="flex items-center w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors text-gray-700">
-                                            <i className="fas fa-mobile-alt text-gray-400 mr-3 w-4 text-center"></i> Aplikasi Lain
+                                            <i className="fas fa-mobile-alt text-gray-400 mr-3 w-4 text-center"></i> {t('activities.other_app')}
                                         </button>
                                     </div>
                                 )}
@@ -854,10 +857,10 @@ export default function Detail({
                                 <button
                                     onClick={() => setIsBulkImportModalOpen(true)}
                                     className={`h-14 px-6 rounded-full glass-button text-white font-medium hover:bg-white/20 inline-flex items-center gap-2 ${isJoined ? 'bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 border-none min-w-[200px] justify-center' : ''}`}
-                                    title={isJoined ? 'Daftarkan Lain' : 'Daftar Kolektif'}
+                                    title={isJoined ? t('activities.register_others') : 'Daftar Kolektif'}
                                 >
                                     <i className="fas fa-users"></i>
-                                    {isJoined && <span>Daftarkan Peserta Lain</span>}
+                                    {isJoined && <span>{t('activities.register_others')}</span>}
                                 </button>
                             )}
                         </div>
@@ -881,13 +884,13 @@ export default function Detail({
                 {/* Admin Controls */}
                 {canEdit && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-8">
-                        <h3 className="text-sm font-bold text-gray-900 mb-3">Atur Tampilan Halaman (Admin/Creator)</h3>
+                        <h3 className="text-sm font-bold text-gray-900 mb-3">{t('activities.admin_controls')}</h3>
                         <div className="flex flex-wrap gap-2">
                             {[
-                                { id: 'detail_description', label: 'Deskripsi', icon: 'fa-info-circle' },
-                                { id: 'detail_contact_person', label: 'Narahubung', icon: 'fa-address-book' },
-                                { id: 'detail_gallery', label: 'Galeri', icon: 'fa-images' },
-                                { id: 'detail_participants', label: 'Peserta', icon: 'fa-users' },
+                                { id: 'detail_description', label: t('activities.description_label'), icon: 'fa-info-circle' },
+                                { id: 'detail_contact_person', label: t('activities.narahubung_label'), icon: 'fa-address-book' },
+                                { id: 'detail_gallery', label: t('activities.gallery_label'), icon: 'fa-images' },
+                                { id: 'detail_participants', label: t('activities.participants_label'), icon: 'fa-users' },
                             ].map(section => (
                                 <button
                                     key={section.id}
@@ -932,7 +935,7 @@ export default function Detail({
                         {/* Description */}
                         {isVisible('detail_description') && (
                             <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-4">Tentang Kegiatan</h2>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-4">{t('activities.about')}</h2>
                                 <div
                                     ref={descriptionRef}
                                     className="prose max-w-none text-gray-600"
@@ -945,14 +948,14 @@ export default function Detail({
                         {isVisible('detail_gallery') && (
                             <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-2xl font-bold text-gray-900">Galeri</h2>
+                                    <h2 className="text-2xl font-bold text-gray-900">{t('activities.gallery')}</h2>
                                     {canEdit && (
                                         <button
                                             type="button"
                                             onClick={() => document.getElementById('galleryInput').click()}
                                             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary shadow-sm"
                                         >
-                                            <i className="fas fa-plus mr-2"></i> Tambah Gambar
+                                            <i className="fas fa-plus mr-2"></i> {t('activities.add_image')}
                                         </button>
                                     )}
                                 </div>
@@ -975,8 +978,8 @@ export default function Detail({
                                                     preserveScroll: true,
                                                     onSuccess: () => Swal.fire({
                                                         icon: 'success',
-                                                        title: 'Berhasil',
-                                                        text: 'Foto berhasil diunggah',
+                                                        title: t('activities.success'),
+                                                        text: t('activities.comment_sent'),
                                                         timer: 1500,
                                                         showConfirmButton: false
                                                     }),
@@ -1038,7 +1041,7 @@ export default function Detail({
                                     </div>
                                 ) : (
                                     <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                        <p className="text-gray-500">Belum ada foto galeri yang ditambahkan.</p>
+                                        <p className="text-gray-500">{t('activities.no_gallery')}</p>
                                     </div>
                                 )}
                             </div>
@@ -1047,14 +1050,14 @@ export default function Detail({
                         {/* Rating & Comments */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
                             <div className="border-b border-gray-100 pb-4 mb-6">
-                                <h2 className="text-2xl font-bold text-gray-900">Rating & Komentar</h2>
+                                <h2 className="text-2xl font-bold text-gray-900">{t('activities.rating_comments')}</h2>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center mb-8">
                                 <div className="col-span-1 flex items-center gap-4">
                                     <div>
                                         <div className="text-5xl font-bold text-gray-900">{Number(activity.rating_avg || 0).toFixed(1)}</div>
-                                        <div className="text-gray-500 text-sm mt-1">Berdasarkan {activity.rating_count || 0} rating</div>
+                                        <div className="text-gray-500 text-sm mt-1">{t('activities.based_on_rating', { count: activity.rating_count || 0 })}</div>
                                     </div>
                                     <div className="text-amber-400 text-2xl">
                                         {[1, 2, 3, 4, 5].map(i => (
@@ -1067,7 +1070,7 @@ export default function Detail({
                             {auth.user ? (
                                 <form onSubmit={handleCommentSubmit} className="mb-8 bg-gray-50 rounded-xl p-6 border border-gray-100">
                                     <div className="mb-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Berikan Rating</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">{t('activities.give_rating')}</label>
                                         <div className="flex items-center gap-2">
                                             {[1, 2, 3, 4, 5].map((star) => (
                                                 <button
@@ -1082,7 +1085,7 @@ export default function Detail({
                                         </div>
                                     </div>
                                     <div className="mb-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Komentar Anda</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">{t('activities.your_comment')}</label>
                                         <textarea
                                             value={commentBody}
                                             onChange={(e) => setCommentBody(e.target.value)}
@@ -1097,18 +1100,18 @@ export default function Detail({
                                             type="submit"
                                             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                                         >
-                                            Kirim Komentar
+                                            {t('activities.send_comment')}
                                         </button>
                                     </div>
                                 </form>
                             ) : (
                                 <div className="bg-gray-50 rounded-xl p-6 text-center mb-8 border border-gray-100">
-                                    <p className="text-gray-600 mb-4">Silakan masuk untuk memberikan rating dan komentar.</p>
+                                    <p className="text-gray-600 mb-4">{t('activities.login_to_comment')}</p>
                                     <button
                                         onClick={() => router.visit(route('login'), { data: { return_url: window.location.href } })}
                                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
                                     >
-                                        Masuk
+                                        {t('activities.login')}
                                     </button>
                                 </div>
                             )}
@@ -1119,11 +1122,10 @@ export default function Detail({
                                         <CommentItem key={comment.id} comment={comment} activity={activity} auth={auth} />
                                     ))
                                 ) : (
-                                    <p className="text-gray-500 text-center py-4">Belum ada komentar.</p>
+                                    <p className="text-gray-500 text-center py-4">{t('activities.no_comment')}</p>
                                 )}
                             </div>
                         </div>
-                        )}
                     </div>
 
                     {/* Sidebar */}
@@ -1131,7 +1133,7 @@ export default function Detail({
                         {/* Map / Location */}
                         {activity.location && (
                             <div className="bg-white rounded-2xl shadow-sm p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">Lokasi</h3>
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.location')}</h3>
                                 <p className="text-gray-600 mb-4">
                                     <i className="fas fa-map-marker-alt text-primary mr-2"></i>
                                     {activity.location}
@@ -1155,7 +1157,7 @@ export default function Detail({
                         {/* Contact Person */}
                         {isVisible('detail_contact_person') && (
                             <div className="bg-white rounded-2xl shadow-sm p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">Narahubung</h3>
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.contact_person')}</h3>
                                 <div className="space-y-4">
                                     {contactPersons && contactPersons.length > 0 ? (
                                         contactPersons.map((person, idx) => (
@@ -1203,7 +1205,7 @@ export default function Detail({
                         {/* Speakers */}
                         {isVisible('detail_speakers') && activity.speakers && activity.speakers.length > 0 && (
                             <div className="bg-white rounded-2xl shadow-sm p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">Narasumber</h3>
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.speakers')}</h3>
                                 <div className="space-y-4">
                                     {activity.speakers.map((speaker) => (
                                         <div key={speaker.id} className="flex items-center gap-3">
@@ -1230,7 +1232,7 @@ export default function Detail({
                         {isVisible('detail_participants') && (
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[500px] overflow-hidden">
                                 <div className="px-6 py-4 border-b flex items-center justify-between bg-amber-50 border-yellow-200">
-                                    <h5 className="m-0 font-bold text-yellow-800">Daftar Peserta</h5>
+                                    <h5 className="m-0 font-bold text-yellow-800">{t('activities.participants_list')}</h5>
                                 </div>
                                 <div className="px-6 py-5 flex-1 flex flex-col min-h-0">
                                     <div className="mb-3">
@@ -1241,7 +1243,7 @@ export default function Detail({
                                                 value={participantSearch}
                                                 onChange={(e) => setParticipantSearch(e.target.value)}
                                                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                                                placeholder="Cari peserta..."
+                                                placeholder={t('activities.search_participants')}
                                             />
                                         </div>
                                     </div>
@@ -1271,7 +1273,7 @@ export default function Detail({
                                             </ul>
                                         ) : (
                                             <div className="text-center py-8 text-gray-500">
-                                                {participantSearch ? 'Peserta tidak ditemukan' : 'Belum ada peserta'}
+                                                {participantSearch ? t('activities.no_activities_found') : t('activities.no_participants')}
                                             </div>
                                         )}
                                     </div>
@@ -1292,7 +1294,7 @@ export default function Detail({
             <PaymentModalWrapper
                 open={isManualPaymentModalOpen}
                 onClose={() => setIsManualPaymentModalOpen(false)}
-                title="Pembayaran"
+                title={t('activities.payment')}
             >
                 {isManualPaymentLoading ? (
                     <div className="flex justify-center items-center p-8">
@@ -1312,7 +1314,7 @@ export default function Detail({
                     />
                 ) : (
                     <div className="p-4 text-center text-gray-500">
-                        Gagal memuat form pembayaran.
+                        {t('activities.failed_to_load_payment_form')}
                     </div>
                 )}
             </PaymentModalWrapper>
@@ -1386,6 +1388,7 @@ export default function Detail({
 }
 
 const CommentItem = ({ comment, activity, auth }) => {
+    const { t } = useTranslation();
     const [isReplying, setIsReplying] = useState(false);
     const [replyBody, setReplyBody] = useState('');
 
@@ -1420,7 +1423,7 @@ const CommentItem = ({ comment, activity, auth }) => {
                         onClick={() => setIsReplying(!isReplying)}
                         className="inline-flex items-center text-sm text-primary hover:text-primary/80 p-0"
                     >
-                        <i className="fas fa-reply mr-1"></i>Balas
+                        <i className="fas fa-reply mr-1"></i>{t('activities.reply')}
                     </button>
                 </div>
             </div>
@@ -1437,16 +1440,16 @@ const CommentItem = ({ comment, activity, auth }) => {
                                     onChange={(e) => setReplyBody(e.target.value)}
                                     className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                     rows="2"
-                                    placeholder="Tulis balasan..."
+                                    placeholder={t('activities.write_reply')} // Add this key too
                                     required
                                 ></textarea>
                             </div>
                             <button type="submit" className="inline-flex items-center h-9 px-3 rounded-md bg-gray-700 text-white hover:bg-gray-800">
-                                Kirim Balasan
+                                {t('activities.send_reply')}
                             </button>
                         </form>
                     ) : (
-                        <div className="text-sm text-gray-600 mb-2">Masuk terlebih dahulu untuk menulis balasan.</div>
+                        <div className="text-sm text-gray-600 mb-2">{t('activities.login_to_reply')}</div>
                     )}
                 </div>
             )}

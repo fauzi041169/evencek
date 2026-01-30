@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id, enUS } from 'date-fns/locale';
 import Swal from 'sweetalert2';
 
 export default function Index({ latestActivities, sliderActivities, enrolledActivityIds = [], enrolledActivityBatches = [] }) {
+    const { t, i18n } = useTranslation();
     const { appSettings } = usePage().props;
     const [currentSlide, setCurrentSlide] = useState(0);
     const [search, setSearch] = useState('');
@@ -163,19 +165,20 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
         if (!start) return '';
         const startDate = new Date(start);
         const endDate = end ? new Date(end) : null;
+        const currentLocale = i18n.language === 'en' ? enUS : id;
 
         if (endDate && endDate > startDate) {
             if (startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear()) {
-                return `${format(startDate, 'd')} - ${format(endDate, 'd MMMM yyyy', { locale: id })}`;
+                return `${format(startDate, 'd')} - ${format(endDate, 'd MMMM yyyy', { locale: currentLocale })}`;
             }
-            return `${format(startDate, 'd MMMM')} - ${format(endDate, 'd MMMM yyyy', { locale: id })}`;
+            return `${format(startDate, 'd MMMM')} - ${format(endDate, 'd MMMM yyyy', { locale: currentLocale })}`;
         }
-        return format(startDate, 'd MMMM yyyy', { locale: id });
+        return format(startDate, 'd MMMM yyyy', { locale: currentLocale });
     };
 
     return (
         <WebLayout hasHeaderSpacer={false}>
-            <Head title="Jelajahi Aktivitas" />
+            <Head title={t('activities.title')} />
 
 
 
@@ -336,12 +339,13 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                                                     </span>
                                                                     SEDANG BERLANGSUNG
+                                                                    {t('activities.ongoing')}
                                                                 </span>
                                                             )}
                                                             {isUpcoming && (
                                                                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-sm font-semibold backdrop-blur-sm">
                                                                     <i className="fas fa-calendar-alt"></i>
-                                                                    AKAN DATANG
+                                                                    {t('activities.upcoming')}
                                                                 </span>
                                                             )}
                                                             {activity.category && (
@@ -383,14 +387,14 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                 href={getActivityLink(activity)}
                                                                 className="group relative inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-xl font-bold shadow-xl hover:shadow-2xl hover:bg-indigo-50 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
                                                             >
-                                                                <span className="relative z-10">Lihat Detail</span>
+                                                                <span className="relative z-10">{t('activities.view_detail')}</span>
                                                                 <i className="fas fa-arrow-right relative z-10 transition-transform group-hover:translate-x-1"></i>
                                                                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-100 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                                             </Link>
 
                                                             <div className="flex flex-col relative group/price">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-sm text-slate-400 font-medium">Harga Tiket</span>
+                                                                    <span className="text-sm text-slate-400 font-medium">{t('activities.ticket_price')}</span>
                                                                     {editMode && (
                                                                         <Link
                                                                             href={route('activity.edit', activity.id)}
@@ -407,9 +411,9 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                             <span className="text-amber-400">
                                                                                 Rp {Number(activity.price).toLocaleString('id-ID')}
                                                                             </span>
-                                                                        ) : <span className="text-slate-500 text-lg">Hubungi Panitia</span>
+                                                                        ) : <span className="text-slate-500 text-lg">{t('activities.contact_committee')}</span>
                                                                     ) : (
-                                                                        <span className="text-emerald-400">GRATIS</span>
+                                                                        <span className="text-emerald-400">{t('activities.free')}</span>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -445,18 +449,17 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                             // Fallback State when no activities
                             <div className="text-center max-w-3xl mx-auto py-16">
                                 <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
-                                    Jelajahi Aktivitas
+                                    {t('activities.title')}
                                 </h1>
                                 <p className="text-xl text-slate-300 mb-8 leading-relaxed">
-                                    Temukan berbagai kegiatan menarik dan seru untuk diikuti bersama kami.
-                                    Bergabunglah dengan ribuan peserta lainnya.
+                                    {t('activities.explore_desc')}
                                 </p>
                                 <div className="inline-flex gap-4">
                                     <button
                                         onClick={() => document.getElementById('latest-activities').scrollIntoView({ behavior: 'smooth' })}
                                         className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-all"
                                     >
-                                        Lihat Kegiatan
+                                        {t('activities.view_detail')}
                                     </button>
                                 </div>
                             </div>
@@ -499,24 +502,24 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
 
                 {/* Latest Activities Section */}
                 <section id="latest-activities" className="py-12 container mx-auto px-4">
-                    <h2 className="text-center text-3xl font-bold text-gray-900 mb-8">Kegiatan Terbaru</h2>
+                    <h2 className="text-center text-3xl font-bold text-gray-900 mb-8">{t('activities.latest_activities')}</h2>
 
                     {latestActivities && latestActivities.data && latestActivities.data.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-8">
                             {latestActivities.data.slice(0, 3).map((activity) => (
                                 <div
                                     key={activity.id}
-                                    className={`bg-white rounded-xl shadow-md overflow-hidden group activity-card-hover transition-all duration-300 h-full flex flex-col relative ${editMode ? 'border-2 border-yellow-400 ring-2 ring-yellow-400 ring-offset-2' : ''}`}
+                                    className={`bg-white rounded-lg sm:rounded-xl shadow-sm sm:shadow-md overflow-hidden group activity-card-hover transition-all duration-300 h-full flex flex-col relative ${editMode ? 'border-2 border-yellow-400 ring-2 ring-yellow-400 ring-offset-2' : ''}`}
                                 >
                                     {editMode && (
-                                        <div className="absolute top-4 right-4 z-30 flex space-x-2">
+                                        <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-30 flex space-x-1 sm:space-x-2">
                                             <Link
                                                 href={route('activity.edit', activity.id)}
-                                                className="w-10 h-10 flex items-center justify-center bg-yellow-400 text-white rounded-xl shadow-lg hover:bg-yellow-500 hover:scale-110 transition-all duration-200"
+                                                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-yellow-400 text-white rounded-lg shadow-lg hover:bg-yellow-500 hover:scale-110 transition-all duration-200"
                                                 title="Edit Kegiatan"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                <i className="fas fa-edit"></i>
+                                                <i className="fas fa-edit text-xs sm:text-base"></i>
                                             </Link>
                                             <button
                                                 onClick={(e) => {
@@ -539,44 +542,27 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                         }
                                                     });
                                                 }}
-                                                className="w-10 h-10 flex items-center justify-center bg-danger text-white rounded-xl shadow-lg hover:bg-danger/90 hover:scale-110 transition-all duration-200"
+                                                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-danger text-white rounded-lg shadow-lg hover:bg-danger/90 hover:scale-110 transition-all duration-200"
                                                 title="Hapus Kegiatan"
                                             >
-                                                <i className="fas fa-trash"></i>
+                                                <i className="fas fa-trash text-xs sm:text-base"></i>
                                             </button>
                                         </div>
                                     )}
                                     <Link href={getActivityLink(activity)} className="flex flex-col h-full">
-                                        <div className="relative h-64 md:h-48 overflow-hidden bg-gray-200">
+                                        <div className="relative aspect-video sm:aspect-auto sm:h-48 overflow-hidden bg-gray-100">
                                             <img
                                                 src={getImageUrl(activity)}
                                                 alt={activity.name}
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                className="w-full h-full object-cover sm:object-cover transition-transform duration-500 group-hover:scale-110"
                                                 onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
                                             />
-                                            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
+                                            <div className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-white/90 backdrop-blur-sm px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold text-gray-800 shadow-sm hidden sm:block">
                                                 {activity.category ? activity.category.name : 'Event'}
                                             </div>
-                                            {/* Mobile Title Overlay */}
-                                            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
-                                                <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
-                                                    {activity.name}
-                                                </h3>
-                                                <div className="flex items-center justify-between text-white/90 text-xs">
-                                                    <span>{formatDateRange(activity.date, activity.end_date) || '-'}</span>
-                                                    {activity.activity_type !== 'non_batch' && activity.active_batch && (
-                                                        <span className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] mx-2 truncate max-w-[80px]">
-                                                            {activity.active_batch.name}
-                                                        </span>
-                                                    )}
-                                                    <span className="font-bold ml-auto">
-                                                        {activity.price > 0 ? (
-                                                            activity.show_price !== false ? (
-                                                                `Rp ${Number(activity.price).toLocaleString('id-ID')}`
-                                                            ) : ''
-                                                        ) : 'GRATIS'}
-                                                    </span>
-                                                </div>
+                                            {/* Mobile Label Overlay - Optional but helps identify */}
+                                            <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/50 backdrop-blur-md rounded text-[8px] text-white font-medium sm:hidden">
+                                                {activity.category?.name || 'Kegiatan'}
                                             </div>
                                         </div>
 
@@ -612,7 +598,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                     )}
                                                 </div>
                                                 <span className="text-xs font-medium text-gray-500 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                                                    Lihat Detail <i className="fas fa-arrow-right"></i>
+                                                    {t('activities.view_detail')} <i className="fas fa-arrow-right"></i>
                                                 </span>
                                             </div>
                                         </div>
@@ -625,8 +611,8 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
                                 <i className="fas fa-calendar-alt text-4xl text-gray-400"></i>
                             </div>
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">Tidak ada kegiatan terbaru</h3>
-                            <p className="text-gray-600">Belum ada kegiatan yang tersedia saat ini.</p>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('activities.no_latest_activities')}</h3>
+                            <p className="text-gray-600">{t('activities.no_latest_activities')}</p>
                         </div>
                     )}
                 </section>
@@ -635,8 +621,8 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                 <section className="py-12 bg-gray-100/50">
                     <div className="container mx-auto px-4">
                         <div className="text-center mb-10">
-                            <h2 className="text-3xl font-bold text-gray-900 mb-3">Semua Kegiatan</h2>
-                            <p className="text-gray-600">Temukan berbagai kegiatan menarik yang dapat Anda ikuti</p>
+                            <h2 className="text-3xl font-bold text-gray-900 mb-3">{t('activities.all_activities')}</h2>
+                            <p className="text-gray-600">{t('activities.explore_desc')}</p>
                         </div>
 
                         {/* Search Box */}
@@ -650,7 +636,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                     <input
                                         type="text"
                                         className="w-full px-4 py-4 outline-none text-gray-700 bg-transparent placeholder-gray-400"
-                                        placeholder="Cari kegiatan berdasarkan nama, lokasi, atau kategori..."
+                                        placeholder={t('activities.search_placeholder')}
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
                                     />
@@ -659,7 +645,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                         className="px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white font-bold hover:shadow-lg transition-all duration-300"
                                         disabled={isSearching}
                                     >
-                                        {isSearching ? <i className="fas fa-spinner fa-spin"></i> : 'Cari'}
+                                        {isSearching ? <i className="fas fa-spinner fa-spin"></i> : t('activities.search')}
                                     </button>
                                 </div>
                             </form>
@@ -667,21 +653,21 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
 
                         {/* Activities Grid */}
                         {latestActivities && latestActivities.data && latestActivities.data.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-8">
                                 {latestActivities.data.map((activity) => (
                                     <div
                                         key={activity.id}
-                                        className={`bg-white rounded-xl shadow-md overflow-hidden group activity-card-hover transition-all duration-300 h-full flex flex-col border border-gray-100 relative ${editMode ? 'border-2 border-yellow-400 ring-2 ring-yellow-400 ring-offset-2' : ''}`}
+                                        className={`bg-white rounded-lg sm:rounded-xl shadow-sm sm:shadow-md overflow-hidden group activity-card-hover transition-all duration-300 h-full flex flex-col border border-gray-100 relative ${editMode ? 'border-2 border-yellow-400 ring-2 ring-yellow-400 ring-offset-2' : ''}`}
                                     >
                                         {editMode && (
-                                            <div className="absolute top-4 right-4 z-30 flex space-x-2">
+                                            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-30 flex space-x-1 sm:space-x-2">
                                                 <Link
                                                     href={route('activity.edit', activity.id)}
-                                                    className="w-10 h-10 flex items-center justify-center bg-warning text-white rounded-xl shadow-lg hover:bg-warning/90 hover:scale-110 transition-all duration-200"
+                                                    className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-warning text-white rounded-lg shadow-lg hover:bg-warning/90 hover:scale-110 transition-all duration-200"
                                                     title="Edit Kegiatan"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
-                                                    <i className="fas fa-edit"></i>
+                                                    <i className="fas fa-edit text-xs sm:text-base"></i>
                                                 </Link>
                                                 <button
                                                     onClick={(e) => {
@@ -704,44 +690,27 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                             }
                                                         });
                                                     }}
-                                                    className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded-xl shadow-lg hover:bg-red-600 hover:scale-110 transition-all duration-200"
+                                                    className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-red-500 text-white rounded-lg shadow-lg hover:bg-red-600 hover:scale-110 transition-all duration-200"
                                                     title="Hapus Kegiatan"
                                                 >
-                                                    <i className="fas fa-trash"></i>
+                                                    <i className="fas fa-trash text-xs sm:text-base"></i>
                                                 </button>
                                             </div>
                                         )}
                                         <Link href={getActivityLink(activity)} className="flex flex-col h-full">
-                                            <div className="relative h-64 md:h-48 overflow-hidden bg-gray-200">
+                                            <div className="relative aspect-video sm:aspect-auto sm:h-48 overflow-hidden bg-gray-100">
                                                 <img
                                                     src={getImageUrl(activity)}
                                                     alt={activity.name}
-                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                    className="w-full h-full object-cover sm:object-cover transition-transform duration-500 group-hover:scale-110"
                                                     onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
                                                 />
-                                                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm">
+                                                <div className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-white/90 backdrop-blur-sm px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold text-gray-800 shadow-sm hidden sm:block">
                                                     {activity.category ? activity.category.name : 'Event'}
                                                 </div>
-                                                {/* Mobile Title Overlay */}
-                                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
-                                                    <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
-                                                        {activity.name}
-                                                    </h3>
-                                                    <div className="flex items-center justify-between text-white/90 text-xs">
-                                                        <span>{formatDateRange(activity.date, activity.end_date) || '-'}</span>
-                                                        {activity.activity_type !== 'non_batch' && activity.active_batch && (
-                                                            <span className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] mx-2 truncate max-w-[80px]">
-                                                                {activity.active_batch.name}
-                                                            </span>
-                                                        )}
-                                                        <span className="font-bold ml-auto">
-                                                            {activity.price > 0 ? (
-                                                                activity.show_price !== false ? (
-                                                                    `Rp ${Number(activity.price).toLocaleString('id-ID')}`
-                                                                ) : ''
-                                                            ) : 'GRATIS'}
-                                                        </span>
-                                                    </div>
+                                                {/* Mobile Label Overlay */}
+                                                <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/50 backdrop-blur-md rounded text-[8px] text-white font-medium sm:hidden">
+                                                    {activity.category?.name || 'Kegiatan'}
                                                 </div>
                                             </div>
 
@@ -777,7 +746,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                         )}
                                                     </div>
                                                     <span className="text-xs font-medium text-gray-500 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                                                        Lihat Detail <i className="fas fa-arrow-right"></i>
+                                                        {t('activities.view_detail')} <i className="fas fa-arrow-right"></i>
                                                     </span>
                                                 </div>
                                             </div>
@@ -790,8 +759,8 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
                                     <i className="fas fa-search text-4xl text-gray-400"></i>
                                 </div>
-                                <h3 className="text-xl font-semibold text-gray-900 mb-2">Tidak ditemukan kegiatan</h3>
-                                <p className="text-gray-600">Coba cari dengan kata kunci lain.</p>
+                                <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('activities.no_activities_found')}</h3>
+                                <p className="text-gray-600">{t('activities.try_different_keyword')}</p>
                             </div>
                         )}
 

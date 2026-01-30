@@ -3,14 +3,19 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import Sidebar from '../Components/Sidebar';
 import Alerts from '../Components/Alerts';
 import Swal from 'sweetalert2';
+import Modal from '../Components/Modal';
+import { useTranslation } from 'react-i18next';
 
 export default function MainLayout({ children, title = 'Dashboard' }) {
     const { auth, flash, errors, appSettings } = usePage().props;
+    const { url } = usePage();
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
+    const { t: tOrig } = useTranslation();
+    const t = tOrig || ((key) => key);
 
     const settings = appSettings || {};
 
@@ -74,20 +79,45 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
             `}} />
             <Head title={title} />
 
-            {/* Mobile Sidebar Overlay */}
-            {isMobileSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
-                    onClick={() => setIsMobileSidebarOpen(false)}
-                />
-            )}
+            {/* Mobile Sidebar Modal - Now opened from Bottom Nav "Menu" */}
+            <Modal show={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} maxWidth="sm">
+                <div className="h-[90vh] w-[85vw] mx-auto bg-gradient-to-b from-gray-800 to-gray-900 overflow-hidden flex flex-col rounded-[2rem] shadow-2xl border border-white/10">
+                    <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-black/30 backdrop-blur-md">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30">
+                                <i className="fas fa-bars text-primary text-xs"></i>
+                            </div>
+                            <span className="text-white font-black tracking-widest text-[10px] uppercase">{t('nav.navigation')}</span>
+                        </div>
+                        <button
+                            onClick={() => setIsMobileSidebarOpen(false)}
+                            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-white hover:bg-white/10 transition-all font-bold"
+                        >
+                            <i className="fas fa-times text-lg"></i>
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pt-2">
+                        {/* DEBUG - Check if this renders */}
+                        <div className="px-6 py-2 text-white/50 text-[10px] border-b border-white/5 mb-2">
+                            <i className="fas fa-info-circle mr-2"></i>
+                            Menu for: {auth?.user?.name || 'Guest'} ({auth?.user?.role || 'no-role'})
+                        </div>
+                        <Sidebar
+                            collapsed={false}
+                            showProfile={true}
+                            auth={auth}
+                            user={auth?.user}
+                            appSettings={appSettings}
+                        />
+                    </div>
+                </div>
+            </Modal>
 
-            {/* Sidebar */}
+            {/* Desktop Sidebar (Permanent) */}
             <aside
-                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 shadow-xl ${isSidebarCollapsed ? 'w-20' : 'w-64'
-                    } ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 shadow-xl hidden lg:block ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
             >
-                <Sidebar collapsed={isSidebarCollapsed} />
+                <Sidebar collapsed={isSidebarCollapsed} showProfile={false} />
             </aside>
 
             {/* Main Content Wrapper */}
@@ -97,10 +127,10 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                 <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30 border-b border-gray-100">
                     <div className="px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            {/* Mobile Menu Button */}
+                            {/* Mobile Menu Button - HIDDEN because using Bottom Nav */}
                             <button
                                 onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-                                className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                className="hidden lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             >
                                 <i className="fas fa-bars text-xl"></i>
                             </button>
@@ -342,9 +372,72 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                 </main>
 
                 {/* Simple Footer */}
-                <footer className="bg-white border-t border-gray-200 py-4 px-6 text-center text-sm text-gray-500">
+                <footer className="bg-white border-t border-gray-200 py-4 px-6 text-center text-sm text-gray-500 pb-32 md:pb-4">
                     &copy; {new Date().getFullYear()} {usePage().props.appName || 'EventCek'}. All rights reserved.
                 </footer>
+            </div>
+
+            {/* Premium Mobile Bottom Navigation Bar - Bulging Center Mode (Dashboard Version) */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none">
+                {/* The Bar Background with Notch Effect */}
+                <div className="relative bg-white shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)] border-t border-gray-100 flex items-stretch justify-around px-2 pt-2 pb-safe-offset-2 pointer-events-auto h-20">
+
+                    {/* Left Group */}
+                    <div className="flex w-2/5 justify-around items-center">
+                        <Link href="/" className="flex flex-col items-center justify-center space-y-1 text-gray-400 hover:text-primary transition-all">
+                            <div className="p-2 rounded-xl">
+                                <i className="fas fa-home text-lg"></i>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-tighter">Web</span>
+                        </Link>
+                        <Link href={route('activity.list')} className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url.startsWith('/activity') ? 'text-primary' : 'text-gray-400'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${url.startsWith('/activity') ? 'bg-primary/10' : ''}`}>
+                                <i className="fas fa-clipboard-list text-lg"></i>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-tighter">Acara</span>
+                        </Link>
+                    </div>
+
+                    {/* Center Bulge - DASHBOARD */}
+                    <div className="relative w-1/5 flex justify-center">
+                        <div className="absolute -top-10 w-20 h-20 bg-gray-50/50 backdrop-blur-sm rounded-full flex items-center justify-center pt-2">
+                            <Link
+                                href="/dashboard"
+                                className={`w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-xl transition-all duration-500 transform active:scale-90
+                                    ${url.startsWith('/dashboard')
+                                        ? 'bg-primary text-white scale-110 shadow-primary/30'
+                                        : 'bg-white text-gray-500 hover:text-primary'
+                                    }
+                                `}
+                            >
+                                <i className="fas fa-tachometer-alt text-2xl mb-0.5"></i>
+                                <span className={`text-[8px] font-black uppercase tracking-widest ${url.startsWith('/dashboard') ? 'text-white' : 'text-gray-400'}`}>Dash</span>
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Right Group */}
+                    <div className="flex w-2/5 justify-around items-center">
+                        <Link href={route('news.list')} className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url.startsWith('/news') ? 'text-primary' : 'text-gray-400'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${url.startsWith('/news') ? 'bg-primary/10' : ''}`}>
+                                <i className="fas fa-newspaper text-lg"></i>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-tighter">News</span>
+                        </Link>
+
+                        <button
+                            onClick={() => setIsMobileSidebarOpen(true)}
+                            className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isMobileSidebarOpen ? 'text-primary' : 'text-gray-400'}`}
+                        >
+                            <div className={`p-2 rounded-xl transition-all ${isMobileSidebarOpen ? 'bg-primary/10' : ''}`}>
+                                <i className="fas fa-th-large text-lg"></i>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-tighter">Menu</span>
+                        </button>
+                    </div>
+                </div>
+                {/* Safe Area Fill */}
+                <div className="h-safe bg-white"></div>
             </div>
         </div>
     );

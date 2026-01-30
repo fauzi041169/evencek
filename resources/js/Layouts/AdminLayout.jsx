@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import Sidebar from '../Components/Sidebar';
 import Alerts from '../Components/Alerts';
+import Modal from '../Components/Modal';
 
 export default function AdminLayout({ children, title = '' }) {
     const { auth, flash, errors, appSettings } = usePage().props;
@@ -33,20 +34,34 @@ export default function AdminLayout({ children, title = '' }) {
                 .hover\\:bg-primary:hover { background-color: var(--color-primary) !important; }
                 .hover\\:text-primary:hover { color: var(--color-primary) !important; }
             `}} />
-            {/* Mobile Sidebar Overlay */}
-            {isMobileSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-                    onClick={() => setIsMobileSidebarOpen(false)}
-                />
-            )}
+            {/* Mobile Sidebar Modal */}
+            <Modal show={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} maxWidth="sm">
+                <div className="h-[90vh] w-[85vw] mx-auto bg-gradient-to-b from-gray-800 to-gray-900 overflow-hidden flex flex-col rounded-[2.5rem] shadow-2xl border border-white/10">
+                    <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-black/30 backdrop-blur-md">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30">
+                                <i className="fas fa-user-shield text-primary text-xs"></i>
+                            </div>
+                            <span className="text-white font-black tracking-widest text-[10px] uppercase">Menu Pentadbir</span>
+                        </div>
+                        <button
+                            onClick={() => setIsMobileSidebarOpen(false)}
+                            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-white hover:bg-white/10 transition-all"
+                        >
+                            <i className="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pt-2" onClick={() => setIsMobileSidebarOpen(false)}>
+                        <Sidebar collapsed={false} showProfile={false} />
+                    </div>
+                </div>
+            </Modal>
 
-            {/* Sidebar */}
+            {/* Desktop Sidebar (Permanent) */}
             <aside
-                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 ${isSidebarCollapsed ? 'w-16' : 'w-64'
-                    } ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 hidden lg:block ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}
             >
-                <Sidebar collapsed={isSidebarCollapsed} />
+                <Sidebar collapsed={isSidebarCollapsed} showProfile={false} />
             </aside>
 
             {/* Main Content */}

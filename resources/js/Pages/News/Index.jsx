@@ -404,20 +404,20 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                 <h2 className="text-2xl font-bold text-gray-800 mb-6 border-l-4 border-secondary pl-3">
                                     Berita Utama
                                 </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
                                     {featuredNews.map((news, index) => (
-                                        <div key={news.id} className={`group bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 ${index === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}>
-                                            <div className={`relative ${index === 0 ? 'h-64 md:h-96' : 'h-64 md:h-48'}`}>
+                                        <div key={news.id} className={`group bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 ${index === 0 ? 'col-span-2 md:col-span-2 md:row-span-2' : ''}`}>
+                                            <div className={`relative ${index === 0 ? 'aspect-video md:h-96' : 'aspect-video md:h-48'}`}>
                                                 <img
                                                     src={getImageUrl(news.image)}
                                                     alt={news.title}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                 />
-                                                <div className="absolute top-0 right-0 bg-secondary text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
+                                                <div className="absolute top-0 right-0 bg-secondary text-white text-[10px] sm:text-xs font-bold px-2 py-1 sm:px-3 sm:py-1 rounded-bl-lg">
                                                     {news.category?.name || 'Umum'}
                                                 </div>
-                                                {/* Mobile Title Overlay */}
-                                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent md:hidden">
+                                                {/* Mobile Title Overlay - HIDDEN for Image-Only Look */}
+                                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent hidden">
                                                     <h3 className={`font-bold text-white mb-1 ${index === 0 ? 'text-xl' : 'text-lg'} line-clamp-2`}>
                                                         {news.title}
                                                     </h3>
@@ -461,17 +461,17 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                             </div>
 
                             {newsList.data.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                                     {newsList.data.map((news) => (
                                         <div key={news.id} className={`bg-white rounded-lg shadow hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col h-full relative ${editMode ? 'border-2 border-warning ring-2 ring-warning ring-offset-2' : ''}`}>
                                             {editMode && (
-                                                <div className="absolute top-4 right-4 z-30 flex space-x-2">
+                                                <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-30 flex space-x-1 sm:space-x-2">
                                                     <Link
                                                         href={route('news.edit', news.slug || news.id)}
                                                         className="w-8 h-8 flex items-center justify-center bg-warning text-white rounded-lg shadow-lg hover:bg-warning/90 hover:scale-110 transition-all duration-200"
                                                         title="Edit Berita"
                                                     >
-                                                        <i className="fas fa-edit text-sm"></i>
+                                                        <i className="fas fa-edit text-xs sm:text-sm"></i>
                                                     </Link>
                                                     <button
                                                         onClick={(e) => {
@@ -496,30 +496,24 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                         className="w-8 h-8 flex items-center justify-center bg-danger text-white rounded-lg shadow-lg hover:bg-danger/90 hover:scale-110 transition-all duration-200"
                                                         title="Hapus Berita"
                                                     >
-                                                        <i className="fas fa-trash text-sm"></i>
+                                                        <i className="fas fa-trash text-xs sm:text-sm"></i>
                                                     </button>
                                                 </div>
                                             )}
-                                            <div className="relative h-64 md:h-48">
+                                            <div className="relative aspect-video md:h-48">
                                                 <img
                                                     src={getImageUrl(news.image)}
                                                     alt={news.title}
                                                     className="w-full h-full object-cover"
                                                 />
-                                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4">
-                                                    <span className="text-white text-xs bg-primary px-2 py-1 rounded inline-block mb-2 md:mb-0">
+                                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 hidden md:block">
+                                                    <span className="text-white text-xs bg-primary px-2 py-1 rounded inline-block">
                                                         {news.category?.name || 'Umum'}
                                                     </span>
-                                                    {/* Mobile Title Overlay */}
-                                                    <div className="md:hidden">
-                                                        <h3 className="text-white font-bold text-lg line-clamp-2 mb-1">
-                                                            {news.title}
-                                                        </h3>
-                                                        <div className="text-white/80 text-xs flex items-center">
-                                                            <i className="far fa-clock mr-1"></i>
-                                                            {formatDate(news.published_at || news.created_at)}
-                                                        </div>
-                                                    </div>
+                                                </div>
+                                                {/* Category Overlay for Mobile */}
+                                                <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/50 backdrop-blur-md rounded text-[8px] text-white font-medium md:hidden">
+                                                    {news.category?.name || 'Berita'}
                                                 </div>
                                             </div>
                                             <div className="p-5 flex-1 hidden md:flex flex-col">
@@ -563,8 +557,8 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                     key={i}
                                                     href={link.url}
                                                     className={`px-4 py-2 text-sm rounded-md transition-colors ${link.active
-                                                            ? 'bg-secondary text-white'
-                                                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                                        ? 'bg-secondary text-white'
+                                                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                                                         }`}
                                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                                     preserveState

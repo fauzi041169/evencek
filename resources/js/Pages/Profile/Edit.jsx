@@ -240,29 +240,16 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
 
                                 <div className="sm:flex sm:items-center">
                                     <label className="sm:w-1/3 text-sm font-medium text-gray-700">Jenis Kelamin</label>
-                                    <div className="sm:w-2/3 mt-2 sm:mt-0 flex gap-4">
-                                        <label className="inline-flex items-center">
-                                            <input 
-                                                type="radio" 
-                                                className="form-radio text-secondary" 
-                                                name="jenis_kelamin" 
-                                                value="Laki-laki" 
-                                                checked={data.jenis_kelamin === 'Laki-laki'}
-                                                onChange={e => setData('jenis_kelamin', e.target.value)}
-                                            />
-                                            <span className="ml-2">Laki-laki</span>
-                                        </label>
-                                        <label className="inline-flex items-center">
-                                            <input 
-                                                type="radio" 
-                                                className="form-radio text-secondary" 
-                                                name="jenis_kelamin" 
-                                                value="Perempuan" 
-                                                checked={data.jenis_kelamin === 'Perempuan'}
-                                                onChange={e => setData('jenis_kelamin', e.target.value)}
-                                            />
-                                            <span className="ml-2">Perempuan</span>
-                                        </label>
+                                    <div className="sm:w-2/3 mt-2 sm:mt-0">
+                                        <select 
+                                            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-blue-500 focus:border-blue-500" 
+                                            value={data.jenis_kelamin}
+                                            onChange={e => setData('jenis_kelamin', e.target.value)}
+                                        >
+                                            <option value="">Pilih Jenis Kelamin</option>
+                                            <option value="Laki-laki">Laki-laki</option>
+                                            <option value="Perempuan">Perempuan</option>
+                                        </select>
                                     </div>
                                 </div>
 

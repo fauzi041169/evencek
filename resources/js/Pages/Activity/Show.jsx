@@ -2,7 +2,8 @@ import { Head, usePage, Link, router } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id, enUS } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 import CardPreview from '@/Pages/Activity/IdCards/CardPreview';
 import BulkImportModal from '@/Components/Activity/BulkImportModal';
 import BulkPaymentModal from '@/Components/Activity/BulkPaymentModal';
@@ -46,6 +47,7 @@ export default function Show({
     certificateSetting,
     certificatePrintSettings
 }) {
+    const { t, i18n } = useTranslation();
     const { auth, appSettings } = usePage().props;
     const [search, setSearch] = useState('');
     const [perPage, setPerPage] = useState(20);
@@ -456,12 +458,12 @@ export default function Show({
 
     const togglePriceVisibility = async () => {
         const result = await Swal.fire({
-            title: 'Ubah Visibilitas Harga?',
-            text: "Anda akan mengubah visibilitas harga untuk publik.",
+            title: t('activities.change_visibility_title'),
+            text: t('activities.change_visibility_desc'),
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Ya, Ubah',
-            cancelButtonText: 'Batal'
+            confirmButtonText: t('activities.confirm_change'),
+            cancelButtonText: t('activities.cancel')
         });
 
         if (!result.isConfirmed) return;
@@ -472,16 +474,16 @@ export default function Show({
                 setShowPrice(!showPrice);
                 Swal.fire({
                     icon: 'success',
-                    title: 'Berhasil',
-                    text: showPrice ? 'Harga disembunyikan' : 'Harga ditampilkan',
+                    title: t('activities.success'),
+                    text: showPrice ? t('activities.price_hidden') : t('activities.price_shown'),
                     timer: 1500,
                     showConfirmButton: false
                 });
             },
             onError: () => Swal.fire({
                 icon: 'error',
-                title: 'Gagal',
-                text: 'Gagal mengubah visibilitas harga'
+                title: t('activities.error'),
+                text: t('activities.visibility_change_failed')
             })
         });
     };
@@ -501,8 +503,8 @@ export default function Show({
         navigator.clipboard.writeText(window.location.href);
         Swal.fire({
             icon: 'success',
-            title: 'Berhasil',
-            text: 'URL berhasil disalin!',
+            title: t('activities.success'),
+            text: t('activities.link_copied'),
             timer: 1500,
             showConfirmButton: false
         });
@@ -514,6 +516,7 @@ export default function Show({
         if (!start) return '';
         const startDate = new Date(start);
         const endDate = end ? new Date(end) : null;
+        const currentLocale = i18n.language === 'en' ? enUS : id;
 
         if (endDate && endDate > startDate) {
             // Same year check
@@ -521,16 +524,16 @@ export default function Show({
                 // Same month check
                 if (startDate.getMonth() === endDate.getMonth()) {
                     // Format: Senin, 26 - Rabu, 28 Januari 2026
-                    return `${format(startDate, 'EEEE, d', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
+                    return `${format(startDate, 'EEEE, d', { locale: currentLocale })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: currentLocale })}`;
                 }
                 // Different month: Senin, 26 Januari - Rabu, 3 Februari 2026
-                return `${format(startDate, 'EEEE, d MMMM', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
+                return `${format(startDate, 'EEEE, d MMMM', { locale: currentLocale })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: currentLocale })}`;
             }
             // Different year: Senin, 26 Des 2025 - Rabu, 2 Jan 2026
-            return `${format(startDate, 'EEEE, d MMMM yyyy', { locale: id })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: id })}`;
+            return `${format(startDate, 'EEEE, d MMMM yyyy', { locale: currentLocale })} - ${format(endDate, 'EEEE, d MMMM yyyy', { locale: currentLocale })}`;
         }
         // Single date: Senin, 26 Januari 2026
-        return format(startDate, 'EEEE, d MMMM yyyy', { locale: id });
+        return format(startDate, 'EEEE, d MMMM yyyy', { locale: currentLocale });
     };
 
     const formatTimeRange = (start, end) => {
@@ -706,7 +709,7 @@ export default function Show({
                                             <i className="fas fa-calendar-alt text-sm"></i>
                                         </div>
                                         <div className="text-left min-w-0">
-                                            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Waktu Pelaksanaan</p>
+                                            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">{t('activities.implementation_time')}</p>
                                             <p className="text-xs sm:text-sm font-semibold text-white break-words">
                                                 {dateLabel}
                                             </p>
@@ -725,7 +728,7 @@ export default function Show({
                                             <i className="fas fa-map-marker-alt text-sm"></i>
                                         </div>
                                         <div className="text-left min-w-0">
-                                            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Lokasi</p>
+                                            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">{t('activities.location')}</p>
                                             <p className="text-xs sm:text-sm font-semibold text-white truncate max-w-[150px]" title={activity.location}>{activity.location}</p>
                                         </div>
                                     </div>
@@ -737,14 +740,14 @@ export default function Show({
                                             <i className="fas fa-tag text-sm"></i>
                                         </div>
                                         <div className="text-left min-w-0">
-                                            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">Harga</p>
+                                            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">{t('activities.price')}</p>
                                             <div className="flex items-center gap-2">
                                                 {Number(activity.price) > 0 ? (
                                                     <p className="text-xs sm:text-sm font-semibold text-white">
-                                                        {showPrice ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : 'Sembunyi'}
+                                                        {showPrice ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : t('activities.hidden')}
                                                     </p>
                                                 ) : (
-                                                    <p className="text-xs sm:text-sm font-semibold text-emerald-400">GRATIS</p>
+                                                    <p className="text-xs sm:text-sm font-semibold text-emerald-400">{t('activities.free')}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -760,7 +763,7 @@ export default function Show({
                                         className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-emerald-500/90 backdrop-blur-sm text-white font-bold cursor-pointer border border-white/10 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
                                     >
                                         <i className="fas fa-user-plus"></i>
-                                        <span>Daftarkan Peserta Lain</span>
+                                        <span>{t('activities.register_others')}</span>
                                     </button>
                                 ) : pendingPayment ? (
                                     <button
@@ -769,7 +772,7 @@ export default function Show({
                                         className="inline-flex items-center gap-3 h-14 px-8 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold hover:shadow-lg hover:shadow-amber-500/30 transition-all transform hover:-translate-y-1"
                                     >
                                         {loadingPaymentModal ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-credit-card"></i>}
-                                        <span>Selesaikan Pembayaran</span>
+                                        <span>{t('activities.finish_payment')}</span>
                                     </button>
                                 ) : registrationTarget ? (
                                     <>
@@ -801,7 +804,7 @@ export default function Show({
                                         className="inline-flex items-center gap-3 h-14 px-8 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold hover:shadow-lg hover:shadow-orange-500/30 transition-all transform hover:-translate-y-1"
                                     >
                                         <i className="fas fa-user-plus text-xl"></i>
-                                        <span>Daftar Sekarang</span>
+                                        <span>{t('activities.register_now')}</span>
                                     </button>
                                 )}
 
@@ -812,7 +815,7 @@ export default function Show({
                                     className="h-14 px-6 rounded-full glass-button text-white font-medium hover:bg-white/20 inline-flex items-center gap-2 relative"
                                 >
                                     <i className="fas fa-share-alt"></i>
-                                    <span className="hidden sm:inline">Bagikan</span>
+                                    <span className="hidden sm:inline">{t('activities.share')}</span>
                                 </button>
                             </div>
                         </div>
@@ -843,11 +846,11 @@ export default function Show({
                                             </div>
                                             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                                                 <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                                    Pilih Metode Pendaftaran
+                                                    {t('activities.pilih_metode')}
                                                 </h3>
                                                 <div className="mt-2">
                                                     <p className="text-sm text-gray-500">
-                                                        Silakan pilih jenis pendaftaran yang Anda inginkan.
+                                                        {t('activities.silakan_pilih_jenis')}
                                                     </p>
                                                 </div>
 
@@ -862,8 +865,8 @@ export default function Show({
                                                         <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                                                             <i className="fas fa-user"></i>
                                                         </div>
-                                                        <span className="font-bold text-gray-900">Daftar Mandiri</span>
-                                                        <span className="text-xs text-gray-500">Daftar untuk diri sendiri</span>
+                                                        <span className="font-bold text-gray-900">{t('activities.daftar_mandiri')}</span>
+                                                        <span className="text-xs text-gray-500">{t('activities.daftar_diri_sendiri')}</span>
                                                     </Link>
 
                                                     <button
@@ -877,8 +880,8 @@ export default function Show({
                                                         <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                                                             <i className="fas fa-users"></i>
                                                         </div>
-                                                        <span className="font-bold text-gray-900">Daftar Kelompok</span>
-                                                        <span className="text-xs text-gray-500">Import data peserta kolektif</span>
+                                                        <span className="font-bold text-gray-900">{t('activities.daftar_kelompok')}</span>
+                                                        <span className="text-xs text-gray-500">{t('activities.import_kolektif')}</span>
                                                     </button>
                                                 </div>
                                             </div>
@@ -890,7 +893,7 @@ export default function Show({
                                             className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                                             onClick={() => setRegistrationTypeModalOpen(false)}
                                         >
-                                            Batal
+                                            {t('activities.cancel')}
                                         </button>
                                     </div>
                                 </div>
@@ -906,17 +909,17 @@ export default function Show({
                                 {/* Visibility Controls */}
                                 {canConfigureView && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                                        <h3 className="text-sm font-bold text-gray-900 mb-3">Atur Tampilan Halaman (Admin/Creator)</h3>
+                                        <h3 className="text-sm font-bold text-gray-900 mb-3">{t('activities.admin_controls')}</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {[
-                                                { id: 'description', label: 'Deskripsi', icon: 'fa-info-circle' },
-                                                { id: 'materials', label: 'Materi', icon: 'fa-file-alt' },
-                                                { id: 'rundown', label: 'Rundown', icon: 'fa-list-ol' },
-                                                { id: 'speakers', label: 'Narasumber', icon: 'fa-user-tie' },
-                                                { id: 'gallery', label: 'Galeri', icon: 'fa-images' },
-                                                { id: 'participants', label: 'Peserta', icon: 'fa-users' },
-                                                { id: 'id_card', label: 'Kartu', icon: 'fa-id-card' },
-                                                { id: 'certificate', label: 'Sertifikat', icon: 'fa-certificate' },
+                                                { id: 'description', label: t('activities.about'), icon: 'fa-info-circle' },
+                                                { id: 'materials', label: t('activities.materials'), icon: 'fa-file-alt' },
+                                                { id: 'rundown', label: t('activities.rundown'), icon: 'fa-list-ol' },
+                                                { id: 'speakers', label: t('activities.speakers'), icon: 'fa-user-tie' },
+                                                { id: 'gallery', label: t('activities.gallery'), icon: 'fa-images' },
+                                                { id: 'participants', label: t('activities.participants_list'), icon: 'fa-users' },
+                                                { id: 'id_card', label: t('activities.id_card'), icon: 'fa-id-card' },
+                                                { id: 'certificate', label: t('activities.certificate'), icon: 'fa-certificate' },
                                             ].map(section => (
                                                 <button
                                                     key={section.id}
@@ -940,7 +943,7 @@ export default function Show({
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-info-circle text-primary"></i>
-                                            Deskripsi
+                                            {t('activities.about')}
                                         </h3>
                                         <div
                                             className="prose max-w-none text-gray-600 text-sm md:text-base leading-relaxed"
@@ -954,7 +957,7 @@ export default function Show({
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-file-alt text-indigo-500"></i>
-                                            Materi Kegiatan
+                                            {t('activities.materi_kegiatan')}
                                         </h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {materials.map((material) => {
@@ -971,7 +974,7 @@ export default function Show({
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <h4 className="font-semibold text-gray-800 truncate mb-1">{material.title || material.name}</h4>
-                                                            <p className="text-xs text-gray-500 mb-2 line-clamp-2">{material.description || 'Tidak ada deskripsi'}</p>
+                                                            <p className="text-xs text-gray-500 mb-2 line-clamp-2">{material.description || t('activities.no_description')}</p>
 
                                                             <div className="flex items-center gap-3">
                                                                 {/* PDF Preview Link */}
@@ -1021,14 +1024,14 @@ export default function Show({
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-list-ol text-indigo-500"></i>
-                                            Rangkaian Acara (Rundown)
+                                            {t('activities.rangkaian_acara')}
                                         </h3>
                                         <div className="overflow-hidden border border-gray-200 rounded-lg">
                                             <table className="min-w-full divide-y divide-gray-200">
                                                 <thead className="bg-gray-50">
                                                     <tr>
-                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
-                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kegiatan</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('activities.implementation_time')}</th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('activities.activity_item')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -1055,7 +1058,7 @@ export default function Show({
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-user-tie text-primary"></i>
-                                            Narasumber
+                                            {t('activities.speakers')}
                                         </h3>
                                         <div className="space-y-4">
                                             {activity.speakers.map((speaker) => (
@@ -1090,14 +1093,14 @@ export default function Show({
                                                 <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400 text-sm"></i>
                                                 <input
                                                     type="text"
-                                                    placeholder="Cari peserta..."
+                                                    placeholder={t('activities.search_participants')}
                                                     className="w-full border border-indigo-200 rounded-xl pl-10 pr-3 py-2.5 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400"
                                                     value={search}
                                                     onChange={(e) => setSearch(e.target.value)}
                                                 />
                                             </div>
                                             <div className="flex items-center gap-2 bg-indigo-50 px-3 py-2 rounded-xl border border-indigo-200">
-                                                <label className="text-xs font-semibold text-indigo-700 whitespace-nowrap">Tampil:</label>
+                                                <label className="text-xs font-semibold text-indigo-700 whitespace-nowrap">{t('activities.show')}:</label>
                                                 <select
                                                     className="border border-indigo-300 bg-white rounded-lg px-2 py-1 text-sm text-indigo-700 font-semibold focus:ring-2 focus:ring-indigo-500"
                                                     value={perPage}
@@ -1135,13 +1138,13 @@ export default function Show({
                                                     let statusClass = 'bg-gray-100 text-gray-600';
 
                                                     if (status === 1) { // ACTIVE
-                                                        statusText = 'Aktif';
+                                                        statusText = t('activities.active');
                                                         statusClass = 'bg-green-100 text-green-700 border-green-200';
                                                     } else if (status === 0) { // PENDING
-                                                        statusText = 'Menunggu Verifikasi';
+                                                        statusText = t('activities.menunggu_verifikasi');
                                                         statusClass = 'bg-yellow-100 text-yellow-700 border-yellow-200';
                                                     } else if (status === 2) { // REJECTED
-                                                        statusText = 'Ditolak';
+                                                        statusText = t('activities.rejected');
                                                         statusClass = 'bg-red-100 text-red-700 border-red-200';
                                                     }
 
@@ -1206,7 +1209,7 @@ export default function Show({
                                                     ))}
                                                 </div>
                                                 <div className="text-xs text-gray-500">
-                                                    Menampilkan <span className="font-semibold text-indigo-700">{participants.from || 0}</span> sampai <span className="font-semibold text-indigo-700">{participants.to || 0}</span> dari <span className="font-semibold text-indigo-700">{participants.total || 0}</span> hasil
+                                                    {t('activities.showing')} <span className="font-semibold text-indigo-700">{participants.from || 0}</span> {t('activities.to')} <span className="font-semibold text-indigo-700">{participants.to || 0}</span> {t('activities.of_results', { total: participants.total || 0 })}
                                                 </div>
                                             </div>
                                         )}
@@ -1220,16 +1223,16 @@ export default function Show({
                             <div className="space-y-6 order-1 lg:order-2">
                                 {/* User Status Card */}
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Status Keikutsertaan</h3>
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.participation_status')}</h3>
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-3 p-2.5 rounded-xl bg-indigo-50 border border-indigo-100">
                                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                                                 <i className="fas fa-user-check text-sm"></i>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className="text-sm text-gray-500">Status:</div>
+                                                <div className="text-sm text-gray-500">{t('activities.status')}:</div>
                                                 <div className="text-sm font-semibold text-indigo-900">
-                                                    {enrollmentStatus === 1 ? 'Aktif' : enrollmentStatus === 0 ? 'Menunggu Verifikasi' : enrollmentStatus === 2 ? 'Ditolak' : 'Menunggu Pembayaran'}
+                                                    {enrollmentStatus === 1 ? t('activities.active') : enrollmentStatus === 0 ? t('activities.menunggu_verifikasi') : enrollmentStatus === 2 ? t('activities.rejected') : t('activities.menunggu_pembayaran')}
                                                 </div>
                                             </div>
                                         </div>
@@ -1240,7 +1243,7 @@ export default function Show({
                                                     <i className="fas fa-bed text-sm"></i>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <div className="text-sm text-gray-500">Kamar:</div>
+                                                    <div className="text-sm text-gray-500">{t('activities.room')}:</div>
                                                     <div className="text-sm font-semibold text-orange-900">
                                                         {userRoomNumber} {userRoomHotelName && `(${userRoomHotelName})`}
                                                     </div>
@@ -1267,7 +1270,7 @@ export default function Show({
                                                     className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-white border border-indigo-200 text-primary hover:bg-indigo-50 rounded-xl font-medium transition text-sm"
                                                 >
                                                     <i className="fas fa-expand"></i>
-                                                    Perbesar
+                                                    {t('activities.perbesar')}
                                                 </button>
                                             </div>
                                         )}
@@ -1294,7 +1297,7 @@ export default function Show({
                                                         className="block w-full text-center bg-primary text-white py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                                                     >
                                                         <i className="fas fa-id-card mr-2"></i>
-                                                        Unduh ID Card
+                                                        {t('activities.unduh_id_card')}
                                                     </a>
                                                 )}
 
@@ -1305,7 +1308,7 @@ export default function Show({
                                                         className="block w-full text-center bg-emerald-600 text-white py-2.5 rounded-xl font-medium hover:bg-emerald-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                                                     >
                                                         <i className="fas fa-certificate mr-2"></i>
-                                                        Unduh Sertifikat
+                                                        {t('activities.unduh_certificate')}
                                                     </a>
                                                 )}
                                             </div>
@@ -1316,15 +1319,15 @@ export default function Show({
                                 {/* Attendance Section if any */}
                                 {(mandiriAttendances?.length > 0 || manualAttendances?.length > 0) && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4">Absensi</h3>
+                                        <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.attendance')}</h3>
                                         <div className="space-y-3">
                                             {mandiriAttendances.map(att => (
                                                 <div key={att.id} className="p-3 border border-gray-200 rounded-xl flex items-center justify-between">
                                                     <span className="font-medium text-sm text-gray-700">{att.name}</span>
                                                     {att.has_attended ? (
-                                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">Hadir</span>
+                                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">{t('activities.attended')}</span>
                                                     ) : (
-                                                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Belum</span>
+                                                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">{t('activities.not_yet')}</span>
                                                     )}
                                                 </div>
                                             ))}
@@ -1339,7 +1342,7 @@ export default function Show({
                             <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                     <i className="fas fa-images text-indigo-500"></i>
-                                    Galeri
+                                    {t('activities.gallery')}
                                 </h3>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {Array.isArray(activity.galleries) && activity.galleries.length > 0 ? (
@@ -1360,7 +1363,7 @@ export default function Show({
                                         })
                                     ) : (
                                         <div className="col-span-full text-center py-8 text-gray-500">
-                                            <p>Belum ada dokumentasi</p>
+                                            <p>{t('activities.no_gallery')}</p>
                                         </div>
                                     )}
                                 </div>

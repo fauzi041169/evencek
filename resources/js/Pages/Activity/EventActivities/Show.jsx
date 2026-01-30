@@ -3,9 +3,12 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import { ArrowLeft, Calendar, Clock, CheckCircle, Info, ZoomIn } from 'lucide-react';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id, enUS } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 
 export default function Show({ activity, eventActivity, existingResponse }) {
+    const { t, i18n } = useTranslation();
+    const currentLocale = i18n.language === 'en' ? enUS : id;
     // Initialize answers state
     const initialAnswers = {};
     if (!existingResponse) {
@@ -30,8 +33,8 @@ export default function Show({ activity, eventActivity, existingResponse }) {
             onSuccess: () => {
                 Swal.fire({
                     icon: 'success',
-                    title: 'Berhasil',
-                    text: 'Jawaban/Partisipasi Anda berhasil dikirim!',
+                    title: t('activities.success'),
+                    text: t('activities.reply_sent'),
                     toast: true,
                     position: 'top-end',
                     showConfirmButton: false,
@@ -41,8 +44,8 @@ export default function Show({ activity, eventActivity, existingResponse }) {
             onError: () => {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Gagal',
-                    text: 'Terjadi kesalahan saat mengirim jawaban.',
+                    title: t('activities.error'),
+                    text: t('activities.system_error'),
                     confirmButtonColor: '#EF4444'
                 });
             }
@@ -78,12 +81,12 @@ export default function Show({ activity, eventActivity, existingResponse }) {
             <div className="py-12 bg-gray-50 min-h-screen">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     <div className="mb-6 px-4 sm:px-0">
-                        <Link 
+                        <Link
                             href={route('activity.event-activities.index', activity.id)}
                             className="text-sm text-primary hover:text-indigo-900 flex items-center mb-2"
                         >
                             <ArrowLeft className="w-4 h-4 mr-1" />
-                            Kembali ke Daftar Kegiatan
+                            {t('activities.back_to_activity_list')}
                         </Link>
                     </div>
 
@@ -97,11 +100,11 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                                 <div>
                                     {existingResponse ? (
                                         <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
-                                            Sudah Diisi
+                                            {t('activities.already_filled')}
                                         </span>
                                     ) : (
                                         <span className="px-3 py-1 rounded-full text-sm font-semibold bg-secondary/10 text-secondary">
-                                            Belum Diisi
+                                            {t('activities.not_filled')}
                                         </span>
                                     )}
                                 </div>
@@ -117,13 +120,13 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                                 {eventActivity.start_time && (
                                     <div className="flex items-center">
                                         <Calendar className="w-4 h-4 mr-1" />
-                                        Mulai: {format(new Date(eventActivity.start_time), 'd MMM yyyy HH:mm', { locale: id })}
+                                        {t('activities.start')}: {format(new Date(eventActivity.start_time), 'd MMM yyyy HH:mm', { locale: currentLocale })}
                                     </div>
                                 )}
                                 {eventActivity.end_time && (
                                     <div className="flex items-center">
                                         <Clock className="w-4 h-4 mr-1" />
-                                        Selesai: {format(new Date(eventActivity.end_time), 'd MMM yyyy HH:mm', { locale: id })}
+                                        {t('activities.end')}: {format(new Date(eventActivity.end_time), 'd MMM yyyy HH:mm', { locale: currentLocale })}
                                     </div>
                                 )}
                             </div>
@@ -138,9 +141,9 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                                                 <CheckCircle className="h-5 w-5 text-green-400" />
                                             </div>
                                             <div className="ml-3">
-                                                <h3 className="text-sm font-medium text-green-800">Terima kasih!</h3>
+                                                <h3 className="text-sm font-medium text-green-800">{t('activities.thank_you')}</h3>
                                                 <div className="mt-2 text-sm text-green-700">
-                                                    <p>Anda telah menyelesaikan kegiatan ini.</p>
+                                                    <p>{t('activities.completed_activity_msg')}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -155,7 +158,7 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                                                         {index + 1}. {question.question_text}
                                                     </h4>
                                                     <div className="text-gray-700 font-medium">
-                                                        Jawaban Anda: <span className="text-primary">
+                                                        {t('activities.your_answer')}: <span className="text-primary">
                                                             {Array.isArray(answer) ? answer.join(', ') : answer}
                                                         </span>
                                                     </div>
@@ -191,20 +194,19 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                                                                         });
                                                                     }}
                                                                     className="absolute top-3 left-3 z-20 bg-white/30 hover:bg-white/90 backdrop-blur-md text-white hover:text-primary rounded-full p-2 transition-all duration-300 transform hover:scale-110 shadow-lg"
-                                                                    title="Lihat Detail Lengkap"
+                                                                    title={t('activities.view_full_detail')}
                                                                 >
                                                                     <ZoomIn className="w-5 h-5" />
                                                                 </button>
 
-                                                                <label className={`block h-full cursor-pointer relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border-2 ${
-                                                                    (question.type === 'checkbox' 
-                                                                        ? (data.answers[question.id] || []).includes(option.value)
-                                                                        : data.answers[question.id] === option.value
-                                                                    ) ? 'border-primary ring-2 ring-indigo-600 ring-opacity-50' : 'border-transparent hover:border-indigo-300'
-                                                                }`}>
+                                                                <label className={`block h-full cursor-pointer relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border-2 ${(question.type === 'checkbox'
+                                                                    ? (data.answers[question.id] || []).includes(option.value)
+                                                                    : data.answers[question.id] === option.value
+                                                                ) ? 'border-primary ring-2 ring-indigo-600 ring-opacity-50' : 'border-transparent hover:border-indigo-300'
+                                                                    }`}>
                                                                     {/* Image Area */}
                                                                     <div className="aspect-[3/4] w-full bg-gray-100 relative overflow-hidden">
-                                                                        <img 
+                                                                        <img
                                                                             src={option.image ? `/storage/${option.image}` : '/assets/images/profilefoto/default-profile.png'}
                                                                             alt={option.value}
                                                                             className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
@@ -212,22 +214,22 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                                                                         />
                                                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity"></div>
                                                                     </div>
-                                                                    
+
                                                                     {/* Content */}
                                                                     <div className="p-4 absolute bottom-0 left-0 w-full">
                                                                         <div className="flex items-end justify-between">
                                                                             <div className="text-white">
                                                                                 <h3 className="text-xl font-bold leading-tight line-clamp-2">{option.value}</h3>
-                                                                                <p className="text-indigo-200 text-xs font-medium mt-1">Klik untuk memilih</p>
+                                                                                <p className="text-indigo-200 text-xs font-medium mt-1">{t('activities.click_to_select')}</p>
                                                                             </div>
-                                                                            
+
                                                                             <div className="bg-white rounded-full p-1 shadow-sm">
                                                                                 <input
                                                                                     type={question.type === 'checkbox' ? 'checkbox' : 'radio'}
                                                                                     name={`question_${question.id}`}
                                                                                     value={option.value}
                                                                                     checked={
-                                                                                        question.type === 'checkbox' 
+                                                                                        question.type === 'checkbox'
                                                                                             ? (data.answers[question.id] || []).includes(option.value)
                                                                                             : data.answers[question.id] === option.value
                                                                                     }
@@ -252,7 +254,7 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                                                                 rows="3"
                                                                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                                                                 required={question.is_required}
-                                                                placeholder="Tulis jawaban Anda di sini..."
+                                                                placeholder={t('activities.write_answer_here')}
                                                             />
                                                         ) : question.type === 'scale' ? (
                                                             <div className="flex items-center space-x-4">
@@ -307,7 +309,7 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                                             disabled={processing}
                                             className="w-full inline-flex justify-center rounded-md border border-transparent bg-primary py-3 px-4 text-base font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
                                         >
-                                            {processing ? 'Mengirim...' : 'Kirim Jawaban'}
+                                            {processing ? t('activities.sending') : t('activities.send_reply')}
                                         </button>
                                     </div>
                                 </form>
@@ -334,19 +336,19 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                                             </h3>
                                             <div className="mt-2">
                                                 <p className="text-sm text-gray-500 whitespace-pre-wrap">
-                                                    {candidateModal.description || 'Tidak ada deskripsi.'}
+                                                    {candidateModal.description || t('activities.no_description')}
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setCandidateModal(null)} 
+                                    <button
+                                        type="button"
+                                        onClick={() => setCandidateModal(null)}
                                         className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                                     >
-                                        Tutup
+                                        {t('activities.close')}
                                     </button>
                                 </div>
                             </div>

@@ -56,7 +56,7 @@ export default function About() {
 
     return (
         <WebLayout hasHeaderSpacer={false}>
-            <Head title="Tentang Kami - Solusi Enterprise" />
+            <Head title={`${t('nav.about')} - ${t('about.hero_badge')}`} />
             <style dangerouslySetInnerHTML={{
                 __html: `
                 /* Animations */

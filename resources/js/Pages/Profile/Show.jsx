@@ -805,9 +805,23 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         <p className="text-slate-300 text-sm leading-relaxed">
                                             Upgrade ke Premium untuk akses fitur eksklusif, batas lebih tinggi, dan analitik lengkap.
                                         </p>
-                                        <Link href={route('subscriptions.pricing')} className="block w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 font-black text-center rounded-2xl hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-400/20 active:scale-[0.98]">
-                                            Upgrade Sekarang
-                                        </Link>
+                                        <div className="flex flex-col gap-3">
+                                            <Link href={route('subscriptions.pricing')} className="block w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 font-black text-center rounded-2xl hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-400/20 active:scale-[0.98]">
+                                                {t('profile.upgrade_premium') || 'Upgrade Sekarang'}
+                                            </Link>
+
+                                            {/* Upgrade to Creator Option for regular users */}
+                                            {isOwnProfile && (user.role || '').toLowerCase() === 'user' && (
+                                                <Link
+                                                    href={route('profile.upgrade-to-creator')}
+                                                    method="post"
+                                                    as="button"
+                                                    className="block w-full py-3 bg-white/10 border border-white/20 text-white font-bold text-center rounded-2xl hover:bg-white/20 transition-all active:scale-[0.98] text-sm"
+                                                >
+                                                    <i className="fas fa-rocket mr-2"></i> Jadi Creator (Gratis)
+                                                </Link>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>

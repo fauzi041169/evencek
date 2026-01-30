@@ -414,6 +414,13 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                                         isDropdown = true;
                                         options = districts;
                                         label = t('regions.district');
+                                    } else if (['jenis_kelamin', 'gender'].includes(originalField.key)) {
+                                        isDropdown = true;
+                                        options = [
+                                            { id: 'L', name: 'Laki-laki' },
+                                            { id: 'P', name: 'Perempuan' }
+                                        ];
+                                        label = 'Jenis Kelamin';
                                     }
 
                                     // Check for custom dropdown syntax
