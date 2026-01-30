@@ -169,7 +169,7 @@ export default function CommentSection({ activity, comments }) {
 
     return (
 
-        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-[600px]">
+        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-[calc(100vh-240px)] min-h-[600px]">
             <div className="flex-shrink-0 flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     <i className="fas fa-comments text-indigo-500"></i>

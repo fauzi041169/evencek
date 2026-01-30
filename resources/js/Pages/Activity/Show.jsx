@@ -50,7 +50,7 @@ export default function Show({
     const { t, i18n } = useTranslation();
     const { auth, appSettings } = usePage().props;
     const [search, setSearch] = useState('');
-    const [perPage, setPerPage] = useState(20);
+    const [perPage, setPerPage] = useState(participants?.per_page || 20);
     const [filterBatch, setFilterBatch] = useState(selectedBatchId || '');
     const [showCardModal, setShowCardModal] = useState(false);
     const cardContainerRef = useRef(null);
