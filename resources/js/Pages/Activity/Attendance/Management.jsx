@@ -96,6 +96,22 @@ export default function Management({
         });
     };
 
+    // Toggle attendance visibility
+    const handleToggleVisibility = (attendanceId, currentVisibility) => {
+        router.post(route('attendance.toggle.visibility', attendanceId), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: `Absensi berhasil ${currentVisibility ? 'disembunyikan' : 'ditampilkan'} ke peserta`,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
+        });
+    };
+
     // Toggle attendance checkbox
     const handleAttendanceCheckbox = async (userId, isPresent) => {
         try {
@@ -253,7 +269,7 @@ export default function Management({
 
     return (
         <AcaraLayout
-            title={`Manajemen Absensi - ${selectedActivity.name}`}
+            title="Manajemen Absensi"
             activity={selectedActivity}
             fluid={true}
             noPadding={true}
@@ -261,54 +277,81 @@ export default function Management({
             <div className="bg-gray-50 min-h-screen">
                 <div className="w-full mx-auto px-4 py-4">
                     {/* Activity Header */}
-                    <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900">{selectedActivity.name}</h2>
-                        <div className="text-gray-600 text-sm mt-1">
-                            {selectedActivity.date && (
-                                <span className="mr-4">
-                                    <i className="fas fa-clock mr-1"></i>
-                                    {new Date(selectedActivity.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                </span>
-                            )}
-                            {selectedActivity.location && (
-                                <span>
-                                    <i className="fas fa-map-marker-alt mr-1"></i>
-                                    {selectedActivity.location}
-                                </span>
-                            )}
+                    <div className="mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-3xl font-extra-bold text-gray-900 tracking-tight">{selectedActivity.name}</h2>
+                                <div className="flex flex-wrap items-center gap-4 text-gray-500 mt-2 text-sm font-medium">
+                                    {selectedActivity.date && (
+                                        <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full">
+                                            <i className="fas fa-calendar-alt text-blue-500"></i>
+                                            {new Date(selectedActivity.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </div>
+                                    )}
+                                    {selectedActivity.location && (
+                                        <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full">
+                                            <i className="fas fa-map-marker-alt text-red-500"></i>
+                                            {selectedActivity.location}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-blue-500 rounded-xl p-4 text-white shadow-lg">
-                            <h3 className="text-3xl font-bold">{totalParticipants}</h3>
-                            <p className="text-blue-100">Total Peserta</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                        <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg shadow-blue-200 transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                            <div className="relative z-10">
+                                <p className="text-blue-100 font-medium text-sm mb-1">Total Peserta</p>
+                                <h3 className="text-4xl font-bold tracking-tight">{totalParticipants}</h3>
+                            </div>
+                            <div className="absolute right-0 top-0 p-4 opacity-10">
+                                <i className="fas fa-users text-6xl"></i>
+                            </div>
                         </div>
-                        <div className="bg-green-500 rounded-xl p-4 text-white shadow-lg">
-                            <h3 className="text-3xl font-bold">{attendances?.length || 0}</h3>
-                            <p className="text-green-100">Total Jenis Absen</p>
+
+                        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg shadow-emerald-200 transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                            <div className="relative z-10">
+                                <p className="text-emerald-100 font-medium text-sm mb-1">Total Jenis Absen</p>
+                                <h3 className="text-4xl font-bold tracking-tight">{attendances?.length || 0}</h3>
+                            </div>
+                            <div className="absolute right-0 top-0 p-4 opacity-10">
+                                <i className="fas fa-clipboard-list text-6xl"></i>
+                            </div>
                         </div>
-                        <div className="bg-yellow-500 rounded-xl p-4 text-white shadow-lg">
-                            <h3 className="text-3xl font-bold">{presentCount || 0}</h3>
-                            <p className="text-yellow-100">Peserta Hadir</p>
+
+                        <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg shadow-orange-200 transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                            <div className="relative z-10">
+                                <p className="text-amber-100 font-medium text-sm mb-1">Peserta Hadir</p>
+                                <h3 className="text-4xl font-bold tracking-tight">{presentCount || 0}</h3>
+                            </div>
+                            <div className="absolute right-0 top-0 p-4 opacity-10">
+                                <i className="fas fa-check-circle text-6xl"></i>
+                            </div>
                         </div>
-                        <div className="bg-red-500 rounded-xl p-4 text-white shadow-lg">
-                            <h3 className="text-3xl font-bold">{Math.max(0, totalParticipants - (presentCount || 0))}</h3>
-                            <p className="text-red-100">Tidak Hadir</p>
+
+                        <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg shadow-pink-200 transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                            <div className="relative z-10">
+                                <p className="text-rose-100 font-medium text-sm mb-1">Tidak Hadir</p>
+                                <h3 className="text-4xl font-bold tracking-tight">{Math.max(0, totalParticipants - (presentCount || 0))}</h3>
+                            </div>
+                            <div className="absolute right-0 top-0 p-4 opacity-10">
+                                <i className="fas fa-times-circle text-6xl"></i>
+                            </div>
                         </div>
                     </div>
 
                     {/* Progress Bar */}
                     {selectedAttendanceId && totalParticipants > 0 && (
-                        <div className="bg-white rounded-xl p-4 mb-6 shadow">
+                        <div className="bg-white rounded-2xl p-5 mb-8 shadow-sm border border-gray-100">
                             <div className="flex justify-between items-center mb-2">
                                 <span className="font-semibold">Progres Kehadiran: {attendancePercentage.toFixed(1)}%</span>
                                 <span className="text-sm text-gray-600">{presentCount} dari {totalParticipants} peserta</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden">
                                 <div
-                                    className="bg-green-500 h-3 rounded-full transition-all duration-300"
+                                    className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-4 rounded-full transition-all duration-500 ease-out shadow-sm"
                                     style={{ width: `${attendancePercentage}%` }}
                                 ></div>
                             </div>
@@ -318,13 +361,13 @@ export default function Management({
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Attendance List */}
                         <div className="lg:col-span-1">
-                            <div className="bg-white rounded-xl shadow overflow-hidden">
-                                <div className="bg-blue-500 px-4 py-3 flex justify-between items-center">
-                                    <h3 className="text-white font-bold">List Absen</h3>
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                    <h3 className="text-gray-800 font-bold text-lg">List Absen</h3>
                                     {canManageAttendance && (
                                         <button
                                             onClick={() => setShowAddModal(true)}
-                                            className="bg-white text-secondary px-3 py-1 rounded-lg text-sm font-semibold hover:bg-gray-100"
+                                            className="bg-white text-secondary px-3 py-1.5 rounded-lg text-sm font-semibold border border-gray-200 hover:bg-gray-50 hover:text-blue-700 transition-colors shadow-sm"
                                         >
                                             <i className="fas fa-plus mr-1"></i> Tambah
                                         </button>
@@ -335,73 +378,30 @@ export default function Management({
                                         attendances.map((attendance, index) => (
                                             <div
                                                 key={attendance.id}
-                                                className={`p-3 cursor-pointer hover:bg-gray-50 transition-all ${selectedAttendanceId === attendance.id
-                                                    ? 'bg-red-50 border-l-4 border-red-500'
+                                                className={`p-4 cursor-pointer hover:bg-gray-50 transition-all border-b border-gray-50 last:border-0 ${selectedAttendanceId === attendance.id
+                                                    ? 'bg-blue-50/50 border-l-4 border-blue-500'
                                                     : 'border-l-4 border-transparent'
                                                     }`}
                                                 onClick={() => handleAttendanceClick(attendance.id)}
                                             >
                                                 <div className="flex items-start justify-between gap-2">
-                                                    <div className="flex items-start gap-2 flex-1 min-w-0">
-                                                        <span className={`w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-xs font-bold text-white mt-1 ${selectedAttendanceId === attendance.id ? 'bg-red-500' : 'bg-gray-500'
+                                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                        <span className={`w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg text-xs font-bold text-white shadow-sm mt-0.5 ${selectedAttendanceId === attendance.id ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gray-400'
                                                             }`}>
                                                             {index + 1}
                                                         </span>
                                                         <div className="flex flex-col min-w-0 w-full">
-                                                            <span className={`break-words whitespace-normal leading-tight ${selectedAttendanceId === attendance.id ? 'font-semibold text-red-700' : ''}`}>
+                                                            <span className={`break-words whitespace-normal font-medium leading-tight ${selectedAttendanceId === attendance.id ? 'text-blue-800' : 'text-gray-700'}`}>
                                                                 {attendance.name}
                                                             </span>
                                                             <div className="flex flex-wrap gap-1 mt-1">
                                                                 {attendance.jenis_absen.split(',').map((type, i) => (
-                                                                    <span key={i} className="px-2 py-0.5 bg-secondary/10 text-blue-700 text-xs rounded">
+                                                                    <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded border border-blue-100">
                                                                         {type}
                                                                     </span>
                                                                 ))}
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                                                        {hasType(attendance, 'QR Mandiri') && (
-                                                            <button
-                                                                onClick={() => showQRCode(attendance.id, selectedActivity.name, attendance.name)}
-                                                                className="p-1.5 bg-blue-500 text-white rounded hover:bg-secondary"
-                                                                title="Tampilkan QR Code"
-                                                            >
-                                                                <i className="fas fa-qrcode text-xs"></i>
-                                                            </button>
-                                                        )}
-                                                        {hasType(attendance, 'Manual') && (
-                                                            <button
-                                                                onClick={() => handleMarkAllPresent(attendance.id)}
-                                                                className="p-1.5 bg-green-500 text-white rounded hover:bg-green-600"
-                                                                title="Absen Semua"
-                                                            >
-                                                                <i className="fas fa-check-double text-xs"></i>
-                                                            </button>
-                                                        )}
-                                                        {hasType(attendance, 'QR Manual') && (
-                                                            <Link
-                                                                href={route('attendance.scan', { activity: selectedActivity.id, attendance: attendance.id })}
-                                                                className="p-1.5 bg-blue-500 text-white rounded hover:bg-secondary"
-                                                                title="Scan QR"
-                                                            >
-                                                                <i className="fas fa-camera text-xs"></i>
-                                                            </Link>
-                                                        )}
-                                                        <Link
-                                                            href={route('attendance.results', { attendance: attendance.id, activity_id: selectedActivity.id })}
-                                                            className="p-1.5 bg-cyan-500 text-white rounded hover:bg-cyan-600"
-                                                            title="Hasil Absensi"
-                                                        >
-                                                            <i className="fas fa-chart-bar text-xs"></i>
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => handleDeleteAttendance(attendance.id, attendance.name)}
-                                                            className="p-1.5 bg-red-500 text-white rounded hover:bg-red-600"
-                                                            title="Hapus"
-                                                        >
-                                                            <i className="fas fa-trash text-xs"></i>
-                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -417,7 +417,7 @@ export default function Management({
 
                         {/* Participants List */}
                         <div className="lg:col-span-2">
-                            <div className="bg-white rounded-xl shadow overflow-hidden">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                 <div className="p-4 border-b">
                                     <div className="flex flex-col gap-4">
                                         <div>
@@ -427,6 +427,64 @@ export default function Management({
                                                     : 'Daftar Peserta Aktivitas'
                                                 }
                                             </h3>
+                                            {selectedAttendance && (
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <button
+                                                        onClick={() => handleToggleVisibility(selectedAttendance.id, selectedAttendance.is_visible)}
+                                                        className={`px-3 py-1.5 ${selectedAttendance.is_visible ? 'bg-indigo-500' : 'bg-gray-400'} text-white rounded-lg hover:opacity-90 text-sm font-medium flex items-center gap-2 transition-colors`}
+                                                        title={selectedAttendance.is_visible ? "Sembunyikan dari Peserta" : "Tampilkan ke Peserta"}
+                                                    >
+                                                        <i className={`fas ${selectedAttendance.is_visible ? 'fa-eye' : 'fa-eye-slash'}`}></i>
+                                                        <span className="hidden sm:inline">{selectedAttendance.is_visible ? 'Tampil' : 'Sembunyi'}</span>
+                                                    </button>
+                                                    {hasType(selectedAttendance, 'QR Mandiri') && (
+                                                        <button
+                                                            onClick={() => showQRCode(selectedAttendance.id, selectedActivity.name, selectedAttendance.name)}
+                                                            className="px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium flex items-center gap-2 transition-colors"
+                                                            title="Tampilkan QR Code"
+                                                        >
+                                                            <i className="fas fa-qrcode"></i>
+                                                            <span className="hidden sm:inline">QR Code</span>
+                                                        </button>
+                                                    )}
+                                                    {hasType(selectedAttendance, 'Manual') && (
+                                                        <button
+                                                            onClick={() => handleMarkAllPresent(selectedAttendance.id)}
+                                                            className="px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm font-medium flex items-center gap-2 transition-colors"
+                                                            title="Absen Semua"
+                                                        >
+                                                            <i className="fas fa-check-double"></i>
+                                                            <span className="hidden sm:inline">Absen Semua</span>
+                                                        </button>
+                                                    )}
+                                                    {hasType(selectedAttendance, 'QR Manual') && (
+                                                        <Link
+                                                            href={route('attendance.scan', { activity: selectedActivity.id, attendance: selectedAttendance.id })}
+                                                            className="px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium flex items-center gap-2 transition-colors"
+                                                            title="Scan QR"
+                                                        >
+                                                            <i className="fas fa-camera"></i>
+                                                            <span className="hidden sm:inline">Scan QR</span>
+                                                        </Link>
+                                                    )}
+                                                    <Link
+                                                        href={route('attendance.results', { attendance: selectedAttendance.id, activity_id: selectedActivity.id })}
+                                                        className="px-3 py-1.5 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 text-sm font-medium flex items-center gap-2 transition-colors"
+                                                        title="Hasil Absensi"
+                                                    >
+                                                        <i className="fas fa-chart-bar"></i>
+                                                        <span className="hidden sm:inline">Hasil</span>
+                                                    </Link>
+                                                    <button
+                                                        onClick={() => handleDeleteAttendance(selectedAttendance.id, selectedAttendance.name)}
+                                                        className="px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm font-medium flex items-center gap-2 transition-colors"
+                                                        title="Hapus"
+                                                    >
+                                                        <i className="fas fa-trash"></i>
+                                                        <span className="hidden sm:inline">Hapus</span>
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
                                             {selectedAttendanceId && (
@@ -480,7 +538,7 @@ export default function Management({
                                                     value={search}
                                                     onChange={(e) => setSearch(e.target.value)}
                                                     placeholder="Cari berdasarkan nama, provinsi, atau kabupaten..."
-                                                    className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-blue-500 transition-all duration-200"
                                                 />
                                             </div>
                                         </div>
@@ -500,16 +558,16 @@ export default function Management({
                                 {/* Table */}
                                 <div className="overflow-x-auto">
                                     <table className="w-full">
-                                        <thead className="bg-gray-50">
+                                        <thead className="bg-gray-50 border-b border-gray-200">
                                             <tr>
-                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nama</th>
-                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell">Provinsi</th>
-                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden md:table-cell">Kabupaten</th>
+                                                <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama</th>
+                                                <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider hidden md:table-cell">Provinsi</th>
+                                                <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider hidden md:table-cell">Kabupaten</th>
                                                 {selectedAttendanceId && (
-                                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Status</th>
+                                                    <th className="px-5 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Status</th>
                                                 )}
                                                 {selectedAttendanceId && isManualType && (
-                                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Aksi</th>
+                                                    <th className="px-5 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Aksi</th>
                                                 )}
                                             </tr>
                                         </thead>
@@ -532,23 +590,25 @@ export default function Management({
                                                             </td>
                                                             {selectedAttendanceId && (
                                                                 <td className="px-4 py-3 text-center whitespace-nowrap align-top">
-                                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isPresent
-                                                                        ? 'bg-green-100 text-green-800'
-                                                                        : 'bg-red-100 text-red-800'
+                                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium shadow-sm ${isPresent
+                                                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                                                        : 'bg-rose-100 text-rose-800 border border-rose-200'
                                                                         }`}>
-                                                                        <i className={`fas ${isPresent ? 'fa-check-circle' : 'fa-times-circle'} mr-1`}></i>
+                                                                        <i className={`fas ${isPresent ? 'fa-check-circle' : 'fa-times-circle'} mr-1.5`}></i>
                                                                         {isPresent ? 'Hadir' : 'Tidak Hadir'}
                                                                     </span>
                                                                 </td>
                                                             )}
                                                             {selectedAttendanceId && isManualType && (
-                                                                <td className="px-4 py-3 text-center whitespace-nowrap align-top">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={isPresent}
-                                                                        onChange={(e) => handleAttendanceCheckbox(participant.user_id, e.target.checked)}
-                                                                        className="w-6 h-6 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
-                                                                    />
+                                                                <td className="px-5 py-4 text-center whitespace-nowrap align-middle">
+                                                                    <div className="flex justify-center">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isPresent}
+                                                                            onChange={(e) => handleAttendanceCheckbox(participant.user_id, e.target.checked)}
+                                                                            className="w-5 h-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer transition-all hover:scale-110"
+                                                                        />
+                                                                    </div>
                                                                 </td>
                                                             )}
                                                         </tr>

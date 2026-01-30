@@ -36,26 +36,14 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
     const canManageAttendance = (user && currentActivityId) && (isAdmin || isOwner || isCommittee);
 
     // Redirect to login if not authenticated
+    useEffect(() => {
+        if (!auth || !auth.user) {
+            window.location.href = route('login');
+        }
+    }, [auth]);
+
     if (!auth || !auth.user) {
-        return (
-            <>
-                <Head title="Silakan Login" />
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[50]">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-md text-center shadow-2xl">
-                        <h3 className="text-xl font-bold mb-2 text-gray-900">Silakan Login</h3>
-                        <p className="text-gray-600 mb-4">Halaman ini memerlukan login untuk diakses.</p>
-                        <div className="flex items-center justify-center gap-2">
-                            <Link href={route('login')} className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition">
-                                Login Sekarang
-                            </Link>
-                            <Link href={route('auth.google.login')} className="inline-flex items-center justify-center px-4 py-2 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition">
-                                Google
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </>
-        );
+        return null;
     }
 
     const NavLink = ({ href, icon, label, active }) => (
@@ -300,12 +288,23 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                                         <p className="text-sm font-semibold text-gray-700 leading-tight">{user.name}</p>
                                         <p className="text-xs text-gray-500 capitalize">{user.role}</p>
                                     </div>
-                                    <img
-                                        src={user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
-                                        alt={user.name}
-                                        className="w-9 h-9 rounded-full object-cover border-2 border-primary/20 shadow-sm"
-                                        onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                    />
+                                    <div className="h-9 w-9 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                                        {user.profile_photo_url ? (
+                                            <img
+                                                src={user.profile_photo_url}
+                                                alt={user.name}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = 'none';
+                                                    e.currentTarget.nextSibling.classList.remove('hidden');
+                                                    e.currentTarget.nextSibling.classList.add('flex');
+                                                }}
+                                            />
+                                        ) : null}
+                                        <div className={`w-full h-full items-center justify-center text-sm font-bold text-indigo-600 bg-indigo-100 ${user.profile_photo_url ? 'hidden' : 'flex'}`}>
+                                            {user.name?.charAt(0).toUpperCase()}
+                                        </div>
+                                    </div>
                                 </button>
 
                                 {/* Dropdown Menu */}
@@ -322,12 +321,23 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                                         {/* Header */}
                                         <div className="bg-gradient-to-br from-indigo-600 to-purple-700 px-5 py-4">
                                             <div className="flex items-center gap-3">
-                                                <img
-                                                    src={user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
-                                                    alt={user.name}
-                                                    className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-md"
-                                                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                                />
+                                                <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-white shadow-md bg-white/20 flex items-center justify-center flex-shrink-0">
+                                                    {user.profile_photo_url ? (
+                                                        <img
+                                                            src={user.profile_photo_url}
+                                                            alt={user.name}
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                e.currentTarget.style.display = 'none';
+                                                                e.currentTarget.nextSibling.classList.remove('hidden');
+                                                                e.currentTarget.nextSibling.classList.add('flex');
+                                                            }}
+                                                        />
+                                                    ) : null}
+                                                    <div className={`w-full h-full items-center justify-center text-sm font-bold text-white bg-white/20 ${user.profile_photo_url ? 'hidden' : 'flex'}`}>
+                                                        {user.name?.charAt(0).toUpperCase()}
+                                                    </div>
+                                                </div>
                                                 <div className="text-white">
                                                     <p className="text-sm font-bold tracking-wide">{user.name}</p>
                                                     <p className="text-xs text-indigo-200 font-medium capitalize bg-white/20 px-2 py-0.5 rounded-full inline-block mt-0.5">

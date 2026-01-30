@@ -17,6 +17,11 @@ class Attendance extends Model
         'name',
         'jenis_absen',
         'description',
+        'is_visible',
+    ];
+
+    protected $casts = [
+        'is_visible' => 'boolean',
     ];
 
     public function activity()

@@ -76,7 +76,7 @@ export default function Sidebar({ collapsed = false, showProfile = true, auth: p
                             <MenuSection title="Creator" />
                             <NavLink href={safeRoute('activity.list')} icon="fas fa-clipboard-list" label="Aktivitas" />
                             <NavLink href={safeRoute('news.list')} icon="fas fa-newspaper" label="Berita" />
-                            <NavLink href={safeRoute('subscriptions.payments.manage')} icon="fas fa-money-bill-wave" label="Keuangan" />
+                            <NavLink href={safeRoute('payments.manage')} icon="fas fa-money-bill-wave" label="Keuangan" />
                         </>
                     )}
 
@@ -86,6 +86,13 @@ export default function Sidebar({ collapsed = false, showProfile = true, auth: p
                             <NavLink href={safeRoute('partners.list')} icon="fas fa-handshake" label="Mitra" />
                             <NavLink href={safeRoute('pengurus.index')} icon="fas fa-user-tie" label="Pengurus" />
                             <NavLink href={safeRoute('user-management.index')} icon="fas fa-users-cog" label="User Management" />
+                            <NavLink href={safeRoute('maintenance')} icon="fas fa-wrench" label="Maintenance" />
+
+                            <MenuSection title="Keuangan Aplikasi" />
+                            <NavLink href={safeRoute('subscriptions.payments.manage')} icon="fas fa-file-invoice-dollar" label="Langganan" />
+                            <NavLink href={safeRoute('payments.manage')} icon="fas fa-wallet" label="Kegiatan" />
+                            <NavLink href={safeRoute('payments.rules')} icon="fas fa-sliders-h" label="Administrasi" />
+                            <NavLink href={safeRoute('payments.ledger')} icon="fas fa-balance-scale" label="Neraca" />
                         </>
                     )}
 

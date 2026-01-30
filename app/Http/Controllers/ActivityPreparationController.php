@@ -5239,16 +5239,18 @@ class ActivityPreparationController extends Controller
 
         $request->validate([
             'activity_batch_id' => 'nullable|exists:activity_batches,id',
-            'name' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255',
             'material_type' => 'nullable|in:image,pdf,ppt,doc,audio,video,link',
             'file' => 'nullable|file|max:102400', // 100MB max
+            'files' => 'nullable|array', // Added for bulk uploads
+            'files.*' => 'file|max:102400',
             'link_url' => 'nullable|url|max:2048',
             'description' => 'nullable|string',
             'cover_image' => 'nullable|image|max:5120', // 5MB max for cover
         ]);
 
         $selectedType = $request->input('material_type');
-        $hasFile = $request->hasFile('file');
+        $hasFile = $request->hasFile('file') || $request->hasFile('files');
         $hasLink = $request->filled('link_url');
 
         // Handle cover image upload
@@ -5260,25 +5262,13 @@ class ActivityPreparationController extends Controller
         }
 
         if (! $hasFile && $hasLink) {
-            $fileType = 'link';
-            $filePath = $request->link_url;
-            
-            // Auto-detect YouTube
-            $youtubePattern = '/^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/i';
-            if (preg_match($youtubePattern, $request->link_url)) {
-                $fileType = 'youtube';
-                
-                // Extract clean embed URL if possible, or just store the link and handle on frontend
-                // For simplicity, we store the link as is. Frontend will handle embedding.
-            }
-
             ActivityMaterial::create([
                 'activity_id' => $activityId,
                 'activity_batch_id' => $request->activity_batch_id,
-                'name' => $request->name,
+                'name' => $request->name ?? $request->link_url,
                 'file_name' => null,
-                'file_path' => $filePath,
-                'file_type' => $fileType,
+                'file_path' => $request->link_url,
+                'file_type' => preg_match('/^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/i', $request->link_url) ? 'youtube' : 'link',
                 'mime_type' => null,
                 'file_size' => 0,
                 'description' => $request->description,
@@ -5286,50 +5276,53 @@ class ActivityPreparationController extends Controller
                 'cover_image_path' => $coverImagePath,
             ]);
         } elseif ($hasFile) {
-            $file = $request->file('file');
-            $originalName = $file->getClientOriginalName();
-            $extension = $file->getClientOriginalExtension();
-            $mimeType = $file->getMimeType();
-            $fileSize = $file->getSize();
+            $files = $request->hasFile('files') ? $request->file('files') : [$request->file('file')];
+            
+            foreach ($files as $file) {
+                $originalName = $file->getClientOriginalName();
+                $extension = $file->getClientOriginalExtension();
+                $mimeType = $file->getMimeType();
+                $fileSize = $file->getSize();
 
-            $fileType = null;
-            if ($selectedType) {
-                $fileType = $selectedType;
-            } else {
-                if (str_starts_with((string) $mimeType, 'image/')) {
-                    $fileType = 'image';
-                } elseif ($mimeType === 'application/pdf' || strtolower($extension) === 'pdf') {
-                    $fileType = 'pdf';
-                } elseif (in_array(strtolower($extension), ['ppt', 'pptx'], true) || in_array($mimeType, ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'], true)) {
-                    $fileType = 'ppt';
-                } elseif (in_array(strtolower($extension), ['doc', 'docx'], true) || in_array($mimeType, ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'], true)) {
-                    $fileType = 'doc';
-                } elseif (str_starts_with((string) $mimeType, 'audio/')) {
-                    $fileType = 'audio';
-                } elseif (str_starts_with((string) $mimeType, 'video/')) {
-                    $fileType = 'video';
+                $fileType = null;
+                if ($selectedType) {
+                    $fileType = $selectedType;
                 } else {
-                    $fileType = 'file';
+                    if (str_starts_with((string) $mimeType, 'image/')) {
+                        $fileType = 'image';
+                    } elseif ($mimeType === 'application/pdf' || strtolower($extension) === 'pdf') {
+                        $fileType = 'pdf';
+                    } elseif (in_array(strtolower($extension), ['ppt', 'pptx'], true) || in_array($mimeType, ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'], true)) {
+                        $fileType = 'ppt';
+                    } elseif (in_array(strtolower($extension), ['doc', 'docx'], true) || in_array($mimeType, ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'], true)) {
+                        $fileType = 'doc';
+                    } elseif (str_starts_with((string) $mimeType, 'audio/')) {
+                        $fileType = 'audio';
+                    } elseif (str_starts_with((string) $mimeType, 'video/')) {
+                        $fileType = 'video';
+                    } else {
+                        $fileType = 'file';
+                    }
                 }
+
+                $directory = 'activity_materials/'.$activityId;
+                $filename = time().'_'.uniqid().'.'.$extension;
+                $filePath = $file->storeAs($directory, $filename, 'public');
+
+                ActivityMaterial::create([
+                    'activity_id' => $activityId,
+                    'activity_batch_id' => $request->activity_batch_id,
+                    'name' => $request->name ?: pathinfo($originalName, PATHINFO_FILENAME),
+                    'file_name' => $originalName,
+                    'file_path' => $filePath,
+                    'file_type' => $fileType,
+                    'mime_type' => $mimeType,
+                    'file_size' => $fileSize,
+                    'description' => $request->description,
+                    'uploaded_by' => auth()->id(),
+                    'cover_image_path' => $coverImagePath,
+                ]);
             }
-
-            $directory = 'activity_materials/'.$activityId;
-            $filename = time().'_'.uniqid().'.'.$extension;
-            $filePath = $file->storeAs($directory, $filename, 'public');
-
-            ActivityMaterial::create([
-                'activity_id' => $activityId,
-                'activity_batch_id' => $request->activity_batch_id,
-                'name' => $request->name,
-                'file_name' => $originalName,
-                'file_path' => $filePath,
-                'file_type' => $fileType,
-                'mime_type' => $mimeType,
-                'file_size' => $fileSize,
-                'description' => $request->description,
-                'uploaded_by' => auth()->id(),
-                'cover_image_path' => $coverImagePath,
-            ]);
         } else {
             return redirect()->back()->with('error', 'Silakan pilih file atau masukkan link materi.');
         }

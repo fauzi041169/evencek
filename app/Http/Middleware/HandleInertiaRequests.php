@@ -53,12 +53,24 @@ class HandleInertiaRequests extends Middleware
             ],
             'appSettings' => [
                 'app_name' => \App\Models\Setting::get('app_name') ?? config('app.name', 'EVENTCEK'),
-                'app_logo' => \App\Models\Setting::get('app_logo') ?? '/assets/images/logo.png',
+                'app_logo' => self::formatAssetUrl(\App\Models\Setting::get('app_logo') ?? '/assets/images/logo.png'),
                 'hero_animation_style' => \App\Models\Setting::get('hero_animation_style', 'circles'),
-                'hero_background_1' => \App\Models\Setting::get('home_hero_background_1') ?? \App\Models\Setting::get('home_hero_background'),
+                'hero_background_1' => self::formatAssetUrl(\App\Models\Setting::get('home_hero_background_1') ?? \App\Models\Setting::get('home_hero_background')),
                 'navbar_opacity' => \App\Models\Setting::get('navbar_opacity', '1'),
                 'colors' => \App\Models\Setting::getColors(),
             ],
         ]);
+    }
+    private static function formatAssetUrl($path)
+    {
+        if (!$path) return null;
+        if (str_starts_with($path, 'http')) return $path;
+        if (str_starts_with($path, 'assets/')) return '/' . $path;
+        if (str_starts_with($path, '/assets/')) return $path;
+        if (str_starts_with($path, 'storage/')) return '/' . $path;
+        if (str_starts_with($path, '/storage/')) return $path;
+        
+        // Assume storage path if not matching above
+        return '/storage/' . $path;
     }
 }

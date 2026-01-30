@@ -118,7 +118,7 @@ Route::prefix('subscriptions')->name('subscriptions.')->controller(SubscriptionC
         
         // Admin routes
         Route::get('/manage', 'manage')->name('manage')->middleware('role:admin,superadmin');
-        Route::get('/subscriptions/manage-payments', 'managePaymentsAdmin')->name('payments.manage')->middleware('role:admin,superadmin');
+        Route::get('/subscriptions/manage-payments', 'managePaymentsAdmin')->name('subscriptions.payments.manage')->middleware('role:admin,superadmin');
         Route::post('/subscriptions/{subscription}/cancel', 'cancel')->name('cancel');
         Route::post('/subscriptions/{subscription}/renew', 'renew')->name('renew');
         // Admin/Superadmin: update status pembayaran langganan
@@ -549,6 +549,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/{activity}/create', 'create')->name('create');
         Route::get('/download', 'download')->name('download');
         Route::post('/{activity}/store', 'store')->name('store');
+        Route::post('/{attendance}/toggle-visibility', 'toggleVisibility')->name('toggle.visibility');
         Route::get('/{activity}/{attendance}/edit', 'edit')->name('edit');
         Route::put('/{activity}/{attendance}', 'update')->name('update');
         Route::get('/{activity}/{attendance}/scan', 'scan')->name('scan');
@@ -601,6 +602,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/channels', 'channels')->name('channels')->middleware('role:admin,superadmin');
         Route::post('/channels/{channel}/toggle', 'toggleChannel')->name('channels.toggle')->middleware('role:admin,superadmin');
         Route::post('/channels/{channel}/update', 'updateChannel')->name('channels.update')->middleware('role:admin,superadmin');
+        Route::get('/manage', 'manage')->name('manage')->middleware('auth');
         Route::get('/', 'index')->name('index');
         Route::get('/lookup', 'lookupByActivityUser')->name('lookup');
         Route::get('/activities/{activity}/create', 'create')->name('activity.create');

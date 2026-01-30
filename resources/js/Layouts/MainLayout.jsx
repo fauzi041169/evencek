@@ -33,27 +33,16 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
         window.dispatchEvent(new Event('editModeChanged'));
     };
 
-    // Redirect to login if not authenticated (though middleware should handle this)
+    // Redirect to login if not authenticated
+    useEffect(() => {
+        if (!auth || !auth.user) {
+            window.location.href = route('login');
+        }
+    }, [auth]);
+
+    // Render nothing while redirecting if not authenticated
     if (!auth || !auth.user) {
-        return (
-            <>
-                <Head title="Silakan Login" />
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[50]">
-                    <div className="bg-white rounded-xl p-6 w-full max-w-md text-center shadow-2xl">
-                        <h3 className="text-xl font-bold mb-2 text-gray-900">Silakan Login</h3>
-                        <p className="text-gray-600 mb-4">Halaman ini memerlukan login untuk diakses.</p>
-                        <div className="flex items-center justify-center gap-2">
-                            <Link href={route('login')} className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition">
-                                Login Sekarang
-                            </Link>
-                            <Link href={route('auth.google.login')} className="inline-flex items-center justify-center px-4 py-2 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition">
-                                Google
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </>
-        );
+        return null;
     }
 
     return (
@@ -115,9 +104,9 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
 
             {/* Desktop Sidebar (Permanent) */}
             <aside
-                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 shadow-xl hidden lg:block ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
+                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 shadow-xl hidden lg:block bg-[#0F172A] ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
             >
-                <Sidebar collapsed={isSidebarCollapsed} showProfile={false} />
+                <Sidebar collapsed={isSidebarCollapsed} showProfile={false} auth={auth} user={auth?.user} appSettings={appSettings} />
             </aside>
 
             {/* Main Content Wrapper */}

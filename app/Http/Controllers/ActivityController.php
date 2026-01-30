@@ -1066,7 +1066,7 @@ class ActivityController extends Controller
             ->get();
 
         // Eager load rundown items to display in activity.show
-        $activity->load(['rundowns', 'galleries', 'comments.user', 'comments.children.user']);
+        $activity->load(['rundowns', 'galleries', 'comments.user', 'comments.children.user', 'speakers']);
 
         // Get subscription limits and participant count for creator
         $participantLimitInfo = null;
@@ -1091,6 +1091,7 @@ class ActivityController extends Controller
 
         // Fetch all relevant attendances for this activity and batch context
         $allAttendances = Attendance::where('activity_id', $activity->id)
+            ->where('is_visible', true)
             ->when($displayBatchId, function ($q) use ($displayBatchId) {
                 $q->where(function ($sq) use ($displayBatchId) {
                     $sq->where('activity_batch_id', $displayBatchId)
@@ -1105,31 +1106,39 @@ class ActivityController extends Controller
         foreach ($allAttendances as $attendance) {
             $types = explode(',', $attendance->jenis_absen);
             
-            if (in_array('Mandiri', $types)) {
+            if (in_array('Mandiri', $types) || in_array('QR Mandiri', $types)) {
                 $description = json_decode($attendance->description ?? '{}', true);
                 $isEnabled = isset($description['enabled']) ? (bool) $description['enabled'] : false;
                 
-                if ($isEnabled) {
-                    // Tandai apakah user sudah absen (opsional, untuk penanda)
-                    $hasAttended = false;
-                    if (auth()->check()) {
-                        $hasAttended = DB::table('activity_records')
-                            ->where('activity_id', $activity->id)
-                            ->where('attendance_id', $attendance->id)
-                            ->where('user_id', auth()->id())
-                            ->where('status', 1)
-                            ->exists();
-                    }
-                    $attendance->has_attended = $hasAttended;
-                    $mandiriAttendances->push($attendance);
+                // Always include, but mark enabled status
+                // Tandai apakah user sudah absen (opsional, untuk penanda)
+                $hasAttended = false;
+                if (auth()->check()) {
+                    $hasAttended = DB::table('activity_records')
+                        ->where('activity_id', $activity->id)
+                        ->where('attendance_id', $attendance->id)
+                        ->where('user_id', auth()->id())
+                        ->where('status', 1)
+                        ->exists();
                 }
+                $attendance->has_attended = $hasAttended;
+                $attendance->is_mandiri_enabled = $isEnabled;
+                $mandiriAttendances->push($attendance);
             }
         }
 
         // Filter Manual and QR Manual Attendances
-        $manualAttendances = $allAttendances->filter(function ($attendance) {
+        // Only include those that are NOT already in mandiriAttendances to avoid duplicates
+        $manualAttendances = $allAttendances->filter(function ($attendance) use ($mandiriAttendances) {
             $types = explode(',', $attendance->jenis_absen);
-            return in_array('Manual', $types) || in_array('QR Manual', $types);
+            $isManual = in_array('Manual', $types) || in_array('QR Manual', $types);
+            
+            // If it's already in mandiri list, don't show in manual list
+            if ($mandiriAttendances->contains('id', $attendance->id)) {
+                return false;
+            }
+            
+            return $isManual;
         });
 
         $userHasAnyAttendance = false;

@@ -483,6 +483,16 @@ class AttendanceController extends Controller
             ->with('success', 'Sesi absensi berhasil diperbarui.');
     }
 
+    public function toggleVisibility(Attendance $attendance)
+    {
+        $this->authorizeActivityAccess($attendance->activity_id);
+
+        $attendance->is_visible = ! $attendance->is_visible;
+        $attendance->save();
+
+        return redirect()->back()->with('success', 'Visibilitas absensi berhasil diubah.');
+    }
+
     public function index(Request $request, $activity = null)
     {
         try {
@@ -1670,7 +1680,8 @@ class AttendanceController extends Controller
                 ], 403);
             }
 
-            if (! in_array($attendance->jenis_absen, ['Mandiri', 'QR Mandiri'])) {
+            $types = array_map('trim', explode(',', $attendance->jenis_absen));
+            if (! in_array('Mandiri', $types) && ! in_array('QR Mandiri', $types)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Jenis absensi ini tidak dapat dilakukan secara mandiri',
@@ -1678,6 +1689,8 @@ class AttendanceController extends Controller
             }
 
             // Cek apakah absen mandiri diaktifkan (default OFF jika tidak ada flag)
+            // REVISI: User meminta jika sudah tampil, maka dianggap aktif.
+            /*
             $description = json_decode($attendance->description ?? '{}', true);
             $isEnabled = isset($description['enabled']) ? (bool) $description['enabled'] : false;
             if (! $isEnabled) {
@@ -1686,6 +1699,7 @@ class AttendanceController extends Controller
                     'message' => 'Absensi mandiri untuk jenis absen ini belum diaktifkan',
                 ], 403);
             }
+            */
 
             // Cek apakah sudah pernah absen
             $existingRecord = DB::table('activity_records')

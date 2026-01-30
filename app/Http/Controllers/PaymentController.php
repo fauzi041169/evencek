@@ -2593,8 +2593,8 @@ class PaymentController extends Controller
         try {
             // Allow access to admin/superadmin OR creator/committee/division leader
             // Loosened: creators are allowed even if permission seeding is missing, but data is still filtered below
-            if (! auth()->user()->hasPermission('view_payments')) {
-                $user = auth()->user();
+            $user = auth()->user();
+            if (! $user->isAdmin() && ! $user->hasPermission('view_payments')) {
                 $hasOwnViewPermission = $user->hasPermission('view_payments_own_activity') || $user->isCreator();
                 if (! $hasOwnViewPermission) {
                     abort(403, 'Anda tidak memiliki akses ke halaman manajemen pembayaran');
@@ -2629,6 +2629,7 @@ class PaymentController extends Controller
             // Jika bukan admin/superadmin, batasi hanya pembayaran dari kegiatan miliknya/diampunya
             $currentUser = auth()->user();
             if (
+                ! $currentUser->isAdmin() &&
                 ! $currentUser->hasPermission('view_payments') &&
                 ($currentUser->hasPermission('view_payments_own_activity') || $currentUser->isCreator())
             ) {

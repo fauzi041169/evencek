@@ -86,6 +86,48 @@ export default function Show({
         });
     };
 
+    const handleMandiriAttendance = (attendanceId) => {
+        if (!auth.user) {
+            setIsLoginModalOpen(true);
+            return;
+        }
+
+        Swal.fire({
+            title: t('activities.attendance_confirmation_title', 'Konfirmasi Absensi'),
+            text: t('activities.attendance_confirmation_text', 'Apakah Anda yakin ingin melakukan absensi sekarang?'),
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: t('activities.attendance_confirm_yes', 'Ya, Absen'),
+            cancelButtonText: t('common.cancel', 'Batal')
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Gunakan axios manual agar bisa handle response JSON (403/500) dengan baik tanpa error Inertia modal
+                axios.post(route('attendance.mandiri'), {
+                    activity_id: activity.id,
+                    attendance_id: attendanceId
+                })
+                    .then((response) => {
+                        Swal.fire(
+                            t('common.success', 'Berhasil'),
+                            t('activities.attendance_success', 'Absensi berhasil dicatat!'),
+                            'success'
+                        ).then(() => {
+                            // Reload page data to update UI
+                            router.reload({ only: ['mandiriAttendances', 'manualAttendances', 'userHasAnyAttendance'] });
+                        });
+                    })
+                    .catch((error) => {
+                        const message = error.response?.data?.message || t('activities.attendance_failed', 'Terjadi kesalahan saat absensi');
+                        Swal.fire(
+                            t('common.error', 'Gagal'),
+                            message,
+                            'error'
+                        );
+                    });
+            }
+        });
+    };
+
     // Hero Animation Logic
     const heroAnim = appSettings?.hero_animation_style || 'circles';
     const heroBg1 = appSettings?.hero_background_1 || null;
@@ -93,8 +135,10 @@ export default function Show({
     const getStorageUrl = (path) => {
         if (!path) return null;
         if (path.startsWith('http')) return path;
-        if (path.startsWith('storage/')) return '/' + path;
-        return '/' + path;
+        // Fix: Ensure proper flash prefix and avoid treating 'storage' as a domain
+        if (path.startsWith('storage')) return '/' + path;
+        if (path.startsWith('/storage')) return path;
+        return '/storage/' + path.replace(/^\/+/, '');
     };
 
     const heroBgUrl = heroBg1 ? getStorageUrl(heroBg1) : null;
@@ -902,7 +946,8 @@ export default function Show({
                     )}
 
                     <div id="content" className="container mx-auto px-4 pt-12 relative z-10">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                             {/* Main Content (Left) */}
                             <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
 
@@ -1054,30 +1099,36 @@ export default function Show({
                                 )}
 
                                 {/* Speakers Section */}
-                                {isVisible('speakers') && activity.speakers && activity.speakers.length > 0 && (
+                                {isVisible('speakers') && activity.speakers && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-user-tie text-primary"></i>
                                             {t('activities.speakers')}
                                         </h3>
                                         <div className="space-y-4">
-                                            {activity.speakers.map((speaker) => (
-                                                <div key={speaker.id} className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                                                        <img
-                                                            src={speaker.photo || '/assets/images/profilefoto/default-profile.png'}
-                                                            alt={speaker.name}
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
-                                                        />
+                                            {activity.speakers.length > 0 ? (
+                                                activity.speakers.map((speaker) => (
+                                                    <div key={speaker.id} className="flex items-center gap-3">
+                                                        <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                                                            <img
+                                                                src={speaker.photo || '/assets/images/profilefoto/default-profile.png'}
+                                                                alt={speaker.name}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium text-gray-900">{speaker.name}</p>
+                                                            {speaker.title && <p className="text-xs text-gray-500">{speaker.title}</p>}
+                                                            {speaker.institution && <p className="text-xs text-gray-400">{speaker.institution}</p>}
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="font-medium text-gray-900">{speaker.name}</p>
-                                                        {speaker.title && <p className="text-xs text-gray-500">{speaker.title}</p>}
-                                                        {speaker.institution && <p className="text-xs text-gray-400">{speaker.institution}</p>}
-                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-gray-500 text-sm italic py-2">
+                                                    Belum ada data narasumber.
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -1155,7 +1206,10 @@ export default function Show({
                                                                     src={fotoUrl}
                                                                     className="flex-shrink-0 rounded-full w-9 h-9 object-cover border border-gray-200"
                                                                     alt={participant.name}
-                                                                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                                                    onError={(e) => {
+                                                                        e.target.onerror = null;
+                                                                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(participant.name)}&color=7F9CF5&background=EBF4FF`;
+                                                                    }}
                                                                 />
                                                                 <div className="min-w-0">
                                                                     <div className="text-gray-900 font-semibold whitespace-normal break-words sm:truncate">{participant.name}</div>
@@ -1220,7 +1274,7 @@ export default function Show({
                             </div>
 
                             {/* Sidebar (Right) */}
-                            <div className="space-y-6 order-1 lg:order-2">
+                            <div className="space-y-6 order-1 lg:order-2 lg:sticky lg:top-24 h-fit">
                                 {/* User Status Card */}
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                     <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.participation_status')}</h3>
@@ -1301,7 +1355,7 @@ export default function Show({
                                                     </a>
                                                 )}
 
-                                                {isVisible('certificate') && certificatePrintSettings?.download_card_visible && (
+                                                {isVisible('certificate') && (
                                                     <a
                                                         href={route('activity.download-certificate', activity.id)}
                                                         target="_blank"
@@ -1319,21 +1373,114 @@ export default function Show({
                                 {/* Attendance Section if any */}
                                 {(mandiriAttendances?.length > 0 || manualAttendances?.length > 0) && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.attendance')}</h3>
-                                        <div className="space-y-3">
-                                            {mandiriAttendances.map(att => (
-                                                <div key={att.id} className="p-3 border border-gray-200 rounded-xl flex items-center justify-between">
-                                                    <span className="font-medium text-sm text-gray-700">{att.name}</span>
-                                                    {att.has_attended ? (
-                                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">{t('activities.attended')}</span>
-                                                    ) : (
-                                                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">{t('activities.not_yet')}</span>
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                                                <i className="fas fa-clipboard-check text-xl"></i>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-gray-900">{t('activities.attendance')}</h3>
+                                                <p className="text-xs text-gray-500">Silakan lakukan absensi sesuai jadwal kegiatan.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {Array.isArray(mandiriAttendances) && mandiriAttendances.length > 0 && mandiriAttendances.map(att => (
+                                                <div
+                                                    key={att.id}
+                                                    className={`relative overflow-hidden rounded-xl border transition-all duration-300 ${att.has_attended
+                                                        ? 'bg-emerald-50/50 border-emerald-100'
+                                                        : 'bg-white border-gray-200 hover:border-blue-300 shadow-sm hover:shadow-md'
+                                                        }`}
+                                                >
+                                                    {att.has_attended && (
+                                                        <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden">
+                                                            <div className="absolute top-[6px] right-[-24px] rotate-45 bg-emerald-500 text-white text-[9px] font-bold py-1 w-24 text-center shadow-sm">
+                                                                HADIR
+                                                            </div>
+                                                        </div>
                                                     )}
+
+                                                    <div className="p-4 flex items-start gap-4">
+                                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors ${att.has_attended
+                                                            ? 'bg-emerald-100 text-emerald-600'
+                                                            : 'bg-blue-50 text-blue-600'
+                                                            }`}>
+                                                            <i className={`fas ${att.has_attended ? 'fa-check' : 'fa-qrcode'} text-lg`}></i>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h4 className={`font-bold text-base ${att.has_attended ? 'text-emerald-900' : 'text-gray-800'}`}>
+                                                                {att.name}
+                                                            </h4>
+
+                                                            <div className="mt-2">
+                                                                {!att.has_attended ? (
+                                                                    <button
+                                                                        onClick={() => handleMandiriAttendance(att.id)}
+                                                                        className="group relative inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-md shadow-blue-200 active:scale-95 transition-all overflow-hidden"
+                                                                    >
+                                                                        <i className="fas fa-fingerprint animate-pulse text-sm"></i>
+                                                                        <span>Klik untuk Absen</span>
+                                                                    </button>
+                                                                ) : (
+                                                                    <div className="flex items-center gap-2 text-xs font-medium text-emerald-600">
+                                                                        <i className="fas fa-check-circle"></i>
+                                                                        <span>Tercatat</span>
+                                                                        <span className="text-gray-400 mx-1">•</span>
+                                                                        <span className="text-gray-500">Terverifikasi</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            {Array.isArray(manualAttendances) && manualAttendances.length > 0 && manualAttendances.map(att => (
+                                                <div
+                                                    key={att.id}
+                                                    className={`relative rounded-xl border transition-all duration-300 ${att.has_attended
+                                                        ? 'bg-emerald-50/50 border-emerald-100'
+                                                        : 'bg-gray-50/50 border-gray-200'
+                                                        }`}
+                                                >
+                                                    <div className="p-4 flex items-start gap-4">
+                                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${att.has_attended
+                                                            ? 'bg-emerald-100 text-emerald-600'
+                                                            : 'bg-gray-200 text-gray-500'
+                                                            }`}>
+                                                            <i className={`fas ${att.has_attended ? 'fa-user-check' : 'fa-user-clock'} text-lg`}></i>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h4 className={`font-bold text-base ${att.has_attended ? 'text-emerald-900' : 'text-gray-700'}`}>
+                                                                {att.name}
+                                                            </h4>
+                                                            <div className="mt-2 flex items-center gap-2">
+                                                                <span className="text-xs text-gray-500">
+                                                                    {att.has_attended
+                                                                        ? 'Dikonfirmasi oleh Panitia'
+                                                                        : 'Menunggu konfirmasi panitia'
+                                                                    }
+                                                                </span>
+                                                                {att.has_attended && (
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 ml-2">
+                                                                        Hadir
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Desktop Comment Section */}
+                                <div className="hidden lg:block mt-6">
+                                    {isVisible('comments') && (activity.enable_comments ?? true) && (
+                                        <CommentSection activity={activity} comments={activity.comments} />
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -1357,6 +1504,10 @@ export default function Show({
                                                         src={gallerySrc}
                                                         alt="Galeri"
                                                         className="w-full h-full object-cover transition transform group-hover:scale-110"
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = '/assets/images/begron/defoult.png';
+                                                        }}
                                                     />
                                                 </div>
                                             );
@@ -1370,10 +1521,12 @@ export default function Show({
                             </div>
                         )}
 
-                        {/* Comment Section */}
-                        {isVisible('comments') && (activity.enable_comments ?? true) && (
-                            <CommentSection activity={activity} comments={activity.comments} />
-                        )}
+                        {/* Mobile Comment Section */}
+                        <div className="lg:hidden">
+                            {isVisible('comments') && (activity.enable_comments ?? true) && (
+                                <CommentSection activity={activity} comments={activity.comments} />
+                            )}
+                        </div>
                     </div>
                 </div>
 

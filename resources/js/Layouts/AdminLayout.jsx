@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import Sidebar from '../Components/Sidebar';
 import Alerts from '../Components/Alerts';
@@ -12,6 +12,18 @@ export default function AdminLayout({ children, title = '' }) {
     const [loggingOut, setLoggingOut] = useState(false);
 
     const settings = appSettings || {};
+
+    // Redirect to login if not authenticated
+    useEffect(() => {
+        if (!auth || !auth.user) {
+            window.location.href = route('login');
+        }
+    }, [auth]);
+
+    // Render nothing while redirecting if not authenticated
+    if (!auth || !auth.user) {
+        return null;
+    }
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -52,16 +64,16 @@ export default function AdminLayout({ children, title = '' }) {
                         </button>
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar pt-2" onClick={() => setIsMobileSidebarOpen(false)}>
-                        <Sidebar collapsed={false} showProfile={false} />
+                        <Sidebar collapsed={false} showProfile={false} auth={auth} user={auth?.user} appSettings={appSettings} />
                     </div>
                 </div>
             </Modal>
 
             {/* Desktop Sidebar (Permanent) */}
             <aside
-                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 hidden lg:block ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}
+                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 hidden lg:block bg-[#0F172A] ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}
             >
-                <Sidebar collapsed={isSidebarCollapsed} showProfile={false} />
+                <Sidebar collapsed={isSidebarCollapsed} showProfile={false} auth={auth} user={auth?.user} appSettings={appSettings} />
             </aside>
 
             {/* Main Content */}
@@ -143,12 +155,23 @@ export default function AdminLayout({ children, title = '' }) {
                                                     <div className="flex justify-between items-start">
                                                         <div className="flex items-center gap-3">
                                                             <div className="relative">
-                                                                <img
-                                                                    src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
-                                                                    alt={auth.user.name}
-                                                                    className="h-12 w-12 rounded-full object-cover border-2 border-white shadow-md"
-                                                                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
-                                                                />
+                                                                <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-white shadow-md bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                                                                    {auth.user.profile_photo_url ? (
+                                                                        <img
+                                                                            src={auth.user.profile_photo_url}
+                                                                            alt={auth.user.name}
+                                                                            className="w-full h-full object-cover"
+                                                                            onError={(e) => {
+                                                                                e.currentTarget.style.display = 'none';
+                                                                                e.currentTarget.nextSibling.classList.remove('hidden');
+                                                                                e.currentTarget.nextSibling.classList.add('flex');
+                                                                            }}
+                                                                        />
+                                                                    ) : null}
+                                                                    <div className={`w-full h-full items-center justify-center text-lg font-bold text-indigo-600 bg-indigo-100 ${auth.user.profile_photo_url ? 'hidden' : 'flex'}`}>
+                                                                        {auth.user.name?.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                </div>
                                                                 <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-400 rounded-full border-2 border-indigo-600"></div>
                                                             </div>
                                                             <div className="text-white">

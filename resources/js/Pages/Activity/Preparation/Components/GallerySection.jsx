@@ -9,6 +9,7 @@ export default function GallerySection({ activity, materials }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         file: null,
+        files: [],
         material_type: 'image', // Explicitly set for gallery uploads
     });
 
@@ -122,45 +123,57 @@ export default function GallerySection({ activity, materials }) {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">Judul Foto <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Judul Foto (Opsional)</label>
                             <input
                                 type="text"
                                 className="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                                placeholder="Contoh: Suasana Registrasi"
+                                placeholder="Biarkan kosong untuk menggunakan nama file"
                                 value={data.name}
                                 onChange={(e) => setData('name', e.target.value)}
-                                required
                             />
+                            <p className="text-[10px] text-gray-400 mt-1 italic">Judul ini akan digunakan untuk semua foto jika upload sekaligus.</p>
                             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
                         </div>
 
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-1">File Foto <span className="text-red-500">*</span></label>
-                            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer relative">
+                            <div className="mt-1 flex justify-center px-4 pt-4 pb-4 border-2 border-gray-300 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer relative">
                                 <div className="space-y-1 text-center">
                                     <div className="flex text-sm text-gray-600 justify-center">
                                         <label htmlFor="file-upload" className="relative cursor-pointer bg-transparent rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none">
-                                            <span>Upload a file</span>
+                                            <span>Pilih Foto (Bisa banyak)</span>
                                             <input
                                                 id="file-upload"
                                                 name="file-upload"
                                                 type="file"
                                                 className="sr-only"
                                                 accept="image/*"
-                                                onChange={(e) => setData('file', e.target.files[0])}
+                                                multiple
+                                                onChange={(e) => setData('files', Array.from(e.target.files))}
                                                 required
                                             />
                                         </label>
                                     </div>
-                                    <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
-                                    {data.file && (
-                                        <p className="text-xs text-emerald-600 font-medium mt-2">
-                                            Terpilih: {data.file.name}
-                                        </p>
+                                    <p className="text-[10px] text-gray-500">PNG, JPG, GIF up to 5MB per file</p>
+                                    {data.files && data.files.length > 0 && (
+                                        <div className="mt-2 bg-white p-2 rounded border border-gray-100 shadow-sm">
+                                            <p className="text-xs text-emerald-600 font-bold mb-1">
+                                                {data.files.length} Foto Terpilih
+                                            </p>
+                                            <div className="flex flex-wrap gap-1 justify-center">
+                                                {data.files.slice(0, 3).map((f, i) => (
+                                                    <span key={i} className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100 truncate max-w-[80px]">
+                                                        {f.name}
+                                                    </span>
+                                                ))}
+                                                {data.files.length > 3 && <span className="text-[10px] text-gray-400">+{data.files.length - 3} lainnya</span>}
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             </div>
                             {errors.file && <p className="text-xs text-red-500 mt-1">{errors.file}</p>}
+                            {errors.files && <p className="text-xs text-red-500 mt-1">{errors.files}</p>}
                         </div>
 
                         <div className="mt-6 flex justify-end gap-3">

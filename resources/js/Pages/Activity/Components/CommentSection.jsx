@@ -47,6 +47,10 @@ const CommentItem = ({ comment, activityId, depth = 0 }) => {
                     className="h-10 w-10 rounded-full object-cover border border-gray-200"
                     src={comment.user?.profile_photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user?.name || 'User')}&color=7F9CF5&background=EBF4FF`}
                     alt={comment.user?.name}
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user?.name || 'User')}&color=7F9CF5&background=EBF4FF`;
+                    }}
                 />
             </div>
             <div className="flex-grow">
@@ -164,8 +168,9 @@ export default function CommentSection({ activity, comments }) {
     const averageRating = activity.statistics?.average_rating || 0;
 
     return (
-        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-6">
+
+        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-[600px]">
+            <div className="flex-shrink-0 flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     <i className="fas fa-comments text-indigo-500"></i>
                     {t('activities.comment_reviews')}
@@ -182,81 +187,83 @@ export default function CommentSection({ activity, comments }) {
                 )}
             </div>
 
-            {/* New Comment Form */}
-            {auth.user ? (
-                <div className="mb-8 bg-gray-50 rounded-xl p-4 border border-gray-100">
-                    <h4 className="font-medium text-gray-900 mb-3">{t('activities.write_comment')}</h4>
-                    <form onSubmit={handleSubmit}>
-                        {/* Rating Input */}
-                        <div className="mb-4">
-                            <label className="block text-xs font-medium text-gray-500 mb-1">{t('activities.rating')}</label>
-                            <div className="flex items-center gap-1">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                    <button
-                                        key={star}
-                                        type="button"
-                                        onClick={() => setData('rating', star)}
-                                        onMouseEnter={() => setHoverRating(star)}
-                                        onMouseLeave={() => setHoverRating(0)}
-                                        className="focus:outline-none transition transform hover:scale-110"
-                                    >
-                                        <i className={`fas fa-star text-xl ${(hoverRating || data.rating) >= star ? 'text-yellow-400' : 'text-gray-300'}`}></i>
-                                    </button>
-                                ))}
-                                <span className="ml-2 text-sm text-gray-600 font-medium">
-                                    {hoverRating || data.rating ? (hoverRating || data.rating) + '.0' : t('activities.select_rating')}
-                                </span>
+            <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                {/* New Comment Form */}
+                {auth.user ? (
+                    <div className="mb-8 bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <h4 className="font-medium text-gray-900 mb-3">{t('activities.write_comment')}</h4>
+                        <form onSubmit={handleSubmit}>
+                            {/* Rating Input */}
+                            <div className="mb-4">
+                                <label className="block text-xs font-medium text-gray-500 mb-1">{t('activities.rating')}</label>
+                                <div className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            type="button"
+                                            onClick={() => setData('rating', star)}
+                                            onMouseEnter={() => setHoverRating(star)}
+                                            onMouseLeave={() => setHoverRating(0)}
+                                            className="focus:outline-none transition transform hover:scale-110"
+                                        >
+                                            <i className={`fas fa-star text-xl ${(hoverRating || data.rating) >= star ? 'text-yellow-400' : 'text-gray-300'}`}></i>
+                                        </button>
+                                    ))}
+                                    <span className="ml-2 text-sm text-gray-600 font-medium">
+                                        {hoverRating || data.rating ? (hoverRating || data.rating) + '.0' : t('activities.select_rating')}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
 
-                        <textarea
-                            value={data.body}
-                            onChange={(e) => setData('body', e.target.value)}
-                            className="w-full rounded-xl border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
-                            placeholder={t('activities.share_opinion')}
-                            rows="3"
-                            required
-                        ></textarea>
-                        {errors.body && <p className="text-red-500 text-xs mt-1">{errors.body}</p>}
+                            <textarea
+                                value={data.body}
+                                onChange={(e) => setData('body', e.target.value)}
+                                className="w-full rounded-xl border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
+                                placeholder={t('activities.share_opinion')}
+                                rows="3"
+                                required
+                            ></textarea>
+                            {errors.body && <p className="text-red-500 text-xs mt-1">{errors.body}</p>}
 
-                        <div className="mt-3 flex justify-end">
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 shadow-md hover:shadow-lg transition-all"
-                            >
-                                <i className="fas fa-paper-plane mr-2"></i>
-                                {processing ? t('activities.sending') : t('activities.send_comment')}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            ) : (
-                <div className="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-200 text-center">
-                    <p className="text-gray-600 mb-3">{t('activities.login_to_write_comment')}</p>
-                    <a
-                        href={route('login')}
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                    >
-                        {t('activities.login_register')}
-                    </a>
-                </div>
-            )}
-
-            {/* Comment List */}
-            <div className="space-y-2">
-                {comments && comments.length > 0 ? (
-                    comments.map((comment) => (
-                        <CommentItem key={comment.id} comment={comment} activityId={activity.id} />
-                    ))
+                            <div className="mt-3 flex justify-end">
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 shadow-md hover:shadow-lg transition-all"
+                                >
+                                    <i className="fas fa-paper-plane mr-2"></i>
+                                    {processing ? t('activities.sending') : t('activities.send_comment')}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 ) : (
-                    <div className="text-center py-10 text-gray-500">
-                        <div className="mb-3">
-                            <i className="fas fa-comments text-4xl text-gray-200"></i>
-                        </div>
-                        <p>{t('activities.be_first_comment')}</p>
+                    <div className="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                        <p className="text-gray-600 mb-3">{t('activities.login_to_write_comment')}</p>
+                        <a
+                            href={route('login')}
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                        >
+                            {t('activities.login_register')}
+                        </a>
                     </div>
                 )}
+
+                {/* Comment List */}
+                <div className="space-y-2">
+                    {comments && comments.length > 0 ? (
+                        comments.map((comment) => (
+                            <CommentItem key={comment.id} comment={comment} activityId={activity.id} />
+                        ))
+                    ) : (
+                        <div className="text-center py-10 text-gray-500">
+                            <div className="mb-3">
+                                <i className="fas fa-comments text-4xl text-gray-200"></i>
+                            </div>
+                            <p>{t('activities.be_first_comment')}</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
