@@ -545,7 +545,12 @@ class ActivityController extends Controller
         $activity->image = ImageHelper::getImageUrl($activity->image, asset('assets/images/hero/defoult.webp'), 'activities');
 
         // Load user relationship for chat widget
-        $activity->load('user', 'owners');
+        $activity->load('user');
+        try {
+            $activity->load('owners');
+        } catch (\Throwable $e) {
+            // Ignore if owners table does not exist
+        }
 
         $activeBatch = $activity->activeBatch;
         $userEnrollment = null;

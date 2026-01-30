@@ -91,9 +91,6 @@ Route::get('/login', function() {
     return redirect()->route('home', ['login' => 'true']);
 });
 Route::get('/about', [AboutController::class, 'index'])->name('about');
-Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance');
-    Route::post('/maintenance/update-app', [MaintenanceController::class, 'updateApp'])->name('maintenance.update-app');
-    Route::post('/maintenance/npm-run-build', [MaintenanceController::class, 'npmRunBuild'])->name('maintenance.npm-run-build');
 
 // Subscription Routes
 Route::prefix('subscriptions')->name('subscriptions.')->controller(SubscriptionController::class)->group(function () {
@@ -670,6 +667,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     Route::prefix('maintenance')->name('maintenance.')->controller(MaintenanceController::class)->group(function () {
         Route::get('/', 'index')->name('index')->middleware('role:superadmin');
         Route::post('/update', 'update')->name('update')->middleware('role:superadmin');
+        Route::post('/update-app', 'updateApp')->name('update-app')->middleware('role:superadmin');
         Route::post('/enable', 'enable')->name('enable')->middleware('role:superadmin');
         Route::post('/disable', 'disable')->name('disable')->middleware('role:superadmin');
         Route::post('/toggle-apk', 'toggleApkVisibility')->name('toggle-apk')->middleware('role:superadmin');
