@@ -105,7 +105,10 @@ class ActivityPreparationController extends Controller
             $newDivisionsCreated = false;
 
             foreach ($committeePositions as $committee) {
-                $positionName = trim($committee->position);
+                $positionName = trim((string) $committee->position);
+                if (empty($positionName)) {
+                    continue;
+                }
                 $lowerPositionName = strtolower($positionName);
 
                 // Check if it is a main position

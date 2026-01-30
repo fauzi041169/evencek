@@ -71,7 +71,7 @@ export default function AdminLayout({ children, title = '' }) {
 
             {/* Desktop Sidebar (Permanent) */}
             <aside
-                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 hidden lg:block bg-[#0F172A] ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}
+                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 hidden lg:block bg-[#0F172A] overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}
             >
                 <Sidebar collapsed={isSidebarCollapsed} showProfile={false} auth={auth} user={auth?.user} appSettings={appSettings} />
             </aside>
