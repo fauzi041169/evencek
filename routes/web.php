@@ -193,31 +193,7 @@ Route::get('/speakers/{speaker}/photo', [ActivitySpeakerController::class, 'getP
 // Creator Page Settings
 Route::post('/creator/{subdomain}/settings', [ActivityController::class, 'updatePageSettings'])->name('creator.page.settings');
 
-// Payment Routes
-Route::prefix('payments')->name('payments.')->middleware(['auth'])->controller(PaymentController::class)->group(function () {
-    Route::get('/create/{activity}', 'create')->name('create');
-    Route::get('/methods/{activity}', 'getPaymentMethodsJson')->name('methods');
-    Route::post('/store/{activity}', 'store')->name('store');
-    Route::get('/ledger', 'financialLedger')->name('ledger');
-    Route::post('/channels/sync', 'syncChannels')->name('channels.sync'); // Added sync route
-    
-    // Rule Routes
-    Route::post('/rules/vouchers', 'financialRulesCreateVoucher')->name('rules.vouchers.create');
-    Route::post('/rules/auto-override', 'financialRulesSaveAutoOverride')->name('rules.auto-override.save');
-    Route::delete('/rules/auto-override/{activity}', 'financialRulesDeleteAutoOverride')->name('rules.auto-override.delete');
-    Route::post('/rules/subscription/visibility', 'setSubscriptionVisibility')->name('rules.subscription.visibility');
 
-    // Bank Account Routes
-    Route::post('/bank-account', 'saveBankAccount')->name('bank-account.save');
-    Route::post('/bank-account/update', 'updateBankAccount')->name('bank-account.update');
-    Route::post('/bank-account/delete', 'deleteBankAccount')->name('bank-account.delete');
-
-    // Resource-like routes for payments (Edit/Destroy)
-    Route::get('/{payment}/edit', 'edit')->name('edit');
-    Route::put('/{payment}/verify', 'verify')->name('verify');
-    Route::put('/{payment}', 'update')->name('update');
-    Route::delete('/{payment}', 'destroy')->name('destroy');
-});
 
 // Activity Speaker CV (Public) - Safe method bypassing symlink
 Route::get('/speakers/{speaker}/cv', [ActivitySpeakerController::class, 'getCv'])->name('activity.speakers.cv');
@@ -609,6 +585,30 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/rules', 'financialRulesSave')->name('rules.store')->middleware('role:admin,superadmin');
         Route::post('/rules/subscription-prices', 'financialRulesSaveSubscriptionPrices')->name('rules.subscription.save')->middleware('role:admin,superadmin');
         Route::post('/rules/plan-facilities', 'financialRulesSavePlanFacilities')->name('rules.plan-facilities.save')->middleware('role:admin,superadmin');
+
+        // Merged routes from previous group
+        Route::get('/create/{activity}', 'create')->name('create');
+        Route::get('/methods/{activity}', 'getPaymentMethodsJson')->name('methods');
+        Route::post('/store/{activity}', 'store')->name('store');
+        Route::get('/ledger', 'financialLedger')->name('ledger');
+        Route::post('/channels/sync', 'syncChannels')->name('channels.sync');
+        
+        // Rule Routes (Extra)
+        Route::post('/rules/vouchers', 'financialRulesCreateVoucher')->name('rules.vouchers.create');
+        Route::post('/rules/auto-override', 'financialRulesSaveAutoOverride')->name('rules.auto-override.save');
+        Route::delete('/rules/auto-override/{activity}', 'financialRulesDeleteAutoOverride')->name('rules.auto-override.delete');
+        Route::post('/rules/subscription/visibility', 'setSubscriptionVisibility')->name('rules.subscription.visibility');
+
+        // Bank Account Routes
+        Route::post('/bank-account', 'saveBankAccount')->name('bank-account.save');
+        Route::post('/bank-account/update', 'updateBankAccount')->name('bank-account.update');
+        Route::post('/bank-account/delete', 'deleteBankAccount')->name('bank-account.delete');
+
+        // Resource-like routes
+        Route::get('/{payment}/edit', 'edit')->name('edit');
+        Route::put('/{payment}', 'update')->name('update');
+        Route::delete('/{payment}', 'destroy')->name('destroy');
+
         Route::get('/{payment}', 'show')->name('show');
         Route::post('/{payment}/update-proof', 'updateProof')->name('update-proof');
         Route::put('/{payment}/verify', 'verify')->name('verify'); // Permission check dilakukan di controller

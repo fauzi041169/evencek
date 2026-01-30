@@ -13,9 +13,13 @@ export default function Sidebar({ collapsed = false, showProfile = true, auth: p
     // Safe route helper
     const safeRoute = (name, params) => {
         try {
-            if (typeof route !== 'function') return '#';
+            if (typeof route !== 'function') {
+                console.error('Ziggy route function missing');
+                return '#';
+            }
             return route(name, params);
         } catch (e) {
+            console.error(`Route error: ${name}`, e);
             return '#';
         }
     };
@@ -28,6 +32,7 @@ export default function Sidebar({ collapsed = false, showProfile = true, auth: p
     );
 
     const role = (user?.role || '').toLowerCase();
+    const isSuperAdmin = role === 'superadmin';
     const isAdmin = ['admin', 'superadmin'].includes(role);
     const isCreator = role === 'creator' || isAdmin;
     const isUser = !!user;

@@ -154,7 +154,9 @@ class Profile extends Model
         if ($this->foto) {
             // Check if it's a storage path (contains slash or starts with profile-photos)
             if (str_contains($this->foto, '/') || str_starts_with($this->foto, 'profile-photos')) {
-                return \Illuminate\Support\Facades\Storage::url($this->foto);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($this->foto)) {
+                    return \Illuminate\Support\Facades\Storage::url($this->foto);
+                }
             }
 
             $photoPath = public_path('assets/images/profilefoto/'.$this->foto);
