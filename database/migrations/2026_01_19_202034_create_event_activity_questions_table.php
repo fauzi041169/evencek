@@ -11,16 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('event_activity_questions', function (Blueprint $table) {
-            $table->customUid();
-            $table->foreignCustomUid('event_activity_id')->constrained('event_activities')->onDelete('cascade');
-            $table->text('question_text');
-            $table->string('type')->default('multiple_choice');
-            $table->json('options')->nullable();
-            $table->integer('order')->default(0);
-            $table->boolean('is_required')->default(true);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('event_activity_questions')) {
+            Schema::create('event_activity_questions', function (Blueprint $table) {
+                $table->customUid();
+                $table->foreignCustomUid('event_activity_id')->constrained('event_activities')->onDelete('cascade');
+                $table->text('question_text');
+                $table->string('type')->default('multiple_choice');
+                $table->json('options')->nullable();
+                $table->integer('order')->default(0);
+                $table->boolean('is_required')->default(true);
+                $table->timestamps();
+            });
+        }
     }
 
     /**
