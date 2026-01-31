@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\District;
+use App\Models\ActivityCommitteeStructure;
+use App\Models\ActivityUser;
 use App\Models\Profile;
 use App\Models\Province;
 use App\Models\Regency;
@@ -41,8 +43,12 @@ class ProfileController extends Controller
         if ($user) {
             $user = User::with(['profile.province', 'profile.regency', 'profile.district', 'subscription.plan'])->findOrFail($user);
 
-            // Perbaiki otorisasi: izinkan admin dan superadmin melihat profil siapa pun
-            if (! auth()->check() || (auth()->id() !== $user->id && ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()))) {
+            // Perbaiki otorisasi: izinkan admin, superadmin, dan creator melihat profil siapa pun
+            if (! auth()->check() || (auth()->id() !== $user->id && 
+                ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && 
+                ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()) &&
+                ! (method_exists(auth()->user(), 'isCreator') && auth()->user()->isCreator())
+            )) {
                 abort(403, 'Unauthorized action.');
             }
         } else {
@@ -68,8 +74,12 @@ class ProfileController extends Controller
     {
         $user = User::with('profile')->findOrFail($id);
 
-        // Perbaiki otorisasi: izinkan admin dan superadmin mengedit profil siapa pun
-        if (! auth()->check() || (auth()->id() !== $user->id && ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()))) {
+        // Perbaiki otorisasi: izinkan admin, superadmin, dan creator mengedit profil siapa pun
+        if (! auth()->check() || (auth()->id() !== $user->id && 
+            ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && 
+            ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()) &&
+            ! (method_exists(auth()->user(), 'isCreator') && auth()->user()->isCreator())
+        )) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -100,7 +110,11 @@ class ProfileController extends Controller
         $id = $id ?? Auth::id();
         $user = User::findOrFail($id);
 
-        if (! auth()->check() || (auth()->id() !== $user->id && ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()))) {
+        if (! auth()->check() || (auth()->id() !== $user->id && 
+            ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && 
+            ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()) &&
+            ! (method_exists(auth()->user(), 'isCreator') && auth()->user()->isCreator())
+        )) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -318,6 +332,49 @@ class ProfileController extends Controller
 
             $profile->fill($profileData);
             $profile->save();
+
+            // Update ActivityUser custom_data if activity_id is provided
+            if ($request->has('activity_id') && $request->filled('activity_id')) {
+                $activityId = $request->input('activity_id');
+                // Additional data from request contains both profile extras and activity custom cols
+                // We will save them to custom_data of the activity user pivot/record
+                
+                $activityUser = ActivityUser::where('activity_id', $activityId)
+                    ->where('user_id', $user->id)
+                    ->first();
+
+                if ($activityUser) {
+                    $existingCustomData = $activityUser->custom_data ?? [];
+                    if (!is_array($existingCustomData)) {
+                        $existingCustomData = json_decode($existingCustomData, true) ?? [];
+                    }
+                    
+                    // Merge new data. We assume keys in additional_data are relevant
+                    // You might want to filter this if possible, but for now we trust the input
+                    $newCustomData = array_merge($existingCustomData, $additionalData);
+                    
+                    $activityUser->custom_data = $newCustomData;
+                    
+                    // Also update phone/name cache in ActivityUser/Committee if needed? 
+                    // Usually they are just relations, but sometimes cached.
+                    // For now just custom_data.
+                    
+                    $activityUser->save();
+                    
+                    // Also update Committee Structure phone/name if exists
+                     $committeeMember = ActivityCommitteeStructure::where('activity_id', $activityId)
+                        ->where('user_id', $user->id)
+                        ->first();
+                    if ($committeeMember) {
+                         $committeeMember->name = $user->name;
+                         $committeeMember->email = $user->email;
+                         if (isset($profileData['no_hp'])) {
+                             $committeeMember->phone = $profileData['no_hp'];
+                         }
+                         $committeeMember->save();
+                    }
+                }
+            }
 
             if ($request->wantsJson()) {
                 return response()->json([

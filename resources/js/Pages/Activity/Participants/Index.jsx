@@ -1429,16 +1429,14 @@ export default function Index({
                                             )}
                                             {visibleColumns['col-action'] && (
                                                 <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        {isAdmin && (
-                                                            <button
-                                                                onClick={() => openEditModal(participant)}
-                                                                className="p-2 hover:bg-indigo-50 rounded-lg text-slate-400 hover:text-primary transition-colors"
-                                                                title="Edit Profil Peserta"
-                                                            >
-                                                                <UserCog className="w-5 h-5" />
-                                                            </button>
-                                                        )}
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => openEditModal(participant)}
+                                                            className="p-2 hover:bg-indigo-50 rounded-lg text-slate-400 hover:text-primary transition-colors"
+                                                            title="Edit Profil Peserta"
+                                                        >
+                                                            <UserCog className="w-5 h-5" />
+                                                        </button>
                                                     </div>
                                                 </td>
                                             )}
@@ -1565,6 +1563,8 @@ export default function Index({
                 user={editingParticipant}
                 activity={activity}
                 provinces={safeProvinces}
+                customKeys={availableCustomKeys}
+                customOptions={customOptions}
             />
         </AcaraLayout>
     );
