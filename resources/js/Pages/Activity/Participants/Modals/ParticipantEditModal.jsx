@@ -56,7 +56,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
             // Ensure all configured columns (customKeys) are initialized and canonicalized
             if (Array.isArray(customKeys)) {
                 customKeys.forEach(rawKey => {
-                    const baseKey = rawKey.split('|')[0].replace(/^custom_/, '').trim();
+                    const baseKey = rawKey.split('|')[0].trim();
                     const lowerKey = baseKey.toLowerCase();
                     const existingKey = Object.keys(initialAdditionalData).find(k => k.toLowerCase() === lowerKey);
 
@@ -319,7 +319,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                             // Handle potential prefix difference used in state initialization
                                             const parts = rawKey.split('|');
                                             const label = parts[0].replace(/^custom_/, '').replace(/_/g, ' ').trim();
-                                            const baseKey = parts[0].replace(/^custom_/, '').trim();
+                                            const baseKey = parts[0].trim();
 
                                             const value = data.additional_data[baseKey];
 

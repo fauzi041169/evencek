@@ -298,6 +298,7 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
 
                 $activity = Activity::with('activeBatch')->find($this->activity_id);
                 $batchId = $activity->activeBatch ? $activity->activeBatch->id : null;
+                $initialStatus = ($activity && $activity->price <= 0) ? ActivityUser::STATUS_ACTIVE : ActivityUser::STATUS_VERIFICATION;
 
                 // Update existing user data (exclude email & password)
                 $userUpdates = [];
@@ -330,7 +331,7 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
                 }
 
                 $existingUser->activities()->attach($this->activity_id, [
-                    'status' => ActivityUser::STATUS_VERIFICATION,
+                    'status' => $initialStatus,
                     'activity_batch_id' => $batchId,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -441,9 +442,10 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
                 $activity = Activity::with('activeBatch')->find($this->activity_id);
                 if ($activity) {
                     $batchId = $activity->activeBatch ? $activity->activeBatch->id : null;
+                    $initialStatus = ($activity->price <= 0) ? ActivityUser::STATUS_ACTIVE : ActivityUser::STATUS_VERIFICATION;
 
                     $user->activities()->attach($this->activity_id, [
-                        'status' => ActivityUser::STATUS_VERIFICATION,
+                        'status' => $initialStatus,
                         'activity_batch_id' => $batchId,
                         'created_at' => now(),
                         'updated_at' => now(),

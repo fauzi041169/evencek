@@ -1417,28 +1417,43 @@ class ActivityPreparationController extends Controller
                 \Log::warning('Failed to load unassigned participants', ['error' => $e->getMessage()]);
             }
 
+            $builtinTemplateKeys = array_fill_keys([
+                'email', 'name', 'password', 'no_hp', 'nik', 'gender',
+                'birth_place', 'birth_date', 'address', 'province_id',
+                'regency_id', 'district_id', 'institution', 'occupation',
+                'category', 'position',
+            ], true);
+
             // 1. Extract Custom Keys (Moved here so they can be used for filter options)
             $customKeys = [];
             $baseKeys = [];
 
-            $builtinTemplateKeys = array_fill_keys([
-                'email',
-                'name',
-                'password',
-                'no_hp',
-                'nik',
-                'gender',
-                'birth_place',
-                'birth_date',
-                'address',
-                'province_id',
-                'regency_id',
-                'district_id',
-                'institution',
-                'occupation',
-                'category',
-                'position',
-            ], true);
+            // Prioritize current activity's custom fields (if any)
+            if ($activity && !empty($activity->custom_fields)) {
+                $fields = is_string($activity->custom_fields) 
+                    ? json_decode($activity->custom_fields, true) 
+                    : $activity->custom_fields;
+                    
+                if (is_array($fields)) {
+                    foreach ($fields as $field) {
+                        $label = $field['label'] ?? '';
+                        $key = $field['key'] ?? $label;
+                        if ($label === '') continue;
+                        
+                        $raw = $key;
+                        if (isset($field['type']) && $field['type'] === 'dropdown' && !empty($field['options'])) {
+                             $opts = is_array($field['options']) ? implode('~', $field['options']) : $field['options'];
+                             $raw .= '|Dropdown:' . $opts;
+                        }
+                        
+                        $lower = strtolower($key);
+                        // Skip built-in fields but store custom ones
+                        if (!isset($builtinTemplateKeys[$lower])) {
+                            $baseKeys[$lower] = $raw;
+                        }
+                    }
+                }
+            }
 
             if (Schema::hasTable('activities') && Schema::hasColumn('activities', 'import_template')) {
                 try {

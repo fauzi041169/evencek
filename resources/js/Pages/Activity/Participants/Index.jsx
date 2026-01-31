@@ -56,9 +56,15 @@ const getCustomValue = (participant, rawKey) => {
         return participant.custom_data[key] || '-';
     }
 
-    // Case-insensitive match
+    // Advanced match (case-insensitive and prefix-robust)
     const lowerKey = key.toLowerCase();
-    const foundKey = Object.keys(participant.custom_data).find(k => k.toLowerCase() === lowerKey);
+    const cleanLowerKey = lowerKey.replace(/^custom_/, '');
+
+    const foundKey = Object.keys(participant.custom_data).find(k => {
+        const lk = k.toLowerCase();
+        const clk = lk.replace(/^custom_/, '');
+        return lk === lowerKey || clk === cleanLowerKey;
+    });
 
     if (foundKey) {
         return participant.custom_data[foundKey] || '-';
