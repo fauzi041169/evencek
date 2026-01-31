@@ -75,7 +75,7 @@ class Activity extends Model
      */
     public function getCustomFieldsAttribute()
     {
-        return $this->customFields()->get()->map(function ($field) {
+        $fields = $this->customFields()->get()->map(function ($field) {
             return [
                 'id' => $field->id,
                 'label' => $field->label,
@@ -83,8 +83,39 @@ class Activity extends Model
                 'type' => $field->type,
                 'options' => $field->options,
                 'is_required' => (bool) $field->pivot->is_required,
+                'is_optional' => !((bool) $field->pivot->is_required)
             ];
         })->toArray();
+
+        // Include "legacy" custom fields from column_settings if they are enabled
+        // and not already present in the relationship
+        if (!empty($this->column_settings) && is_array($this->column_settings)) {
+            $existingKeys = array_column($fields, 'key');
+            
+            foreach ($this->column_settings as $colKey => $enabled) {
+                if ($enabled && str_starts_with($colKey, 'col-custom-')) {
+                    $baseKey = str_replace('col-custom-', '', $colKey);
+                    
+                    // Skip if already in modern custom_fields
+                    if (in_array($baseKey, $existingKeys)) continue;
+                    
+                    // Guess label: utusan -> Utusan, my_field -> My Field
+                    $label = ucwords(str_replace(['_', '-'], ' ', $baseKey));
+                    
+                    $fields[] = [
+                        'id' => null,
+                        'label' => $label,
+                        'key' => $baseKey,
+                        'type' => 'text',
+                        'options' => '',
+                        'is_required' => false,
+                        'is_optional' => true
+                    ];
+                }
+            }
+        }
+
+        return $fields;
     }
 
     // Registration status constants

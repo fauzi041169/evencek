@@ -244,9 +244,20 @@ export default function Index({
                 const lower = base.toLowerCase();
                 if (!lower) return;
 
-                const existing = keyMap.get(lower);
+                const cleanLower = lower.replace(/^custom_/, '');
+
+                // Find if any variant already exists
+                const existingKey = Array.from(keyMap.keys()).find(exKey =>
+                    exKey === lower ||
+                    exKey === 'custom_' + cleanLower ||
+                    exKey === cleanLower
+                );
+
+                const existing = existingKey ? keyMap.get(existingKey) : null;
+
                 // Prefer key with definition (|)
                 if (!existing || (!existing.includes('|') && k.includes('|'))) {
+                    if (existingKey) keyMap.delete(existingKey);
                     keyMap.set(lower, k);
                 }
             });
@@ -349,19 +360,8 @@ export default function Index({
     }, [safeParticipants]);
 
 
-    // Helper to get custom value by normalized key
-    const getCustomValue = (participant, normalizedKey) => {
-        if (!participant.custom_data) return '-';
-        // Try direct match first
-        if (participant.custom_data[normalizedKey]) return participant.custom_data[normalizedKey];
+    // Helper to get custom value by normalized key - REMOVED to use the outer robust function
 
-        // Try finding a key that normalizes to the requested key (case-insensitive)
-        const lowerNormalizedKey = normalizedKey.toLowerCase();
-        const foundKey = Object.keys(participant.custom_data).find(k =>
-            normalizeCustomKey(k).toLowerCase() === lowerNormalizedKey
-        );
-        return foundKey ? participant.custom_data[foundKey] : '-';
-    };
 
     // Column settings
     const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -1507,12 +1507,20 @@ export default function Index({
                                             })}
                                             {visibleColumns['col-status'] && (
                                                 <td className="px-6 py-4">
-                                                    <button
-                                                        onClick={() => handleStatusClick(participant)}
-                                                        className="hover:opacity-80 transition-opacity text-left focus:outline-none"
-                                                    >
-                                                        <StatusBadge status={participant.status} />
-                                                    </button>
+                                                    {(() => {
+                                                        const customStatus = getCustomValue(participant, 'Status');
+                                                        if (customStatus && customStatus !== '-') {
+                                                            return <span className="text-slate-700 font-medium">{customStatus}</span>;
+                                                        }
+                                                        return (
+                                                            <button
+                                                                onClick={() => handleStatusClick(participant)}
+                                                                className="hover:opacity-80 transition-opacity text-left focus:outline-none"
+                                                            >
+                                                                <StatusBadge status={participant.status} />
+                                                            </button>
+                                                        );
+                                                    })()}
                                                 </td>
                                             )}
                                             {visibleColumns['col-payment-method'] && (

@@ -442,7 +442,15 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
                 $activity = Activity::with('activeBatch')->find($this->activity_id);
                 if ($activity) {
                     $batchId = $activity->activeBatch ? $activity->activeBatch->id : null;
-                    $initialStatus = ($activity->price <= 0) ? ActivityUser::STATUS_ACTIVE : ActivityUser::STATUS_VERIFICATION;
+                    
+                    $price = $activity->price;
+                    if ((int)$activity->price === 0) {
+                        $price = 0;
+                    } elseif ($activity->activeBatch && $activity->activeBatch->price !== null) {
+                        $price = $activity->activeBatch->price;
+                    }
+
+                    $initialStatus = ($price <= 0) ? ActivityUser::STATUS_ACTIVE : ActivityUser::STATUS_VERIFICATION;
 
                     $user->activities()->attach($this->activity_id, [
                         'status' => $initialStatus,

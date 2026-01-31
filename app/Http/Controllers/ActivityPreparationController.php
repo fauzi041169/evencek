@@ -1518,11 +1518,19 @@ class ActivityPreparationController extends Controller
                                 if (is_array($data)) {
                                     foreach (array_keys($data) as $key) {
                                         $base = $this->normalizeImportKey($key);
-                                        if ($base === '') {
-                                            continue;
-                                        }
+                                        if ($base === '') continue;
+                                        
                                         $baseLower = strtolower($base);
-                                        $baseKeys[$baseLower] = $baseKeys[$baseLower] ?? $base;
+                                        $cleanLower = str_starts_with($baseLower, 'custom_') ? substr($baseLower, 7) : $baseLower;
+                                        
+                                        // Check if any variant exists (raw, prefixed, or unprefixed)
+                                        $exists = isset($baseKeys[$baseLower]) || 
+                                                 isset($baseKeys['custom_' . $cleanLower]) || 
+                                                 isset($baseKeys[$cleanLower]);
+                                                 
+                                        if (!$exists) {
+                                            $baseKeys[$baseLower] = $base;
+                                        }
                                     }
                                 }
                             }

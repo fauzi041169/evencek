@@ -1888,6 +1888,9 @@ class ActivityController extends Controller
             // Sync Custom Fields
             if (isset($validated['custom_fields'])) {
                 $fieldIds = [];
+                $columnSettings = $activity->column_settings ?? [];
+                $customColKeys = [];
+
                 foreach ($validated['custom_fields'] as $fieldData) {
                     $label = $fieldData['label'] ?? 'Unknown';
                     $key = $fieldData['key'] ?? \Illuminate\Support\Str::slug($label, '_');
@@ -1904,7 +1907,7 @@ class ActivityController extends Controller
                         ]
                     );
 
-                    // Update existing field if type or options changed (optional, but good for global consistency)
+                    // Update existing field if type or options changed
                     if ($customField->label !== $label || $customField->type !== $type || $customField->options !== $options) {
                         $customField->update([
                             'label' => $label,
@@ -1914,9 +1917,41 @@ class ActivityController extends Controller
                     }
 
                     $fieldIds[$customField->id] = ['is_required' => $isRequired];
+
+                    // Sync to column_settings for visibility
+                    $colKey = 'col-custom-' . \Illuminate\Support\Str::kebab($key);
+                    if (!isset($columnSettings[$colKey])) {
+                        $columnSettings[$colKey] = true;
+                    }
+                    $customColKeys[] = $colKey;
                 }
+
+                // Cleanup column_settings: remove col-custom-* that are no longer in custom_fields
+                foreach (array_keys($columnSettings) as $ck) {
+                    if (str_starts_with($ck, 'col-custom-') && !in_array($ck, $customColKeys)) {
+                        unset($columnSettings[$ck]);
+                    }
+                }
+
+                $activity->column_settings = $columnSettings;
+                $activity->save();
+
                 $activity->customFields()->sync($fieldIds);
             } else {
+                // Clear custom fields and their column settings
+                $columnSettings = $activity->column_settings ?? [];
+                $changed = false;
+                foreach (array_keys($columnSettings) as $ck) {
+                    if (str_starts_with($ck, 'col-custom-')) {
+                        unset($columnSettings[$ck]);
+                        $changed = true;
+                    }
+                }
+                if ($changed) {
+                    $activity->column_settings = $columnSettings;
+                    $activity->save();
+                }
+
                 $activity->customFields()->detach();
             }
 

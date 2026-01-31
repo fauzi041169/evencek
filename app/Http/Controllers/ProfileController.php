@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
@@ -332,6 +334,53 @@ class ProfileController extends Controller
 
             $profile->fill($profileData);
             $profile->save();
+
+            // --- SYNC UTUSAN LOGIC START ---
+            // Cari value 'utusan' dari input (case-insensitive key search)
+            $utusanValue = null;
+            $utusanKeyFound = null;
+            if (!empty($additionalData)) {
+                foreach ($additionalData as $key => $val) {
+                    if (strtolower($key) === 'utusan') {
+                        $utusanValue = $val;
+                        $utusanKeyFound = $key;
+                        break;
+                    }
+                }
+            }
+
+            // Jika ada value utusan, cari semua kolom database yang bernama 'utusan' (case-insensitive)
+            // dan update isinya untuk user ini.
+            if ($utusanValue !== null) {
+                $tablesToCheck = ['users', 'profiles', 'activity_users'];
+                
+                foreach ($tablesToCheck as $tableName) {
+                    // Dapatkan semua kolom tabel
+                    $columns = Schema::getColumnListing($tableName);
+                    $targetColumn = null;
+                    
+                    // Cari kolom yang namanya 'utusan' (case-insensitive)
+                    foreach ($columns as $col) {
+                        if (strtolower($col) === 'utusan') {
+                            $targetColumn = $col;
+                            break;
+                        }
+                    }
+
+                    if ($targetColumn) {
+                        // Update sesuai tabel
+                        if ($tableName === 'users') {
+                            DB::table('users')->where('id', $user->id)->update([$targetColumn => $utusanValue]);
+                        } elseif ($tableName === 'profiles') {
+                            DB::table('profiles')->where('user_id', $user->id)->update([$targetColumn => $utusanValue]);
+                        } elseif ($tableName === 'activity_users') {
+                            // Update semua record activity_user milik user ini
+                            DB::table('activity_users')->where('user_id', $user->id)->update([$targetColumn => $utusanValue]);
+                        }
+                    }
+                }
+            }
+            // --- SYNC UTUSAN LOGIC END ---
 
             // Update ActivityUser custom_data if activity_id is provided
             if ($request->has('activity_id') && $request->filled('activity_id')) {

@@ -1,0 +1,3 @@
+activity_users: id, user_id, activity_id, activity_batch_id, status, jumlah_akses, lama_akses, last_access_at, print_count, custom_data, card_status, certificate_id, activity_participant_group_id, activity_participation_type_id, created_at, updated_at, created_by, updated_by
+
+profiles: id, user_id, no_hp, nik, alamat, foto, cover_image, pekerjaan, instansi, jabatan, jenis_kelamin, birth_place, birth_date, additional_data, province_id, regency_id, district_id, other_province, other_regency, other_district, created_at, updated_at

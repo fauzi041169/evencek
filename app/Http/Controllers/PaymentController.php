@@ -919,7 +919,14 @@ class PaymentController extends Controller
             }
 
             // Jika activity gratis, langsung daftarkan user tanpa validasi pembayaran
-            if ($activity->price == 0) {
+            $price = $activity->price;
+            if ((int)$activity->price === 0) {
+                $price = 0;
+            } elseif ($activeBatch && $activeBatch->price !== null) {
+                $price = $activeBatch->price;
+            }
+
+            if ($price <= 0) {
                 $matchAttributes = [
                     'user_id' => auth()->id(),
                     'activity_id' => $activity->id,
