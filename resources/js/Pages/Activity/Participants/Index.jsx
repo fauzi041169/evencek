@@ -47,9 +47,10 @@ const normalizeCustomKey = (raw) => {
     return key.trim();
 };
 
-const getCustomValue = (participant, key) => {
+const getCustomValue = (participant, rawKey) => {
     if (!participant || !participant.custom_data) return '-';
 
+    const key = rawKey.split('|')[0].trim();
     // Direct match
     if (participant.custom_data[key] !== undefined) {
         return participant.custom_data[key] || '-';
@@ -64,6 +65,21 @@ const getCustomValue = (participant, key) => {
     }
 
     return '-';
+};
+
+const getCleanLabel = (key, rawCustomKeys = []) => {
+    if (columnLabels[key]) return columnLabels[key];
+
+    // Handle kebab-cased keys from visibleColumns
+    if (key.startsWith('col-custom-')) {
+        const raw = rawCustomKeys.find(k => `col-custom-${kebabCase(k)}` === key);
+        if (raw) return raw.split('|')[0].replace(/_/g, ' ').trim();
+    }
+
+    // Handle raw keys directly
+    if (key.includes('|')) return key.split('|')[0].replace(/_/g, ' ').trim();
+
+    return key.replace('col-', '').replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase());
 };
 
 const columnLabels = {
@@ -882,7 +898,7 @@ export default function Index({
                                                         className="rounded border-slate-300 text-primary focus:ring-indigo-500 w-4 h-4"
                                                     />
                                                     <span className="text-sm text-slate-700 font-medium">
-                                                        {columnLabels[key] || key.replace('col-', '').replace(/^\w/, c => c.toUpperCase()).replace(/-/g, ' ')}
+                                                        {getCleanLabel(key, availableCustomKeys)}
                                                     </span>
                                                 </label>
                                             ))}
@@ -1195,7 +1211,7 @@ export default function Index({
                                         visibleColumns[`col-custom-${kebabCase(key)}`] && (
                                             <th key={key} className="px-6 py-4 whitespace-nowrap">
                                                 <ColumnFilter
-                                                    label={key.replace(/_/g, ' ')}
+                                                    label={getCleanLabel(key)}
                                                     options={customOptions[key] || []}
                                                     value={filters[`custom_${key}`]}
                                                     onChange={(val) => handleFilterChange(`custom_${key}`, val)}

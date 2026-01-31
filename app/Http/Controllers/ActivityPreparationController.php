@@ -1079,14 +1079,11 @@ class ActivityPreparationController extends Controller
             foreach (request()->all() as $reqKey => $reqVal) {
                 if (str_starts_with($reqKey, 'custom_') && !empty($reqVal)) {
                     $jsonKey = substr($reqKey, 7); // Remove 'custom_' prefix
-                    // Ensure we are not susceptible to SQL injection via column name, 
-                    // although Laravel bindings handle values, the column name "custom_data->key" is somewhat dynamic.
-                    // But here $jsonKey comes from request key.
-                    // To be safe, maybe we should verify it against known custom keys?
-                    // For now, let's trust the request or sanitize the key.
-                    // A simple str_replace to remove dangerous chars might be enough if needed, 
-                    // but Laravel's -> syntax usually wraps the key in quotes.
+                    if (str_contains($jsonKey, '|')) {
+                        $jsonKey = trim(explode('|', $jsonKey, 2)[0]);
+                    }
                     
+                    // Filter based on JSON column
                     $query->where("custom_data->{$jsonKey}", (string)$reqVal);
                 }
             }
