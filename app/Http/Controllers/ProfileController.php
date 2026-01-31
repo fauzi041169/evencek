@@ -350,8 +350,13 @@ class ProfileController extends Controller
                     }
                     
                     // Merge new data. We assume keys in additional_data are relevant
-                    // You might want to filter this if possible, but for now we trust the input
-                    $newCustomData = array_merge($existingCustomData, $additionalData);
+                    // Remove activity_id from data to sync to prevent pollution
+                    $dataToSync = $additionalData;
+                    if (isset($dataToSync['activity_id'])) {
+                        unset($dataToSync['activity_id']);
+                    }
+
+                    $newCustomData = array_merge($existingCustomData, $dataToSync);
                     
                     $activityUser->custom_data = $newCustomData;
                     
@@ -360,6 +365,12 @@ class ProfileController extends Controller
                     // For now just custom_data.
                     
                     $activityUser->save();
+
+                    \Log::info('ProfileController: Synced custom_data to ActivityUser', [
+                        'user_id' => $user->id,
+                        'activity_id' => $activityId,
+                        'synced_data' => $dataToSync
+                    ]);
                     
                     // Also update Committee Structure phone/name if exists
                      $committeeMember = ActivityCommitteeStructure::where('activity_id', $activityId)

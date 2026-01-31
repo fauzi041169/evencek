@@ -169,7 +169,7 @@ export default function Index({
     }, [selectedIds, safeParticipants]);
 
     // Derived custom keys
-    const [availableCustomKeys] = useState(() => {
+    const availableCustomKeys = React.useMemo(() => {
         if (customKeys && customKeys.length > 0) return customKeys;
 
         const extracted = new Map(); // Use Map to store lower->display
@@ -186,7 +186,7 @@ export default function Index({
             });
         }
         return Array.from(extracted.values()).sort((a, b) => a.localeCompare(b));
-    });
+    }, [customKeys, safeParticipants]);
 
     // Calculate custom options for filters
     const customOptions = React.useMemo(() => {

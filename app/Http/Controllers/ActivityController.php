@@ -2416,10 +2416,8 @@ class ActivityController extends Controller
             'manualLimit' => $manualLimit,
             'manualLimitExceeded' => $manualLimitExceeded,
             'activePlanName' => $activePlanName,
-            'activePlanSlug' => $activePlanSlug,
-            'defaultCategoryId' => $defaultCategoryId,
             'defaultEndTime' => $defaultEndTime,
-            'globalCustomFields' => CustomField::all(),
+            'globalCustomFields' => \App\Models\CustomField::all(),
         ]);
     }
 

@@ -93,7 +93,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                 fetchDistricts(targetProfile.regency_id);
             }
         }
-    }, [show, user]); // Dependency on 'user' (the prop), not derived state
+    }, [show, user, activity]); // Dependency on 'user' (the prop), not derived state
 
     const fetchRegencies = (provinceId) => {
         if (!provinceId) {
@@ -306,84 +306,115 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                     <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Data Kegiatan & Lainnya</h3>
                                 </div>
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {Object.entries(data.additional_data).map(([key, value]) => {
-                                        // Normalize key for matching
-                                        const cleanKey = key.toLowerCase().replace(/_/g, ' ').trim();
-                                        const originalKey = key; // Use the key exactly as it is in the data object for updates
+                                    {customKeys && customKeys.length > 0 ? (
+                                        customKeys.map((key) => {
+                                            // Handle potential prefix difference used in state initialization
+                                            const dataKey = key.replace(/^custom_/, '');
+                                            const value = data.additional_data[dataKey];
 
-                                        // 1. Gender check
-                                        if (['gender', 'jenis kelamin', 'sex'].includes(cleanKey)) {
+                                            // Normalize key for matching
+                                            let cleanKey = key.toLowerCase().replace(/_/g, ' ').trim();
+                                            const originalKey = dataKey; // Use dataKey for updates
+                                            let label = key.replace(/_/g, ' ');
+                                            let currentOptions = [];
+                                            let isDropdown = false;
+
+                                            // 0. Parse complex keys (e.g. "Utusan|Dropdown:A~B~C")
+                                            if (key.includes('|')) {
+                                                const parts = key.split('|');
+                                                label = parts[0];
+                                                cleanKey = label.toLowerCase().trim();
+
+                                                // Check for type definition
+                                                if (parts.length > 1) {
+                                                    const typeDef = parts[1];
+                                                    if (typeDef.toLowerCase().startsWith('dropdown:')) {
+                                                        const optionsStr = typeDef.substring('dropdown:'.length);
+                                                        // Options are typically separated by '~' or ','
+                                                        currentOptions = optionsStr.split(/~|,/).map(o => o.trim()).filter(o => o);
+                                                        isDropdown = true;
+                                                    }
+                                                }
+                                            }
+
+                                            // 1. Gender check
+                                            if (['gender', 'jenis kelamin', 'sex'].includes(cleanKey)) {
+                                                return (
+                                                    <div key={key}>
+                                                        <FormSelect
+                                                            label={label}
+                                                            value={value || ''}
+                                                            onChange={(e) => {
+                                                                const newData = { ...data.additional_data, [originalKey]: e.target.value };
+                                                                setData('additional_data', newData);
+                                                            }}
+                                                            className="capitalize-label"
+                                                        >
+                                                            <option value="">Pilih {label}...</option>
+                                                            <option value="L">Laki-laki</option>
+                                                            <option value="P">Perempuan</option>
+                                                        </FormSelect>
+                                                    </div>
+                                                );
+                                            }
+
+                                            // 2. Options check (either from explicit key config or discovered customOptions)
+                                            if (!isDropdown && !currentOptions.length) {
+                                                const optionKey = Object.keys(customOptions || {}).find(k => k.toLowerCase() === key.toLowerCase() || k.toLowerCase().replace(/_/g, ' ') === cleanKey);
+                                                if (optionKey && customOptions[optionKey]) {
+                                                    currentOptions = customOptions[optionKey];
+                                                }
+                                            }
+
+                                            // If we have options OR it's a known region field, render as select
+                                            if (isDropdown || (currentOptions && currentOptions.length > 0) || ['province', 'provinsi', 'regency', 'kabupaten', 'kota', 'city', 'district', 'kecamatan', 'village', 'desa', 'kelurahan'].includes(cleanKey)) {
+                                                // Sort options unique
+                                                const uniqueOptions = [...new Set(currentOptions || [])].filter(o => o);
+
+                                                return (
+                                                    <div key={key}>
+                                                        <FormSelect
+                                                            label={label}
+                                                            value={value || ''}
+                                                            onChange={(e) => {
+                                                                const newData = { ...data.additional_data, [originalKey]: e.target.value };
+                                                                setData('additional_data', newData);
+                                                            }}
+                                                            className="capitalize-label"
+                                                        >
+                                                            <option value="">Pilih {label}...</option>
+                                                            {uniqueOptions.map((opt, idx) => (
+                                                                <option key={idx} value={opt}>{opt}</option>
+                                                            ))}
+                                                            {/* If current value is not in options, add it temporarily so details are preserved */}
+                                                            {value && !uniqueOptions.includes(value) && (
+                                                                <option value={value}>{value}</option>
+                                                            )}
+                                                        </FormSelect>
+                                                    </div>
+                                                );
+                                            }
+
+                                            // 3. Fallback to Input
                                             return (
                                                 <div key={key}>
-                                                    <FormSelect
-                                                        label={key.replace(/_/g, ' ')}
+                                                    <FormInput
+                                                        label={label}
                                                         value={value || ''}
                                                         onChange={(e) => {
                                                             const newData = { ...data.additional_data, [originalKey]: e.target.value };
                                                             setData('additional_data', newData);
                                                         }}
                                                         className="capitalize-label"
-                                                    >
-                                                        <option value="">Pilih {key.replace(/_/g, ' ')}...</option>
-                                                        <option value="L">Laki-laki</option>
-                                                        <option value="P">Perempuan</option>
-                                                    </FormSelect>
+                                                    />
                                                 </div>
                                             );
-                                        }
-
-                                        // 2. Check if we have detected options (dropdowns)
-                                        // Match against passed customKeys/customOptions which use the original casing or normalized?
-                                        // Index.jsx passes customOptions where keys match availableCustomKeys
-                                        // We need to find the matching key in customOptions
-                                        const optionKey = Object.keys(customOptions || {}).find(k => k.toLowerCase() === key.toLowerCase() || k.toLowerCase().replace(/_/g, ' ') === cleanKey);
-                                        const options = optionKey && customOptions ? customOptions[optionKey] : [];
-
-                                        // If options exist and have more than 0 items, render as Dropdown (Select)
-                                        // OR if it's explicitly a region field that is text-based (like "Province" string)
-                                        if ((options && options.length > 0) || ['province', 'provinsi', 'regency', 'kabupaten', 'kota', 'city', 'district', 'kecamatan', 'village', 'desa', 'kelurahan'].includes(cleanKey)) {
-                                            // Sort options unique
-                                            const uniqueOptions = [...new Set(options)].filter(o => o);
-
-                                            return (
-                                                <div key={key}>
-                                                    <FormSelect
-                                                        label={key.replace(/_/g, ' ')}
-                                                        value={value || ''}
-                                                        onChange={(e) => {
-                                                            const newData = { ...data.additional_data, [originalKey]: e.target.value };
-                                                            setData('additional_data', newData);
-                                                        }}
-                                                        className="capitalize-label"
-                                                    >
-                                                        <option value="">Pilih {key.replace(/_/g, ' ')}...</option>
-                                                        {uniqueOptions.map((opt, idx) => (
-                                                            <option key={idx} value={opt}>{opt}</option>
-                                                        ))}
-                                                        {/* If current value is not in options, add it temporarily so it's visible */}
-                                                        {value && !uniqueOptions.includes(value) && (
-                                                            <option value={value}>{value}</option>
-                                                        )}
-                                                    </FormSelect>
-                                                </div>
-                                            );
-                                        }
-
-                                        // 3. Fallback to Input
-                                        return (
-                                            <div key={key}>
-                                                <FormInput
-                                                    label={key.replace(/_/g, ' ')}
-                                                    value={value || ''}
-                                                    onChange={(e) => {
-                                                        const newData = { ...data.additional_data, [originalKey]: e.target.value };
-                                                        setData('additional_data', newData);
-                                                    }}
-                                                    className="capitalize-label"
-                                                />
-                                            </div>
-                                        );
-                                    })}
+                                        })
+                                    ) : (
+                                        <div className="col-span-full text-center text-slate-500 py-4 text-sm">
+                                            Tidak ada data tambahan untuk kegiatan ini.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

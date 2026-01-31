@@ -84,29 +84,38 @@ export default function Create({
         newFields[index][field] = value;
 
         if (field === 'label') {
-            if (!newFields[index].key_manually_set) {
-                const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-                if (slug) newFields[index].key = slug;
+            const cleanValue = value.trim().toLowerCase();
+
+            // Check for Global Match FIRST
+            const globalMatch = globalCustomFields.find(gf =>
+                gf.label.trim().toLowerCase() === cleanValue
+            );
+
+            if (globalMatch) {
+                // Auto-use the global definition
+                newFields[index].key = globalMatch.key;
+                newFields[index].type = globalMatch.type;
+                newFields[index].options = globalMatch.options;
+            } else {
+                // Generate slug for new field
+                if (!newFields[index].key_manually_set) {
+                    const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                    if (slug) newFields[index].key = slug;
+                }
             }
 
             const isDuplicateInternal = newFields.some((f, i) =>
                 i !== index &&
-                f.label.trim().toLowerCase() === value.trim().toLowerCase()
-            );
-
-            const isGlobalConflict = globalCustomFields.some(gf =>
-                gf.label.trim().toLowerCase() === value.trim().toLowerCase()
+                f.label.trim().toLowerCase() === cleanValue
             );
 
             // Check for conflict with Profile Fields
             const isProfileFieldConflict = Object.values(profileFields).some(pfLabel =>
-                pfLabel.trim().toLowerCase() === value.trim().toLowerCase()
+                pfLabel.trim().toLowerCase() === cleanValue
             );
 
             if (isDuplicateInternal) {
                 newFields[index].error_label = 'Nama kolom ini sudah ada dalam kegiatan ini.';
-            } else if (isGlobalConflict) {
-                newFields[index].error_label = 'Nama kolom ini sudah ada di Global Field. Silakan pilih dari menu "Pilih Global".';
             } else if (isProfileFieldConflict) {
                 newFields[index].error_label = 'Nama kolom ini bertabrakan dengan Data Profil Wajib. Silakan gunakan nama lain.';
             } else {
@@ -899,14 +908,20 @@ export default function Create({
                                                             <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase">Label Field <span className="text-red-500">*</span></label>
                                                             <input
                                                                 type="text"
+                                                                className={`w-full px-3 py-2 text-sm border rounded hover:bg-gray-50 focus:bg-white transition-colors ${field.error_label ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
                                                                 value={field.label}
                                                                 onChange={(e) => updateCustomField(index, 'label', e.target.value)}
-                                                                className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${field.error_label ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                                                                placeholder="Contoh: Ukuran Kaos"
+                                                                placeholder="Contoh: Ukuran Baju"
                                                                 required
+                                                                list="global-fields-list"
                                                             />
+                                                            <datalist id="global-fields-list">
+                                                                {globalCustomFields && globalCustomFields.map((gf) => (
+                                                                    <option key={gf.id} value={gf.label} />
+                                                                ))}
+                                                            </datalist>
                                                             {field.error_label && (
-                                                                <p className="mt-1 text-xs text-red-600 font-medium">
+                                                                <p className="mt-1 text-xs text-red-600 font-medium flex items-center">
                                                                     <i className="fas fa-exclamation-circle mr-1"></i>
                                                                     {field.error_label}
                                                                 </p>
