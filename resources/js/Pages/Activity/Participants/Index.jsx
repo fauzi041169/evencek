@@ -48,26 +48,50 @@ const normalizeCustomKey = (raw) => {
 };
 
 const getCustomValue = (participant, rawKey) => {
-    if (!participant || !participant.custom_data) return '-';
+    if (!participant) return '-';
 
     const key = rawKey.split('|')[0].trim();
-    // Direct match
-    if (participant.custom_data[key] !== undefined) {
-        return participant.custom_data[key] || '-';
-    }
-
-    // Advanced match (case-insensitive and prefix-robust)
     const lowerKey = key.toLowerCase();
     const cleanLowerKey = lowerKey.replace(/^custom_/, '');
 
-    const foundKey = Object.keys(participant.custom_data).find(k => {
-        const lk = k.toLowerCase();
-        const clk = lk.replace(/^custom_/, '');
-        return lk === lowerKey || clk === cleanLowerKey;
-    });
+    // 1. Check ActivityUser custom_data
+    if (participant.custom_data) {
+        // Direct match
+        if (participant.custom_data[key] !== undefined) {
+            return participant.custom_data[key] || '-';
+        }
 
-    if (foundKey) {
-        return participant.custom_data[foundKey] || '-';
+        // Advanced match (case-insensitive and prefix-robust)
+        const foundKey = Object.keys(participant.custom_data).find(k => {
+            const lk = k.toLowerCase();
+            const clk = lk.replace(/^custom_/, '');
+            return lk === lowerKey || clk === cleanLowerKey;
+        });
+
+        if (foundKey) {
+            return participant.custom_data[foundKey] || '-';
+        }
+    }
+
+    // 2. Fallback to Profile additional_data
+    const profileData = participant.user?.profile?.additional_data;
+    if (profileData) {
+        if (profileData[key] !== undefined) {
+            return profileData[key] || '-';
+        }
+        if (profileData[cleanLowerKey] !== undefined) {
+            return profileData[cleanLowerKey] || '-';
+        }
+
+        const foundProfileKey = Object.keys(profileData).find(k => {
+            const lk = k.toLowerCase();
+            const clk = lk.replace(/^custom_/, '');
+            return lk === lowerKey || clk === cleanLowerKey;
+        });
+
+        if (foundProfileKey) {
+            return profileData[foundProfileKey] || '-';
+        }
     }
 
     return '-';
@@ -418,7 +442,6 @@ export default function Index({
     // Update columns when prop changes (e.g. after refresh)
     useEffect(() => {
         if (columnSettings && Object.keys(columnSettings).length > 0) {
-
             setVisibleColumns(prev => {
                 const merged = { ...prev, ...columnSettings };
                 delete merged['col-method'];
@@ -431,6 +454,25 @@ export default function Index({
             });
         }
     }, [columnSettings]);
+
+    // Ensure all available custom keys are in visibleColumns state
+    useEffect(() => {
+        if (availableCustomKeys.length > 0) {
+            setVisibleColumns(prev => {
+                const next = { ...prev };
+                let changed = false;
+                availableCustomKeys.forEach(key => {
+                    const baseKey = key.split('|')[0].trim();
+                    const colKey = `col-custom-${kebabCase(baseKey)}`;
+                    if (next[colKey] === undefined) {
+                        next[colKey] = false;
+                        changed = true;
+                    }
+                });
+                return changed ? next : prev;
+            });
+        }
+    }, [availableCustomKeys]);
 
     const [showColumnMenu, setShowColumnMenu] = useState(false);
     const [showBulkMenu, setShowBulkMenu] = useState(false);

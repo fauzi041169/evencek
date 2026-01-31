@@ -1877,6 +1877,14 @@ class ActivityController extends Controller
                 $activity->save();
             }
 
+            // Auto-activate participants if price is 0 (Free Event)
+            if ((int)$activity->price <= 0) {
+                // Update status peserta yang masih verifikasi menjadi aktif
+                ActivityUser::where('activity_id', $activity->id)
+                    ->where('status', ActivityUser::STATUS_VERIFICATION)
+                    ->update(['status' => ActivityUser::STATUS_ACTIVE]);
+            }
+
             // Sync Custom Fields
             if (isset($validated['custom_fields'])) {
                 $fieldIds = [];

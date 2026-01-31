@@ -1455,45 +1455,47 @@ class ActivityPreparationController extends Controller
                 }
             }
 
-            if (Schema::hasTable('activities') && Schema::hasColumn('activities', 'import_template')) {
-                try {
-                    Activity::query()
-                        ->whereNotNull('import_template')
-                        ->select('id', 'import_template')
-                        ->chunkById(200, function ($activities) use (&$baseKeys, $builtinTemplateKeys) {
-                            foreach ($activities as $act) {
-                                $template = (string) ($act->import_template ?? '');
-                                if ($template === '') {
-                                    continue;
-                                }
-                                $columns = array_values(array_filter(array_map('trim', explode(',', $template))));
-                                foreach ($columns as $col) {
-                                    $rawKey = $this->normalizeImportKeyRaw($col);
-                                    if ($rawKey === '') {
-                                        continue;
-                                    }
-                                    
-                                    // Base key for builtin check
-                                    $baseKey = $rawKey;
-                                    if (str_contains($baseKey, '|')) {
-                                        $baseKey = trim(explode('|', $baseKey, 2)[0]);
-                                    }
+            // 2. Extract from current activity's import template
+            if ($activity && !empty($activity->import_template)) {
+                $template = (string) $activity->import_template;
+                
+                // Smart split: Split by comma, but rejoin parts if they look like fragmented dropdown options
+                $rawParts = explode(',', $template);
+                $columns = [];
+                $buffer = "";
+                foreach ($rawParts as $part) {
+                    $part = trim($part);
+                    if ($buffer === "") {
+                        $buffer = $part;
+                    } else {
+                        // If buffer contains a pipe and current part doesn't, it's likely a continuation of options
+                        if (str_contains($buffer, '|') && !str_contains($part, '|')) {
+                            $buffer .= ',' . $part;
+                        } else {
+                            $columns[] = $buffer;
+                            $buffer = $part;
+                        }
+                    }
+                }
+                if ($buffer !== "") $columns[] = $buffer;
+                
+                foreach ($columns as $col) {
+                    $rawKey = $this->normalizeImportKeyRaw($col);
+                    if ($rawKey === '') continue;
 
-                                    $lower = strtolower($baseKey);
-                                    if (isset($builtinTemplateKeys[$lower])) {
-                                        continue;
-                                    }
-                                    
-                                    // Prefer key with definition (|) if multiple versions of the same base key exist
-                                    $existing = $baseKeys[$lower] ?? null;
-                                    if ($existing === null || (!str_contains($existing, '|') && str_contains($rawKey, '|'))) {
-                                        $baseKeys[$lower] = $rawKey;
-                                    }
-                                }
-                            }
-                        });
-                } catch (\Throwable $e) {
-                    \Log::warning('Failed to load custom keys from activities', ['error' => $e->getMessage()]);
+                    $baseKey = $rawKey;
+                    if (str_contains($baseKey, '|')) {
+                        $baseKey = trim(explode('|', $baseKey, 2)[0]);
+                    }
+
+                    $lower = strtolower($baseKey);
+                    if (!isset($builtinTemplateKeys[$lower])) {
+                        // Prefer key with definition if available
+                        $existing = $baseKeys[$lower] ?? null;
+                        if ($existing === null || (!str_contains($existing, '|') && str_contains($rawKey, '|'))) {
+                            $baseKeys[$lower] = $rawKey;
+                        }
+                    }
                 }
             }
 
@@ -1501,6 +1503,7 @@ class ActivityPreparationController extends Controller
                 try {
                     ActivityUser::query()
                         ->from($activityUserTable)
+                        ->where('activity_id', $activityId)
                         ->whereNotNull('custom_data')
                         ->select('id', 'custom_data')
                         ->chunkById(500, function ($chunk) use (&$baseKeys) {
