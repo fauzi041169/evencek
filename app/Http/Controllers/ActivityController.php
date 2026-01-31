@@ -1715,7 +1715,7 @@ class ActivityController extends Controller
             'currentAutomaticTotalCount' => $currentAutomaticTotalCount,
             'manualLimit' => $manualLimit,
             'manualLimitExceeded' => $manualLimitExceeded,
-            'globalCustomFields' => \App\Models\CustomField::all(),
+            'globalCustomFields' => \App\Models\CustomField::orderBy('label')->get(),
         ]);
     }
 
