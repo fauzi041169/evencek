@@ -47,6 +47,25 @@ const normalizeCustomKey = (raw) => {
     return key.trim();
 };
 
+const getCustomValue = (participant, key) => {
+    if (!participant || !participant.custom_data) return '-';
+
+    // Direct match
+    if (participant.custom_data[key] !== undefined) {
+        return participant.custom_data[key] || '-';
+    }
+
+    // Case-insensitive match
+    const lowerKey = key.toLowerCase();
+    const foundKey = Object.keys(participant.custom_data).find(k => k.toLowerCase() === lowerKey);
+
+    if (foundKey) {
+        return participant.custom_data[foundKey] || '-';
+    }
+
+    return '-';
+};
+
 const columnLabels = {
     'col-index': 'No',
     'col-name': 'Nama Lengkap',
