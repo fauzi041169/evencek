@@ -72,7 +72,7 @@ const getCleanLabel = (key, rawCustomKeys = []) => {
 
     // Handle kebab-cased keys from visibleColumns
     if (key.startsWith('col-custom-')) {
-        const raw = rawCustomKeys.find(k => `col-custom-${kebabCase(k)}` === key);
+        const raw = rawCustomKeys.find(k => `col-custom-${kebabCase(k.split('|')[0])}` === key);
         if (raw) return raw.split('|')[0].replace(/_/g, ' ').trim();
     }
 
@@ -203,24 +203,41 @@ export default function Index({
             .filter(id => id); // Remove null/undefined
     }, [selectedIds, safeParticipants]);
 
-    // Derived custom keys
     const availableCustomKeys = React.useMemo(() => {
-        if (customKeys && customKeys.length > 0) return customKeys;
+        const keyMap = new Map(); // baseLower -> rawFull
 
-        const extracted = new Map(); // Use Map to store lower->display
+        const processKeys = (keys) => {
+            if (!Array.isArray(keys)) return;
+            keys.forEach(k => {
+                if (!k) return;
+                const base = k.split('|')[0].trim();
+                const lower = base.toLowerCase();
+                if (!lower) return;
+
+                const existing = keyMap.get(lower);
+                // Prefer key with definition (|)
+                if (!existing || (!existing.includes('|') && k.includes('|'))) {
+                    keyMap.set(lower, k);
+                }
+            });
+        };
+
+        if (customKeys && customKeys.length > 0) processKeys(customKeys);
+
+        // Also check participants for keys not in customKeys
         if (safeParticipants && safeParticipants.data) {
             safeParticipants.data.forEach(p => {
                 if (p.custom_data) {
-                    Object.keys(p.custom_data).forEach(k => {
-                        const nk = normalizeCustomKey(k);
-                        if (nk) {
-                            extracted.set(nk.toLowerCase(), nk);
-                        }
-                    });
+                    processKeys(Object.keys(p.custom_data));
                 }
             });
         }
-        return Array.from(extracted.values()).sort((a, b) => a.localeCompare(b));
+
+        return Array.from(keyMap.values()).sort((a, b) => {
+            const labelA = a.split('|')[0].toLowerCase();
+            const labelB = b.split('|')[0].toLowerCase();
+            return labelA.localeCompare(labelB);
+        });
     }, [customKeys, safeParticipants]);
 
     // Calculate custom options for filters
@@ -354,14 +371,34 @@ export default function Index({
         // Add custom keys to defaults (default hidden)
         if (availableCustomKeys && availableCustomKeys.length > 0) {
             availableCustomKeys.forEach(key => {
-                defaults[`col-custom-${kebabCase(key)}`] = false;
+                const baseKey = key.split('|')[0].trim();
+                defaults[`col-custom-${kebabCase(baseKey)}`] = false;
             });
         }
 
         // Merge with saved settings if available
         if (columnSettings && Object.keys(columnSettings).length > 0) {
+            // Also normalize saved settings keys if they contain definitions
+            const normalizedSettings = {};
+            Object.keys(columnSettings).forEach(k => {
+                if (k.startsWith('col-custom-')) {
+                    // Try to find if this saved key has a definition in availableCustomKeys
+                    // If the saved key was col-custom-utusan-dropdown-..., normalize it to col-custom-utusan
+                    const basePart = k.replace('col-custom-', '');
+                    // Find actual base name from matching raw key
+                    const rawMatch = availableCustomKeys.find(rk => kebabCase(rk) === basePart || kebabCase(rk.split('|')[0]) === basePart);
+                    if (rawMatch) {
+                        const canonical = `col-custom-${kebabCase(rawMatch.split('|')[0])}`;
+                        normalizedSettings[canonical] = columnSettings[k];
+                    } else {
+                        normalizedSettings[k] = columnSettings[k];
+                    }
+                } else {
+                    normalizedSettings[k] = columnSettings[k];
+                }
+            });
 
-            const merged = { ...defaults, ...columnSettings };
+            const merged = { ...defaults, ...normalizedSettings };
 
             // Remove obsolete keys to prevent them from showing in the dropdown
             delete merged['col-method'];
@@ -1207,18 +1244,19 @@ export default function Index({
                                     {visibleColumns['col-print-count'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Jml Cetak</th>}
                                     {visibleColumns['col-created-by'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Dibuat Oleh</th>}
                                     {visibleColumns['col-updated-by'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Diupdate Oleh</th>}
-                                    {availableCustomKeys.map(key => (
-                                        visibleColumns[`col-custom-${kebabCase(key)}`] && (
+                                    {availableCustomKeys.map(key => {
+                                        const baseKey = key.split('|')[0].trim();
+                                        return visibleColumns[`col-custom-${kebabCase(baseKey)}`] && (
                                             <th key={key} className="px-6 py-4 whitespace-nowrap">
                                                 <ColumnFilter
-                                                    label={getCleanLabel(key)}
+                                                    label={getCleanLabel(key, availableCustomKeys)}
                                                     options={customOptions[key] || []}
                                                     value={filters[`custom_${key}`]}
                                                     onChange={(val) => handleFilterChange(`custom_${key}`, val)}
                                                 />
                                             </th>
-                                        )
-                                    ))}
+                                        );
+                                    })}
                                     {visibleColumns['col-status'] && (
                                         <th className="px-6 py-4 whitespace-nowrap">
                                             <ColumnFilter
@@ -1411,13 +1449,14 @@ export default function Index({
                                                     {participant.updater?.name || '-'}
                                                 </td>
                                             )}
-                                            {availableCustomKeys.map(key => (
-                                                visibleColumns[`col-custom-${kebabCase(key)}`] && (
+                                            {availableCustomKeys.map(key => {
+                                                const baseKey = key.split('|')[0].trim();
+                                                return visibleColumns[`col-custom-${kebabCase(baseKey)}`] && (
                                                     <td key={key} className="px-6 py-4 text-slate-600 whitespace-nowrap">
                                                         {getCustomValue(participant, key)}
                                                     </td>
-                                                )
-                                            ))}
+                                                );
+                                            })}
                                             {visibleColumns['col-status'] && (
                                                 <td className="px-6 py-4">
                                                     <button

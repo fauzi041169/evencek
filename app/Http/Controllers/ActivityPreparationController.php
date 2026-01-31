@@ -1468,7 +1468,12 @@ class ActivityPreparationController extends Controller
                                     if (isset($builtinTemplateKeys[$lower])) {
                                         continue;
                                     }
-                                    $baseKeys[$lower] = $baseKeys[$lower] ?? $rawKey;
+                                    
+                                    // Prefer key with definition (|) if multiple versions of the same base key exist
+                                    $existing = $baseKeys[$lower] ?? null;
+                                    if ($existing === null || (!str_contains($existing, '|') && str_contains($rawKey, '|'))) {
+                                        $baseKeys[$lower] = $rawKey;
+                                    }
                                 }
                             }
                         });

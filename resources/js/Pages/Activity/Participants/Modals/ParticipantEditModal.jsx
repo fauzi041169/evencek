@@ -53,13 +53,20 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                 ...activityCustomData
             };
 
-            // Ensure all configured columns (customKeys) are initialized
+            // Ensure all configured columns (customKeys) are initialized and canonicalized
             if (Array.isArray(customKeys)) {
                 customKeys.forEach(rawKey => {
-                    // Extract clean key (label) from something like "Utusan|Dropdown:A~B"
-                    let baseKey = rawKey.split('|')[0].replace(/^custom_/, '').trim();
+                    const baseKey = rawKey.split('|')[0].replace(/^custom_/, '').trim();
+                    const lowerKey = baseKey.toLowerCase();
+                    const existingKey = Object.keys(initialAdditionalData).find(k => k.toLowerCase() === lowerKey);
 
-                    if (initialAdditionalData[baseKey] === undefined) {
+                    if (existingKey) {
+                        const value = initialAdditionalData[existingKey];
+                        if (existingKey !== baseKey) {
+                            delete initialAdditionalData[existingKey];
+                        }
+                        initialAdditionalData[baseKey] = value;
+                    } else {
                         initialAdditionalData[baseKey] = '';
                     }
                 });
