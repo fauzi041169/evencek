@@ -688,6 +688,14 @@ class ActivityPreparationController extends Controller
             }
             $activityId = $activity->id;
 
+            // AUTO-FIX: Jika harga kegiatan 0 (Gratis), otomatis set status peserta menjadi AKTIF
+            // Ini menangani kasus dimana harga diubah menjadi 0 setelah ada pendaftar (yang sebelumnya Menunggu Verifikasi)
+            if ((int)$activity->price === 0) {
+                ActivityUser::where('activity_id', $activity->id)
+                    ->whereIn('status', [ActivityUser::STATUS_VERIFICATION, ActivityUser::STATUS_PENDING])
+                    ->update(['status' => ActivityUser::STATUS_ACTIVE]);
+            }
+
             $actor = auth()->user();
             if (! $actor) {
                 abort(403, 'Silakan login untuk mengakses halaman ini.');
