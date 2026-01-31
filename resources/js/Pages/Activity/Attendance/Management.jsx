@@ -278,23 +278,21 @@ export default function Management({
                 <div className="w-full mx-auto px-4 py-4">
                     {/* Activity Header */}
                     <div className="mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                                <h2 className="text-3xl font-extra-bold text-gray-900 tracking-tight">{selectedActivity.name}</h2>
-                                <div className="flex flex-wrap items-center gap-4 text-gray-500 mt-2 text-sm font-medium">
-                                    {selectedActivity.date && (
-                                        <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full">
-                                            <i className="fas fa-calendar-alt text-blue-500"></i>
-                                            {new Date(selectedActivity.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                        </div>
-                                    )}
-                                    {selectedActivity.location && (
-                                        <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full">
-                                            <i className="fas fa-map-marker-alt text-red-500"></i>
-                                            {selectedActivity.location}
-                                        </div>
-                                    )}
-                                </div>
+                        <div>
+                            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight text-left">{selectedActivity.name}</h2>
+                            <div className="flex flex-wrap items-center gap-4 text-gray-500 mt-2 text-sm font-medium text-left">
+                                {selectedActivity.date && (
+                                    <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full">
+                                        <i className="fas fa-calendar-alt text-blue-500"></i>
+                                        {new Date(selectedActivity.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    </div>
+                                )}
+                                {selectedActivity.location && (
+                                    <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1 rounded-full">
+                                        <i className="fas fa-map-marker-alt text-red-500"></i>
+                                        {selectedActivity.location}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -45,10 +45,10 @@ export default function Index({ pengurus = [] }) {
     return (
         <MainLayout>
             <Head title="List Pengurus" />
-            <div className="min-h-screen bg-white py-4 px-4">
+            <div className="min-h-screen bg-white py-4 px-0 sm:px-4">
                 <div className="w-full">
                     <div className="mb-4">
-                        <div className="bg-gradient-custom rounded-t-xl shadow-lg px-5 py-2">
+                        <div className="bg-gradient-custom sm:rounded-t-xl shadow-lg px-5 py-3">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-bold text-white flex items-center">
                                     <i className="fas fa-user-tie mr-2"></i>
@@ -81,7 +81,7 @@ export default function Index({ pengurus = [] }) {
                     {/* Flash messages are handled globally */}
 
 
-                    <div className="bg-white rounded-b-xl shadow-xl overflow-hidden">
+                    <div className="bg-white sm:rounded-b-xl shadow-xl overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 table-activity">
                                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100">

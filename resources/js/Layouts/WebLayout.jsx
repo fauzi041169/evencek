@@ -232,23 +232,12 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                                             className="flex items-center focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded-full p-0.5 transition-transform duration-200 hover:scale-105"
                                         >
-                                            <div className="h-9 w-9 rounded-full overflow-hidden border-2 border-white border-opacity-30 bg-white/20 flex items-center justify-center flex-shrink-0">
-                                                {auth.user.profile_photo_url ? (
-                                                    <img
-                                                        src={auth.user.profile_photo_url}
-                                                        alt={auth.user.name}
-                                                        className="w-full h-full object-cover"
-                                                        onError={(e) => {
-                                                            e.currentTarget.style.display = 'none';
-                                                            e.currentTarget.nextSibling.classList.remove('hidden');
-                                                            e.currentTarget.nextSibling.classList.add('flex');
-                                                        }}
-                                                    />
-                                                ) : null}
-                                                <div className={`w-full h-full items-center justify-center text-sm font-bold text-white bg-white/20 ${auth.user.profile_photo_url ? 'hidden' : 'flex'}`}>
-                                                    {auth.user.name?.charAt(0).toUpperCase()}
-                                                </div>
-                                            </div>
+                                            <img
+                                                src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                alt={auth.user.name}
+                                                className="h-9 w-9 rounded-full object-cover border-2 border-white border-opacity-30"
+                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                            />
                                         </button>
 
                                         {/* Profile Dropdown */}
@@ -267,23 +256,12 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                                     <div className="flex justify-between items-start">
                                                         <div className="flex items-center gap-3">
                                                             <div className="relative">
-                                                                <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-white shadow-md bg-white/20 flex items-center justify-center flex-shrink-0">
-                                                                    {auth.user.profile_photo_url ? (
-                                                                        <img
-                                                                            src={auth.user.profile_photo_url}
-                                                                            alt={auth.user.name}
-                                                                            className="w-full h-full object-cover"
-                                                                            onError={(e) => {
-                                                                                e.currentTarget.style.display = 'none';
-                                                                                e.currentTarget.nextSibling.classList.remove('hidden');
-                                                                                e.currentTarget.nextSibling.classList.add('flex');
-                                                                            }}
-                                                                        />
-                                                                    ) : null}
-                                                                    <div className={`w-full h-full items-center justify-center text-lg font-bold text-white bg-white/20 ${auth.user.profile_photo_url ? 'hidden' : 'flex'}`}>
-                                                                        {auth.user.name?.charAt(0).toUpperCase()}
-                                                                    </div>
-                                                                </div>
+                                                                <img
+                                                                    src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                                    alt={auth.user.name}
+                                                                    className="h-12 w-12 rounded-full object-cover border-2 border-white shadow-md"
+                                                                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                                                />
                                                                 <div className="absolute bottom-0 right-0 h-3 w-3 bg-success rounded-full border-2 border-primary"></div>
                                                             </div>
                                                             <div className="text-white">

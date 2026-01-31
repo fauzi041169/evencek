@@ -5,13 +5,64 @@ import MainLayout from '@/Layouts/MainLayout';
 export default function WithdrawHistory({ withdrawals, stats }) {
     const rows = withdrawals?.data || withdrawals || [];
 
+    const FinanceNav = () => (
+        <div className="flex flex-wrap gap-2 mb-8 p-1.5 bg-gray-100/50 rounded-2xl border border-gray-200">
+            <Link
+                href={route('payments.rules')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 transform hover:scale-105 ${route().current('payments.rules') ? 'bg-secondary text-white shadow-lg shadow-secondary/30 scale-105' : 'text-gray-600 hover:bg-white hover:text-secondary hover:shadow-md'}`}
+            >
+                <i className={`fas fa-sliders-h transition-transform duration-500 ${route().current('payments.rules') ? 'rotate-180' : ''}`}></i>
+                <span>Administrasi</span>
+            </Link>
+            <Link
+                href={route('payments.manage')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 transform hover:scale-105 ${route().current('payments.manage') ? 'bg-secondary text-white shadow-lg shadow-secondary/30 scale-105' : 'text-gray-600 hover:bg-white hover:text-secondary hover:shadow-md'}`}
+            >
+                <i className={`fas fa-wallet transition-bounce ${route().current('payments.manage') ? 'animate-bounce' : ''}`}></i>
+                <span>Kegiatan</span>
+            </Link>
+            <Link
+                href={route('subscriptions.payments.manage')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 transform hover:scale-105 ${route().current('subscriptions.payments.manage') ? 'bg-secondary text-white shadow-lg shadow-secondary/30 scale-105' : 'text-gray-600 hover:bg-white hover:text-secondary hover:shadow-md'}`}
+            >
+                <i className={`fas fa-file-invoice transition-pulse ${route().current('subscriptions.payments.manage') ? 'animate-pulse' : ''}`}></i>
+                <span>Langganan</span>
+            </Link>
+            <Link
+                href={route('payments.admin.withdraw.history')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 transform hover:scale-105 ${route().current('payments.admin.withdraw.history') ? 'bg-secondary text-white shadow-lg shadow-secondary/30 scale-105' : 'text-gray-600 hover:bg-white hover:text-secondary hover:shadow-md'}`}
+            >
+                <i className="fas fa-money-bill-transfer"></i>
+                <span>Penarikan</span>
+            </Link>
+            <Link
+                href={route('payments.ledger')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 transform hover:scale-105 ${route().current('payments.ledger') ? 'bg-secondary text-white shadow-lg shadow-secondary/30 scale-105' : 'text-gray-600 hover:bg-white hover:text-secondary hover:shadow-md'}`}
+            >
+                <i className={`fas fa-balance-scale transition-tilt ${route().current('payments.ledger') ? 'rotate-12' : ''}`}></i>
+                <span>Neraca</span>
+            </Link>
+        </div>
+    );
+
     return (
-        <MainLayout>
+        <MainLayout title="Keuangan Sistem">
             <Head title="Riwayat Penarikan" />
             <div className="min-h-screen bg-white py-6 px-4">
-                <div className="max-w-6xl mx-auto">
-                    <div className="mb-4 bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 text-sm text-teal-800">
-                        Saldo tersedia: Rp {Number(stats?.total_amount || 0).toLocaleString('id-ID')}
+                <div className="max-w-full mx-auto">
+                    <FinanceNav />
+                    <div className="mb-6">
+                        <div className="bg-teal-600 rounded-xl shadow-lg p-5 text-white inline-block min-w-[300px] transform transition-all hover:scale-[1.02]">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white/20 rounded-lg">
+                                    <i className="fas fa-sack-dollar text-xl"></i>
+                                </div>
+                                <div>
+                                    <div className="text-xs font-semibold uppercase opacity-80 mb-1">Saldo Tersedia</div>
+                                    <div className="text-2xl font-bold">Rp {Number(stats?.total_amount || 0).toLocaleString('id-ID')}</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-xl overflow-hidden">

@@ -4,11 +4,16 @@ import Alerts from '../Components/Alerts';
 import Modal from '../Components/Modal';
 
 export default function AcaraLayout({ children, activity, title = 'Acara', fluid = false, noPadding = false }) {
-    const { auth, flash, errors } = usePage().props;
+    const { auth, flash, errors, appSettings } = usePage().props;
+    const settings = appSettings || {};
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [currentActivityId, setCurrentActivityId] = useState(null);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+        const stored = localStorage.getItem('sidebarCollapsed');
+        return stored !== 'false';
+    });
 
     useEffect(() => {
         // Determine activity ID from various sources
@@ -36,31 +41,66 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
     const canManageAttendance = (user && currentActivityId) && (isAdmin || isOwner || isCommittee);
 
     // Redirect to login if not authenticated
-    useEffect(() => {
-        if (!auth || !auth.user) {
-            window.location.href = route('login');
-        }
-    }, [auth]);
-
     if (!auth || !auth.user) {
-        return null;
+        return (
+            <>
+                <Head title="Silakan Login" />
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[50]">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-md text-center shadow-2xl">
+                        <h3 className="text-xl font-bold mb-2 text-gray-900">Silakan Login</h3>
+                        <p className="text-gray-600 mb-4">Halaman ini memerlukan login untuk diakses.</p>
+                        <div className="flex items-center justify-center gap-2">
+                            <Link href={route('login')} className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition">
+                                Login Sekarang
+                            </Link>
+                            <Link href={route('auth.google.login')} className="inline-flex items-center justify-center px-4 py-2 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition">
+                                Google
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
     }
 
-    const NavLink = ({ href, icon, label, active }) => (
+    const NavLink = ({ href, icon, label, active, collapsed }) => (
         <Link
             href={href}
-            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group mb-1 ${active
-                ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-md'
-                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+            className={`flex items-center transition-all duration-300 rounded-xl group mb-2
+                ${collapsed ? 'justify-center px-0 h-10 w-10 mx-auto' : 'gap-3 px-4 py-2.5'}
+                ${active
+                    ? 'bg-secondary text-white shadow-lg shadow-secondary/20 font-bold'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
                 }`}
+            title={collapsed ? label : ''}
         >
-            <i className={`${icon} w-5 text-center text-lg transition-transform group-hover:scale-110 ${active ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}></i>
-            <span className="font-medium text-sm">{label}</span>
+            <i className={`${icon} ${collapsed ? 'text-lg' : 'w-5 text-center text-lg'} transition-transform duration-300 group-hover:scale-110 
+                ${active ? 'text-white scale-110' : 'text-gray-500 group-hover:text-white'}`}></i>
+            <span className={`text-sm tracking-wide ${collapsed ? 'hidden' : 'block'}`}>{label}</span>
         </Link>
     );
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                :root {
+                    --color-primary: ${settings.colors?.primary || '#7c3aed'};
+                    --color-secondary: ${settings.colors?.secondary || '#db2777'};
+                    --color-accent: ${settings.colors?.accent || '#f59e0b'};
+                }
+                .bg-gradient-custom {
+                    background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
+                }
+                .text-primary { color: var(--color-primary) !important; }
+                .bg-primary { background-color: var(--color-primary) !important; }
+                .text-secondary { color: var(--color-secondary) !important; }
+                .bg-secondary { background-color: var(--color-secondary) !important; }
+                .border-primary { border-color: var(--color-primary) !important; }
+                .ring-primary { --tw-ring-color: var(--color-primary) !important; }
+                .hover\:bg-primary:hover { background-color: var(--color-primary) !important; }
+                .hover\:text-primary:hover { color: var(--color-primary) !important; }
+            `}} />
             <Head title={title} />
 
             {/* Mobile Sidebar Modal */}
@@ -163,106 +203,156 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
 
             {/* Desktop Sidebar (Permanent) */}
             <aside
-                className={`fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-gray-800 to-gray-900 text-white z-50 transition-transform duration-300 shadow-xl hidden lg:flex flex-col`}
+                className={`fixed top-0 left-0 h-full z-50 bg-[#1e293b] text-white transition-all duration-300 shadow-2xl hidden lg:flex flex-col ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}
             >
                 {/* Brand */}
-                <div className="h-16 flex items-center px-6 bg-black/20 border-b border-white/10">
-                    <span className="text-lg font-bold tracking-wider text-white">MENU ACARA</span>
+                <div className={`h-16 flex items-center bg-black/20 border-b border-white/5 transition-all duration-300 ${isSidebarCollapsed ? 'justify-center px-0' : 'px-6'}`}>
+                    {isSidebarCollapsed ? (
+                        <div className="w-8 h-8 rounded-lg bg-secondary/20 flex items-center justify-center border border-secondary/30">
+                            <i className="fas fa-bars text-secondary text-xs"></i>
+                        </div>
+                    ) : (
+                        <span className="text-sm font-black tracking-[0.2em] text-white/90 uppercase">ACARA HUB</span>
+                    )}
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
+                <nav className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
                     <div className="space-y-1">
                         <NavLink
                             href="/"
                             icon="fas fa-home"
-                            label="Home"
+                            label="Web Utama"
                             active={route().current() === 'home'}
+                            collapsed={isSidebarCollapsed}
                         />
+                        <div className={`my-4 border-t border-white/5 ${isSidebarCollapsed ? 'mx-2' : 'mx-4'}`}></div>
                         <NavLink
                             href={currentActivityId ? `/activity/${currentActivityId}/dashboard` : '#'}
-                            icon="fas fa-tachometer-alt"
-                            label="Dashboard"
+                            icon="fas fa-chart-pie"
+                            label="Statistik"
                             active={route().current('activity.dashboard')}
+                            collapsed={isSidebarCollapsed}
                         />
                         <NavLink
                             href={currentActivityId ? `/activity/${currentActivityId}/preparation` : '#'}
-                            icon="fas fa-tasks"
-                            label="Acara"
+                            icon="fas fa-layer-group"
+                            label="Persiapan"
                             active={route().current('activity.preparation.*')}
+                            collapsed={isSidebarCollapsed}
                         />
                         <NavLink
                             href={currentActivityId ? route('activity.event-activities.index', currentActivityId) : '#'}
-                            icon="fas fa-poll"
-                            label="Kegiatan Acara"
+                            icon="fas fa-calendar-alt"
+                            label="Jadwal Acara"
                             active={route().current('activity.event-activities.*')}
+                            collapsed={isSidebarCollapsed}
                         />
 
                         {canManageBatches && (
                             <NavLink
                                 href={currentActivityId ? route('activity.batches.index', currentActivityId) : '#'}
-                                icon="fas fa-layer-group"
+                                icon="fas fa-clock"
                                 label="Kelola Sesi"
                                 active={route().current('activity.batches.*')}
+                                collapsed={isSidebarCollapsed}
                             />
                         )}
+
+                        <div className={`my-4 border-t border-white/5 ${isSidebarCollapsed ? 'mx-2' : 'mx-4'}`}></div>
 
                         <NavLink
                             href={currentActivityId ? route('activity.speakers.index', currentActivityId) : '#'}
                             icon="fas fa-microphone"
                             label="Narasumber"
                             active={route().current('activity.speakers.*')}
+                            collapsed={isSidebarCollapsed}
                         />
 
                         {canManageAttendance && (
                             <NavLink
                                 href={currentActivityId ? route('attendance.management', { activity: currentActivityId }) : '#'}
-                                icon="fas fa-clipboard-check"
-                                label="Absen"
+                                icon="fas fa-user-check"
+                                label="Presensi"
                                 active={route().current('attendance.*')}
+                                collapsed={isSidebarCollapsed}
                             />
                         )}
 
                         <NavLink
                             href={currentActivityId ? `/activity/${currentActivityId}/participants` : '#'}
                             icon="fas fa-users"
-                            label="Peserta"
+                            label="Data Peserta"
                             active={route().current('activity.participants.*')}
+                            collapsed={isSidebarCollapsed}
                         />
+                        <div className={`my-4 border-t border-white/5 ${isSidebarCollapsed ? 'mx-2' : 'mx-4'}`}></div>
+
                         <NavLink
                             href={currentActivityId ? `/activity/${currentActivityId}/idcards` : '#'}
-                            icon="fas fa-id-badge"
+                            icon="fas fa-id-card"
                             label="Kartu ID"
                             active={route().current('activity.idcards')}
+                            collapsed={isSidebarCollapsed}
                         />
                         <NavLink
                             href={currentActivityId ? `/activity/${currentActivityId}/certificates` : '#'}
-                            icon="fas fa-certificate"
+                            icon="fas fa-award"
                             label="Sertifikat"
                             active={route().current('activity.certificates')}
+                            collapsed={isSidebarCollapsed}
                         />
                         <NavLink
                             href={currentActivityId ? `/activity/${currentActivityId}` : '#'}
-                            icon="fas fa-external-link-alt"
-                            label="Halaman Acara"
+                            icon="fas fa-eye"
+                            label="Lihat Publik"
                             active={route().current('activity.show')}
+                            collapsed={isSidebarCollapsed}
                         />
                     </div>
                 </nav>
 
+                {/* Sidebar Toggle at Bottom */}
+                <div className="p-4 border-t border-white/5 bg-black/10">
+                    <button
+                        onClick={() => {
+                            const newState = !isSidebarCollapsed;
+                            setIsSidebarCollapsed(newState);
+                            localStorage.setItem('sidebarCollapsed', String(newState));
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                    >
+                        <i className={`fas ${isSidebarCollapsed ? 'fa-indent' : 'fa-outdent'} text-sm`}></i>
+                        <span className={`text-xs font-bold uppercase tracking-widest ${isSidebarCollapsed ? 'hidden' : 'block'}`}>
+                            {isSidebarCollapsed ? '' : 'Simpan Menu'}
+                        </span>
+                    </button>
+                </div>
+
             </aside>
 
             {/* Main Content Wrapper */}
-            <div className="lg:ml-64 min-h-screen flex flex-col transition-all duration-300">
+            <div className={`transition-all duration-300 min-h-screen flex flex-col ${isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
 
                 {/* Top Navbar */}
                 <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30 border-b border-gray-100">
                     <div className="px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => {
+                                    const newState = !isSidebarCollapsed;
+                                    setIsSidebarCollapsed(newState);
+                                    localStorage.setItem('sidebarCollapsed', String(newState));
+                                }}
+                                className="hidden lg:flex p-2 rounded-lg text-gray-400 hover:bg-gray-100 transition-all"
+                            >
+                                <i className={`fas ${isSidebarCollapsed ? 'fa-indent' : 'fa-outdent'} text-lg`}></i>
+                            </button>
+
                             {/* Mobile Menu Button */}
                             <button
                                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                                className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
                             >
                                 <i className="fas fa-bars text-xl"></i>
                             </button>
@@ -288,23 +378,12 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                                         <p className="text-sm font-semibold text-gray-700 leading-tight">{user.name}</p>
                                         <p className="text-xs text-gray-500 capitalize">{user.role}</p>
                                     </div>
-                                    <div className="h-9 w-9 rounded-full overflow-hidden border-2 border-primary/20 shadow-sm bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                                        {user.profile_photo_url ? (
-                                            <img
-                                                src={user.profile_photo_url}
-                                                alt={user.name}
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    e.currentTarget.style.display = 'none';
-                                                    e.currentTarget.nextSibling.classList.remove('hidden');
-                                                    e.currentTarget.nextSibling.classList.add('flex');
-                                                }}
-                                            />
-                                        ) : null}
-                                        <div className={`w-full h-full items-center justify-center text-sm font-bold text-indigo-600 bg-indigo-100 ${user.profile_photo_url ? 'hidden' : 'flex'}`}>
-                                            {user.name?.charAt(0).toUpperCase()}
-                                        </div>
-                                    </div>
+                                    <img
+                                        src={user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                        alt={user.name}
+                                        className="w-9 h-9 rounded-full object-cover border-2 border-primary/20 shadow-sm"
+                                        onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                    />
                                 </button>
 
                                 {/* Dropdown Menu */}
@@ -321,23 +400,12 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                                         {/* Header */}
                                         <div className="bg-gradient-to-br from-indigo-600 to-purple-700 px-5 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-white shadow-md bg-white/20 flex items-center justify-center flex-shrink-0">
-                                                    {user.profile_photo_url ? (
-                                                        <img
-                                                            src={user.profile_photo_url}
-                                                            alt={user.name}
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => {
-                                                                e.currentTarget.style.display = 'none';
-                                                                e.currentTarget.nextSibling.classList.remove('hidden');
-                                                                e.currentTarget.nextSibling.classList.add('flex');
-                                                            }}
-                                                        />
-                                                    ) : null}
-                                                    <div className={`w-full h-full items-center justify-center text-sm font-bold text-white bg-white/20 ${user.profile_photo_url ? 'hidden' : 'flex'}`}>
-                                                        {user.name?.charAt(0).toUpperCase()}
-                                                    </div>
-                                                </div>
+                                                <img
+                                                    src={user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                    alt={user.name}
+                                                    className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-md"
+                                                    onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                                />
                                                 <div className="text-white">
                                                     <p className="text-sm font-bold tracking-wide">{user.name}</p>
                                                     <p className="text-xs text-indigo-200 font-medium capitalize bg-white/20 px-2 py-0.5 rounded-full inline-block mt-0.5">

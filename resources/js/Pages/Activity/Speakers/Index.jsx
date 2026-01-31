@@ -2,6 +2,7 @@ import { Head, useForm, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 import Swal from 'sweetalert2';
+import Modal from '@/Components/Modal';
 
 export default function Index({ activity, speakers: initialSpeakers }) {
     const [speakers, setSpeakers] = useState(initialSpeakers || []);
@@ -39,6 +40,10 @@ export default function Index({ activity, speakers: initialSpeakers }) {
     ];
 
     useEffect(() => {
+        setSpeakers(initialSpeakers || []);
+    }, [initialSpeakers]);
+
+    useEffect(() => {
         if (searchQuery.length < 2) {
             setSearchResults([]);
             return;
@@ -72,10 +77,75 @@ export default function Index({ activity, speakers: initialSpeakers }) {
             linkedin: speaker.linkedin || '',
             instagram: speaker.instagram || '',
         });
+
+        if (speaker.photo) {
+            setPhotoPreview(route('activity.speakers.photo', speaker.id));
+        } else {
+            setPhotoPreview(null);
+        }
+
+        if (speaker.cv) {
+            setCvName('CV Berhasil Dimuat');
+        } else {
+            setCvName(null);
+        }
+
         setSearchResults([]);
         setSearchQuery('');
         setFlashMessage('Data narasumber telah diisi. Anda dapat mengubah atau menambahkan informasi lainnya.');
         setTimeout(() => setFlashMessage(null), 3000);
+    };
+
+    const handleDirectSave = (speaker) => {
+        Swal.fire({
+            title: 'Gunakan Narasumber Ini?',
+            text: `Apakah Anda ingin langsung menambahkan ${speaker.name} ke kegiatan ini?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Tambahkan',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#7c3aed',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('name', speaker.name || '');
+                formData.append('title', speaker.title || '');
+                formData.append('institution', speaker.institution || '');
+                formData.append('bio', speaker.bio || '');
+                formData.append('email', speaker.email || '');
+                formData.append('phone', speaker.phone || '');
+                formData.append('linkedin', speaker.linkedin || '');
+                formData.append('instagram', speaker.instagram || '');
+
+                Swal.showLoading();
+
+                fetch(route('activity.speakers.store', activity.id), {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    },
+                    body: formData,
+                })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.success) {
+                            setShowCreateModal(false);
+                            setSearchResults([]);
+                            setSearchQuery('');
+                            router.reload();
+                            Swal.fire('Berhasil!', 'Narasumber telah ditambahkan ke kegiatan.', 'success');
+                        } else {
+                            setErrors(res.errors || {});
+                            Swal.fire('Gagal!', res.message || 'Terjadi kesalahan.', 'error');
+                        }
+                    })
+                    .catch(() => {
+                        Swal.fire('Error!', 'Terjadi kesalahan sistem.', 'error');
+                    });
+            }
+        });
     };
 
     const handleCreateSubmit = (e) => {
@@ -347,546 +417,556 @@ export default function Index({ activity, speakers: initialSpeakers }) {
             </div>
 
             {/* Create Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)}></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-                        <div className="inline-block w-full max-w-3xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl sm:align-middle">
-                            <div className="bg-gradient-to-r from-primary via-pink-600 to-rose-600 px-6 py-5 flex items-center justify-between shadow-xl">
-                                <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                                        <i className="fas fa-user-plus text-xl"></i>
-                                    </div>
-                                    Tambah Narasumber Baru
-                                </h3>
-                                <button onClick={() => setShowCreateModal(false)} className="text-white/80 hover:text-white focus:outline-none transition-colors p-2 hover:bg-white/20 rounded-lg">
-                                    <i className="fas fa-times text-xl"></i>
-                                </button>
+            <Modal show={showCreateModal} onClose={() => setShowCreateModal(false)} maxWidth="3xl">
+                <div className="overflow-hidden bg-white shadow-2xl rounded-2xl">
+                    <div className="bg-gradient-to-r from-primary via-pink-600 to-rose-600 px-6 py-5 flex items-center justify-between shadow-xl">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                                <i className="fas fa-user-plus text-xl"></i>
                             </div>
+                            Tambah Narasumber Baru
+                        </h3>
+                        <button onClick={() => setShowCreateModal(false)} className="text-white/80 hover:text-white focus:outline-none transition-colors p-2 hover:bg-white/20 rounded-lg">
+                            <i className="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
 
-                            <div className="p-6 max-h-[85vh] overflow-y-auto">
-                                {Object.keys(errors).length > 0 && (
-                                    <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-2xl p-5 shadow-sm animate-pulse">
-                                        <div className="flex items-start">
-                                            <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shadow-lg mr-4 flex-shrink-0">
-                                                <i className="fas fa-exclamation-triangle text-lg"></i>
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="text-sm font-black text-red-800 uppercase tracking-wider mb-1">Terjadi Kesalahan</h3>
-                                                <ul className="text-sm text-red-700 list-disc list-inside space-y-0.5 font-medium">
-                                                    {Object.entries(errors).map(([key, msgs]) => (
-                                                        Array.isArray(msgs) ? msgs.map((msg, i) => (
-                                                            <li key={`${key}-${i}`}>{msg}</li>
-                                                        )) : <li key={key}>{msgs}</li>
-                                                    ))}
-                                                </ul>
+                    <div className="p-6 max-h-[85vh] overflow-y-auto">
+                        {Object.keys(errors).length > 0 && (
+                            <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-2xl p-5 shadow-sm animate-pulse">
+                                <div className="flex items-start">
+                                    <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shadow-lg mr-4 flex-shrink-0">
+                                        <i className="fas fa-exclamation-triangle text-lg"></i>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-sm font-black text-red-800 uppercase tracking-wider mb-1">Terjadi Kesalahan</h3>
+                                        <ul className="text-sm text-red-700 list-disc list-inside space-y-0.5 font-medium">
+                                            {Object.entries(errors).map(([key, msgs]) => (
+                                                Array.isArray(msgs) ? msgs.map((msg, i) => (
+                                                    <li key={`${key}-${i}`}>{msg}</li>
+                                                )) : <li key={key}>{msgs}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleCreateSubmit} className="space-y-8">
+
+                            {/* Search Existing Speaker */}
+                            <div className="mb-6 p-6 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border-2 border-violet-300 rounded-2xl shadow-lg">
+                                <label className="block text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg flex items-center justify-center text-white">
+                                        <i className="fas fa-search text-sm"></i>
+                                    </div>
+                                    Cari Narasumber yang Sudah Terdaftar
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <i className="fas fa-search text-violet-400"></i>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="block w-full pl-12 pr-4 py-4 rounded-xl border-2 border-violet-300 bg-white shadow-md focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all text-sm"
+                                        placeholder="Ketik nama atau email narasumber (minimal 2 karakter)..."
+                                    />
+                                    {searchResults.length > 0 && (
+                                        <div className="absolute z-[9999] w-full mt-2 bg-white border-2 border-violet-300 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
+                                            <div className="divide-y divide-gray-200">
+                                                {searchResults.map(speaker => (
+                                                    <div
+                                                        key={speaker.id}
+                                                        className="p-4 hover:bg-indigo-50 cursor-pointer transition-all border-l-4 border-transparent hover:border-indigo-500 group"
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-100 flex-shrink-0 bg-gray-100">
+                                                                <img
+                                                                    src={speaker.photo ? route('activity.speakers.photo', speaker.id) : '/assets/images/profilefoto/default-profile.png'}
+                                                                    alt={speaker.name}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0" onClick={() => selectSpeaker(speaker)}>
+                                                                <p className="text-sm font-bold text-gray-900 truncate">{speaker.name}</p>
+                                                                {speaker.title && <p className="text-xs text-gray-600 truncate mt-0.5"><i className="fas fa-briefcase mr-1"></i>{speaker.title}</p>}
+                                                                {speaker.email && <p className="text-xs text-primary truncate mt-1 font-medium"><i className="fas fa-envelope mr-1"></i>{speaker.email}</p>}
+                                                            </div>
+                                                            <div className="flex flex-col gap-2">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDirectSave(speaker);
+                                                                    }}
+                                                                    className="px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-[10px] font-bold rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-105 flex items-center gap-1"
+                                                                >
+                                                                    <i className="fas fa-plus"></i> Gunakan
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => selectSpeaker(speaker)}
+                                                                    className="px-3 py-1.5 bg-white border-2 border-indigo-100 text-indigo-600 text-[10px] font-bold rounded-lg hover:bg-indigo-50 transition-all flex items-center gap-1"
+                                                                >
+                                                                    <i className="fas fa-edit"></i> Edit Dulu
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
+                                    )}
+                                    {isSearching && (
+                                        <div className="absolute z-[9999] w-full mt-2 bg-white border-2 border-violet-300 rounded-xl shadow-2xl p-4 text-center">
+                                            <i className="fas fa-spinner fa-spin mr-2 text-primary"></i>
+                                            <span className="text-sm">Mencari narasumber...</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Personal Info */}
+                            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border-2 border-blue-200 mb-6 shadow-sm">
+                                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b-2 border-blue-300 pb-3 flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center text-white">
+                                        <i className="fas fa-user-circle text-sm"></i>
                                     </div>
-                                )}
-
-                                <form onSubmit={handleCreateSubmit} className="space-y-8">
-
-                                    {/* Search Existing Speaker */}
-                                    <div className="mb-6 p-6 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border-2 border-violet-300 rounded-2xl shadow-lg">
-                                        <label className="block text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-                                            <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg flex items-center justify-center text-white">
-                                                <i className="fas fa-search text-sm"></i>
-                                            </div>
-                                            Cari Narasumber yang Sudah Terdaftar
+                                    Informasi Pribadi
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="col-span-1 md:col-span-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fas fa-user text-gray-400 mr-1"></i> Nama Lengkap <span className="text-red-500">*</span>
                                         </label>
-                                        <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                <i className="fas fa-search text-violet-400"></i>
+                                        <input
+                                            type="text"
+                                            value={data.name}
+                                            onChange={e => setData('name', e.target.value)}
+                                            required
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
+                                            placeholder="Contoh: Dr. Budi Santoso, M.Kom"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fas fa-id-badge text-gray-400 mr-1"></i> Gelar / Jabatan
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.title}
+                                            onChange={e => setData('title', e.target.value)}
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
+                                            placeholder="Contoh: Kepala Dinas Pendidikan"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fas fa-building text-gray-400 mr-1"></i> Instansi
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.institution}
+                                            onChange={e => setData('institution', e.target.value)}
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
+                                            placeholder="Contoh: Dinas Pendidikan Kota Bandung"
+                                        />
+                                    </div>
+                                    <div className="col-span-1 md:col-span-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi / Biografi Singkat</label>
+                                        <textarea
+                                            value={data.bio}
+                                            onChange={e => setData('bio', e.target.value)}
+                                            rows="3"
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
+                                            placeholder="Tuliskan deskripsi atau biografi singkat narasumber..."
+                                        ></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Media & Documents */}
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
+                                    <i className="fas fa-file-upload text-blue-500"></i> Media & Dokumen
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Foto Profile</label>
+                                        <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all group cursor-pointer block w-full relative overflow-hidden min-h-[160px]">
+                                            {photoPreview ? (
+                                                <div className="absolute inset-0 z-0">
+                                                    <img src={photoPreview} className="w-full h-full object-cover opacity-20" alt="Preview" />
+                                                </div>
+                                            ) : null}
+                                            <div className="space-y-1 text-center relative z-10">
+                                                <div className="w-12 h-12 mx-auto bg-secondary/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-white/80 shadow-sm">
+                                                    <i className="fas fa-image text-blue-500 text-xl"></i>
+                                                </div>
+                                                <div className="flex text-sm text-gray-600 justify-center pt-2">
+                                                    <span className="relative rounded-md font-bold text-secondary hover:text-blue-500">
+                                                        {photoPreview ? 'Ganti Foto' : 'Upload Foto'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 font-medium">PNG, JPG up to 10MB</p>
                                             </div>
                                             <input
-                                                type="text"
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                className="block w-full pl-12 pr-4 py-4 rounded-xl border-2 border-violet-300 bg-white shadow-md focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all text-sm"
-                                                placeholder="Ketik nama atau email narasumber (minimal 2 karakter)..."
+                                                type="file"
+                                                accept="image/*"
+                                                className="sr-only"
+                                                onChange={e => {
+                                                    const file = e.target.files[0];
+                                                    setData('photo', file);
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => setPhotoPreview(reader.result);
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
                                             />
-                                            {searchResults.length > 0 && (
-                                                <div className="absolute z-[9999] w-full mt-2 bg-white border-2 border-violet-300 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
-                                                    <div className="divide-y divide-gray-200">
-                                                        {searchResults.map(speaker => (
-                                                            <div
-                                                                key={speaker.id}
-                                                                onClick={() => selectSpeaker(speaker)}
-                                                                className="p-4 hover:bg-indigo-50 cursor-pointer transition-all border-l-4 border-transparent hover:border-indigo-500"
-                                                            >
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <p className="text-sm font-bold text-gray-900 truncate">{speaker.name}</p>
-                                                                        {speaker.title && <p className="text-xs text-gray-600 truncate mt-0.5"><i className="fas fa-briefcase mr-1"></i>{speaker.title}</p>}
-                                                                        {speaker.email && <p className="text-xs text-primary truncate mt-1 font-medium"><i className="fas fa-envelope mr-1"></i>{speaker.email}</p>}
-                                                                    </div>
-                                                                    <i className="fas fa-chevron-right text-indigo-400"></i>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {isSearching && (
-                                                <div className="absolute z-[9999] w-full mt-2 bg-white border-2 border-violet-300 rounded-xl shadow-2xl p-4 text-center">
-                                                    <i className="fas fa-spinner fa-spin mr-2 text-primary"></i>
-                                                    <span className="text-sm">Mencari narasumber...</span>
-                                                </div>
-                                            )}
-                                        </div>
+                                        </label>
                                     </div>
-
-                                    {/* Personal Info */}
-                                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border-2 border-blue-200 mb-6 shadow-sm">
-                                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b-2 border-blue-300 pb-3 flex items-center gap-2">
-                                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center text-white">
-                                                <i className="fas fa-user-circle text-sm"></i>
-                                            </div>
-                                            Informasi Pribadi
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                            <div className="col-span-1 md:col-span-2">
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fas fa-user text-gray-400 mr-1"></i> Nama Lengkap <span className="text-red-500">*</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={data.name}
-                                                    onChange={e => setData('name', e.target.value)}
-                                                    required
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
-                                                    placeholder="Contoh: Dr. Budi Santoso, M.Kom"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fas fa-id-badge text-gray-400 mr-1"></i> Gelar / Jabatan
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={data.title}
-                                                    onChange={e => setData('title', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
-                                                    placeholder="Contoh: Kepala Dinas Pendidikan"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fas fa-building text-gray-400 mr-1"></i> Instansi
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={data.institution}
-                                                    onChange={e => setData('institution', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
-                                                    placeholder="Contoh: Dinas Pendidikan Kota Bandung"
-                                                />
-                                            </div>
-                                            <div className="col-span-1 md:col-span-2">
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi / Biografi Singkat</label>
-                                                <textarea
-                                                    value={data.bio}
-                                                    onChange={e => setData('bio', e.target.value)}
-                                                    rows="3"
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
-                                                    placeholder="Tuliskan deskripsi atau biografi singkat narasumber..."
-                                                ></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Media & Documents */}
                                     <div>
-                                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
-                                            <i className="fas fa-file-upload text-blue-500"></i> Media & Dokumen
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Foto Profile</label>
-                                                <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all group cursor-pointer block w-full relative overflow-hidden min-h-[160px]">
-                                                    {photoPreview ? (
-                                                        <div className="absolute inset-0 z-0">
-                                                            <img src={photoPreview} className="w-full h-full object-cover opacity-20" alt="Preview" />
-                                                        </div>
-                                                    ) : null}
-                                                    <div className="space-y-1 text-center relative z-10">
-                                                        <div className="w-12 h-12 mx-auto bg-secondary/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-white/80 shadow-sm">
-                                                            <i className="fas fa-image text-blue-500 text-xl"></i>
-                                                        </div>
-                                                        <div className="flex text-sm text-gray-600 justify-center pt-2">
-                                                            <span className="relative rounded-md font-bold text-secondary hover:text-blue-500">
-                                                                {photoPreview ? 'Ganti Foto' : 'Upload Foto'}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-500 font-medium">PNG, JPG up to 10MB</p>
-                                                    </div>
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="sr-only"
-                                                        onChange={e => {
-                                                            const file = e.target.files[0];
-                                                            setData('photo', file);
-                                                            if (file) {
-                                                                const reader = new FileReader();
-                                                                reader.onloadend = () => setPhotoPreview(reader.result);
-                                                                reader.readAsDataURL(file);
-                                                            }
-                                                        }}
-                                                    />
-                                                </label>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Upload CV (PDF)</label>
+                                        <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-red-500 hover:bg-red-50 transition-all group cursor-pointer block w-full min-h-[160px]">
+                                            <div className="space-y-1 text-center">
+                                                <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                                                    <i className="fas fa-file-pdf text-red-500 text-xl"></i>
+                                                </div>
+                                                <div className="flex text-sm text-gray-600 justify-center pt-2">
+                                                    <span className="relative rounded-md font-bold text-red-600 hover:text-red-500">
+                                                        {cvName ? cvName : 'Upload PDF'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 font-medium">PDF up to 5MB</p>
                                             </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Upload CV (PDF)</label>
-                                                <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-red-500 hover:bg-red-50 transition-all group cursor-pointer block w-full min-h-[160px]">
-                                                    <div className="space-y-1 text-center">
-                                                        <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                                                            <i className="fas fa-file-pdf text-red-500 text-xl"></i>
-                                                        </div>
-                                                        <div className="flex text-sm text-gray-600 justify-center pt-2">
-                                                            <span className="relative rounded-md font-bold text-red-600 hover:text-red-500">
-                                                                {cvName ? cvName : 'Upload PDF'}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-500 font-medium">PDF up to 5MB</p>
-                                                    </div>
-                                                    <input
-                                                        type="file"
-                                                        accept="application/pdf"
-                                                        className="sr-only"
-                                                        onChange={e => {
-                                                            const file = e.target.files[0];
-                                                            setData('cv', file);
-                                                            if (file) setCvName(file.name);
-                                                        }}
-                                                    />
-                                                </label>
-                                            </div>
-                                        </div>
+                                            <input
+                                                type="file"
+                                                accept="application/pdf"
+                                                className="sr-only"
+                                                onChange={e => {
+                                                    const file = e.target.files[0];
+                                                    setData('cv', file);
+                                                    if (file) setCvName(file.name);
+                                                }}
+                                            />
+                                        </label>
                                     </div>
-
-                                    {/* Contact & Social Media */}
-                                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-200 mb-6 shadow-sm">
-                                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b-2 border-amber-300 pb-3 flex items-center gap-2">
-                                            <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center text-white">
-                                                <i className="fas fa-address-card text-sm"></i>
-                                            </div>
-                                            Kontak & Sosial Media
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fas fa-envelope text-gray-400 mr-1"></i> Email <span className="text-red-500">*</span>
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    value={data.email}
-                                                    onChange={e => setData('email', e.target.value)}
-                                                    required
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
-                                                    placeholder="contoh@email.com"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fas fa-phone text-gray-400 mr-1"></i> No. HP/WA
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={data.phone}
-                                                    onChange={e => setData('phone', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
-                                                    placeholder="08123456789"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fab fa-linkedin text-blue-700 mr-1"></i> LinkedIn URL
-                                                </label>
-                                                <input
-                                                    type="url"
-                                                    value={data.linkedin}
-                                                    onChange={e => setData('linkedin', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
-                                                    placeholder="https://linkedin.com/in/username"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fab fa-instagram text-pink-600 mr-1"></i> Instagram URL
-                                                </label>
-                                                <input
-                                                    type="url"
-                                                    value={data.instagram}
-                                                    onChange={e => setData('instagram', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
-                                                    placeholder="https://instagram.com/username"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-end gap-3 pt-6 border-t-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 -mx-6 -mb-6 px-6 py-5 rounded-b-2xl">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowCreateModal(false)}
-                                            className="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all transform hover:scale-105"
-                                        >
-                                            <i className="fas fa-times mr-2"></i> Batal
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={processing}
-                                            className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary via-pink-600 to-rose-600 text-white font-bold hover:from-purple-700 hover:via-pink-700 hover:to-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 shadow-xl transition-all transform hover:scale-105 active:scale-95"
-                                        >
-                                            <i className="fas fa-save mr-2"></i> {processing ? 'Menyimpan...' : 'Simpan Narasumber'}
-                                        </button>
-                                    </div>
-                                </form>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {/* Edit Modal */}
-            {showEditModal && editingSpeaker && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-60 backdrop-blur-sm" onClick={() => setShowEditModal(false)}></div>
-                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-                        <div className="inline-block w-full max-w-3xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl sm:align-middle">
-                            <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 px-6 py-5 flex items-center justify-between shadow-xl">
-                                <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                                        <i className="fas fa-user-edit text-xl"></i>
+                            {/* Contact & Social Media */}
+                            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 border-2 border-amber-200 mb-6 shadow-sm">
+                                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b-2 border-amber-300 pb-3 flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center text-white">
+                                        <i className="fas fa-address-card text-sm"></i>
                                     </div>
-                                    Edit Narasumber
-                                </h3>
-                                <button onClick={() => setShowEditModal(false)} className="text-white/80 hover:text-white focus:outline-none transition-colors p-2 hover:bg-white/20 rounded-lg">
-                                    <i className="fas fa-times text-xl"></i>
+                                    Kontak & Sosial Media
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fas fa-envelope text-gray-400 mr-1"></i> Email <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={data.email}
+                                            onChange={e => setData('email', e.target.value)}
+                                            required
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
+                                            placeholder="contoh@email.com"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fas fa-phone text-gray-400 mr-1"></i> No. HP/WA
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.phone}
+                                            onChange={e => setData('phone', e.target.value)}
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
+                                            placeholder="08123456789"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fab fa-linkedin text-blue-700 mr-1"></i> LinkedIn URL
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={data.linkedin}
+                                            onChange={e => setData('linkedin', e.target.value)}
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
+                                            placeholder="https://linkedin.com/in/username"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fab fa-instagram text-pink-600 mr-1"></i> Instagram URL
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={data.instagram}
+                                            onChange={e => setData('instagram', e.target.value)}
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-all hover:shadow-md"
+                                            placeholder="https://instagram.com/username"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-6 border-t-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 -mx-6 -mb-6 px-6 py-5 rounded-b-2xl">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all transform hover:scale-105"
+                                >
+                                    <i className="fas fa-times mr-2"></i> Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary via-pink-600 to-rose-600 text-white font-bold hover:from-purple-700 hover:via-pink-700 hover:to-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 shadow-xl transition-all transform hover:scale-105 active:scale-95"
+                                >
+                                    <i className="fas fa-save mr-2"></i> {processing ? 'Menyimpan...' : 'Simpan Narasumber'}
                                 </button>
                             </div>
-
-                            <div className="p-6 max-h-[85vh] overflow-y-auto">
-                                {Object.keys(errors).length > 0 && (
-                                    <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4">
-                                        <div className="flex items-start">
-                                            <i className="fas fa-exclamation-circle text-red-500 text-xl mt-0.5 mr-3"></i>
-                                            <div className="flex-1">
-                                                <h3 className="text-sm font-bold text-red-800">Terdapat kesalahan:</h3>
-                                                <ul className="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
-                                                    {Object.entries(errors).map(([key, msgs]) => (
-                                                        Array.isArray(msgs) ? msgs.map((msg, i) => (
-                                                            <li key={`${key}-${i}`}>{msg}</li>
-                                                        )) : <li key={key}>{msgs}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <form onSubmit={handleEditSubmit} className="space-y-8">
-                                    {/* Personal Info */}
-                                    <div>
-                                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
-                                            <i className="fas fa-user-circle text-yellow-500"></i> Informasi Pribadi
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="col-span-1 md:col-span-2">
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fas fa-user text-gray-400 mr-1"></i> Nama Lengkap <span className="text-red-500">*</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={data.name}
-                                                    onChange={e => setData('name', e.target.value)}
-                                                    required
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fas fa-id-badge text-gray-400 mr-1"></i> Gelar / Jabatan
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={data.title}
-                                                    onChange={e => setData('title', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fas fa-building text-gray-400 mr-1"></i> Instansi
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={data.institution}
-                                                    onChange={e => setData('institution', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
-                                                />
-                                            </div>
-                                            <div className="col-span-1 md:col-span-2">
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi / Biografi Singkat</label>
-                                                <textarea
-                                                    value={data.bio}
-                                                    onChange={e => setData('bio', e.target.value)}
-                                                    rows="3"
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
-                                                    placeholder="Tuliskan deskripsi atau biografi singkat narasumber..."
-                                                ></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Media & Documents */}
-                                    <div>
-                                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
-                                            <i className="fas fa-file-upload text-yellow-500"></i> Media & Dokumen
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Foto Profile</label>
-                                                <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-yellow-500 hover:bg-yellow-50 transition-all group cursor-pointer block w-full relative overflow-hidden min-h-[160px]">
-                                                    {photoPreview ? (
-                                                        <div className="absolute inset-0 z-0">
-                                                            <img src={photoPreview} className="w-full h-full object-cover opacity-20" alt="Preview" />
-                                                        </div>
-                                                    ) : null}
-                                                    <div className="space-y-1 text-center relative z-10">
-                                                        <div className="w-12 h-12 mx-auto bg-yellow-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-white/80 shadow-sm">
-                                                            <i className="fas fa-image text-yellow-500 text-xl"></i>
-                                                        </div>
-                                                        <div className="flex text-sm text-gray-600 justify-center pt-2">
-                                                            <span className="font-bold text-yellow-600 tracking-tight">
-                                                                {photoPreview ? 'Ganti Foto' : (editingSpeaker.photo ? 'Update Foto' : 'Upload Foto')}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="sr-only"
-                                                        onChange={e => {
-                                                            const file = e.target.files[0];
-                                                            setData('photo', file);
-                                                            if (file) {
-                                                                const reader = new FileReader();
-                                                                reader.onloadend = () => setPhotoPreview(reader.result);
-                                                                reader.readAsDataURL(file);
-                                                            }
-                                                        }}
-                                                    />
-                                                </label>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Upload CV (PDF)</label>
-                                                <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-red-500 hover:bg-red-50 transition-all group cursor-pointer block w-full min-h-[160px]">
-                                                    <div className="space-y-1 text-center">
-                                                        <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                                                            <i className="fas fa-file-pdf text-red-500 text-xl"></i>
-                                                        </div>
-                                                        <div className="flex text-sm text-gray-600 justify-center pt-2">
-                                                            <span className="font-bold text-red-600 tracking-tight">
-                                                                {cvName ? cvName : (editingSpeaker.cv ? 'Update CV' : 'Upload CV')}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <input
-                                                        type="file"
-                                                        accept="application/pdf"
-                                                        className="sr-only"
-                                                        onChange={e => {
-                                                            const file = e.target.files[0];
-                                                            setData('cv', file);
-                                                            if (file) setCvName(file.name);
-                                                        }}
-                                                    />
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Contact & Social Media */}
-                                    <div>
-                                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
-                                            <i className="fas fa-address-card text-yellow-500"></i> Kontak & Sosial Media
-                                        </h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fas fa-envelope text-gray-400 mr-1"></i> Email <span className="text-red-500">*</span>
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    value={data.email}
-                                                    onChange={e => setData('email', e.target.value)}
-                                                    required
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fas fa-phone text-gray-400 mr-1"></i> No. HP/WA
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={data.phone}
-                                                    onChange={e => setData('phone', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fab fa-linkedin text-blue-700 mr-1"></i> LinkedIn URL
-                                                </label>
-                                                <input
-                                                    type="url"
-                                                    value={data.linkedin}
-                                                    onChange={e => setData('linkedin', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                    <i className="fab fa-instagram text-pink-600 mr-1"></i> Instagram URL
-                                                </label>
-                                                <input
-                                                    type="url"
-                                                    value={data.instagram}
-                                                    onChange={e => setData('instagram', e.target.value)}
-                                                    className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-end gap-3 pt-6 border-t-2 border-orange-200 bg-gradient-to-r from-amber-50 to-orange-50 -mx-6 -mb-6 px-6 py-5 rounded-b-2xl">
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowEditModal(false)}
-                                            className="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all transform hover:scale-105"
-                                        >
-                                            <i className="fas fa-times mr-2"></i> Batal
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={processing}
-                                            className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 text-white font-bold hover:from-amber-700 hover:via-orange-700 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 shadow-xl transition-all transform hover:scale-105 active:scale-95"
-                                        >
-                                            <i className="fas fa-save mr-2"></i> {processing ? 'Menyimpan...' : 'Simpan Perubahan'}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
-            )}
+            </Modal>
+
+            {/* Edit Modal */}
+            <Modal show={showEditModal && !!editingSpeaker} onClose={() => setShowEditModal(false)} maxWidth="3xl">
+                <div className="overflow-hidden bg-white shadow-2xl rounded-2xl">
+                    <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 px-6 py-5 flex items-center justify-between shadow-xl">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                                <i className="fas fa-user-edit text-xl"></i>
+                            </div>
+                            Edit Narasumber
+                        </h3>
+                        <button onClick={() => setShowEditModal(false)} className="text-white/80 hover:text-white focus:outline-none transition-colors p-2 hover:bg-white/20 rounded-lg">
+                            <i className="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+
+                    <div className="p-6 max-h-[85vh] overflow-y-auto">
+                        {Object.keys(errors).length > 0 && (
+                            <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4">
+                                <div className="flex items-start">
+                                    <i className="fas fa-exclamation-circle text-red-500 text-xl mt-0.5 mr-3"></i>
+                                    <div className="flex-1">
+                                        <h3 className="text-sm font-bold text-red-800">Terdapat kesalahan:</h3>
+                                        <ul className="mt-2 text-sm text-red-700 list-disc list-inside space-y-1">
+                                            {Object.entries(errors).map(([key, msgs]) => (
+                                                Array.isArray(msgs) ? msgs.map((msg, i) => (
+                                                    <li key={`${key}-${i}`}>{msg}</li>
+                                                )) : <li key={key}>{msgs}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleEditSubmit} className="space-y-8">
+                            {/* Personal Info */}
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
+                                    <i className="fas fa-user-circle text-yellow-500"></i> Informasi Pribadi
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="col-span-1 md:col-span-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fas fa-user text-gray-400 mr-1"></i> Nama Lengkap <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.name}
+                                            onChange={e => setData('name', e.target.value)}
+                                            required
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fas fa-id-badge text-gray-400 mr-1"></i> Gelar / Jabatan
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.title}
+                                            onChange={e => setData('title', e.target.value)}
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fas fa-building text-gray-400 mr-1"></i> Instansi
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.institution}
+                                            onChange={e => setData('institution', e.target.value)}
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
+                                        />
+                                    </div>
+                                    <div className="col-span-1 md:col-span-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi / Biografi Singkat</label>
+                                        <textarea
+                                            value={data.bio}
+                                            onChange={e => setData('bio', e.target.value)}
+                                            rows="3"
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
+                                            placeholder="Tuliskan deskripsi atau biografi singkat narasumber..."
+                                        ></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Media & Documents */}
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
+                                    <i className="fas fa-file-upload text-yellow-500"></i> Media & Dokumen
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Foto Profile</label>
+                                        <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-yellow-500 hover:bg-yellow-50 transition-all group cursor-pointer block w-full relative overflow-hidden min-h-[160px]">
+                                            {photoPreview ? (
+                                                <div className="absolute inset-0 z-0">
+                                                    <img src={photoPreview} className="w-full h-full object-cover opacity-20" alt="Preview" />
+                                                </div>
+                                            ) : null}
+                                            <div className="space-y-1 text-center relative z-10">
+                                                <div className="w-12 h-12 mx-auto bg-yellow-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform bg-white/80 shadow-sm">
+                                                    <i className="fas fa-image text-yellow-500 text-xl"></i>
+                                                </div>
+                                                <div className="flex text-sm text-gray-600 justify-center pt-2">
+                                                    <span className="font-bold text-yellow-600 tracking-tight">
+                                                        {photoPreview ? 'Ganti Foto' : (editingSpeaker?.photo ? 'Update Foto' : 'Upload Foto')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="sr-only"
+                                                onChange={e => {
+                                                    const file = e.target.files[0];
+                                                    setData('photo', file);
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = () => setPhotoPreview(reader.result);
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Upload CV (PDF)</label>
+                                        <label className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-red-500 hover:bg-red-50 transition-all group cursor-pointer block w-full min-h-[160px]">
+                                            <div className="space-y-1 text-center">
+                                                <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                                                    <i className="fas fa-file-pdf text-red-500 text-xl"></i>
+                                                </div>
+                                                <div className="flex text-sm text-gray-600 justify-center pt-2">
+                                                    <span className="font-bold text-red-600 tracking-tight">
+                                                        {cvName ? cvName : (editingSpeaker?.cv ? 'Update CV' : 'Upload CV')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <input
+                                                type="file"
+                                                accept="application/pdf"
+                                                className="sr-only"
+                                                onChange={e => {
+                                                    const file = e.target.files[0];
+                                                    setData('cv', file);
+                                                    if (file) setCvName(file.name);
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Contact & Social Media */}
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
+                                    <i className="fas fa-address-card text-yellow-500"></i> Kontak & Sosial Media
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fas fa-envelope text-gray-400 mr-1"></i> Email <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={data.email}
+                                            onChange={e => setData('email', e.target.value)}
+                                            required
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fas fa-phone text-gray-400 mr-1"></i> No. HP/WA
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.phone}
+                                            onChange={e => setData('phone', e.target.value)}
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fab fa-linkedin text-blue-700 mr-1"></i> LinkedIn URL
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={data.linkedin}
+                                            onChange={e => setData('linkedin', e.target.value)}
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i className="fab fa-instagram text-pink-600 mr-1"></i> Instagram URL
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={data.instagram}
+                                            onChange={e => setData('instagram', e.target.value)}
+                                            className="block w-full px-4 py-3 rounded-xl border-gray-300 shadow-sm focus:ring-yellow-500 focus:border-yellow-500 transition-all hover:shadow-md"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3 pt-6 border-t-2 border-orange-200 bg-gradient-to-r from-amber-50 to-orange-50 -mx-6 -mb-6 px-6 py-5 rounded-b-2xl">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEditModal(false)}
+                                    className="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all transform hover:scale-105"
+                                >
+                                    <i className="fas fa-times mr-2"></i> Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 text-white font-bold hover:from-amber-700 hover:via-orange-700 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 shadow-xl transition-all transform hover:scale-105 active:scale-95"
+                                >
+                                    <i className="fas fa-save mr-2"></i> {processing ? 'Menyimpan...' : 'Simpan Perubahan'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </Modal>
         </AcaraLayout>
     );
 }

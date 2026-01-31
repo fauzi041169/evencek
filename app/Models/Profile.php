@@ -151,22 +151,43 @@ class Profile extends Model
 
     public function getFotoUrlAttribute()
     {
-        if ($this->foto) {
-            // Check if it's a storage path (contains slash or starts with profile-photos)
-            if (str_contains($this->foto, '/') || str_starts_with($this->foto, 'profile-photos')) {
-                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($this->foto)) {
-                    return \Illuminate\Support\Facades\Storage::url($this->foto);
-                }
+        $default = asset('assets/images/profilefoto/default-profile.png');
+        
+        if (!$this->foto) {
+            return $default;
+        }
+
+        // 1. If it's a modern storage path (starts with profile-photos/)
+        if (str_starts_with($this->foto, 'profile-photos/')) {
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($this->foto)) {
+                return \Illuminate\Support\Facades\Storage::url($this->foto);
             }
-
-            $photoPath = public_path('assets/images/profilefoto/'.$this->foto);
-
-            if (file_exists($photoPath)) {
-                return asset('assets/images/profilefoto/'.$this->foto);
+            // If it's supposed to be in storage but isn't there, DON'T check assets.
+            return $default;
+        }
+        
+        // 2. If it's a raw GUID/filename (usually older storage or direct upload)
+        if (!str_contains($this->foto, '/') && strlen($this->foto) > 30) {
+            $storagePath = 'profile-photos/' . $this->foto;
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($storagePath)) {
+                return \Illuminate\Support\Facades\Storage::url($storagePath);
             }
         }
 
-        return asset('assets/images/profilefoto/default-profile.png');
+        // 3. Legacy path check (only for filenames that are NOT storage paths)
+        if (!str_contains($this->foto, '/')) {
+            $photoPath = public_path('assets/images/profilefoto/' . $this->foto);
+            if (file_exists($photoPath) && !is_dir($photoPath)) {
+                return asset('assets/images/profilefoto/' . $this->foto);
+            }
+        }
+
+        // 4. Final attempt: any other string that might be a storage path
+        if (str_contains($this->foto, '/') && \Illuminate\Support\Facades\Storage::disk('public')->exists($this->foto)) {
+            return \Illuminate\Support\Facades\Storage::url($this->foto);
+        }
+
+        return $default;
     }
 
     public function getCoverImageUrlAttribute()

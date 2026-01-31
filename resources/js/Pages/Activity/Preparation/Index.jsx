@@ -43,32 +43,26 @@ export default function PreparationIndex({
         <AcaraLayout
             title={`Persiapan - ${activity.name}`}
             activity={activity}
+            fluid={true}
         >
             <div className="min-h-screen bg-[#fafbfc] py-10 font-primary">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="w-full px-4 sm:px-6 lg:px-8">
                     {/* modern header */}
                     {/* Modern Premium Header */}
-                    <div className="mb-12 relative">
-                        {/* Decorative background blob */}
-                        <div className="absolute -top-20 -left-20 w-72 h-72 bg-blue-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
-                        <div className="absolute -top-20 -right-20 w-72 h-72 bg-purple-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
-
-                        <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6">
-                            <div className="space-y-4 max-w-2xl">
-                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm text-slate-600 text-xs font-bold uppercase tracking-wider">
-                                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                                    <span>Preparation Hub</span>
-                                </div>
-                                <div>
-                                    <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 tracking-tight leading-tight">
-                                        Manajemen Persiapan
-                                    </h1>
-                                    <div className="h-1.5 w-24 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mt-2"></div>
-                                </div>
-                                <p className="text-lg text-slate-600 leading-relaxed">
-                                    Pusat kontrol untuk melengkapi dan memonitor segala kebutuhan acara <span className="font-bold text-slate-900">{activity.name}</span>. Pastikan semua persiapan matang sebelum hari H.
-                                </p>
+                    <div className="mb-12 pt-8 pl-6 border-l-8 border-primary rounded-l-sm bg-gradient-to-r from-slate-50 to-transparent">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                                <span className="px-3 py-1 rounded-full bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20">
+                                    Management Center
+                                </span>
+                                <div className="h-px w-24 bg-primary/30"></div>
                             </div>
+                            <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter leading-none">
+                                {activity.name}
+                            </h1>
+                            <p className="text-xl text-slate-500 font-medium max-w-4xl tracking-tight">
+                                Dashboard pengelolaan operasional, logistik, dan struktur kepanitiaan secara terpadu.
+                            </p>
                         </div>
                     </div>
 
@@ -107,23 +101,20 @@ export default function PreparationIndex({
 
                     {/* Requirements section - wider at bottom */}
                     <div className="mt-10 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md duration-300">
-                        <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center">
-                            <div>
-                                <h3 className="text-xl font-bold text-gray-900 tracking-tight">Kebutuhan Per Divisi</h3>
-                                <p className="text-sm text-gray-500 font-medium italic mt-1">Monitor kesiapan operasional setiap tim</p>
-                            </div>
-                        </div>
-                        <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100 min-h-[600px]">
-                            <div className="w-full md:w-1/3 lg:w-1/4 bg-gray-50/20">
+                        <div className="grid grid-cols-1 sm:grid-cols-[280px_1fr] md:grid-cols-[300px_1fr] min-h-[700px] divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                            {/* Left: Divisions (Jabatan) List */}
+                            <div className="bg-gray-50/50 min-w-0">
                                 <DivisionSidebar
                                     divisions={divisionsList}
                                     selectedDivisionId={selectedDivisionId}
                                     onSelect={handleDivisionSelect}
                                 />
                             </div>
-                            <div className="flex-1 bg-white">
+
+                            {/* Right: Requirements (Kebutuhan) List */}
+                            <div className="bg-white min-w-0">
                                 {selectedDivisionId ? (
-                                    <div className="p-8 animate-in fade-in duration-300">
+                                    <div className="p-6 md:p-10 animate-in fade-in slide-in-from-right-4 duration-500">
                                         <RequirementsManager
                                             divisionId={selectedDivisionId}
                                             divisions={divisionsList}
@@ -131,12 +122,12 @@ export default function PreparationIndex({
                                         />
                                     </div>
                                 ) : (
-                                    <div className="h-full flex flex-col items-center justify-center p-20 text-center">
-                                        <div className="h-24 w-24 bg-gray-50 rounded-full flex items-center justify-center mb-6 text-gray-200">
+                                    <div className="h-full flex flex-col items-center justify-center p-20 text-center opacity-60">
+                                        <div className="h-24 w-24 bg-gray-50 rounded-full flex items-center justify-center mb-6 text-gray-300">
                                             <i className="fas fa-layer-group text-5xl"></i>
                                         </div>
                                         <h4 className="text-xl font-bold text-gray-900 mb-2">Pilih Divisi</h4>
-                                        <p className="text-gray-400 max-w-xs mx-auto font-medium">Silakan pilih divisi di menu samping untuk mulai mengelola daftar kebutuhan mereka.</p>
+                                        <p className="text-gray-500 max-w-xs mx-auto font-medium">Silakan pilih divisi di menu samping untuk mulai mengelola daftar kebutuhan mereka.</p>
                                     </div>
                                 )}
                             </div>

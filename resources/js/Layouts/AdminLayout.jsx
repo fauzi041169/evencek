@@ -6,7 +6,11 @@ import Modal from '../Components/Modal';
 
 export default function AdminLayout({ children, title = '' }) {
     const { auth, flash, errors, appSettings } = usePage().props;
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+        const stored = localStorage.getItem('sidebarCollapsed');
+        // Default to collapsed (true) if not explicitly set to 'false'
+        return stored !== 'false';
+    });
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
@@ -44,12 +48,20 @@ export default function AdminLayout({ children, title = '' }) {
                 .border-primary { border-color: var(--color-primary) !important; }
                 .ring-primary { --tw-ring-color: var(--color-primary) !important; }
                 .hover\\:bg-primary:hover { background-color: var(--color-primary) !important; }
-                .hover\\:text-primary:hover { color: var(--color-primary) !important; }
+                /* Force sidebar styles to be Dark Grey and Compact */
+                aside, aside > div, .sidebar-container {
+                    background-color: #1e293b !important;
+                    color: #f1f5f9 !important;
+                }
+                .sidebar-link-active {
+                    background-color: rgba(255, 255, 255, 0.1) !important;
+                    color: white !important;
+                }
             `}} />
             {/* Mobile Sidebar Modal */}
             <Modal show={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} maxWidth="sm">
-                <div className="h-[90vh] w-[85vw] mx-auto bg-gradient-to-b from-gray-800 to-gray-900 overflow-hidden flex flex-col rounded-[2.5rem] shadow-2xl border border-white/10">
-                    <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-black/30 backdrop-blur-md">
+                <div className="h-[90vh] w-[85vw] mx-auto sidebar-container overflow-hidden flex flex-col rounded-[2.5rem] shadow-2xl border border-white/10">
+                    <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-black/20 backdrop-blur-md">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30">
                                 <i className="fas fa-user-shield text-primary text-xs"></i>
@@ -71,9 +83,12 @@ export default function AdminLayout({ children, title = '' }) {
 
             {/* Desktop Sidebar (Permanent) */}
             <aside
-                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 hidden lg:block bg-[#0F172A] overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}
+                className={`fixed top-0 left-0 h-full z-[9999] transition-all duration-300 hidden lg:block ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}
+                style={{ backgroundColor: '#1e293b', color: '#f1f5f9' }}
             >
-                <Sidebar collapsed={isSidebarCollapsed} showProfile={false} auth={auth} user={auth?.user} appSettings={appSettings} />
+                <div className="w-full h-full sidebar-container text-slate-200 shadow-2xl">
+                    <Sidebar collapsed={isSidebarCollapsed} showProfile={false} auth={auth} user={auth?.user} appSettings={appSettings} />
+                </div>
             </aside>
 
             {/* Main Content */}
@@ -90,9 +105,12 @@ export default function AdminLayout({ children, title = '' }) {
                                 <i className="fas fa-bars text-xl"></i>
                             </button>
 
-                            {/* Sidebar Toggle (Desktop) */}
                             <button
-                                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                                onClick={() => {
+                                    const newState = !isSidebarCollapsed;
+                                    setIsSidebarCollapsed(newState);
+                                    localStorage.setItem('sidebarCollapsed', String(newState));
+                                }}
                                 className="hidden lg:flex p-2 rounded-lg text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
                             >
                                 <i className={`fas ${isSidebarCollapsed ? 'fa-indent' : 'fa-outdent'} text-lg`}></i>
@@ -135,7 +153,10 @@ export default function AdminLayout({ children, title = '' }) {
                                                 src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
                                                 alt={auth.user.name}
                                                 className="h-9 w-9 rounded-full object-cover border-2 border-indigo-100 shadow-sm"
-                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                                onError={(e) => {
+                                                    e.target.onerror = null;
+                                                    e.target.src = '/assets/images/profilefoto/default-profile.png';
+                                                }}
                                             />
                                         </button>
 
@@ -156,19 +177,20 @@ export default function AdminLayout({ children, title = '' }) {
                                                         <div className="flex items-center gap-3">
                                                             <div className="relative">
                                                                 <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-white shadow-md bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                                                                    {auth.user.profile_photo_url ? (
-                                                                        <img
-                                                                            src={auth.user.profile_photo_url}
-                                                                            alt={auth.user.name}
-                                                                            className="w-full h-full object-cover"
-                                                                            onError={(e) => {
-                                                                                e.currentTarget.style.display = 'none';
-                                                                                e.currentTarget.nextSibling.classList.remove('hidden');
-                                                                                e.currentTarget.nextSibling.classList.add('flex');
-                                                                            }}
-                                                                        />
-                                                                    ) : null}
-                                                                    <div className={`w-full h-full items-center justify-center text-lg font-bold text-indigo-600 bg-indigo-100 ${auth.user.profile_photo_url ? 'hidden' : 'flex'}`}>
+                                                                    <img
+                                                                        src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                                        alt={auth.user.name}
+                                                                        className="w-full h-full object-cover"
+                                                                        onError={(e) => {
+                                                                            e.target.onerror = null;
+                                                                            e.target.style.display = 'none';
+                                                                            if (e.target.nextSibling) {
+                                                                                e.target.nextSibling.classList.remove('hidden');
+                                                                                e.target.nextSibling.classList.add('flex');
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <div className="hidden w-full h-full items-center justify-center text-lg font-bold text-indigo-600 bg-indigo-100">
                                                                         {auth.user.name?.charAt(0).toUpperCase()}
                                                                     </div>
                                                                 </div>

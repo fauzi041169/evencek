@@ -48,6 +48,15 @@ export default function Show({
     certificatePrintSettings
 }) {
     const { t, i18n } = useTranslation();
+
+    const colors = [
+        { bg: 'from-blue-500 to-cyan-500', border: 'border-blue-300', text: 'text-secondary' },
+        { bg: 'from-purple-500 to-pink-500', border: 'border-purple-300', text: 'text-primary' },
+        { bg: 'from-green-500 to-emerald-500', border: 'border-green-300', text: 'text-green-600' },
+        { bg: 'from-orange-500 to-red-500', border: 'border-orange-300', text: 'text-orange-600' },
+        { bg: 'from-indigo-500 to-purple-500', border: 'border-indigo-300', text: 'text-primary' },
+        { bg: 'from-pink-500 to-rose-500', border: 'border-pink-300', text: 'text-pink-600' },
+    ];
     const { auth, appSettings } = usePage().props;
     const [search, setSearch] = useState('');
     const [perPage, setPerPage] = useState(participants?.per_page || 20);
@@ -937,9 +946,9 @@ export default function Show({
                                         <div className="flex flex-wrap gap-2">
                                             {[
                                                 { id: 'description', label: t('activities.about'), icon: 'fa-info-circle' },
+                                                { id: 'speakers', label: t('activities.speakers'), icon: 'fa-user-tie' },
                                                 { id: 'materials', label: t('activities.materials'), icon: 'fa-file-alt' },
                                                 { id: 'rundown', label: t('activities.rundown'), icon: 'fa-list-ol' },
-                                                { id: 'speakers', label: t('activities.speakers'), icon: 'fa-user-tie' },
                                                 { id: 'gallery', label: t('activities.gallery'), icon: 'fa-images' },
                                                 { id: 'participants', label: t('activities.participants_list'), icon: 'fa-users' },
                                                 { id: 'id_card', label: t('activities.id_card'), icon: 'fa-id-card' },
@@ -964,26 +973,124 @@ export default function Show({
 
                                 {/* Description */}
                                 {isVisible('description') && activity.description && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                            <i className="fas fa-info-circle text-primary"></i>
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                                        <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                            <i className="fas fa-info-circle text-primary text-sm"></i>
                                             {t('activities.about')}
                                         </h3>
                                         <div
-                                            className="prose max-w-none text-gray-600 text-sm md:text-base leading-relaxed"
+                                            className="prose prose-sm max-w-none text-gray-600 leading-relaxed"
                                             dangerouslySetInnerHTML={{ __html: activity.description }}
                                         />
                                     </div>
                                 )}
 
+                                {/* Speakers Section */}
+                                {isVisible('speakers') && activity.speakers && (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                                        <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                            <i className="fas fa-user-tie text-primary text-sm"></i>
+                                            {t('activities.speakers')}
+                                        </h3>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                                            {activity.speakers.length > 0 ? (
+                                                activity.speakers.map((speaker, index) => {
+                                                    const color = colors[index % colors.length];
+                                                    return (
+                                                        <div key={speaker.id} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group flex flex-col h-full">
+                                                            <div className={`bg-gradient-to-br ${color.bg} relative aspect-square overflow-hidden`}>
+                                                                {speaker.photo ? (
+                                                                    <img
+                                                                        src={route('activity.speakers.photo', speaker.id)}
+                                                                        alt={speaker.name}
+                                                                        className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-500"
+                                                                        onError={(e) => {
+                                                                            e.target.onerror = null;
+                                                                            e.target.src = '/assets/images/profilefoto/default-profile.png';
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-white">
+                                                                        <i className="fas fa-user text-4xl opacity-50"></i>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* CV Button Overlay on Hover */}
+                                                                {speaker.cv && (
+                                                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                        <a
+                                                                            href={route('activity.speakers.cv', speaker.id)}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="bg-white text-gray-900 px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-transform"
+                                                                        >
+                                                                            <i className="fas fa-file-pdf text-red-500"></i> Lihat CV
+                                                                        </a>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="p-3 bg-white flex flex-col flex-1">
+                                                                <h4 className="text-sm font-bold text-gray-900 line-clamp-2 leading-tight mb-1" title={speaker.name}>{speaker.name}</h4>
+                                                                <p className={`text-[10px] ${color.text} font-bold mb-0.5 flex items-center gap-1 uppercase tracking-tight`}>
+                                                                    <i className="fas fa-briefcase text-[8px]"></i>
+                                                                    {speaker.title || 'Narasumber'}
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-500 mb-2 flex items-center gap-1 line-clamp-1">
+                                                                    <i className="fas fa-building text-gray-300 text-[8px]"></i>
+                                                                    {speaker.institution || '-'}
+                                                                </p>
+
+                                                                <div className="mt-auto pt-2 border-t border-gray-50 flex items-center justify-between">
+                                                                    <div className="flex gap-2">
+                                                                        {speaker.linkedin && (
+                                                                            <a href={speaker.linkedin.startsWith('http') ? speaker.linkedin : `https://linkedin.com/in/${speaker.linkedin}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-secondary transition-colors">
+                                                                                <i className="fab fa-linkedin text-xs"></i>
+                                                                            </a>
+                                                                        )}
+                                                                        {speaker.instagram && (
+                                                                            <a href={`https://instagram.com/${speaker.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-600 transition-colors">
+                                                                                <i className="fab fa-instagram text-xs"></i>
+                                                                            </a>
+                                                                        )}
+                                                                        {speaker.email && (
+                                                                            <a href={`mailto:${speaker.email}`} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                                                                <i className="fas fa-envelope text-xs"></i>
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {speaker.cv && (
+                                                                        <a
+                                                                            href={route('activity.speakers.cv', speaker.id)}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-[10px] font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
+                                                                        >
+                                                                            <i className="fas fa-file-pdf"></i> CV
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <div className="col-span-full text-gray-500 text-sm italic py-2">
+                                                    Belum ada data narasumber.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Materials Section */}
                                 {isVisible('materials') && materials && materials.length > 0 && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                            <i className="fas fa-file-alt text-indigo-500"></i>
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                                        <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                            <i className="fas fa-file-alt text-indigo-500 text-sm"></i>
                                             {t('activities.materi_kegiatan')}
                                         </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             {materials.map((material) => {
                                                 const isPdf = material.file_type === 'pdf' || (material.file_path && material.file_path.toLowerCase().endsWith('.pdf'));
 
@@ -992,13 +1099,13 @@ export default function Show({
                                                 else if (material.file_type === 'link' || material.file_type === 'youtube') iconSrc = '/assets/images/icon/iconlink.jpg';
 
                                                 return (
-                                                    <div key={material.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition bg-gray-50 flex items-start gap-3">
+                                                    <div key={material.id} className="border border-gray-100 rounded-xl p-3 hover:shadow-md transition bg-gray-50 flex items-start gap-3">
                                                         <div className="shrink-0">
-                                                            <img src={iconSrc} alt="Icon" className="w-12 h-12 object-contain" />
+                                                            <img src={iconSrc} alt="Icon" className="w-10 h-10 object-contain" />
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <h4 className="font-semibold text-gray-800 truncate mb-1">{material.title || material.name}</h4>
-                                                            <p className="text-xs text-gray-500 mb-2 line-clamp-2">{material.description || t('activities.no_description')}</p>
+                                                            <h4 className="text-sm font-bold text-gray-800 truncate mb-0.5">{material.title || material.name}</h4>
+                                                            <p className="text-[10px] text-gray-500 mb-2 line-clamp-1">{material.description || t('activities.no_description')}</p>
 
                                                             <div className="flex items-center gap-3">
                                                                 {/* PDF Preview Link */}
@@ -1077,40 +1184,7 @@ export default function Show({
                                     </div>
                                 )}
 
-                                {/* Speakers Section */}
-                                {isVisible('speakers') && activity.speakers && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                            <i className="fas fa-user-tie text-primary"></i>
-                                            {t('activities.speakers')}
-                                        </h3>
-                                        <div className="space-y-4">
-                                            {activity.speakers.length > 0 ? (
-                                                activity.speakers.map((speaker) => (
-                                                    <div key={speaker.id} className="flex items-center gap-3">
-                                                        <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                                                            <img
-                                                                src={speaker.photo || '/assets/images/profilefoto/default-profile.png'}
-                                                                alt={speaker.name}
-                                                                className="w-full h-full object-cover"
-                                                                onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-medium text-gray-900">{speaker.name}</p>
-                                                            {speaker.title && <p className="text-xs text-gray-500">{speaker.title}</p>}
-                                                            {speaker.institution && <p className="text-xs text-gray-400">{speaker.institution}</p>}
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-gray-500 text-sm italic py-2">
-                                                    Belum ada data narasumber.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
+
 
 
 

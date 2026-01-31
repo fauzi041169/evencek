@@ -37,7 +37,7 @@ export default function RequirementsManager({ activity, divisionId, divisions })
     const updateRequirement = async (id, data) => {
         try {
             // Optimistic update
-            setRequirements(prev => prev.map(req => 
+            setRequirements(prev => prev.map(req =>
                 req.id === id ? { ...req, ...data } : req
             ));
 
@@ -85,7 +85,7 @@ export default function RequirementsManager({ activity, divisionId, divisions })
                 return { name: parts[0], quantity: parts[1] || '', unit: parts[2] || '' };
             });
     };
-    
+
     // Actually the original JS had `parseNeedsFromNotes` logic.
     // Let's assume for now simple text editing for notes, as "needs" seemed to be a specific format stringified into notes.
     // If complex parsing is needed, I'll need that logic. 
@@ -98,18 +98,22 @@ export default function RequirementsManager({ activity, divisionId, divisions })
 
     return (
         <div className="font-primary">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h4 className="text-xl font-bold text-gray-900 tracking-tight">
-                        {selectedDivision?.name}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10 pb-6 border-b border-slate-50">
+                <div className="space-y-1">
+                    <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                        <i className="fas fa-folder-open"></i>
+                        Divisi: {selectedDivision?.name}
+                    </div>
+                    <h4 className="text-2xl font-black text-slate-900 tracking-tight">
+                        Daftar Kebutuhan
                     </h4>
-                    <p className="text-sm text-gray-500 mt-1">Daftar kebutuhan dan perlengkapan divisi</p>
+                    <p className="text-sm text-slate-400 font-medium">Dokumentasi & tracking inventaris operasional tim</p>
                 </div>
                 <button
                     onClick={openAddRequirementModal}
-                    className="bg-primary text-white px-5 py-2.5 rounded-xl hover:bg-primary/90 text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center"
+                    className="group bg-primary text-white px-6 py-3 rounded-2xl hover:bg-primary/90 text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center"
                 >
-                    <i className="fas fa-plus mr-2"></i> Tambah Kebutuhan
+                    <i className="fas fa-plus mr-2 transform group-hover:rotate-90 transition-transform"></i> Tambah Kebutuhan
                 </button>
             </div>
 
@@ -133,9 +137,9 @@ export default function RequirementsManager({ activity, divisionId, divisions })
                         <tbody className="bg-white divide-y divide-gray-200">
                             {requirements.length > 0 ? (
                                 requirements.map((req) => (
-                                    <RequirementRow 
-                                        key={req.id} 
-                                        req={req} 
+                                    <RequirementRow
+                                        key={req.id}
+                                        req={req}
                                         onStatusChange={handleStatusChange}
                                         onNameChange={handleNameChange}
                                         onTargetDateChange={handleTargetDateChange}
@@ -161,7 +165,7 @@ function RequirementRow({ req, onStatusChange, onNameChange, onTargetDateChange,
     const [isEditingName, setIsEditingName] = useState(false);
     const [isEditingDate, setIsEditingDate] = useState(false);
     const [isEditingNotes, setIsEditingNotes] = useState(false);
-    
+
     const [name, setName] = useState(req.name);
     const [date, setDate] = useState(req.target_date ? req.target_date.split('T')[0] : '');
     const [notes, setNotes] = useState(req.notes || '');
@@ -177,17 +181,17 @@ function RequirementRow({ req, onStatusChange, onNameChange, onTargetDateChange,
         <tr>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-top">
                 {isEditingName ? (
-                    <input 
-                        type="text" 
-                        value={name} 
+                    <input
+                        type="text"
+                        value={name}
                         onChange={(e) => setName(e.target.value)}
-                        onBlur={() => { setIsEditingName(false); if(name !== req.name) onNameChange(req.id, name); }}
-                        onKeyDown={(e) => { if(e.key === 'Enter') e.target.blur(); }}
+                        onBlur={() => { setIsEditingName(false); if (name !== req.name) onNameChange(req.id, name); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
                         className="border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm w-full"
                         autoFocus
                     />
                 ) : (
-                    <span 
+                    <span
                         onClick={() => setIsEditingName(true)}
                         className="cursor-pointer hover:text-primary border-b border-dashed border-transparent hover:border-gray-400"
                     >
@@ -197,16 +201,16 @@ function RequirementRow({ req, onStatusChange, onNameChange, onTargetDateChange,
             </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 align-top">
                 {isEditingDate ? (
-                    <input 
-                        type="date" 
-                        value={date} 
+                    <input
+                        type="date"
+                        value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        onBlur={() => { setIsEditingDate(false); if(date !== (req.target_date ? req.target_date.split('T')[0] : '')) onTargetDateChange(req.id, date); }}
+                        onBlur={() => { setIsEditingDate(false); if (date !== (req.target_date ? req.target_date.split('T')[0] : '')) onTargetDateChange(req.id, date); }}
                         className="border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm"
                         autoFocus
                     />
                 ) : (
-                    <span 
+                    <span
                         onClick={() => setIsEditingDate(true)}
                         className="cursor-pointer hover:text-primary border-b border-dashed border-transparent hover:border-gray-400"
                     >
@@ -215,12 +219,12 @@ function RequirementRow({ req, onStatusChange, onNameChange, onTargetDateChange,
                 )}
             </td>
             <td className="px-6 py-4 whitespace-nowrap align-top">
-                <select 
-                    value={req.status} 
+                <select
+                    value={req.status}
                     onChange={(e) => onStatusChange(req.id, e.target.value)}
                     className={`text-sm rounded-md shadow-sm border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50
-                        ${req.status === 'completed' ? 'text-green-600 bg-green-50' : 
-                          req.status === 'ready' ? 'text-secondary bg-blue-50' : 'text-gray-600 bg-gray-50'}`}
+                        ${req.status === 'completed' ? 'text-green-600 bg-green-50' :
+                            req.status === 'ready' ? 'text-secondary bg-blue-50' : 'text-gray-600 bg-gray-50'}`}
                 >
                     <option value="pending">Belum Proses</option>
                     <option value="ready">Proses</option>
@@ -229,16 +233,16 @@ function RequirementRow({ req, onStatusChange, onNameChange, onTargetDateChange,
             </td>
             <td className="px-6 py-4 text-sm text-gray-500 align-top max-w-xs truncate">
                 {isEditingNotes ? (
-                    <textarea 
-                        value={notes} 
+                    <textarea
+                        value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        onBlur={() => { setIsEditingNotes(false); if(notes !== (req.notes || '')) onNotesChange(req.id, notes); }}
+                        onBlur={() => { setIsEditingNotes(false); if (notes !== (req.notes || '')) onNotesChange(req.id, notes); }}
                         className="border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm w-full text-xs"
                         rows="2"
                         autoFocus
                     />
                 ) : (
-                    <span 
+                    <span
                         onClick={() => setIsEditingNotes(true)}
                         className={`cursor-pointer hover:text-primary block ${!notes ? 'text-gray-300 italic' : ''}`}
                         title={notes}

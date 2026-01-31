@@ -114,7 +114,7 @@ class Activity extends Model
 
     public function speakers()
     {
-        return $this->hasMany(ActivitySpeaker::class);
+        return $this->hasMany(ActivitySpeaker::class)->orderBy('order');
     }
 
     public function participantGroups()

@@ -2593,8 +2593,8 @@ class PaymentController extends Controller
         try {
             // Allow access to admin/superadmin OR creator/committee/division leader
             // Loosened: creators are allowed even if permission seeding is missing, but data is still filtered below
-            $user = auth()->user();
-            if (! $user->isAdmin() && ! $user->hasPermission('view_payments')) {
+            if (! auth()->user()->hasPermission('view_payments')) {
+                $user = auth()->user();
                 $hasOwnViewPermission = $user->hasPermission('view_payments_own_activity') || $user->isCreator();
                 if (! $hasOwnViewPermission) {
                     abort(403, 'Anda tidak memiliki akses ke halaman manajemen pembayaran');
@@ -2623,13 +2623,15 @@ class PaymentController extends Controller
                 }
             }
 
-            $query = Payment::with(['user:id,name,email', 'activity:id,name,user_id', 'paymentMethod:id,name', 'verifier:id,name'])
+            $currentUser = auth()->user();
+            $userProfile = $currentUser ? $currentUser->profile : null;
+
+            $query = Payment::with(['user:id,name,email', 'activity:id,name,user_id,price', 'paymentMethod:id,name', 'verifier:id,name'])
                 ->select(['id', 'user_id', 'activity_id', 'payment_method_id', 'amount', 'status', 'notes', 'midtrans_transaction_id', 'verified_by', 'verified_at', 'created_at']);
 
             // Jika bukan admin/superadmin, batasi hanya pembayaran dari kegiatan miliknya/diampunya
             $currentUser = auth()->user();
             if (
-                ! $currentUser->isAdmin() &&
                 ! $currentUser->hasPermission('view_payments') &&
                 ($currentUser->hasPermission('view_payments_own_activity') || $currentUser->isCreator())
             ) {
@@ -2698,7 +2700,6 @@ class PaymentController extends Controller
                 ! $currentUser->hasPermission('view_payments') &&
                 ($currentUser->hasPermission('view_payments_own_activity') || $currentUser->isCreator())
             ) {
-                $userProfile = $currentUser->profile;
                 $statsBase->whereHas('activity', function ($aq) use ($currentUser, $userProfile) {
                     $aq->where('user_id', $currentUser->id)
                         ->orWhereHas('committeeStructures', function ($cq) use ($currentUser) {
@@ -2723,50 +2724,143 @@ class PaymentController extends Controller
                 'manual' => (clone $statsBase)->whereNull('midtrans_transaction_id')->whereNotNull('payment_method_id')->count(),
             ];
 
+            // Hitung total kegiatan
+            if ($currentUser->hasRole('admin') || $currentUser->hasRole('superadmin')) {
+                $stats['total_activities'] = \App\Models\Activity::count();
+            } else {
+                $stats['total_activities'] = \App\Models\Activity::where(function($q) use ($currentUser, $userProfile) {
+                    $q->where('user_id', $currentUser->id)
+                      ->orWhereHas('committeeStructures', function ($cq) use ($currentUser) {
+                          $cq->where('user_id', $currentUser->id);
+                      })
+                      ->orWhereHas('divisions', function ($dq) use ($currentUser, $userProfile) {
+                          $dq->where('leader_name', $currentUser->name);
+                          if ($userProfile && $userProfile->no_hp) {
+                              $dq->orWhere('leader_phone', $userProfile->no_hp);
+                          }
+                      });
+                })->count();
+            }
+
             // Terapkan aturan potongan biaya admin untuk Creator (saldo = netto)
             $settings = FinancialSetting::current();
-            $isRestrictedView = (
-                ! $currentUser->hasPermission('view_payments') &&
-                ($currentUser->hasPermission('view_payments_own_activity') || $currentUser->isCreator())
-            ) || $currentUser->isCreator();
+            $isAdmin = $currentUser->hasRole('admin') || $currentUser->hasRole('superadmin') || $currentUser->hasPermission('view_payments');
+            $isRestrictedView = !$isAdmin;
+
+            // Hitung Pendapatan Berdasarkan Peserta Aktif (bukan panitia) * Harga Kegiatan
+            $grossIncome = (float) \App\Models\ActivityUser::query()
+                ->where('activity_users.status', 1)
+                ->whereHas('participationType', function($q) {
+                    $q->where('name', 'Peserta');
+                })
+                ->where(function($q) use ($isRestrictedView, $currentUser, $userProfile) {
+                    if ($isRestrictedView) {
+                        $q->whereHas('activity', function($aq) use ($currentUser, $userProfile) {
+                            $aq->where('activities.user_id', $currentUser->id)
+                              ->orWhereHas('committeeStructures', function ($cq) use ($currentUser) {
+                                  $cq->where('user_id', $currentUser->id);
+                              })
+                              ->orWhereHas('divisions', function ($dq) use ($currentUser, $userProfile) {
+                                  $dq->where('leader_name', $currentUser->name);
+                                  if ($userProfile && $userProfile->no_hp) {
+                                      $dq->orWhere('leader_phone', $userProfile->no_hp);
+                                  }
+                              });
+                        });
+                    }
+                })
+                ->join('activities', 'activity_users.activity_id', '=', 'activities.id')
+                ->sum('activities.price');
+
+            // Hitung penarikan yang sudah dibayar
+            $paidWithdrawalsSum = WithdrawalRequest::where('status', 'paid')
+                ->where('user_id', $currentUser->id)
+                ->sum('amount');
 
             if ($isRestrictedView) {
-                // Ambil pembayaran yang sudah disetujui dan hitung netto per transaksi
-                $approvedPayments = (clone $statsBase)
-                    ->where('status', 'approved')
-                    ->get(['amount', 'midtrans_transaction_id']);
-
-                $totalNetIncome = $approvedPayments->sum(function ($p) use ($settings) {
-                    $amount = (float) $p->amount;
-                    $isAutomatic = ! empty($p->midtrans_transaction_id);
-
-                    return $isAutomatic
-                        ? $settings->computeNetAutomatic($amount)
-                        : $settings->computeNet($amount);
-                });
-
-                // Kurangi dengan penarikan yang sudah dibayar oleh user ini
-                $paidWithdrawalsSum = WithdrawalRequest::where('status', 'paid')
-                    ->where('user_id', $currentUser->id)
-                    ->sum('amount');
-
-                // Pisahkan total pendapatan dan saldo (netto - penarikan dibayar)
-                $stats['income_amount'] = (float) $totalNetIncome;
-                $stats['balance_amount'] = max(0, $totalNetIncome - (float) $paidWithdrawalsSum);
-                // Backward compatibility
+                // Untuk creator, kita gunakan netto (setelah biaya admin jika ada) 
+                // Namun user minta "Harga * Jumlah Peserta", kita asumsikan ini adalah Pendapatan Bruto yang ia lihat.
+                // Jika ingin tetap menampilkan saldo netto:
+                $stats['income_amount'] = $grossIncome;
+                $stats['balance_amount'] = max(0, $grossIncome - (float) $paidWithdrawalsSum);
                 $stats['total_amount'] = $stats['balance_amount'];
             } else {
-                // Admin/Superadmin melihat total bruto, saldo = bruto - penarikan dibayar
-                $grossIncome = (clone $statsBase)->where('status', 'approved')->sum('amount');
-                $paidWithdrawalsSum = WithdrawalRequest::where('status', 'paid')
-                    ->where('user_id', $currentUser->id)
-                    ->sum('amount');
-
-                $stats['income_amount'] = (float) $grossIncome;
-                $stats['balance_amount'] = max(0, (float) $grossIncome - (float) $paidWithdrawalsSum);
-                // Backward compatibility
+                $stats['income_amount'] = $grossIncome;
+                $stats['balance_amount'] = max(0, $grossIncome - (float) $paidWithdrawalsSum);
                 $stats['total_amount'] = $stats['balance_amount'];
             }
+
+            // Transform payments to include calculated income per row
+            $userIds = $payments->pluck('user_id')->unique();
+            $activityIds = $payments->pluck('activity_id')->unique();
+            
+            $activityUsers = \App\Models\ActivityUser::with('participationType')
+                ->whereIn('user_id', $userIds)
+                ->whereIn('activity_id', $activityIds)
+                ->get()
+                ->groupBy(function($au) {
+                    return $au->user_id . '_' . $au->activity_id;
+                });
+
+            $payments->getCollection()->transform(function ($payment) use ($activityUsers) {
+                // Get pre-fetched activity user record
+                $key = $payment->user_id . '_' . $payment->activity_id;
+                $au = $activityUsers->get($key)?->first();
+                
+                $isPeserta = $au && $au->participationType && $au->participationType->name === 'Peserta';
+                $isActive = $au && $au->status === 1; // STATUS_ACTIVE
+
+                // Check for Bulk Payment in Notes
+                $notes = json_decode($payment->notes, true);
+                $isBulk = is_array($notes) && !empty($notes['bulk_import']);
+                
+                $participantCount = 1;
+                
+                if ($isBulk) {
+                    // For bulk payments, get count from notes
+                    if (isset($notes['successfully_imported_count'])) {
+                        $participantCount = (int) $notes['successfully_imported_count'];
+                    } elseif (isset($notes['allowed_count'])) {
+                        $participantCount = (int) $notes['allowed_count'];
+                    } elseif (isset($notes['user_ids']) && is_array($notes['user_ids'])) {
+                        $participantCount = count($notes['user_ids']);
+                    }
+                } else {
+                    // For single payment, only count if it's a valid 'Peserta' and 'Active'
+                    // If not active/peserta, count is still 1 for display "1 person", 
+                    // but income calculation might treat it as 0 if we strictly follow "Pendapatan = Valid Participants * Price"
+                    // However, user said "Pendapatan = Jumlah Peserta * Harga".
+                    // Let's stick to: Count = 1.
+                }
+
+                $payment->participants_count = $participantCount;
+
+                // Calculated income logic
+                if ($isBulk) {
+                    $payment->calculated_income = (float) ($payment->activity->price ?? 0) * $participantCount;
+                } else {
+                    // Single payment: If valid Peserta & Active, income = price. Else 0?
+                    // User request: "Pendapatan adalah perkalian jumlah peserta dengan harga kegiatan"
+                    // If the user isn't Active yet (pending payment), maybe we show potential income?
+                    // The previous code showed 0 if not active. Let's keep that logic for single users to avoid confusing "Potential" with "Real" income,
+                    // unless the user specifically wants "Potential" income. 
+                    // Given "Total Pendapatan" stats usually imply realized income, we should probably stick to realized.
+                    // BUT, if the status is 'approved', they SHOULD be active.
+                    
+                    // Let's use the Payment Status as a proxy if AU status is missing/lagging?
+                    // Or trust the previous logic.
+                    
+                    $validIncome = ($isActive && $isPeserta);
+                    if ($payment->status === 'approved') {
+                         // If payment is approved, we assume they are/will be active.
+                         $validIncome = true; 
+                    }
+                    
+                    $payment->calculated_income = $validIncome ? (float) ($payment->activity->price ?? 0) : 0;
+                }
+                
+                return $payment;
+            });
 
             // Load saved bank account for current user (from storage file)
             $bankAccount = $this->getSavedBankAccount(auth()->id());
@@ -3339,6 +3433,9 @@ class PaymentController extends Controller
     /**
      * Neraca Keuangan: gabungkan pendapatan (pembayaran kegiatan, langganan) dan pengeluaran (penarikan)
      */
+    /**
+     * Neraca Keuangan: gabungkan pendapatan (pembayaran kegiatan, langganan) dan pengeluaran (penarikan)
+     */
     public function financialLedger(Request $request)
     {
         $user = auth()->user();
@@ -3346,9 +3443,9 @@ class PaymentController extends Controller
             abort(403, 'Anda tidak memiliki akses ke Neraca Keuangan');
         }
 
-        // Base query untuk pembayaran yang diizinkan
-        $paymentsQuery = Payment::with(['user', 'activity'])
-            ->where('status', 'approved');
+        // Base query untuk pembayaran (Semua status)
+        $paymentsQuery = Payment::with(['user', 'activity']);
+            // ->where('status', 'approved'); // Removed specific status filter
 
         if (! $user->isAdmin() && ! $user->isSuperAdmin()) {
             // Creator hanya melihat pembayaran dari kegiatan miliknya/diampunya
@@ -3372,15 +3469,19 @@ class PaymentController extends Controller
         // Subscriptions income hanya ditampilkan untuk admin/superadmin
         $subscriptions = collect();
         if ($user->isAdmin() || $user->isSuperAdmin()) {
+            // Include all subscriptions that have payment attempt or are active
             $subscriptions = Subscription::with(['user', 'plan'])
-                ->where('status', 'active')
+                ->where(function ($q) {
+                    $q->whereNotNull('midtrans_order_id')
+                      ->orWhere('status', 'active');
+                })
                 ->orderBy('created_at', 'desc')
                 ->get();
         }
 
-        // Withdrawal (pengeluaran)
-        $withdrawalsQuery = WithdrawalRequest::with(['user', 'verifier'])
-            ->where('status', 'paid');
+        // Withdrawal (pengeluaran) - Semua status
+        $withdrawalsQuery = WithdrawalRequest::with(['user', 'verifier']);
+            // ->where('status', 'paid'); // Removed status filter
         if ($user->isCreator()) {
             $withdrawalsQuery->where('user_id', $user->id);
         }
@@ -3392,8 +3493,13 @@ class PaymentController extends Controller
         $settings = FinancialSetting::current();
         foreach ($payments as $p) {
             $amount = (float) $p->amount;
+            $isAutomatic = ! empty($p->midtrans_transaction_id);
+
+            // Calculate Gross Total (Participant Count * Price)
+            // $p->amount is already the Gross Amount paid by user/s.
+            $grossTotal = (float) $p->amount;
+
             if ($user->isCreator()) {
-                $isAutomatic = ! empty($p->midtrans_transaction_id);
                 $amount = $isAutomatic
                     ? $settings->computeNetAutomaticForActivity($amount, (int) $p->activity_id)
                     : $settings->computeNet($amount);
@@ -3402,29 +3508,46 @@ class PaymentController extends Controller
                 'date' => $p->created_at,
                 'type' => 'payment',
                 'category' => 'income',
-                'amount' => $amount,
+                'amount' => $amount, // Net Amount (Nominal)
+                'total' => $grossTotal, // Gross Amount (Total)
                 'title' => 'Pembayaran Kegiatan',
                 'description' => $p->activity ? ($p->activity->name.' (User: '.($p->user->name ?? '-').')') : ('User: '.($p->user->name ?? '-')),
                 'status' => $p->status,
                 'link' => route('payments.show', $p->id),
+                'is_automatic' => $isAutomatic,
             ]);
         }
 
         foreach ($subscriptions as $s) {
-            $amount = (float) ($s->plan->price ?? 0);
-            $hasPaid = ! empty($s->midtrans_order_id) || ! empty($s->midtrans_payment_token);
-            if (! $hasPaid) {
-                $amount = 0.0;
-            }
+            $planPrice = (float) ($s->plan->price ?? 0);
+            
+            // Logic for Amount (Net Income): Only count if active (paid/manually granted)
+            // Allow manual active subs to count as income? Assuming 0 if no payment record, or plan price if active?
+            // If Midtrans ID exists, we assume real money flow if active/settled.
+            // If manual (no midtrans) but active, usually it's a grant (0 income) or offline payment. 
+            // We'll stick to: If Active, assume it is Income (Plan Price), unless Manual (no midtrans) -> 0?
+            // Existing logic was "If !hasPaid { amount = 0 }".
+            // Let's keep Amount = 0 for Manual Assignments (No Midtrans) to correspond to "System Money".
+            
+            $hasMidtrans = ! empty($s->midtrans_order_id) || ! empty($s->midtrans_payment_token);
+            $amount = $hasMidtrans ? $planPrice : 0.0;
+            
+            // If strictly pending or cancelled/failed, amount should be 0 for Summation purposes?
+            // We handle summation by filtering 'status' later. 
+            // So here we set the "Potential" amount or "Real" amount?
+            // Ledger usually shows the amount of the transaction.
+            
             $ledgerEntries->push([
                 'date' => $s->created_at,
                 'type' => 'subscription',
                 'category' => 'income',
-                'amount' => $amount,
+                'amount' => $amount, 
+                'total' => $planPrice, // Always show plan price as Total Value
                 'title' => 'Pembayaran Langganan',
                 'description' => ($s->plan->name ?? 'Paket').' (User: '.($s->user->name ?? '-').')',
                 'status' => $s->status,
-                'link' => route('subscription.payments.manage'),
+                'link' => route('subscriptions.payments.manage'),
+                'is_automatic' => $hasMidtrans, // True if Midtrans attempt
             ]);
         }
 
@@ -3434,17 +3557,34 @@ class PaymentController extends Controller
                 'type' => 'withdrawal',
                 'category' => 'expense',
                 'amount' => (float) $w->amount,
+                'total' => (float) $w->amount,
                 'title' => 'Penarikan Dana',
                 'description' => 'Oleh: '.($w->user->name ?? '-').(empty($w->notes) ? '' : (' | Catatan: '.$w->notes)),
                 'status' => $w->status,
                 'link' => route('payments.withdraw.show', $w->id),
+                'is_automatic' => true, // Withdrawals are always system transactions
             ]);
         }
 
-        // Hitung ringkasan
-        $totalIncome = $ledgerEntries->where('category', 'income')->sum('amount');
-        $totalExpense = $ledgerEntries->where('category', 'expense')->sum('amount');
+        // Hitung ringkasan Umum (General) - Only Realized Transactions
+        $totalIncome = $ledgerEntries->where('category', 'income')
+            ->filter(fn($e) => in_array($e['status'], ['approved', 'active', 'paid']))
+            ->sum('amount');
+            
+        $totalExpense = $ledgerEntries->where('category', 'expense')
+            ->filter(fn($e) => in_array($e['status'], ['paid']))
+            ->sum('amount');
+            
         $balance = $totalIncome - $totalExpense;
+
+        // Hitung ringkasan Khusus (Special - Gateway/System Only)
+        $specialIncome = $ledgerEntries->where('category', 'income')
+            ->where('is_automatic', true)
+            ->filter(fn($e) => in_array($e['status'], ['approved', 'active', 'paid']))
+            ->sum('amount');
+            
+        $specialExpense = $totalExpense; 
+        $specialBalance = $specialIncome - $specialExpense;
 
         // Urutkan entri berdasarkan tanggal desc
         $ledgerEntries = $ledgerEntries->sortByDesc('date')->values();
@@ -3456,6 +3596,202 @@ class PaymentController extends Controller
                 'expense' => $totalExpense,
                 'balance' => $balance,
             ],
+            'specialSummary' => [
+                'income' => $specialIncome,
+                'expense' => $specialExpense,
+                'balance' => $specialBalance,
+            ],
+            'bankAccount' => $this->getSavedBankAccount($user->id),
+        ]);
+    }
+
+    /**
+     * Halaman Keuangan Creator: khusus untuk creator murni
+     * Menampilkan pendapatan dari kegiatan yang dibuat dan riwayat penarikan
+     */
+    public function creatorFinance(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! ($user->isCreator() || $user->isAdmin() || $user->isSuperAdmin())) {
+            abort(403, 'Anda tidak memiliki akses ke halaman ini');
+        }
+
+        // Creator hanya melihat pembayaran dari kegiatan miliknya/diampunya
+        $userProfile = $user->profile;
+        $paymentsQuery = Payment::with(['user', 'activity'])
+            ->where('status', 'approved')
+            ->whereHas('activity', function ($aq) use ($user, $userProfile) {
+                $aq->where('user_id', $user->id)
+                    ->orWhereHas('committeeStructures', function ($cq) use ($user) {
+                        $cq->where('user_id', $user->id);
+                    })
+                    ->orWhereHas('divisions', function ($dq) use ($user, $userProfile) {
+                        $dq->where('leader_name', $user->name);
+                        if ($userProfile && $userProfile->no_hp) {
+                            $dq->orWhere('leader_phone', $userProfile->no_hp);
+                        }
+                    });
+            });
+
+        $payments = $paymentsQuery->orderBy('created_at', 'desc')->get();
+
+        // Withdrawal (penarikan) milik creator ini
+        $withdrawals = WithdrawalRequest::with(['user', 'verifier'])
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Susun entri transaksi
+        $entries = collect();
+        $settings = FinancialSetting::current();
+
+        // Group payments by activity untuk detail
+        $paymentsByActivity = $payments->groupBy('activity_id');
+
+        foreach ($paymentsByActivity as $activityId => $activityPayments) {
+            $activity = $activityPayments->first()->activity;
+            if (!$activity) continue;
+
+            // Hitung total pendapatan untuk kegiatan ini
+            $totalActivityIncome = 0; // Net income (after admin fee)
+            $totalActivityIncomeManual = 0;
+            $totalActivityIncomeGateway = 0;
+            $totalGrossIncome = 0; // Gross income (before admin fee)
+            
+            // Ambil ID Panitia untuk pengecualian
+            $committeeUserIds = DB::table('activity_committee_structures')
+                ->where('activity_id', $activityId)
+                ->whereNotNull('user_id')
+                ->pluck('user_id');
+
+            // Map payment info by user_id for quick lookup
+            $paymentMap = [];
+
+            foreach ($activityPayments as $p) {
+                $amount = (float) $p->amount;
+                $isAutomatic = ! empty($p->midtrans_transaction_id);
+                $netAmount = $isAutomatic
+                    ? $settings->computeNetAutomaticForActivity($amount, (int) $p->activity_id)
+                    : $settings->computeNet($amount);
+
+                $totalActivityIncome += $netAmount;
+                if ($isAutomatic) {
+                    $totalActivityIncomeGateway += $netAmount;
+                } else {
+                    $totalActivityIncomeManual += $netAmount;
+                }
+                $totalGrossIncome += $amount; // Total before admin fee
+                
+                $paymentMap[$p->user_id] = [
+                    'net_amount' => $netAmount,
+                    'gross_amount' => $amount,
+                    'status' => $p->status,
+                    'is_automatic' => $isAutomatic,
+                ];
+            }
+
+            // AMBIL PESERTA DARI USER_ACTIVITIES (ActivityUser)
+            // Ambil semua pendaftar (semua status) yang BUKAN PANITIA agar sinkron dengan Dashboard Acara
+            $activityUsers = ActivityUser::with('user')
+                ->where('activity_id', $activityId)
+                ->whereNotIn('user_id', $committeeUserIds)
+                ->get();
+
+            $participants = [];
+            $activityPrice = (float) ($activity->price ?? 0);
+
+            foreach ($activityUsers as $au) {
+                $pData = $paymentMap[$au->user_id] ?? null;
+                
+                // Jika tidak ada data pembayaran TAPI user statusnya AKTIF (1),
+                // Asumsikan ini adalah pembayaran MANUAL (Lunas)
+                // Kecuali jika harga 0 (gratis)
+                if (! $pData && $au->status == 1 && $activityPrice > 0) {
+                    $gross = $activityPrice;
+                    $net = $settings->computeNet($gross);
+
+                    // Tambahkan ke total pendapatan manual
+                    $totalActivityIncome += $net;
+                    $totalActivityIncomeManual += $net;
+                    $totalGrossIncome += $gross;
+
+                    // Buat data dummy untuk participant list
+                    $pData = [
+                        'net_amount' => $net,
+                        'gross_amount' => $gross,
+                        'status' => 'approved', // Anggap approved/lunas
+                        'is_automatic' => false,
+                    ];
+                }
+
+                $participants[] = [
+                    'name' => $au->user->name ?? '-',
+                    'email' => $au->user->email ?? '-',
+                    'amount' => $pData ? $pData['net_amount'] : 0,
+                    'gross_amount' => $pData ? $pData['gross_amount'] : 0,
+                    'status' => $pData ? $pData['status'] : ($au->status == 1 ? 'Lunas' : 'Belum Lunas'), 
+                    'is_automatic' => $pData ? $pData['is_automatic'] : false,
+                ];
+            }
+
+            $participantCount = count($participants);
+            $calculatedTotal = $activityPrice * $participantCount; // Harga Kegiatan × Jumlah Peserta (Bukan Panitia)
+
+        // Tambahkan satu entri per kegiatan (bukan per pembayaran)
+        $entries->push([
+            'date' => $activityPayments->first()->created_at->format('Y-m-d H:i:s'),
+            'type' => 'payment',
+            'category' => 'income',
+            'amount' => $totalActivityIncome,
+            'amount_manual' => $totalActivityIncomeManual,
+            'amount_gateway' => $totalActivityIncomeGateway,
+            'title' => 'Pembayaran Kegiatan',
+            'description' => $activity->name . ' (' . $participantCount . ' peserta)',
+            'status' => 'approved',
+            'activity_id' => $activityId,
+            'activity_name' => $activity->name,
+            'activity_code' => $activity->code,
+            'total_income' => $calculatedTotal, // Harga Kegiatan × Jumlah Peserta
+            'average_price' => $activityPrice,
+            'participant_count' => $participantCount,
+            'participants' => $participants,
+        ]);
+        }
+
+        foreach ($withdrawals as $w) {
+            $entries->push([
+                'date' => $w->created_at->format('Y-m-d H:i:s'),
+                'type' => 'withdrawal',
+                'category' => 'expense',
+                'amount' => (float) $w->amount,
+                'title' => 'Penarikan Dana',
+                'description' => 'Rekening: '.$w->bank_name.' - '.$w->account_number.(empty($w->notes) ? '' : (' | '.$w->notes)),
+                'status' => $w->status,
+            ]);
+        }
+
+        // Hitung ringkasan
+        $totalIncome = $entries->where('category', 'income')->sum('amount');
+        $totalIncomeManual = $entries->where('category', 'income')->sum('amount_manual');
+        $totalIncomeGateway = $entries->where('category', 'income')->sum('amount_gateway');
+        $totalExpense = $entries->where('category', 'expense')->where('status', 'paid')->sum('amount');
+        
+        // Balance available for withdrawal (Only Gateway Income - Expenses)
+        $balance = $totalIncomeGateway - $totalExpense;
+
+        // Urutkan entri berdasarkan tanggal desc
+        $entries = $entries->sortByDesc('date')->values();
+
+        return Inertia::render('Payments/CreatorFinance', [
+            'entries' => $entries,
+            'summary' => [
+                'income' => $totalIncome,
+                'income_manual' => $totalIncomeManual,
+                'income_gateway' => $totalIncomeGateway,
+                'expense' => $totalExpense,
+                'balance' => $balance,
+            ],
+            'bankAccount' => $this->getSavedBankAccount($user->id),
         ]);
     }
 

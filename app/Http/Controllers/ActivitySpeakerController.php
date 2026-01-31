@@ -101,17 +101,24 @@ class ActivitySpeakerController extends Controller
 
         // Try to find file that might match by checking if filename contains any part of the original
         // or if it's the only file for this activity
-        $photoNameWithoutExt = pathinfo($photoName, PATHINFO_FILENAME);
+        // If still not found, try to find by similarity in name
+        $photoNameWithoutExt = strtolower(pathinfo($photoName, PATHINFO_FILENAME));
+        
+        // Remove common patterns that might cause mismatches
+        $simplifiedPhotoName = preg_replace('/[^a-z0-9]/', '', $photoNameWithoutExt);
+
         foreach ($imageFiles as $file) {
             $fileName = basename($file);
-            $fileNameWithoutExt = pathinfo($fileName, PATHINFO_FILENAME);
+            $fileNameWithoutExt = strtolower(pathinfo($fileName, PATHINFO_FILENAME));
+            $simplifiedFileName = preg_replace('/[^a-z0-9]/', '', $fileNameWithoutExt);
 
-            // If filename (without ext) matches or contains part of original, use it
+            // If filename (without ext) matches or simplified versions match
             if ($fileNameWithoutExt === $photoNameWithoutExt ||
+                $simplifiedFileName === $simplifiedPhotoName ||
                 str_contains($fileNameWithoutExt, $photoNameWithoutExt) ||
                 str_contains($photoNameWithoutExt, $fileNameWithoutExt)) {
                 if (Storage::disk('public')->exists($file)) {
-                    \Log::info('Speaker photo found with partial match', [
+                    \Log::info('Speaker photo found with fuzzy match', [
                         'speaker_id' => $speaker->id,
                         'expected' => $speaker->photo,
                         'found' => $file,
@@ -119,21 +126,6 @@ class ActivitySpeakerController extends Controller
 
                     return Storage::disk('public')->response($file);
                 }
-            }
-        }
-
-        // If still not found, check if there's only one image file (likely the correct one)
-        // This is a fallback for cases where DB path is completely wrong
-        if (count($imageFiles) === 1) {
-            $fallbackFile = reset($imageFiles);
-            if (Storage::disk('public')->exists($fallbackFile)) {
-                \Log::warning('Speaker photo not found, using single file fallback', [
-                    'speaker_id' => $speaker->id,
-                    'expected_path' => $speaker->photo,
-                    'fallback_path' => $fallbackFile,
-                ]);
-
-                return Storage::disk('public')->response($fallbackFile);
             }
         }
 
@@ -241,6 +233,7 @@ class ActivitySpeakerController extends Controller
             // Check if speaker exists in other activities and reuse data if available
             $existingSpeaker = ActivitySpeaker::where('email', $validated['email'])
                 ->where('activity_id', '!=', $activity->id)
+                ->orderBy('photo', 'desc')
                 ->first();
 
             if ($existingSpeaker) {
@@ -263,7 +256,28 @@ class ActivitySpeakerController extends Controller
                 if (empty($validated['linkedin']) && $existingSpeaker->linkedin) {
                     $validated['linkedin'] = $existingSpeaker->linkedin;
                 }
-                // Don't reuse photo and CV - user can upload new ones
+
+                // Reuse photo if not uploaded
+                if (!$request->hasFile('photo') && $existingSpeaker->photo) {
+                    $oldPath = $existingSpeaker->photo;
+                    if (Storage::disk('public')->exists($oldPath)) {
+                        $extension = pathinfo($oldPath, PATHINFO_EXTENSION);
+                        $newPath = 'speakers/' . uniqid() . '.' . $extension;
+                        Storage::disk('public')->copy($oldPath, $newPath);
+                        $validated['photo'] = $newPath;
+                    }
+                }
+
+                // Reuse CV if not uploaded
+                if (!$request->hasFile('cv') && $existingSpeaker->cv) {
+                    $oldPath = $existingSpeaker->cv;
+                    if (Storage::disk('public')->exists($oldPath)) {
+                        $extension = pathinfo($oldPath, PATHINFO_EXTENSION);
+                        $newPath = 'speakers/cv/' . uniqid() . '.' . $extension;
+                        Storage::disk('public')->copy($oldPath, $newPath);
+                        $validated['cv'] = $newPath;
+                    }
+                }
             }
 
             if ($request->hasFile('photo')) {

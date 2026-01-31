@@ -34,12 +34,12 @@ export default function OwnerSection({ owners, activity, isEmbedded = false }) {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`space-y-3 ${isEmbedded ? '' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'}`}>
                 {owners.map((owner) => (
                     <div key={owner.id} className="relative group flex items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all duration-300">
                         <div className="relative">
                             <img
-                                className="h-12 w-12 rounded-2xl object-cover shrink-0 ring-2 ring-slate-50 group-hover:ring-blue-100 transition-all"
+                                className="h-10 w-10 rounded-xl object-cover shrink-0 ring-2 ring-slate-50 group-hover:ring-blue-100 transition-all"
                                 src={owner.profile_photo_url}
                                 alt={owner.name}
                                 onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(owner.name)}`; }}

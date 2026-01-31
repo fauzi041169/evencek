@@ -9,7 +9,11 @@ import { useTranslation } from 'react-i18next';
 export default function MainLayout({ children, title = 'Dashboard' }) {
     const { auth, flash, errors, appSettings } = usePage().props;
     const { url } = usePage();
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+        const stored = localStorage.getItem('sidebarCollapsed');
+        // Default to collapsed (true) if not explicitly set to 'false'
+        return stored !== 'false';
+    });
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
@@ -33,16 +37,27 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
         window.dispatchEvent(new Event('editModeChanged'));
     };
 
-    // Redirect to login if not authenticated
-    useEffect(() => {
-        if (!auth || !auth.user) {
-            window.location.href = route('login');
-        }
-    }, [auth]);
-
-    // Render nothing while redirecting if not authenticated
+    // Redirect to login if not authenticated (though middleware should handle this)
     if (!auth || !auth.user) {
-        return null;
+        return (
+            <>
+                <Head title="Silakan Login" />
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[50]">
+                    <div className="bg-white rounded-xl p-6 w-full max-w-md text-center shadow-2xl">
+                        <h3 className="text-xl font-bold mb-2 text-gray-900">Silakan Login</h3>
+                        <p className="text-gray-600 mb-4">Halaman ini memerlukan login untuk diakses.</p>
+                        <div className="flex items-center justify-center gap-2">
+                            <Link href={route('login')} className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition">
+                                Login Sekarang
+                            </Link>
+                            <Link href={route('auth.google.login')} className="inline-flex items-center justify-center px-4 py-2 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition">
+                                Google
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
     }
 
     return (
@@ -65,13 +80,23 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                 .ring-primary { --tw-ring-color: var(--color-primary) !important; }
                 .hover\\:bg-primary:hover { background-color: var(--color-primary) !important; }
                 .hover\\:text-primary:hover { color: var(--color-primary) !important; }
+                
+                /* Force sidebar styles to be Dark Grey and Compact */
+                aside, aside > div, .sidebar-container {
+                    background-color: #1e293b !important;
+                    color: #f1f5f9 !important;
+                }
+                .sidebar-link-active {
+                    background-color: rgba(255, 255, 255, 0.1) !important;
+                    color: white !important;
+                }
             `}} />
             <Head title={title} />
 
             {/* Mobile Sidebar Modal - Now opened from Bottom Nav "Menu" */}
             <Modal show={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} maxWidth="sm">
-                <div className="h-[90vh] w-[85vw] mx-auto bg-gradient-to-b from-gray-800 to-gray-900 overflow-hidden flex flex-col rounded-[2rem] shadow-2xl border border-white/10">
-                    <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-black/30 backdrop-blur-md">
+                <div className="h-[90vh] w-[85vw] mx-auto sidebar-container overflow-hidden flex flex-col rounded-[2rem] shadow-2xl border border-white/10">
+                    <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-black/20 backdrop-blur-md">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30">
                                 <i className="fas fa-bars text-primary text-xs"></i>
@@ -102,15 +127,23 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                 </div>
             </Modal>
 
-            {/* Desktop Sidebar (Permanent) */}
             <aside
-                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 shadow-xl hidden lg:block bg-[#0F172A] overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}
+                className={`fixed top-0 left-0 h-full z-50 transition-all duration-300 shadow-xl hidden lg:block ${isSidebarCollapsed ? 'w-16' : 'w-64'}`}
+                style={{ backgroundColor: '#1e293b', color: '#f1f5f9' }}
             >
-                <Sidebar collapsed={isSidebarCollapsed} showProfile={false} auth={auth} user={auth?.user} appSettings={appSettings} />
+                <div className="w-full h-full sidebar-container text-slate-200">
+                    <Sidebar
+                        collapsed={isSidebarCollapsed}
+                        showProfile={false}
+                        auth={auth}
+                        user={auth?.user}
+                        appSettings={appSettings}
+                    />
+                </div>
             </aside>
 
             {/* Main Content Wrapper */}
-            <div className={`transition-all duration-300 min-h-screen flex flex-col ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+            <div className={`transition-all duration-300 min-h-screen flex flex-col ${isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
 
                 {/* Top Navbar */}
                 <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30 border-b border-gray-100">
@@ -124,15 +157,33 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                 <i className="fas fa-bars text-xl"></i>
                             </button>
 
-                            {/* Sidebar Toggle (Desktop) */}
                             <button
-                                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                                onClick={() => {
+                                    const newState = !isSidebarCollapsed;
+                                    setIsSidebarCollapsed(newState);
+                                    localStorage.setItem('sidebarCollapsed', String(newState));
+                                }}
                                 className="hidden lg:flex p-2 rounded-lg text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
                             >
                                 <i className={`fas ${isSidebarCollapsed ? 'fa-indent' : 'fa-outdent'} text-lg`}></i>
                             </button>
 
                             {/* Page Title */}
+                            <Link
+                                href="/"
+                                className="flex flex-shrink-0 items-center gap-2 cursor-pointer transition-transform hover:scale-105 mr-2"
+                            >
+                                <img
+                                    src={settings.app_logo || '/assets/images/logo.png'}
+                                    alt="Logo"
+                                    className="h-9 w-auto object-contain"
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = '/assets/images/logo.png';
+                                    }}
+                                />
+                            </Link>
+
                             <h1 className="text-lg font-bold text-gray-800 tracking-tight hidden sm:block border-l border-gray-200 pl-4 ml-1">
                                 {title}
                             </h1>
@@ -346,7 +397,7 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                 </nav>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
+                <main className="flex-1 px-0 py-4 md:p-6 lg:p-8 overflow-x-hidden">
                     <div className="w-full">
                         {/* Global Alerts */}
                         <div className="mb-6">
