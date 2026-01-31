@@ -1456,15 +1456,22 @@ class ActivityPreparationController extends Controller
                                 }
                                 $columns = array_values(array_filter(array_map('trim', explode(',', $template))));
                                 foreach ($columns as $col) {
-                                    $key = $this->normalizeImportKey($col);
-                                    if ($key === '') {
+                                    $rawKey = $this->normalizeImportKeyRaw($col);
+                                    if ($rawKey === '') {
                                         continue;
                                     }
-                                    $lower = strtolower($key);
+                                    
+                                    // Base key for builtin check
+                                    $baseKey = $rawKey;
+                                    if (str_contains($baseKey, '|')) {
+                                        $baseKey = trim(explode('|', $baseKey, 2)[0]);
+                                    }
+
+                                    $lower = strtolower($baseKey);
                                     if (isset($builtinTemplateKeys[$lower])) {
                                         continue;
                                     }
-                                    $baseKeys[$lower] = $baseKeys[$lower] ?? $key;
+                                    $baseKeys[$lower] = $baseKeys[$lower] ?? $rawKey;
                                 }
                             }
                         });
@@ -2300,9 +2307,33 @@ class ActivityPreparationController extends Controller
         if ($key !== '' && str_ends_with($key, '*')) {
             $key = trim(substr($key, 0, -1));
         }
+
         if ($key !== '' && str_contains($key, '|')) {
             $key = trim(explode('|', $key, 2)[0]);
         }
+
+        $lower = strtolower($key);
+        if (str_starts_with($lower, 'user:')) {
+            $key = trim(substr($key, 5));
+            $lower = strtolower($key);
+        }
+        if (str_starts_with($lower, 'profile:')) {
+            $key = trim(substr($key, 8));
+        }
+
+        return trim((string) $key);
+    }
+
+    private function normalizeImportKeyRaw($raw): string
+    {
+        $key = preg_replace('/^\d+\./', '', (string) $raw);
+        $key = trim((string) $key);
+        $key = preg_replace('/\{[^}]*\}/', '', (string) $key);
+        $key = trim((string) $key);
+        if ($key !== '' && str_ends_with($key, '*')) {
+            $key = trim(substr($key, 0, -1));
+        }
+        // Preserve pipe (|) for definitions
 
         $lower = strtolower($key);
         if (str_starts_with($lower, 'user:')) {

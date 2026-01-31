@@ -55,11 +55,12 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
 
             // Ensure all configured columns (customKeys) are initialized
             if (Array.isArray(customKeys)) {
-                customKeys.forEach(key => {
-                    // Extract clean key if it has a prefix like "custom_" or "other:" (though usually keys are direct)
-                    const cleanKey = key.replace(/^custom_/, '');
-                    if (initialAdditionalData[cleanKey] === undefined) {
-                        initialAdditionalData[cleanKey] = '';
+                customKeys.forEach(rawKey => {
+                    // Extract clean key (label) from something like "Utusan|Dropdown:A~B"
+                    let baseKey = rawKey.split('|')[0].replace(/^custom_/, '').trim();
+
+                    if (initialAdditionalData[baseKey] === undefined) {
+                        initialAdditionalData[baseKey] = '';
                     }
                 });
             }
@@ -307,40 +308,35 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                 </div>
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {customKeys && customKeys.length > 0 ? (
-                                        customKeys.map((key) => {
+                                        customKeys.map((rawKey) => {
                                             // Handle potential prefix difference used in state initialization
-                                            const dataKey = key.replace(/^custom_/, '');
-                                            const value = data.additional_data[dataKey];
+                                            const parts = rawKey.split('|');
+                                            const label = parts[0].replace(/^custom_/, '').replace(/_/g, ' ').trim();
+                                            const baseKey = parts[0].replace(/^custom_/, '').trim();
 
-                                            // Normalize key for matching
-                                            let cleanKey = key.toLowerCase().replace(/_/g, ' ').trim();
-                                            const originalKey = dataKey; // Use dataKey for updates
-                                            let label = key.replace(/_/g, ' ');
+                                            const value = data.additional_data[baseKey];
+
+                                            let cleanKey = label.toLowerCase().trim();
+                                            const originalKey = baseKey; // Use baseKey for updates
+
                                             let currentOptions = [];
                                             let isDropdown = false;
 
-                                            // 0. Parse complex keys (e.g. "Utusan|Dropdown:A~B~C")
-                                            if (key.includes('|')) {
-                                                const parts = key.split('|');
-                                                label = parts[0];
-                                                cleanKey = label.toLowerCase().trim();
-
-                                                // Check for type definition
-                                                if (parts.length > 1) {
-                                                    const typeDef = parts[1];
-                                                    if (typeDef.toLowerCase().startsWith('dropdown:')) {
-                                                        const optionsStr = typeDef.substring('dropdown:'.length);
-                                                        // Options are typically separated by '~' or ','
-                                                        currentOptions = optionsStr.split(/~|,/).map(o => o.trim()).filter(o => o);
-                                                        isDropdown = true;
-                                                    }
+                                            // 0. Parse complex type definition (e.g. "Dropdown:A~B~C")
+                                            if (parts.length > 1) {
+                                                const typeDef = parts[1];
+                                                if (typeDef.toLowerCase().startsWith('dropdown:')) {
+                                                    const optionsStr = typeDef.substring('dropdown:'.length);
+                                                    // Options are typically separated by '~' or ','
+                                                    currentOptions = optionsStr.split(/~|,/).map(o => o.trim()).filter(o => o);
+                                                    isDropdown = true;
                                                 }
                                             }
 
                                             // 1. Gender check
                                             if (['gender', 'jenis kelamin', 'sex'].includes(cleanKey)) {
                                                 return (
-                                                    <div key={key}>
+                                                    <div key={rawKey}>
                                                         <FormSelect
                                                             label={label}
                                                             value={value || ''}
@@ -358,9 +354,9 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                 );
                                             }
 
-                                            // 2. Options check (either from explicit key config or discovered customOptions)
+                                            // 2. Options check (discovered customOptions from table data if not explicitly defined)
                                             if (!isDropdown && !currentOptions.length) {
-                                                const optionKey = Object.keys(customOptions || {}).find(k => k.toLowerCase() === key.toLowerCase() || k.toLowerCase().replace(/_/g, ' ') === cleanKey);
+                                                const optionKey = Object.keys(customOptions || {}).find(k => k.toLowerCase() === rawKey.toLowerCase() || k.toLowerCase().replace(/_/g, ' ') === cleanKey);
                                                 if (optionKey && customOptions[optionKey]) {
                                                     currentOptions = customOptions[optionKey];
                                                 }
@@ -372,7 +368,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                 const uniqueOptions = [...new Set(currentOptions || [])].filter(o => o);
 
                                                 return (
-                                                    <div key={key}>
+                                                    <div key={rawKey}>
                                                         <FormSelect
                                                             label={label}
                                                             value={value || ''}
@@ -397,7 +393,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
 
                                             // 3. Fallback to Input
                                             return (
-                                                <div key={key}>
+                                                <div key={rawKey}>
                                                     <FormInput
                                                         label={label}
                                                         value={value || ''}
