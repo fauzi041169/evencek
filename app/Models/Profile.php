@@ -32,6 +32,9 @@ class Profile extends Model
         'birth_place',
         'birth_date',
         'additional_data',
+        'bank_name',
+        'account_name',
+        'account_number',
     ];
 
     protected $casts = [

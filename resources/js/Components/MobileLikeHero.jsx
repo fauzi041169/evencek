@@ -125,7 +125,7 @@ export default function MobileLikeHero({
                 <div className="absolute inset-0 bg-white/5 pointer-events-none"></div>
 
                 {/* Content Container */}
-                <div className={`relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-28 pb-16 ${centered ? 'text-center' : 'text-center md:text-left'}`}>
+                <div className={`relative max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 pt-20 pb-6 sm:pt-28 sm:pb-16 ${centered ? 'text-center' : 'text-center md:text-left'}`}>
                     <div className={`flex flex-col ${centered ? 'items-center justify-center' : 'md:flex-row items-center justify-between'} gap-12`}>
                         {/* Text Content */}
                         <div className={`flex-1 text-white w-full ${centered ? 'max-w-4xl mx-auto' : ''}`}>

@@ -75,30 +75,37 @@ export default function Index({ activity, eventActivities }) {
         title={`Kegiatan - ${activity.name}`}
         activity={activity}
     >
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center mb-6 px-4 sm:px-0">
-                <div>
-                    <Link 
-                        href={route('activity.show', activity.slug || activity.id)}
-                        className="text-sm text-primary hover:text-primary/90 flex items-center mb-2"
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-1" />
-                        Kembali ke Detail Kegiatan
-                    </Link>
-                    <h1 className="text-2xl font-bold text-gray-800">Kegiatan Acara</h1>
-                    <p className="text-gray-600">Kelola voting, kuis, dan aktivitas lainnya.</p>
-                </div>
-                <button 
-                    onClick={() => setShowTypeModal(true)} 
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition shadow-sm flex items-center"
-                >
-                    <Plus className="w-4 h-4 mr-2" /> Tambah Kegiatan
-                </button>
+    <div className="min-h-screen bg-gray-50 py-2 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-6 sm:mb-8">
+          <Link
+            href={route('activity.show', activity.slug)}
+            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Kembali ke Detail Event
+          </Link>
+          
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Rundown Kegiatan</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Kelola jadwal kegiatan untuk {activity.title}
+              </p>
             </div>
+            
+            <Link
+              href={route('activity.event-activities.create', activity.slug)}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-900 focus:outline-none focus:border-blue-900 focus:ring ring-blue-300 disabled:opacity-25 transition ease-in-out duration-150"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Tambah Kegiatan
+            </Link>
+          </div>
+        </div>
 
-            {eventActivities.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-sm p-8 text-center mx-4 sm:mx-0">
+        {eventActivities.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-8 text-center mx-4 sm:mx-0">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
                         <BarChart2 className="w-8 h-8 text-primary" />
                     </div>
@@ -179,7 +186,7 @@ export default function Index({ activity, eventActivities }) {
       {/* Modal Type Selection */}
       {showTypeModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-2 text-center sm:block sm:p-0">
                 <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowTypeModal(false)}></div>
                 <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
                 <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">

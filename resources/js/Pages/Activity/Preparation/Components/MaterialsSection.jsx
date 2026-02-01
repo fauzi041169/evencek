@@ -57,7 +57,7 @@ export default function MaterialsSection({ activity, materials }) {
     };
 
     return (
-        <div className="space-y-6 p-8 bg-white font-primary">
+        <div className="space-y-6 p-3 sm:p-8 bg-white font-primary">
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-bold text-gray-900">Daftar Materi</h3>
                 <button
@@ -69,7 +69,7 @@ export default function MaterialsSection({ activity, materials }) {
             </div>
 
             {materials.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <div className="text-center py-2 sm:py-6 bg-gray-50 rounded-xl border border-dashed border-gray-300">
                     <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">Belum ada materi yang diunggah.</p>
                 </div>

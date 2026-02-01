@@ -242,7 +242,7 @@ export default function IdCards({ auth, activity, participants, committees = [],
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={selectedType === 'committee' ? 8 : 7} className="px-6 py-10 text-center text-gray-500">
+                                    <td colSpan={selectedType === 'committee' ? 8 : 7} className="px-6 py-2 sm:py-6 text-center text-gray-500">
                                         Tidak ada data ditemukan.
                                     </td>
                                 </tr>

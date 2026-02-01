@@ -42,6 +42,10 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
     // Shape Editor State
     const [showShapeEditor, setShowShapeEditor] = useState(false);
     const [shapeSettings, setShapeSettings] = useState({
+        middle: {
+            color: '#0f172a', // slate-900
+            opacity: 1,
+        },
         left: {
             width: '15', // percentage
             color: '#1e293b', // slate-800
@@ -67,7 +71,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
         const savedShapes = localStorage.getItem('heroShapeSettings_v5');
         if (savedShapes) {
             try {
-                setShapeSettings(JSON.parse(savedShapes));
+                setShapeSettings(prev => ({ ...prev, ...JSON.parse(savedShapes) }));
             } catch (e) {
                 console.error('Failed to parse shape settings', e);
             }
@@ -177,14 +181,22 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
     };
 
     return (
-        <WebLayout hasHeaderSpacer={false}>
+        <WebLayout hasHeaderSpacer={false} fluid={true} noPadding={true}>
             <Head title={t('activities.title')} />
 
 
 
-            <div className="bg-gray-50 min-h-screen pb-12">
+            <div className="bg-gray-50 min-h-screen pb-2 sm:pb-6">
                 {/* Hero Section */}
-                <div className="relative bg-slate-900 overflow-hidden min-h-[600px] flex items-center">
+                    <div className="relative overflow-hidden min-h-[300px] sm:min-h-[450px] lg:min-h-[600px] flex items-center">
+                    {/* Dynamic Background Layer */}
+                    <div 
+                        className="absolute inset-0 z-0 transition-colors duration-300"
+                        style={{ 
+                            backgroundColor: shapeSettings.middle?.color || '#0f172a',
+                            opacity: shapeSettings.middle?.opacity ?? 1
+                        }}
+                    ></div>
                     <style>{`
                         @keyframes blob {
                             0% { transform: translate(0px, 0px) scale(1); }
@@ -311,12 +323,12 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                         </div>
                     )}
 
-                    <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-6">
                         {sliderActivities && sliderActivities.length > 0 ? (
                             <div className="relative">
                                 {/* Slider Content */}
-                                <div className="relative min-h-[450px]">
-                                    {sliderActivities.map((activity, index) => {
+                            <div className="relative min-h-[80px] sm:min-h-[450px]">
+                                {sliderActivities.map((activity, index) => {
                                         const isOngoing = new Date(activity.date) <= new Date() && new Date(activity.date) >= new Date(new Date().setDate(new Date().getDate() - 7));
                                         const isUpcoming = new Date(activity.date) > new Date();
 
@@ -328,9 +340,9 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                     : 'opacity-0 -translate-x-8 z-10 pointer-events-none'
                                                     }`}
                                             >
-                                                <div className="grid lg:grid-cols-12 gap-8 items-center h-full">
+                                                <div className="grid lg:grid-cols-12 gap-4 sm:gap-8 items-center h-full">
                                                     {/* Text Content */}
-                                                    <div className="lg:col-span-7 space-y-6">
+                                                    <div className="lg:col-span-7 space-y-3 sm:space-y-6">
                                                         <div className="flex flex-wrap gap-3">
                                                             {isOngoing && (
                                                                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm font-semibold backdrop-blur-sm">
@@ -385,7 +397,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                         <div className="flex flex-wrap items-center gap-4 pt-4">
                                                             <Link
                                                                 href={getActivityLink(activity)}
-                                                                className="group relative inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-xl font-bold shadow-xl hover:shadow-2xl hover:bg-indigo-50 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                                                                className="group relative inline-flex items-center gap-3 px-6 py-3 sm:px-8 sm:py-4 bg-white text-slate-900 rounded-xl font-bold shadow-xl hover:shadow-2xl hover:bg-indigo-50 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
                                                             >
                                                                 <span className="relative z-10">{t('activities.view_detail')}</span>
                                                                 <i className="fas fa-arrow-right relative z-10 transition-transform group-hover:translate-x-1"></i>
@@ -447,7 +459,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                             </div>
                         ) : (
                             // Fallback State when no activities
-                            <div className="text-center max-w-3xl mx-auto py-16">
+                            <div className="text-center max-w-3xl mx-auto py-2 sm:py-10">
                                 <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-6">
                                     {t('activities.title')}
                                 </h1>
@@ -468,10 +480,10 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
 
                     {/* Slider Navigation (Absolute to Hero) */}
                     {sliderActivities && sliderActivities.length > 1 && (
-                        <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center gap-8 z-30 pointer-events-none">
+                        <div className="absolute bottom-3 sm:bottom-6 left-0 right-0 flex justify-center items-center gap-4 sm:gap-8 z-30 pointer-events-none">
                             <button
                                 onClick={() => changeSlide(-1)}
-                                className="w-12 h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group pointer-events-auto"
+                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group pointer-events-auto"
                             >
                                 <i className="fas fa-arrow-left transition-transform group-hover:-translate-x-1"></i>
                             </button>
@@ -482,8 +494,8 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                         key={idx}
                                         onClick={() => goToSlide(idx)}
                                         className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide
-                                            ? 'bg-white w-8'
-                                            : 'bg-white/30 w-4 hover:bg-white/50'
+                                            ? 'bg-white w-6 sm:w-8'
+                                            : 'bg-white/30 w-3 sm:w-4 hover:bg-white/50'
                                             }`}
                                         aria-label={`Go to slide ${idx + 1}`}
                                     ></button>
@@ -492,7 +504,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
 
                             <button
                                 onClick={() => changeSlide(1)}
-                                className="w-12 h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group pointer-events-auto"
+                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-all backdrop-blur-sm group pointer-events-auto"
                             >
                                 <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1"></i>
                             </button>
@@ -501,7 +513,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                 </div>
 
                 {/* Latest Activities Section */}
-                <section id="latest-activities" className="py-12 container mx-auto px-4">
+                <section id="latest-activities" className="py-2 sm:py-10 container mx-auto px-4">
                     <h2 className="text-center text-3xl font-bold text-gray-900 mb-8">{t('activities.latest_activities')}</h2>
 
                     {latestActivities && latestActivities.data && latestActivities.data.length > 0 ? (
@@ -607,7 +619,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-16">
+                        <div className="text-center py-6 sm:py-12">
                             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
                                 <i className="fas fa-calendar-alt text-4xl text-gray-400"></i>
                             </div>
@@ -618,15 +630,15 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                 </section>
 
                 {/* All Activities Section */}
-                <section className="py-12 bg-gray-100/50">
+                <section className="py-2 sm:py-10 bg-gray-100/50">
                     <div className="container mx-auto px-4">
-                        <div className="text-center mb-10">
+                        <div className="text-center mb-4 sm:mb-10">
                             <h2 className="text-3xl font-bold text-gray-900 mb-3">{t('activities.all_activities')}</h2>
                             <p className="text-gray-600">{t('activities.explore_desc')}</p>
                         </div>
 
                         {/* Search Box */}
-                        <div className="max-w-2xl mx-auto mb-12">
+                        <div className="max-w-2xl mx-auto mb-6 sm:mb-8">
                             <form onSubmit={handleSearch} className="relative group">
                                 <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-xl opacity-20 group-hover:opacity-40 transition-opacity blur-md"></div>
                                 <div className="relative bg-white rounded-xl shadow-lg flex items-center overflow-hidden border border-gray-200 focus-within:border-primary transition-colors">
@@ -755,7 +767,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-16 bg-white rounded-3xl shadow-sm border border-gray-100">
+                            <div className="text-center py-4 sm:py-8 bg-white rounded-3xl shadow-sm border border-gray-100">
                                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
                                     <i className="fas fa-search text-4xl text-gray-400"></i>
                                 </div>
@@ -766,7 +778,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
 
                         {/* Pagination */}
                         {latestActivities && latestActivities.links && latestActivities.links.length > 3 && (
-                            <div className="mt-12 flex justify-center">
+                            <div className="mt-4 sm:mt-10 flex justify-center">
                                 <div className="flex flex-wrap gap-2">
                                     {latestActivities.links.map((link, i) => (
                                         link.url ? (
@@ -792,91 +804,133 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                         )}
                     </div>
                 </section>
-                {/* Shape Editor Toggle */}
-                <button
-                    onClick={() => setShowShapeEditor(!showShapeEditor)}
-                    className="fixed bottom-4 right-4 z-50 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
-                    title="Edit Hero Shapes"
-                >
-                    <i className={`fas ${showShapeEditor ? 'fa-times' : 'fa-pen-fancy'}`}></i>
-                </button>
+                {/* Shape Editor Toggle - Only visible in Edit Mode */}
+                {editMode && (
+                    <>
+                        <button
+                            onClick={() => setShowShapeEditor(!showShapeEditor)}
+                            className="fixed bottom-4 right-4 z-50 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
+                            title="Edit Hero Shapes"
+                        >
+                            <i className={`fas ${showShapeEditor ? 'fa-times' : 'fa-pen-fancy'}`}></i>
+                        </button>
 
-                {/* Shape Editor Panel */}
-                {showShapeEditor && (
-                    <div className="fixed bottom-20 right-4 z-50 bg-white p-4 rounded-xl shadow-2xl w-80 border border-slate-200 max-h-[80vh] overflow-y-auto">
-                        <h3 className="font-bold text-slate-800 mb-4 flex justify-between items-center">
-                            Shape Settings
-                            <button
-                                onClick={() => {
-                                    Swal.fire({
-                                        title: 'Reset Settings?',
-                                        text: "Semua pengaturan tampilan akan dikembalikan ke default.",
-                                        icon: 'warning',
-                                        showCancelButton: true,
-                                        confirmButtonColor: '#d33',
-                                        cancelButtonColor: '#3085d6',
-                                        confirmButtonText: 'Ya, Reset!',
-                                        cancelButtonText: 'Batal'
-                                    }).then((result) => {
-                                        if (result.isConfirmed) {
-                                            localStorage.removeItem('heroShapeSettings_v5');
-                                            window.location.reload();
-                                        }
-                                    });
-                                }}
-                                className="text-xs text-red-500 hover:text-red-700"
-                            >
-                                Reset
-                            </button>
-                        </h3>
+                        {/* Shape Editor Panel */}
+                        {showShapeEditor && (
+                            <div className="fixed bottom-20 right-4 z-50 bg-white p-4 rounded-xl shadow-2xl w-80 border border-slate-200 max-h-[80vh] overflow-y-auto">
+                                <h3 className="font-bold text-slate-800 mb-4 flex justify-between items-center">
+                                    Shape Settings
+                                    <button
+                                        onClick={() => {
+                                            Swal.fire({
+                                                title: 'Reset Settings?',
+                                                text: "Semua pengaturan tampilan akan dikembalikan ke default.",
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonColor: '#d33',
+                                                cancelButtonColor: '#3085d6',
+                                                confirmButtonText: 'Ya, Reset!',
+                                                cancelButtonText: 'Batal'
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    localStorage.removeItem('heroShapeSettings_v5');
+                                                    window.location.reload();
+                                                }
+                                            });
+                                        }}
+                                        className="text-xs text-red-500 hover:text-red-700"
+                                    >
+                                        Reset
+                                    </button>
+                                </h3>
 
-                        {/* Left Shape Controls */}
-                        <div className="mb-6 space-y-3">
-                            <h4 className="font-semibold text-slate-700 text-sm border-b pb-1">Left Shape</h4>
+                                {/* Middle/Background Shape Controls */}
+                                <div className="mb-6 space-y-3">
+                                    <h4 className="font-semibold text-slate-700 text-sm border-b pb-1">Middle / Background</h4>
 
-                            <div className="flex items-center justify-between">
-                                <label className="text-xs text-slate-600">Visible</label>
-                                <input
-                                    type="checkbox"
-                                    checked={shapeSettings.left.visible}
-                                    onChange={e => setShapeSettings(prev => ({
-                                        ...prev, left: { ...prev.left, visible: e.target.checked }
-                                    }))}
-                                />
-                            </div>
+                                    <div>
+                                        <label className="text-xs text-slate-600 block mb-1">Opacity ({shapeSettings.middle?.opacity})</label>
+                                        <input
+                                            type="range"
+                                            min="0" max="1" step="0.1"
+                                            value={shapeSettings.middle?.opacity ?? 1}
+                                            onChange={e => setShapeSettings(prev => ({
+                                                ...prev, middle: { ...prev.middle, opacity: parseFloat(e.target.value) }
+                                            }))}
+                                            className="w-full"
+                                        />
+                                    </div>
 
-                            <div>
-                                <label className="text-xs text-slate-600 block mb-1">Width ({shapeSettings.left.width}%)</label>
-                                <input
-                                    type="range"
-                                    min="0" max="50"
-                                    value={shapeSettings.left.width}
-                                    onChange={e => setShapeSettings(prev => ({
-                                        ...prev, left: { ...prev.left, width: e.target.value }
-                                    }))}
-                                    className="w-full"
-                                />
-                            </div>
+                                    <div>
+                                        <label className="text-xs text-slate-600 block mb-1">Color</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="color"
+                                                value={shapeSettings.middle?.color || '#0f172a'}
+                                                onChange={e => setShapeSettings(prev => ({
+                                                    ...prev, middle: { ...prev.middle, color: e.target.value }
+                                                }))}
+                                                className="h-8 w-12 cursor-pointer"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={shapeSettings.middle?.color || '#0f172a'}
+                                                onChange={e => setShapeSettings(prev => ({
+                                                    ...prev, middle: { ...prev.middle, color: e.target.value }
+                                                }))}
+                                                className="flex-1 text-xs border rounded px-2"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
 
-                            <div>
-                                <label className="text-xs text-slate-600 block mb-1">Opacity ({shapeSettings.left.opacity})</label>
-                                <input
-                                    type="range"
-                                    min="0" max="1" step="0.1"
-                                    value={shapeSettings.left.opacity}
-                                    onChange={e => setShapeSettings(prev => ({
-                                        ...prev, left: { ...prev.left, opacity: parseFloat(e.target.value) }
-                                    }))}
-                                    className="w-full"
-                                />
-                            </div>
+                                {/* Left Shape Controls */}
+                                <div className="mb-6 space-y-3">
+                                    <h4 className="font-semibold text-slate-700 text-sm border-b pb-1">Left Shape</h4>
 
-                            <div>
-                                <label className="text-xs text-slate-600 block mb-1">Color</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="color"
-                                        value={shapeSettings.left.color}
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs text-slate-600">Visible</label>
+                                        <input
+                                            type="checkbox"
+                                            checked={shapeSettings.left.visible}
+                                            onChange={e => setShapeSettings(prev => ({
+                                                ...prev, left: { ...prev.left, visible: e.target.checked }
+                                            }))}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs text-slate-600 block mb-1">Width ({shapeSettings.left.width}%)</label>
+                                        <input
+                                            type="range"
+                                            min="0" max="50"
+                                            value={shapeSettings.left.width}
+                                            onChange={e => setShapeSettings(prev => ({
+                                                ...prev, left: { ...prev.left, width: e.target.value }
+                                            }))}
+                                            className="w-full"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs text-slate-600 block mb-1">Opacity ({shapeSettings.left.opacity})</label>
+                                        <input
+                                            type="range"
+                                            min="0" max="1" step="0.1"
+                                            value={shapeSettings.left.opacity}
+                                            onChange={e => setShapeSettings(prev => ({
+                                                ...prev, left: { ...prev.left, opacity: parseFloat(e.target.value) }
+                                            }))}
+                                            className="w-full"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs text-slate-600 block mb-1">Color</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="color"
+                                                value={shapeSettings.left.color}
                                         onChange={e => setShapeSettings(prev => ({
                                             ...prev, left: { ...prev.left, color: e.target.value }
                                         }))}
@@ -985,6 +1039,8 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                         </div>
                     </div>
                 )}
+                </>
+            )}
             </div>
         </WebLayout>
     );

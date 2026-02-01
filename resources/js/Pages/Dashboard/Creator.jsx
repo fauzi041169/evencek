@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
@@ -14,8 +14,8 @@ export default function DashboardCreator({
     return (
         <MainLayout>
             <Head title="Dashboard Creator" />
-
-            <div className="bg-gray-900 min-h-screen py-6">
+            
+            <div className="bg-gray-900 min-h-screen py-2 sm:py-6">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <h2 className="text-gray-100 text-xl font-semibold mb-6">Dashboard Creator</h2>
 

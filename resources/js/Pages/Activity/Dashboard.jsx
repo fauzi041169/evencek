@@ -223,7 +223,7 @@ export default function Dashboard({
         maintainAspectRatio: false,
         layout: {
             padding: {
-                top: 60 // Make space for images
+                top: 40 // Make space for images
             }
         },
         plugins: {
@@ -640,10 +640,10 @@ export default function Dashboard({
         >
             {/* Chart Configurations are defined above but rendered here */}
 
-            <div className="min-h-screen bg-gray-50/50 pb-20">
+            <div className="min-h-screen bg-gray-50/50 pb-2 sm:pb-10">
                 {/* Header */}
-                <div className="bg-white rounded-lg sm:rounded-xl shadow-md p-4 sm:p-6 mb-4 sm:mb-6 transform transition-all hover:translate-y-[-2px] hover:shadow-lg">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+                <div className="bg-white rounded-lg sm:rounded-xl shadow-md p-2 sm:p-6 mb-1 sm:mb-6 transform transition-all hover:translate-y-[-2px] hover:shadow-lg">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
                         <div className="flex-1 min-w-0">
                             <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-700 mb-1">Dashboard Acara</h2>
                             <p className="text-xs sm:text-sm text-gray-500 truncate">{activity.name}</p>
@@ -663,11 +663,11 @@ export default function Dashboard({
                 </div>
                 {/* Statistik Utama */}
                 {/* Baris 1: Total Peserta + Status Peserta Bar Chart + Top 3 Performa */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-6 mb-2 sm:mb-6">
                     {/* Total Peserta */}
                     <div className="group relative bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                        <div className="relative p-6">
+                        <div className="relative p-3 sm:p-6">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
                                     <i className="fas fa-users"></i>
@@ -694,7 +694,7 @@ export default function Dashboard({
 
                     {/* Status Peserta Bar Chart */}
                     <div className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1 lg:col-span-2">
-                        <div className="relative p-6">
+                        <div className="relative p-3 sm:p-6">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-md">
                                     <i className="fas fa-chart-bar"></i>
@@ -761,7 +761,7 @@ export default function Dashboard({
                     {/* Top 3 Panitia */}
                     <div className="group relative bg-gradient-to-br from-amber-500 via-orange-600 to-red-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                        <div className="relative p-6">
+                        <div className="relative p-3 sm:p-6">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-xl shadow-lg animate-pulse">
                                     <i className="fas fa-trophy"></i>
@@ -814,11 +814,11 @@ export default function Dashboard({
                 </div>
 
                 {/* Baris 2: Total Pesan + Peserta Murni + Total Panitia */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
                     {/* Total Pesan */}
                     <div className="group relative bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                        <div className="relative p-6">
+                        <div className="relative p-2 sm:p-6">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
                                     <i className="fas fa-comments"></i>
@@ -848,7 +848,7 @@ export default function Dashboard({
                     {/* Total Peserta Tanpa Panitia */}
                     <div className="group relative bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                        <div className="relative p-6">
+                        <div className="relative p-4 sm:p-6">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
                                     <i className="fas fa-user-friends"></i>
@@ -867,7 +867,7 @@ export default function Dashboard({
                     {/* Total Panitia */}
                     <div className="group relative bg-gradient-to-br from-pink-500 via-rose-600 to-red-700 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                        <div className="relative p-6">
+                        <div className="relative p-2 sm:p-6">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
                                     <i className="fas fa-user-tie"></i>
@@ -894,7 +894,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Baris 3: Statistik Wilayah */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
                     {/* Total Provinsi */}
                     {/* Total Provinsi */}
                     <div className="group relative bg-gradient-to-br from-emerald-400 via-teal-500 to-green-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
@@ -929,7 +929,7 @@ export default function Dashboard({
                     {/* Total Kecamatan */}
                     <div className="group relative bg-gradient-to-br from-pink-400 via-rose-500 to-fuchsia-600 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                        <div className="relative p-5 flex items-center justify-between h-full">
+                        <div className="relative p-3 sm:p-5 flex items-center justify-between h-full">
                             <div className="flex items-center gap-4">
                                 <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white text-2xl shadow-lg">
                                     <i className="fas fa-map-marker-alt"></i>
@@ -947,7 +947,7 @@ export default function Dashboard({
                 {/* Grafik Utama */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
                     {/* Trend Pendaftaran (Left Side) */}
-                    <div className="lg:col-span-3 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100 flex flex-col">
+                    <div className="lg:col-span-3 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-4 sm:p-6 border border-gray-100 flex flex-col">
                         <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-purple-500 to-indigo-500">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-md">
@@ -965,7 +965,7 @@ export default function Dashboard({
                     {/* Right Side (Stacked) */}
                     <div className="flex flex-col gap-6">
                         {/* Distribusi Jenis Kelamin */}
-                        <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
+                        <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-4 sm:p-6 border border-gray-100">
                             <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-blue-500 to-pink-500">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-pink-500 rounded-lg flex items-center justify-center text-white shadow-md">
@@ -980,7 +980,7 @@ export default function Dashboard({
                         </div>
 
                         {/* Status Peserta */}
-                        <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
+                        <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-4 sm:p-6 border border-gray-100">
                             <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gradient-to-r from-emerald-500 to-teal-500">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center text-white shadow-md">
@@ -1030,7 +1030,7 @@ export default function Dashboard({
 
                 {/* Grafik Daerah (Filter) */}
                 <div className="mb-6">
-                    <div className="bg-white rounded-xl shadow-md p-6">
+                    <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
                         <div className="flex flex-wrap justify-between items-center mb-4 pb-4 border-b border-gray-200 gap-2">
                             <div className="flex items-center gap-2">
                                 <h5 className="text-base font-semibold text-gray-700 uppercase">

@@ -60,31 +60,7 @@ use Illuminate\Support\Facades\Route;
 // Public Routes
 Route::get('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout.get');
 Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout'); // Keep POST for standard compatibility
-Route::get('/fix-storage-link', function () {
-    try {
-        Artisan::call('storage:link');
-        return 'Storage link created successfully. <br>Output: ' . Artisan::output();
-    } catch (\Exception $e) {
-        return 'Error: ' . $e->getMessage();
-    }
-});
-Route::get('/fix-session', function () {
-    try {
-        session()->flush();
-        Auth::logout();
-        return redirect('/')->with('success', 'Session cleared. Please login again.');
-    } catch (\Exception $e) {
-        return 'Error: ' . $e->getMessage();
-    }
-});
-Route::get('/fix-logo', function () {
-    try {
-        \App\Models\Setting::set('app_logo', '/assets/images/logo.png');
-        return 'Logo reset to default.';
-    } catch (\Exception $e) {
-        return 'Error: ' . $e->getMessage();
-    }
-});
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
 // Fix for 404 on /login - redirect to home with login modal
 Route::get('/login', function() {
@@ -94,6 +70,7 @@ Route::get('/about', [AboutController::class, 'index'])->name('about');
 Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance');
     Route::post('/maintenance/update-app', [MaintenanceController::class, 'updateApp'])->name('maintenance.update-app');
     Route::post('/maintenance/npm-run-build', [MaintenanceController::class, 'npmRunBuild'])->name('maintenance.npm-run-build');
+    Route::post('/maintenance/update-permission', [MaintenanceController::class, 'updatePermission'])->name('maintenance.update-permission');
 
 // Subscription Routes
 Route::prefix('subscriptions')->name('subscriptions.')->controller(SubscriptionController::class)->group(function () {
@@ -202,7 +179,9 @@ Route::prefix('payments')->name('payments.')->middleware(['auth'])->controller(P
     Route::get('/methods/{activity}', 'getPaymentMethodsJson')->name('methods');
     Route::post('/store/{activity}', 'store')->name('store');
     Route::get('/ledger', 'financialLedger')->name('ledger');
+    Route::get('/ledger/pdf', 'downloadFinancialLedgerPdf')->name('ledger.pdf');
     Route::get('/creator-finance', 'creatorFinance')->name('creator.finance')->middleware('role:creator,admin,superadmin');
+    Route::get('/creator-finance/pdf', 'downloadCreatorFinancePdf')->name('creator.finance.pdf')->middleware('role:creator,admin,superadmin');
     Route::post('/channels/sync', 'syncChannels')->name('channels.sync'); // Added sync route
     
     // Rule Routes
@@ -286,6 +265,13 @@ Route::get('/c/{id}', [ActivityController::class, 'verifyCertificate'])->name('c
 // PROTECTED ROUTES (AUTH REQUIRED)
 // ============================================================================
 Route::middleware(['auth', 'activity.logger'])->group(function () {
+
+    // Notification Routes
+    Route::prefix('notifications')->name('notifications.')->controller(\App\Http\Controllers\NotificationController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/read-all', 'markAllRead')->name('read-all');
+        Route::post('/{id}/read', 'markAsRead')->name('read');
+    });
 
     Route::post('/activity/{activity}/toggle-price', [ActivityController::class, 'togglePriceVisibility'])->name('activity.toggle-price');
     Route::post('/activity/{activity}/toggle-section', [ActivityController::class, 'toggleSectionVisibility'])->name('activity.toggle-section');
@@ -392,6 +378,13 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::delete('/divisions/{divisionId}/requirements/{requirementId}', 'destroyRequirement')->name('destroy-requirement');
         Route::get('/committee', 'showCommittee')->name('committee');
         Route::post('/committee', 'storeCommittee')->name('store-committee');
+        Route::put('/committee-voucher-update', 'updateCommitteeVoucher')->name('committee-voucher.update');
+        
+        // Vouchers
+        Route::post('/vouchers', 'storeVoucher')->name('vouchers.store');
+        Route::put('/vouchers/{voucherId}', 'updateVoucher')->name('vouchers.update');
+        Route::delete('/vouchers/{voucherId}', 'destroyVoucher')->name('vouchers.destroy');
+
         Route::put('/committee/{committeeId}', 'updateCommittee')->name('update-committee');
         Route::delete('/committee/{committeeId}', 'destroyCommittee')->name('destroy-committee');
         Route::post('/rundowns', 'storeRundown')->name('store-rundown');
@@ -613,6 +606,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/rules', 'financialRulesSave')->name('rules.store')->middleware('role:admin,superadmin');
         Route::post('/rules/subscription-prices', 'financialRulesSaveSubscriptionPrices')->name('rules.subscription.save')->middleware('role:admin,superadmin');
         Route::post('/rules/plan-facilities', 'financialRulesSavePlanFacilities')->name('rules.plan-facilities.save')->middleware('role:admin,superadmin');
+        // Financial Ledger (Neraca Keuangan) — place BEFORE catch-all '/{payment}'
         Route::get('/{payment}', 'show')->name('show');
         Route::post('/{payment}/update-proof', 'updateProof')->name('update-proof');
         Route::put('/{payment}/verify', 'verify')->name('verify'); // Permission check dilakukan di controller
@@ -700,6 +694,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
             Route::post('/clear-all', 'artisanClearAll')->name('clear-all')->middleware('role:superadmin');
         });
         Route::post('/cleanup-storage', 'cleanupStorage')->name('cleanup-storage')->middleware('role:superadmin');
+        Route::post('/cleanup-unused-files', 'cleanupUnusedFiles')->name('cleanup-unused-files')->middleware('role:superadmin');
         Route::post('/cleanup-clockwork', 'cleanupClockwork')->name('cleanup-clockwork')->middleware('role:superadmin');
     });
 });

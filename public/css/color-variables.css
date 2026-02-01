@@ -1,21 +1,21 @@
 :root {
-    --color-primary: #3b82f6;
-    --color-secondary: #6b7280;
-    --color-success: #10b981;
     --color-danger: #ef4444;
-    --color-warning: #f59e0b;
+    --color-navbar-link-hover-bg: #f81212;
     --color-info: #06b6d4;
-    --color-navbar-start: #050d80;
-    --color-navbar-end: #739ae8;
-    --color-hero-start: #7c3aed;
-    --color-hero-end: #3b82f6;
+    --color-navbar-link-active-border: #ffcf66;
+    --color-navbar-opacity: 0.54;
+    --color-success: #10b981;
+    --color-navbar-link-active-card: #fa9200;
     --color-card-blue: #f0f7ff;
+    --color-hero-end: #3b82f6;
+    --color-secondary: #d4ff00;
+    --color-primary: #3b82f6;
     --color-card-pink: #fef3f2;
+    --color-navbar-link-text: #fffafa;
     --color-card-green: #f0fdf4;
-    --color-navbar-brand-text: #650101;
-    --color-navbar-link-text: #f3ed35;
-    --color-navbar-link-hover-bg: #ff3333;
-    --color-navbar-link-active-card: #006b07;
-    --color-navbar-link-active-border: #f80d0d;
-    --color-navbar-opacity: 1;
+    --color-hero-start: #7c3aed;
+    --color-warning: #f59e0b;
+    --color-navbar-end: #fa9200;
+    --color-navbar-start: #0e00d6;
+    --color-navbar-brand-text: #f0f0f0;
 }

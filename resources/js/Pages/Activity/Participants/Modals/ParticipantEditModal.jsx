@@ -3,7 +3,7 @@ import { useForm, usePage } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 import Swal from 'sweetalert2';
 import {
-    User, Mail, Phone, key, Users, MapPin,
+    User, Mail, Phone, Key, Users, MapPin,
     Briefcase, Building, Calendar, Save, X,
     CreditCard, Hash, FileText
 } from 'lucide-react';
@@ -183,7 +183,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
         <Modal show={show} onClose={onClose} maxWidth="4xl">
             <div className="bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
                 {/* Header with Gradient */}
-                <div className="relative bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-8 pb-16 flex-shrink-0">
+                <div className="relative bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-6 pb-6 sm:pb-16 flex-shrink-0">
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 text-white/70 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"

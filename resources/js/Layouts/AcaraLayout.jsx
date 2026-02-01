@@ -140,12 +140,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                                 label="Acara"
                                 active={route().current('activity.preparation.*')}
                             />
-                            <NavLink
-                                href={currentActivityId ? route('activity.event-activities.index', currentActivityId) : '#'}
-                                icon="fas fa-poll"
-                                label="Kegiatan Acara"
-                                active={route().current('activity.event-activities.*')}
-                            />
+
 
                             {canManageBatches && (
                                 <NavLink
@@ -173,7 +168,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                             )}
 
                             <NavLink
-                                href={currentActivityId ? `/activity/${currentActivityId}/participants` : '#'}
+                                href={currentActivityId ? route('activity.participants.index', currentActivityId) : '#'}
                                 icon="fas fa-users"
                                 label="Peserta"
                                 active={route().current('activity.participants.*')}
@@ -193,7 +188,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                             <NavLink
                                 href={currentActivityId ? `/activity/${currentActivityId}` : '#'}
                                 icon="fas fa-external-link-alt"
-                                label="Halaman Acara"
+                                label="Lihat Kegiatan"
                                 active={route().current('activity.show')}
                             />
                         </div>
@@ -241,13 +236,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                             active={route().current('activity.preparation.*')}
                             collapsed={isSidebarCollapsed}
                         />
-                        <NavLink
-                            href={currentActivityId ? route('activity.event-activities.index', currentActivityId) : '#'}
-                            icon="fas fa-calendar-alt"
-                            label="Jadwal Acara"
-                            active={route().current('activity.event-activities.*')}
-                            collapsed={isSidebarCollapsed}
-                        />
+
 
                         {canManageBatches && (
                             <NavLink
@@ -280,7 +269,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                         )}
 
                         <NavLink
-                            href={currentActivityId ? `/activity/${currentActivityId}/participants` : '#'}
+                            href={currentActivityId ? route('activity.participants.index', currentActivityId) : '#'}
                             icon="fas fa-users"
                             label="Data Peserta"
                             active={route().current('activity.participants.*')}
@@ -305,7 +294,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                         <NavLink
                             href={currentActivityId ? `/activity/${currentActivityId}` : '#'}
                             icon="fas fa-eye"
-                            label="Lihat Publik"
+                            label="Lihat Kegiatan"
                             active={route().current('activity.show')}
                             collapsed={isSidebarCollapsed}
                         />
@@ -497,9 +486,9 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                 </nav>
 
                 {/* Main Content */}
-                <main className={`flex-1 ${noPadding ? '' : 'p-4 md:p-6 lg:p-8'}`}>
+                <main className={`flex-1 ${noPadding ? '' : 'px-4 py-6 md:px-8 lg:px-10 py-8'}`}>
                     <div className={`${fluid ? 'w-full' : 'max-w-7xl'} mx-auto`}>
-                        <div className="mb-6">
+                        <div className="mb-2 sm:mb-6">
                             <Alerts flash={flash} errors={errors} />
                         </div>
                         <div className="animate-fade-in-up">
@@ -510,7 +499,7 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
 
                 {/* Footer */}
                 <footer className="bg-white border-t border-gray-200 py-4 px-6 text-center text-sm text-gray-500">
-                    &copy; {new Date().getFullYear()} {usePage().props.appName || 'EventCek'}. All rights reserved.
+                    &copy; {new Date().getFullYear()} {usePage().props.appName || 'EventCek'}. Developed by PT. ADZKIATEKNO EDU SOLUTION. All rights reserved.
                 </footer>
             </div>
         </div >

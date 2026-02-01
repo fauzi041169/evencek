@@ -56,6 +56,8 @@ class DatabaseSeeder extends Seeder
             PaymentMethodSeeder::class,
             PartnerSeeder::class,
             MitraSeeder::class,
+            PaymentChannelSeeder::class,
+            FinancialSettingSeeder::class,
             ActivityContentSeeder::class,
             GallerySeeder::class,
             SubscriptionPlanSeeder::class,

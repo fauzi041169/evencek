@@ -237,7 +237,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     };
 
     return (
-        <WebLayout hasHeaderSpacer={false}>
+        <WebLayout hasHeaderSpacer={false} fluid={true} noPadding={true}>
             <Head title="Home" />
 
             <style dangerouslySetInnerHTML={{
@@ -312,7 +312,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
             <div className="min-h-screen bg-gradient-to-br from-white via-white to-white relative overflow-hidden font-sans">
 
                 {/* Hero Section */}
-                <section className="relative min-h-[85vh] flex items-center overflow-hidden">
+                <section className="relative min-h-[40vh] sm:min-h-[85vh] flex items-center overflow-hidden">
                     {/* Dynamic Animations based on Settings */}
                     {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (
                         <>
@@ -366,65 +366,65 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                     className="absolute inset-0 bg-cover bg-center animate-slow-zoom"
                                     style={{ backgroundImage: `url('${slide.image}')` }}
                                 />
-                                {/* Gradient Overlay - Bright & Modern */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/50 via-purple-900/50 to-blue-900/50 mix-blend-multiply"></div>
-                                <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/80 via-transparent to-indigo-900/30"></div>
+                                {/* Gradient Overlay - Modern & Deep */}
+                                <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-indigo-950/70 to-slate-900/90"></div>
+                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent opacity-70"></div>
                             </div>
                         ))}
                     </div>
 
                     {/* Content */}
-                    <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center min-h-[85vh]">
-                        <div className="max-w-5xl mx-auto text-center">
-                            {/* Glass Card Container */}
-                            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 md:p-16 shadow-2xl relative overflow-hidden">
-                                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-50 pointer-events-none"></div>
-
+                    <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-0 sm:py-10 flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[85vh]">
+                        <div className="max-w-6xl mx-auto text-center">
+                            {/* Modern Clean Layout without Glass Box */}
+                            <div id="heroContent" className="relative z-10">
+                                
                                 {/* Headline */}
-                                <h1 className="relative text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.1] mb-8 reveal drop-shadow-lg tracking-tight">
-                                    {heroTitle}
+                                <h1 className="relative text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white leading-tight mb-8 reveal tracking-tighter drop-shadow-2xl">
+                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-indigo-200">
+                                        {heroTitle}
+                                    </span>
                                 </h1>
 
                                 {/* Subheadline */}
-                                <p className="relative text-lg md:text-xl text-indigo-50 mb-12 leading-relaxed max-w-3xl mx-auto reveal font-medium">
+                                <p className="relative text-lg sm:text-xl md:text-2xl text-blue-100/90 mb-10 leading-relaxed max-w-3xl mx-auto reveal font-light tracking-wide">
                                     {heroDesc}
                                 </p>
 
                                 {/* CTAs */}
-                                <div className="relative flex flex-wrap gap-6 justify-center reveal" style={{ transitionDelay: '200ms' }}>
+                                <div className="relative flex flex-wrap gap-5 justify-center reveal" style={{ transitionDelay: '200ms' }}>
                                     <Link href={heroLink}
-                                        className="group relative px-10 py-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-lg shadow-[0_10px_30px_rgba(79,70,229,0.4)] hover:shadow-[0_20px_40px_rgba(79,70,229,0.5)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                                        className="group relative px-8 py-4 rounded-full bg-white text-indigo-900 font-bold text-lg shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
                                     >
-                                        <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 skew-x-12 -ml-4"></div>
                                         <span className="relative flex items-center gap-3">
-                                            <i className="fas fa-rocket"></i>
+                                            <i className="fas fa-rocket text-indigo-600 group-hover:rotate-12 transition-transform"></i>
                                             {heroLinkText}
                                         </span>
                                     </Link>
 
                                     <a href="#fitur"
-                                        className="group px-10 py-5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-lg border border-white/20 backdrop-blur-md transition-all duration-300 flex items-center gap-3 hover:border-white/40 shadow-lg hover:shadow-xl"
+                                        className="group px-8 py-4 rounded-full border border-white/30 bg-white/5 text-white backdrop-blur-md hover:bg-white/10 font-semibold text-lg transition-all duration-300 hover:-translate-y-1 flex items-center gap-3"
                                     >
-                                        <i className="fas fa-layer-group text-blue-300 group-hover:text-white transition-colors"></i>
+                                        <i className="fas fa-layer-group group-hover:scale-110 transition-transform"></i>
                                         {t('home.explore_features')}
                                     </a>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Trust Signals */}
-                        <div className="mt-14 flex flex-wrap items-center gap-x-8 gap-y-4 text-white/60 text-sm font-semibold tracking-wide uppercase reveal-left border-t border-white/10 pt-8" style={{ transitionDelay: '400ms' }}>
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-1.5 rounded-full bg-green-500/20 text-green-400"><i className="fas fa-check"></i></div>
-                                <span>{t('home.trusted')}</span>
-                            </div>
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-1.5 rounded-full bg-blue-500/20 text-blue-400"><i className="fas fa-shield-alt"></i></div>
-                                <span>{t('home.secure_data')}</span>
-                            </div>
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-1.5 rounded-full bg-purple-500/20 text-purple-400"><i className="fas fa-bolt"></i></div>
-                                <span>{t('home.real_time')}</span>
+                                {/* Trust Signals - Enhanced */}
+                                <div className="mt-16 flex flex-wrap justify-center items-center gap-4 sm:gap-8 reveal" style={{ transitionDelay: '400ms' }}>
+                                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
+                                        <i className="fas fa-check-circle text-emerald-400 text-lg"></i>
+                                        <span>{t('home.trusted')}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
+                                        <i className="fas fa-shield-alt text-blue-400 text-lg"></i>
+                                        <span>{t('home.secure_data')}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
+                                        <i className="fas fa-bolt text-amber-400 text-lg"></i>
+                                        <span>{t('home.real_time')}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -443,7 +443,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 </section>
 
                 {/* Statistics Section */}
-                <section id="stats" className="py-12 bg-white relative overflow-hidden">
+                <section id="stats" className="py-2 sm:py-6 bg-white relative overflow-hidden">
                     <div className="absolute inset-0 opacity-[0.08]">
                         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #3b82f6 1px, transparent 0)', backgroundSize: '36px 36px' }}></div>
                     </div>
@@ -477,12 +477,12 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                     </div>
                 </section>
 
-                {/* Partners Section */}
-                <section id="mitra" className="py-16 bg-white relative">
+                {/* Mitra Section */}
+                <section id="mitra" className="py-2 sm:py-8 bg-white relative">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                        <div className="mb-8 reveal">
+                        <div className="mb-4 sm:mb-8 reveal">
                             <h3 className="text-3xl font-black text-gray-900 text-center">{t('home.our_partners')}</h3>
-                            <div className="mt-4 hidden sm:flex justify-center gap-3">
+                            <div className="mt-4 flex justify-center gap-3">
                                 <button type="button" onClick={() => scrollMitra(-1)} className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-300 ring-1 ring-gray-200">
                                     <i className="fas fa-chevron-left"></i>
                                 </button>
@@ -493,31 +493,25 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                         </div>
 
                         {partners && partners.length > 0 ? (
-                            <>
-                                <div id="mitraSlider" ref={mitraSliderRef} className="flex justify-start w-full overflow-x-auto gap-6 snap-x snap-mandatory py-2 scroll-smooth pl-4 pr-4 no-scrollbar">
-                                    {partners.map((mitra, idx) => (
-                                        <a key={idx} href={mitra.website || '#'} target={mitra.website ? '_blank' : '_self'} className="flex-none w-56 snap-start group" rel="noreferrer">
-                                            <div className="bg-white rounded-2xl p-4 border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-300 hover:scale-[1.02]">
-                                                <div className="h-28 w-full flex items-center justify-center overflow-hidden rounded-xl bg-gray-50">
-                                                    {mitra.logo ? (
-                                                        <img src={mitra.logo} alt={`Logo ${mitra.company_name}`} className="max-h-24 object-contain" onError={(e) => e.target.style.display = 'none'} />
-                                                    ) : (
-                                                        <i className="fas fa-building text-4xl text-gray-400"></i>
-                                                    )}
-                                                </div>
-                                                <div className="mt-3 text-center">
-                                                    <p className="text-sm font-semibold text-gray-900 truncate" title={mitra.company_name}>{mitra.company_name}</p>
-                                                    {mitra.industry && <p className="text-xs text-gray-600 truncate">{mitra.industry}</p>}
-                                                </div>
+                            <div id="mitraSlider" ref={mitraSliderRef} className="flex justify-start w-full overflow-x-auto gap-6 snap-x snap-mandatory py-2 scroll-smooth pl-4 pr-4 no-scrollbar">
+                                {partners.map((mitra, idx) => (
+                                    <a key={idx} href={mitra.website || '#'} target={mitra.website ? '_blank' : '_self'} className="flex-none w-56 snap-start group" rel="noreferrer">
+                                        <div className="bg-white rounded-2xl p-3 sm:p-4 border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-300 hover:scale-[1.02]">
+                                            <div className="h-28 w-full flex items-center justify-center overflow-hidden rounded-xl bg-gray-50">
+                                                {mitra.logo ? (
+                                                    <img src={mitra.logo} alt={`Logo ${mitra.company_name}`} className="max-h-24 object-contain" onError={(e) => e.target.style.display = 'none'} />
+                                                ) : (
+                                                    <i className="fas fa-building text-4xl text-gray-400"></i>
+                                                )}
                                             </div>
-                                        </a>
-                                    ))}
-                                </div>
-                                <div className="mt-6 flex sm:hidden justify-center gap-3">
-                                    <button type="button" onClick={() => scrollMitra(-1)} className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-300 ring-1 ring-gray-200">Prev</button>
-                                    <button type="button" onClick={() => scrollMitra(1)} className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-300 ring-1 ring-gray-200">Next</button>
-                                </div>
-                            </>
+                                            <div className="mt-3 text-center">
+                                                <p className="text-sm font-semibold text-gray-900 truncate" title={mitra.company_name}>{mitra.company_name}</p>
+                                                {mitra.industry && <p className="text-xs text-gray-600 truncate">{mitra.industry}</p>}
+                                            </div>
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
                         ) : (
                             <p className="text-gray-600 text-center">{t('home.no_partners')}</p>
                         )}
@@ -525,13 +519,13 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 </section>
 
                 {/* Features Section */}
-                <section id="fitur" className="py-24 bg-white relative overflow-hidden">
+                <section id="fitur" className="py-0 sm:py-10 bg-white relative overflow-hidden">
                     <div className="absolute inset-0 opacity-5">
                         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #7c3aed 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
                     </div>
 
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                        <div className="text-center mb-20 reveal">
+                        <div className="text-center mb-6 sm:mb-16 reveal">
                             <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[#7c3aed]/10 to-[#3b82f6]/10 rounded-2xl mb-6 backdrop-blur-sm border border-[#7c3aed]/30">
                                 <div className="w-2 h-2 bg-[#7c3aed] rounded-full mr-3 animate-pulse"></div>
                                 <span className="text-[#7c3aed] font-semibold tracking-wide">{t('home.key_features_badge')}</span>
@@ -592,13 +586,13 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                     </div>
                 </section>
 
-                {/* Workflow Section */}
-                <section className="py-24 bg-white relative overflow-hidden">
+                {/* CTA Section */}
+                <section className="py-0 sm:py-8 bg-white relative overflow-hidden">
                     <div className="absolute inset-0 opacity-5">
                         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #7c3aed 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
                     </div>
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                        <div className="text-center mb-20 reveal">
+                        <div className="text-center mb-8 sm:mb-16 reveal">
                             <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[#7c3aed]/10 to-[#3b82f6]/10 rounded-2xl mb-6 backdrop-blur-sm border border-[#7c3aed]/30">
                                 <div className="w-2 h-2 bg-[#7c3aed] rounded-full mr-3 animate-pulse"></div>
                                 <span className="text-[#7c3aed] font-semibold tracking-wide">{t('home.workflow_badge')}</span>
@@ -609,7 +603,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                             </h2>
                             <p className="text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed">{t('home.workflow_subtitle')}</p>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch" data-stagger="workflow">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8 items-stretch" data-stagger="workflow">
                             <WorkflowStep number="1" title={t('home.step_1_title')} description={t('home.step_1_desc')} className="reveal-left" />
                             <WorkflowStep number="2" title={t('home.step_2_title')} description={t('home.step_2_desc')} className="reveal" />
                             <WorkflowStep number="3" title={t('home.step_3_title')} description={t('home.step_3_desc')} className="reveal-right" />

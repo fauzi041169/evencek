@@ -273,7 +273,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
     const qrCodeUrl = `/profile/qr-code/${user.uid || user.id}`;
 
     return (
-        <AdminLayout title={`Profil - ${user.name}`}>
+        <AdminLayout title={`Profil - ${user.name}`} noPadding={true}>
             <MyQrCodeModal user={user} isOpen={showQrModal} onClose={() => setShowQrModal(false)} />
 
             {/* Image Cropper Modal */}
@@ -346,9 +346,9 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                 )}
 
                 {/* Header Profile Card */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-8 relative group/cover">
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-1 sm:mb-8 relative group/cover">
                     {/* Cover Placeholder */}
-                    <div className="h-40 md:h-48 bg-gradient-to-r from-gray-900 to-gray-800 relative overflow-hidden">
+                    <div className="h-32 md:h-48 bg-gradient-to-r from-gray-900 to-gray-800 relative overflow-hidden">
                         {/* Preview Cover if uploaded, else existing cover, else default pattern */}
                         {data.cover_file ? (
                             <img src={URL.createObjectURL(data.cover_file)} className="w-full h-full object-cover" />
@@ -381,9 +381,9 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                         )}
                     </div>
 
-                    <div className="px-4 pb-6 md:px-8 md:pb-8 -mt-16 md:-mt-20 relative z-10 w-full">
-                        <div className="flex flex-col lg:flex-row justify-between items-start gap-10">
-                            <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 w-full md:w-auto">
+                    <div className="px-2 pb-2 md:px-8 md:pb-8 -mt-16 md:-mt-20 relative z-10 w-full">
+                        <div className="flex flex-col lg:flex-row justify-between items-start gap-4 md:gap-10">
+                            <div className="flex flex-col md:flex-row items-center md:items-end gap-3 md:gap-8 w-full md:w-auto">
                                 <div className="flex flex-col items-center gap-4 flex-shrink-0">
                                     {/* Avatar */}
                                     <div className="relative group">
@@ -423,10 +423,10 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                 </div>
 
                                 {/* Label Nama & Email (Anchored Left) */}
-                                <div className="pb-6 md:pb-14 text-center md:text-left w-full md:w-auto flex flex-col items-center md:items-start">
-                                    <h1 className="text-2xl md:text-[40px] font-black text-gray-900 tracking-tight leading-none mb-2 md:mb-1">{user.name}</h1>
-                                    <p className="text-gray-500 font-bold text-base md:text-lg mb-4 tracking-tight">{user.email}</p>
-                                    <div className="flex items-center gap-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1.5 rounded-full md:bg-transparent md:px-0 md:py-0">
+                            <div className="pb-2 md:pb-14 text-center md:text-left w-full md:w-auto flex flex-col items-center md:items-start">
+                                <h1 className="text-2xl md:text-[40px] font-black text-gray-900 tracking-tight leading-none mb-2 md:mb-1">{user.name}</h1>
+                                <p className="text-gray-500 font-bold text-base md:text-lg mb-2 tracking-tight">{user.email}</p>
+                                <div className="flex items-center gap-2.5 text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1.5 rounded-full md:bg-transparent md:px-0 md:py-0">
                                         <i className="fas fa-calendar-alt text-gray-300"></i>
                                         <span>Bergabung {user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : '-'}</span>
                                     </div>
@@ -434,8 +434,8 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                             </div>
 
                             {/* KANAN: Kartu Status (Compact) */}
-                            <div className="pt-4 lg:pt-14 flex-shrink-0 w-full lg:w-auto">
-                                <div className="bg-white p-5 md:p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] w-full lg:w-[340px] animate-in fade-in slide-in-from-right-8 duration-700">
+                            <div className="pt-2 lg:pt-14 flex-shrink-0 w-full lg:w-auto">
+                                <div className="bg-white p-3 sm:p-5 md:p-7 rounded-[2.5rem] border border-gray-100 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] w-full lg:w-[340px] animate-in fade-in slide-in-from-right-8 duration-700">
                                     <div className="flex items-center gap-5 mb-6">
                                         <div className="w-16 h-16 rounded-[1.25rem] bg-[#3B82F6] flex items-center justify-center shadow-[0_10px_20px_-5px_rgba(59,130,246,0.3)]">
                                             <i className="fas fa-user-check text-white text-2xl"></i>
@@ -494,12 +494,12 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mt-6 md:mt-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mt-1 sm:mt-6 md:mt-8">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-8">
 
                         {activeTab === 'overview' && (
-                            <form onSubmit={submitProfile} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 md:p-8">
+                            <form onSubmit={submitProfile} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 sm:p-5 md:p-8">
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="text-xl font-bold text-gray-800">Informasi Pribadi</h2>
                                     {canEdit && (
@@ -518,7 +518,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                                             Nama Lengkap {isFieldRequired('name') && <span className="text-red-500">*</span>}
@@ -527,7 +527,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             type="text"
                                             value={data.name}
                                             onChange={(e) => setData('name', e.target.value)}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('name') && !data.name ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('name') && !data.name ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             placeholder="Nama Lengkap Anda"
                                             disabled={!canEdit}
                                             required={isFieldRequired('name')}
@@ -543,7 +543,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             type="email"
                                             value={data.email}
                                             onChange={(e) => setData('email', e.target.value)}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('email') && !data.email ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('email') && !data.email ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             placeholder="email@example.com"
                                             disabled={!canEdit}
                                             required={isFieldRequired('email')}
@@ -559,7 +559,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             type="text"
                                             value={data.no_hp}
                                             onChange={(e) => setData('no_hp', e.target.value)}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('no_hp') && !data.no_hp ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('no_hp') && !data.no_hp ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             placeholder="08xxxxxxxxxx"
                                             disabled={!canEdit}
                                             required={isFieldRequired('no_hp')}
@@ -575,7 +575,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             type="text"
                                             value={data.pekerjaan}
                                             onChange={(e) => setData('pekerjaan', e.target.value)}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('pekerjaan') && !data.pekerjaan ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('pekerjaan') && !data.pekerjaan ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             placeholder="Pekerjaan Anda"
                                             disabled={!canEdit}
                                             required={isFieldRequired('pekerjaan')}
@@ -590,7 +590,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             type="text"
                                             value={data.jabatan}
                                             onChange={(e) => setData('jabatan', e.target.value)}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('jabatan') && !data.jabatan ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('jabatan') && !data.jabatan ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             placeholder="Jabatan (Opsional)"
                                             disabled={!canEdit}
                                             required={isFieldRequired('jabatan')}
@@ -604,7 +604,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                         <select
                                             value={data.jenis_kelamin}
                                             onChange={(e) => setData('jenis_kelamin', e.target.value)}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('jenis_kelamin') && !data.jenis_kelamin ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('jenis_kelamin') && !data.jenis_kelamin ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             disabled={!canEdit}
                                             required={isFieldRequired('jenis_kelamin')}
                                         >
@@ -621,7 +621,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             type="date"
                                             value={data.tanggal_lahir}
                                             onChange={(e) => setData('tanggal_lahir', e.target.value)}
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('birth_date') && !data.tanggal_lahir ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('birth_date') && !data.tanggal_lahir ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             disabled={!canEdit}
                                             required={isFieldRequired('birth_date')}
                                         />
@@ -635,7 +635,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             value={data.alamat}
                                             onChange={(e) => setData('alamat', e.target.value)}
                                             rows="3"
-                                            className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('alamat') && !data.alamat ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                            className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${isFieldRequired('alamat') && !data.alamat ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                             placeholder="Alamat lengkap domisili saat ini..."
                                             disabled={!canEdit}
                                             required={isFieldRequired('alamat')}
@@ -654,7 +654,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                     setData(d => ({ ...d, province_id: e.target.value, regency_id: '', district_id: '' }));
                                                     fetchRegencies(e.target.value);
                                                 }}
-                                                className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('province_id') && !data.province_id) || errors.province_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                                className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('province_id') && !data.province_id) || errors.province_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                                 disabled={!canEdit}
                                                 required={isFieldRequired('province_id')}
                                             >
@@ -675,7 +675,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                     setData(d => ({ ...d, regency_id: e.target.value, district_id: '' }));
                                                     fetchDistricts(e.target.value);
                                                 }}
-                                                className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('regency_id') && !data.regency_id) || errors.regency_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                                className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('regency_id') && !data.regency_id) || errors.regency_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                                 disabled={!canEdit || loadingRegencies || !data.province_id}
                                                 required={isFieldRequired('regency_id')}
                                             >
@@ -694,7 +694,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             <select
                                                 value={data.district_id}
                                                 onChange={(e) => setData('district_id', e.target.value)}
-                                                className={`w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('district_id') && !data.district_id) || errors.district_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                                className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('district_id') && !data.district_id) || errors.district_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
                                                 disabled={!canEdit || loadingDistricts || !data.regency_id}
                                                 required={isFieldRequired('district_id')}
                                             >
@@ -731,7 +731,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                                 type="password"
                                                 value={passData.current_password}
                                                 onChange={(e) => setPassData('current_password', e.target.value)}
-                                                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                                className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
                                                 placeholder="••••••••"
                                             />
                                             {passErrors.current_password && <div className="text-red-500 text-xs mt-1">{passErrors.current_password}</div>}
@@ -744,7 +744,7 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             type="password"
                                             value={passData.new_password}
                                             onChange={(e) => setPassData('new_password', e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
+                                            className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
                                             placeholder="••••••••"
                                         />
                                         <p className="text-xs text-gray-500 mt-1">

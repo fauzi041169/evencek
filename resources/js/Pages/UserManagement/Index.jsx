@@ -213,7 +213,7 @@ export default function UserManagementIndex({
         <AdminLayout title="Manajemen User">
             <Head title="Manajemen User" />
 
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6 px-4">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-2 sm:py-6 px-4">
                 <div className="w-full">
                     {/* Header */}
                     <div className="mb-6">
@@ -251,7 +251,7 @@ export default function UserManagementIndex({
                     </div>
 
                     {/* Filter and Search */}
-                    <div className="bg-white rounded-xl shadow-md mb-6 p-6">
+                    <div className="bg-white rounded-xl shadow-md mb-6 p-3 sm:p-6">
                         <form onSubmit={handleSearch} className="flex flex-row gap-4 items-end overflow-x-auto">
                             <div className="flex-1 min-w-[200px]">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Role</label>
@@ -419,8 +419,14 @@ export default function UserManagementIndex({
                                         );
                                     }) : (
                                         <tr>
-                                            <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
-                                                Tidak ada user ditemukan
+                                            <td colSpan="7" className="px-6 py-2 sm:py-8 text-center text-gray-500">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                                        <i className="fas fa-users-slash text-2xl text-gray-400"></i>
+                                                    </div>
+                                                    <h3 className="text-lg font-medium text-gray-900 mb-1">Tidak ada pengguna</h3>
+                                                    <p className="text-gray-500 text-sm">Belum ada data pengguna yang sesuai dengan pencarian</p>
+                                                </div>
                                             </td>
                                         </tr>
                                     )}

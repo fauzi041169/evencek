@@ -5,7 +5,7 @@ import CommitteeTypesSection from './CommitteeTypesSection';
 
 export default function CorePreparationSection({ owners, participationTypes, committeeTypes, activity }) {
     return (
-        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-10 transition-all hover:shadow-md duration-300">
+        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-6 sm:mb-10 transition-all hover:shadow-md duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 divide-y md:divide-y-0 lg:divide-x divide-gray-100">
                 {/* Left: Owners */}
                 <div className="flex flex-col h-full hover:bg-gray-50/30 transition-colors">

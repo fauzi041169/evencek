@@ -310,6 +310,7 @@ class ActivityPreparationController extends Controller
                 'refPositions' => $refPositions,
                 'participationTypes' => $participationTypes,
                 'committeeTypes' => $committeeTypes,
+                'vouchers' => \App\Models\ActivityVoucher::where('activity_id', $activityIdValue)->get(),
             ]);
         } catch (ModelNotFoundException $e) {
             abort(404, 'Aktivitas tidak ditemukan.');
@@ -2679,9 +2680,9 @@ class ActivityPreparationController extends Controller
                     ?: array_search('kecamatan', $header, true)
                     ?: array_search('district_name', $header, true)
                     ?: array_search('profile:district_name', $header, true),
-                'province_id' => array_search('province_id', $header, true) ?: array_search('profile:province_id', $header, true),
-                'regency_id' => array_search('regency_id', $header, true) ?: array_search('profile:regency_id', $header, true),
-                'district_id' => array_search('district_id', $header, true) ?: array_search('profile:district_id', $header, true),
+                'province_id' => array_search('province_id', $header, true) ?: array_search('profile:province_id', $header, true) ?: array_search('province id', $header, true),
+                'regency_id' => array_search('regency_id', $header, true) ?: array_search('profile:regency_id', $header, true) ?: array_search('regency id', $header, true),
+                'district_id' => array_search('district_id', $header, true) ?: array_search('profile:district_id', $header, true) ?: array_search('district id', $header, true),
                 'other_province' => array_search('other_province', $header, true),
                 'other_regency' => array_search('other_regency', $header, true),
                 'other_district' => array_search('other_district', $header, true),
@@ -3668,19 +3669,23 @@ class ActivityPreparationController extends Controller
             'birth_date' => 'profile:birth_date',
             'tanggal lahir' => 'profile:birth_date',
             'tanggal lahir (yyyy-mm-dd)' => 'profile:birth_date',
-            'province_id' => 'province',
-            'province' => 'province',
-            'provinsi' => 'province',
-            'regency_id' => 'regency',
-            'regency' => 'regency',
-            'kabupaten/kota' => 'regency',
-            'kabupaten / kota' => 'regency',
-            'kabupaten_kota' => 'regency',
-            'kabupaten' => 'regency',
-            'kota' => 'regency',
-            'district_id' => 'district',
-            'district' => 'district',
-            'kecamatan' => 'district',
+            'province_id' => 'Provinsi',
+            'province id' => 'Provinsi',
+            'province' => 'Provinsi',
+            'provinsi' => 'Provinsi',
+            'regency_id' => 'Kabupaten/Kota',
+            'regency id' => 'Kabupaten/Kota',
+            'regency' => 'Kabupaten/Kota',
+            'kabupaten/kota' => 'Kabupaten/Kota',
+            'kabupaten / kota' => 'Kabupaten/Kota',
+            'kabupaten_kota' => 'Kabupaten/Kota',
+            'kabupaten kota' => 'Kabupaten/Kota',
+            'kabupaten' => 'Kabupaten/Kota',
+            'kota' => 'Kabupaten/Kota',
+            'district_id' => 'Kecamatan',
+            'district id' => 'Kecamatan',
+            'district' => 'Kecamatan',
+            'kecamatan' => 'Kecamatan',
         ];
 
         // Start with base template
@@ -3859,19 +3864,23 @@ class ActivityPreparationController extends Controller
             'birth_date' => 'profile:birth_date',
             'tanggal lahir' => 'profile:birth_date',
             'tanggal lahir (yyyy-mm-dd)' => 'profile:birth_date',
-            'province_id' => 'province',
-            'province' => 'province',
-            'provinsi' => 'province',
-            'regency_id' => 'regency',
-            'regency' => 'regency',
-            'kabupaten/kota' => 'regency',
-            'kabupaten / kota' => 'regency',
-            'kabupaten_kota' => 'regency',
-            'kabupaten' => 'regency',
-            'kota' => 'regency',
-            'district_id' => 'district',
-            'district' => 'district',
-            'kecamatan' => 'district',
+            'province_id' => 'Provinsi',
+            'province id' => 'Provinsi',
+            'province' => 'Provinsi',
+            'provinsi' => 'Provinsi',
+            'regency_id' => 'Kabupaten/Kota',
+            'regency id' => 'Kabupaten/Kota',
+            'regency' => 'Kabupaten/Kota',
+            'kabupaten/kota' => 'Kabupaten/Kota',
+            'kabupaten / kota' => 'Kabupaten/Kota',
+            'kabupaten_kota' => 'Kabupaten/Kota',
+            'kabupaten kota' => 'Kabupaten/Kota',
+            'kabupaten' => 'Kabupaten/Kota',
+            'kota' => 'Kabupaten/Kota',
+            'district_id' => 'Kecamatan',
+            'district id' => 'Kecamatan',
+            'district' => 'Kecamatan',
+            'kecamatan' => 'Kecamatan',
         ];
 
         $templateStr = $activity->import_template ?: 'user:email,user:name,user:password';
@@ -4081,12 +4090,12 @@ class ActivityPreparationController extends Controller
             'institution' => 'Nama Instansi',
             'jenis_kelamin' => 'Laki-laki',
             'gender' => 'Laki-laki',
-            'province_id' => '11',
-            'province' => 'ACEH',
-            'regency_id' => '1101',
-            'regency' => 'KABUPATEN ACEH SELATAN',
-            'district_id' => '1101010',
-            'district' => 'BAKONGAN',
+            'province_id' => 'ACEH',
+            'Provinsi' => 'ACEH',
+            'regency_id' => 'KABUPATEN ACEH SELATAN',
+            'Kabupaten/Kota' => 'KABUPATEN ACEH SELATAN',
+            'district_id' => 'BAKONGAN',
+            'Kecamatan' => 'BAKONGAN',
             'nik' => '1234567890123456',
             'birth_place' => 'Jakarta',
             'birth_date' => '1990-01-01',
@@ -4121,11 +4130,11 @@ class ActivityPreparationController extends Controller
 
                 $columnLetter = $this->columnLetter($colIndex);
 
-                if ($key === 'province_id') {
+                if ($key === 'province_id' || $key === 'Provinsi') {
                     $provinceColumnLetter = $columnLetter;
-                } elseif ($key === 'regency_id') {
+                } elseif ($key === 'regency_id' || $key === 'Kabupaten/Kota') {
                     $regencyColumnLetter = $columnLetter;
-                } elseif ($key === 'district_id') {
+                } elseif ($key === 'district_id' || $key === 'Kecamatan') {
                     $districtColumnLetter = $columnLetter;
                 }
 
@@ -6463,6 +6472,124 @@ class ActivityPreparationController extends Controller
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
             ], 500);
         }
+    }
+    public function updateCommitteeVoucher(Request $request, $activityId)
+    {
+        $activity = Activity::where('uid', $activityId)->first();
+        if (!$activity) {
+            $activity = Activity::where('id', $activityId)->firstOrFail();
+        }
+
+        if (!$activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Anda tidak memiliki izin.');
+        }
+
+        $validated = $request->validate([
+            'committee_voucher_code' => 'nullable|string|max:50',
+            'committee_voucher_usage_limit' => 'nullable|integer|min:0',
+            'committee_voucher_valid_until' => 'nullable|date',
+        ]);
+
+        $activity->update([
+            'committee_voucher_code' => $validated['committee_voucher_code'],
+            'committee_voucher_usage_limit' => $validated['committee_voucher_usage_limit'],
+            'committee_voucher_valid_until' => $validated['committee_voucher_valid_until'],
+        ]);
+
+        return redirect()->back()->with('success', 'Kode voucher panitia berhasil diperbarui.');
+    }
+
+    public function storeVoucher(Request $request, $activityId)
+    {
+        $activity = Activity::where('uid', $activityId)->first();
+        if (!$activity) {
+            $activity = Activity::where('id', $activityId)->firstOrFail();
+        }
+
+        if (!$activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Anda tidak memiliki izin.');
+        }
+
+        $validated = $request->validate([
+            'code' => [
+                'required', 
+                'string', 
+                'max:50',
+                \Illuminate\Validation\Rule::unique('activity_vouchers')->where(function ($query) use ($activity) {
+                    return $query->where('activity_id', $activity->id);
+                })
+            ],
+            'usage_limit' => 'nullable|integer|min:0',
+            'valid_until' => 'nullable|date',
+            'description' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+        ]);
+
+        \App\Models\ActivityVoucher::create([
+            'activity_id' => $activity->id,
+            'code' => $validated['code'],
+            'usage_limit' => $validated['usage_limit'],
+            'valid_until' => $validated['valid_until'],
+            'description' => $validated['description'] ?? null,
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
+
+        return redirect()->back()->with('success', 'Kode voucher berhasil ditambahkan.');
+    }
+
+    public function updateVoucher(Request $request, $activityId, $voucherId)
+    {
+        $activity = Activity::where('uid', $activityId)->first();
+        if (!$activity) {
+            $activity = Activity::where('id', $activityId)->firstOrFail();
+        }
+
+        if (!$activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Anda tidak memiliki izin.');
+        }
+
+        $voucher = \App\Models\ActivityVoucher::where('activity_id', $activity->id)
+            ->where('id', $voucherId)
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'code' => [
+                'required', 
+                'string', 
+                'max:50',
+                \Illuminate\Validation\Rule::unique('activity_vouchers')->ignore($voucher->id)->where(function ($query) use ($activity) {
+                    return $query->where('activity_id', $activity->id);
+                })
+            ],
+            'usage_limit' => 'nullable|integer|min:0',
+            'valid_until' => 'nullable|date',
+            'description' => 'nullable|string|max:255',
+            'is_active' => 'boolean',
+        ]);
+
+        $voucher->update($validated);
+
+        return redirect()->back()->with('success', 'Kode voucher berhasil diperbarui.');
+    }
+
+    public function destroyVoucher($activityId, $voucherId)
+    {
+        $activity = Activity::where('uid', $activityId)->first();
+        if (!$activity) {
+            $activity = Activity::where('id', $activityId)->firstOrFail();
+        }
+
+        if (!$activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Anda tidak memiliki izin.');
+        }
+
+        $voucher = \App\Models\ActivityVoucher::where('activity_id', $activity->id)
+            ->where('id', $voucherId)
+            ->firstOrFail();
+
+        $voucher->delete();
+
+        return redirect()->back()->with('success', 'Kode voucher berhasil dihapus.');
     }
 }
 

@@ -4,7 +4,7 @@ import Sidebar from '../Components/Sidebar';
 import Alerts from '../Components/Alerts';
 import Modal from '../Components/Modal';
 
-export default function AdminLayout({ children, title = '' }) {
+export default function AdminLayout({ children, title = '', noPadding = false }) {
     const { auth, flash, errors, appSettings } = usePage().props;
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
         const stored = localStorage.getItem('sidebarCollapsed');
@@ -292,7 +292,7 @@ export default function AdminLayout({ children, title = '' }) {
                 </nav>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
+                <main className={`flex-1 ${noPadding ? 'p-0' : 'p-2 md:p-6 lg:p-8'} overflow-x-hidden`}>
                     <div className="w-full">
                         {/* Flash Messages */}
                         <div className="mb-6">
@@ -308,7 +308,7 @@ export default function AdminLayout({ children, title = '' }) {
 
                 {/* Footer */}
                 <footer className="bg-white border-t border-gray-200 py-4 px-6 text-center text-sm text-gray-500">
-                    &copy; {new Date().getFullYear()} {usePage().props.appName || 'EventCek'}. All rights reserved.
+                    &copy; {new Date().getFullYear()} {usePage().props.appName || 'EventCek'}. Developed by PT. ADZKIATEKNO EDU SOLUTION. All rights reserved.
                 </footer>
             </div>
         </div>

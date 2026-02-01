@@ -1,6 +1,7 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+import CategoryManager from '@/Components/CategoryManager';
 import Swal from 'sweetalert2';
 
 export default function Create({ categories, subscriptionLimits, canCreate, currentNewsCount }) {
@@ -25,7 +26,7 @@ export default function Create({ categories, subscriptionLimits, canCreate, curr
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         if (!canCreate.allowed) {
             Swal.fire('Limit Tercapai', canCreate.message, 'warning');
             return;
@@ -40,13 +41,10 @@ export default function Create({ categories, subscriptionLimits, canCreate, curr
             }
         });
     };
-
     return (
-        <MainLayout>
-            <Head title="Buat Berita Baru" />
-
-            <div className="py-12 pt-24 min-h-screen bg-gray-50">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <MainLayout title="Buat Berita Baru">
+            <div className="py-2 sm:py-6 min-h-screen bg-gray-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between mb-6">
                         <h1 className="text-2xl font-bold text-gray-900">Buat Berita Baru</h1>
                         <Link href={route('news.index')} className="text-gray-600 hover:text-secondary">
@@ -62,7 +60,7 @@ export default function Create({ categories, subscriptionLimits, canCreate, curr
                         </div>
                     )}
 
-                    <div className="bg-white rounded-xl shadow-md overflow-hidden p-6 md:p-8">
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden p-4 sm:p-6 md:p-8">
                         <form onSubmit={handleSubmit}>
                             {/* Title */}
                             <div className="mb-6">

@@ -18,9 +18,6 @@ const DEFAULT_TEMPLATE_OPTIONS = [
     { value: 'province', label: 'Provinsi' },
     { value: 'regency', label: 'Kabupaten/Kota' },
     { value: 'district', label: 'Kecamatan' },
-    { value: 'province_id', label: 'Provinsi' },
-    { value: 'regency_id', label: 'Kabupaten/Kota' },
-    { value: 'district_id', label: 'Kecamatan' },
     { value: 'profile:institution', label: 'Instansi' },
     { value: 'profile:position', label: 'Jabatan' },
 ];
@@ -66,37 +63,56 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                             // Merge into options if not exists
                             const newOptions = [...DEFAULT_TEMPLATE_OPTIONS];
                             cols.forEach(col => {
-                                const clean = col.replace('*', '');
-                                if (!newOptions.find(o => o.value === clean)) {
-                                    // Try to format label nicely
-                                    const labelMap = {
-                                        'province': 'Provinsi',
-                                        'regency': 'Kabupaten/Kota',
-                                        'district': 'Kecamatan',
-                                        'province_id': 'Provinsi',
-                                        'regency_id': 'Kabupaten/Kota',
-                                        'district_id': 'Kecamatan',
-                                        'no_hp': 'No HP/WA',
-                                        'nik': 'NIK',
-                                        'address': 'Alamat',
-                                        'institution': 'Instansi',
-                                        'position': 'Jabatan'
-                                    };
+                                let clean = col.replace('*', '').replace(/\|dropdown:.*/, '');
 
-                                    let label = clean;
+                                // Normalize regency/district id variations (case-insensitive)
+                                const normalized = clean.toLowerCase().trim();
+                                if (/^regency[\s_]*id$/i.test(normalized)) {
+                                    clean = 'regency';
+                                } else if (/^district[\s_]*id$/i.test(normalized)) {
+                                    clean = 'district';
+                                } else if (/^province[\s_]*id$/i.test(normalized)) {
+                                    clean = 'province';
+                                }
+
+                                // Try to format label nicely - MUST match backend mapping
+                                const labelMap = {
+                                    'user:name': 'Nama Lengkap',
+                                    'user:email': 'Email',
+                                    'user:password': 'Password',
+                                    'profile:no_hp': 'No HP/WA',
+                                    'profile:nik': 'NIK',
+                                    'profile:gender': 'Jenis Kelamin (L/P)',
+                                    'profile:birth_place': 'Tempat Lahir',
+                                    'profile:birth_date': 'Tanggal Lahir (YYYY-MM-DD)',
+                                    'profile:address': 'Alamat Lengkap',
+                                    'province': 'Provinsi',
+                                    'regency': 'Kabupaten/Kota',
+                                    'district': 'Kecamatan',
+                                    'profile:institution': 'Instansi',
+                                    'profile:position': 'Jabatan'
+                                };
+
+                                let label = labelMap[clean];
+
+                                // If not in map, try to format nicely
+                                if (!label) {
                                     const bare = clean.replace('profile:', '').replace('user:', '');
-
-                                    if (labelMap[bare]) {
-                                        label = labelMap[bare];
-                                    } else if (clean.startsWith('profile:')) {
-                                        label = clean.replace('profile:', '').replace(/_/g, ' ');
+                                    if (clean.startsWith('profile:') || clean.startsWith('user:')) {
+                                        label = bare.replace(/_/g, ' ');
                                         label = label.charAt(0).toUpperCase() + label.slice(1);
-                                    } else if (clean.startsWith('user:')) {
-                                        label = clean.replace('user:', '').replace(/_/g, ' ');
-                                        label = label.charAt(0).toUpperCase() + label.slice(1);
+                                    } else {
+                                        label = clean;
                                     }
+                                }
 
+                                console.log(`Column: "${col}" -> clean: "${clean}" -> label: "${label}"`);
+
+                                // Check if already exists by value OR label to avoid duplicates
+                                if (!newOptions.find(o => o.value === clean || o.label === label)) {
                                     newOptions.push({ value: clean, label: label });
+                                } else {
+                                    console.log(`Skipping duplicate: "${clean}" / "${label}"`);
                                 }
                             });
                             setTemplateOptions(newOptions);
@@ -222,7 +238,6 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
             // Construct CSV content from previewData and mapping
             // The backend expects a file with headers matching the mapped fields
             const csvHeaderRow = headers.map((_, index) => mapping[index] || `col_${index}`);
-            console.log('[DEBUG] Sending CSV Headers:', csvHeaderRow);
 
             const escapeCsvCell = (cell) => {
                 if (cell === null || cell === undefined) return '';
@@ -277,12 +292,12 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                     // if (onSuccess) onSuccess(); // Do not close immediately, let user see stats
                 }
             } else {
-                console.error('[DEBUG] Import Failed:', result);
+                console.error('Import Failed:', result);
                 setImportErrors(result.errors || [{ row: 0, email: 'Unknown', name: 'Unknown', error: result.message || 'Import failed' }]);
             }
 
         } catch (error) {
-            console.error('[DEBUG] Import Exception:', error);
+            console.error('Import Exception:', error);
             setImportErrors([{ row: 0, error: 'Network or server error: ' + (error.message || String(error)) }]);
         } finally {
             setIsImporting(false);
@@ -820,6 +835,20 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                         >
                                             {importResult ? (importResult.bulk_payment_available ? 'Lanjut ke Pembayaran' : 'Selesai') : 'Tutup'}
                                         </button>
+
+                                        {(importResult || importErrors) && (
+                                            <button
+                                                type="button"
+                                                className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                                                onClick={() => {
+                                                    setImportResult(null);
+                                                    setImportErrors(null);
+                                                    setStep('paste');
+                                                }}
+                                            >
+                                                Kembali
+                                            </button>
+                                        )}
                                     </div>
                                 </Dialog.Panel>
                             </Transition.Child>

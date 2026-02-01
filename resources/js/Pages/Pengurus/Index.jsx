@@ -45,10 +45,10 @@ export default function Index({ pengurus = [] }) {
     return (
         <MainLayout>
             <Head title="List Pengurus" />
-            <div className="min-h-screen bg-white py-4 px-0 sm:px-4">
+            <div className="min-h-screen bg-white py-2 sm:py-4 px-0 sm:px-4">
                 <div className="w-full">
                     <div className="mb-4">
-                        <div className="bg-gradient-custom sm:rounded-t-xl shadow-lg px-5 py-3">
+                        <div className="bg-gradient-custom sm:rounded-t-xl shadow-lg px-4 py-2 sm:px-5 sm:py-3">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-bold text-white flex items-center">
                                     <i className="fas fa-user-tie mr-2"></i>
@@ -156,9 +156,9 @@ export default function Index({ pengurus = [] }) {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="8" className="px-6 py-12 text-center">
-                                                <div className="flex flex-col items-center">
-                                                    <div className="bg-gray-100 rounded-full p-6 mb-4">
+                                            <td colSpan="8" className="px-6 py-2 sm:py-6 text-center">
+                                            <div className="flex flex-col items-center">
+                                                <div className="bg-gray-100 rounded-full p-6 mb-4">
                                                         <i className="fas fa-user-tie text-4xl text-gray-400"></i>
                                                     </div>
                                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Tidak ada data</h3>

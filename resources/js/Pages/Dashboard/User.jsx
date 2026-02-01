@@ -70,7 +70,7 @@ export default function DashboardUser({ auth, stats = {}, joinedActivityUsers = 
                             <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white opacity-10 blur-3xl"></div>
                             <div className="absolute -bottom-24 -left-24 w-64 h-64 rounded-full bg-pink-500 opacity-20 blur-3xl"></div>
 
-                            <div className="relative p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 z-10">
+                            <div className="relative p-4 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 z-10">
                                 <div className="flex-1 text-center md:text-left">
                                     <h3 className="text-2xl font-bold text-white mb-2">
                                         Mulai Buat Eventmu Sendiri!

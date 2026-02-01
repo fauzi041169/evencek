@@ -2891,21 +2891,21 @@ class PaymentController extends Controller
      */
     public function withdrawRequest(Request $request)
     {
+        $user = auth()->user();
+        if (! $user || ! ($user->isAdmin() || $user->isSuperAdmin() || $user->isCreator())) {
+            abort(403, 'Anda tidak memiliki akses untuk mengajukan penarikan');
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1000',
+            'notes' => 'nullable|string|max:255',
+            // Optional bank account info from modal
+            'bank_name' => 'nullable|string|max:100',
+            'account_name' => 'nullable|string|max:150',
+            'account_number' => 'nullable|string|max:50',
+        ]);
+
         try {
-            $user = auth()->user();
-            if (! $user || ! ($user->isAdmin() || $user->isSuperAdmin() || $user->isCreator())) {
-                abort(403, 'Anda tidak memiliki akses untuk mengajukan penarikan');
-            }
-
-            $validated = $request->validate([
-                'amount' => 'required|numeric|min:1000',
-                'notes' => 'nullable|string|max:255',
-                // Optional bank account info from modal
-                'bank_name' => 'nullable|string|max:100',
-                'account_name' => 'nullable|string|max:150',
-                'account_number' => 'nullable|string|max:50',
-            ]);
-
             // Compose notes to include bank account info (no migration needed)
             $notes = $validated['notes'] ?? null;
             $bankParts = [];
@@ -2921,6 +2921,15 @@ class PaymentController extends Controller
             if (! empty($bankParts)) {
                 $bankSummary = 'Rekening: '.implode(' • ', $bankParts);
                 $notes = trim(($notes ? $notes.' | ' : '').$bankSummary);
+            }
+
+            // Simpan data rekening ke profile user agar autodata next time
+            if ($user->profile) {
+                $user->profile->update([
+                    'bank_name' => $validated['bank_name'] ?? $user->profile->bank_name,
+                    'account_name' => $validated['account_name'] ?? $user->profile->account_name,
+                    'account_number' => $validated['account_number'] ?? $user->profile->account_number,
+                ]);
             }
 
             // Simpan permintaan penarikan ke database
@@ -2958,20 +2967,22 @@ class PaymentController extends Controller
                 ]);
             }
 
-            return redirect()->route('payments.withdraw.history')
+            return redirect()->back()
                 ->with('success', 'Permintaan penarikan dana telah dikirim.');
         } catch (\Exception $e) {
             \Log::error('Error submitting withdrawal request: '.$e->getMessage());
 
+            $errorMessage = 'Terjadi kesalahan saat mengirim permintaan penarikan dana: ' . $e->getMessage();
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Terjadi kesalahan saat mengirim permintaan penarikan dana.',
+                    'message' => $errorMessage,
                 ], 500);
             }
 
-            return redirect()->route('payments.manage')
-                ->with('error', 'Terjadi kesalahan saat mengirim permintaan penarikan dana.');
+            return redirect()->back()
+                ->with('error', $errorMessage);
         }
     }
 
@@ -3194,10 +3205,20 @@ class PaymentController extends Controller
      */
     protected function getSavedBankAccount(string|int|null $userId): ?array
     {
-        // Backward-compatible: return the first account (if multiple)
         if (! $userId) {
             return null;
         }
+
+        $user = \App\Models\User::find($userId);
+        if ($user && $user->profile && $user->profile->bank_name && $user->profile->account_number) {
+            return [
+                'bank_name' => $user->profile->bank_name,
+                'account_name' => $user->profile->account_name,
+                'account_number' => $user->profile->account_number,
+            ];
+        }
+
+        // Fallback to old JSON storage if DB is empty
         $path = 'withdrawal_bank_accounts/'.$userId.'.json';
         if (! Storage::disk('local')->exists($path)) {
             return null;
@@ -3261,7 +3282,7 @@ class PaymentController extends Controller
             abort(403, 'Anda tidak memiliki akses ke riwayat penarikan');
         }
 
-        $query = WithdrawalRequest::with(['user', 'verifier'])->orderBy('created_at', 'desc');
+        $query = WithdrawalRequest::with(['user.profile', 'verifier'])->orderBy('created_at', 'desc');
 
         // Creator hanya melihat permintaan miliknya (kecuali jika admin/superadmin)
         if ($user->isCreator() && ! $user->isAdmin() && ! $user->isSuperAdmin()) {
@@ -3350,7 +3371,7 @@ class PaymentController extends Controller
 
         // Izinkan admin/superadmin, creator, atau pemilik pengajuan melihat detail
         if (! ($user->isAdmin() || $user->isSuperAdmin() || $user->isCreator() || $user->id === $withdrawal->user_id)) {
-            return redirect()->route('payments.withdraw.history')
+            return redirect()->route('payments.admin.withdraw.history')
                 ->with('error', 'Anda tidak memiliki akses ke detail penarikan ini');
         }
 
@@ -3421,10 +3442,27 @@ class PaymentController extends Controller
             $withdrawal->verified_at = now();
             // Simpan path bukti di notes agar tidak perlu migrasi kolom baru
             if ($proofPath) {
-                $notes = is_string($withdrawal->notes) ? json_decode($withdrawal->notes, true) : [];
-                if (!is_array($notes)) $notes = [];
-                $notes['proof_path'] = $proofPath;
-                $withdrawal->notes = json_encode($notes);
+                $currentNotes = $withdrawal->notes;
+                $notesArray = [];
+                
+                // Try to decode as JSON if it looks like JSON
+                if (is_string($currentNotes) && (str_starts_with(trim($currentNotes), '{') || str_starts_with(trim($currentNotes), '['))) {
+                    $decoded = json_decode($currentNotes, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $notesArray = $decoded;
+                    }
+                }
+                
+                // If decoding failed or it wasn't JSON, and it has content, preserve it as 'notes'
+                if (empty($notesArray) && !empty($currentNotes) && is_string($currentNotes)) {
+                    // Check if it's not the JSON we just failed to parse (double check)
+                    // Actually if we are here, either it's not JSON or decode failed.
+                    // Just treat as string note.
+                    $notesArray['notes'] = $currentNotes;
+                }
+                
+                $notesArray['proof_path'] = $proofPath;
+                $withdrawal->notes = json_encode($notesArray);
             }
             
             $withdrawal->save();
@@ -3612,17 +3650,148 @@ class PaymentController extends Controller
         ]);
     }
 
+    public function downloadFinancialLedgerPdf(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! ($user->isAdmin() || $user->isSuperAdmin() || $user->isCreator())) {
+            abort(403, 'Anda tidak memiliki akses ke Laporan Keuangan');
+        }
+
+        // Logic Duplication from financialLedger to ensure consistency
+        // Base query
+        $paymentsQuery = Payment::with(['user', 'activity']);
+        
+        if (! $user->isAdmin() && ! $user->isSuperAdmin()) {
+            $userProfile = $user->profile;
+            $paymentsQuery->whereHas('activity', function ($aq) use ($user, $userProfile) {
+                $aq->where('user_id', $user->id)
+                    ->orWhereHas('committeeStructures', function ($cq) use ($user) {
+                        $cq->where('user_id', $user->id);
+                    })
+                    ->orWhereHas('divisions', function ($dq) use ($user, $userProfile) {
+                        $dq->where('leader_name', $user->name);
+                        if ($userProfile && $userProfile->no_hp) {
+                            $dq->orWhere('leader_phone', $userProfile->no_hp);
+                        }
+                    });
+            });
+        }
+        $payments = $paymentsQuery->orderBy('created_at', 'asc')->get(); // Order ASC for report
+
+        $subscriptions = collect();
+        if ($user->isAdmin() || $user->isSuperAdmin()) {
+            $subscriptions = Subscription::with(['user', 'plan'])
+                ->where(function ($q) {
+                    $q->whereNotNull('midtrans_order_id')
+                      ->orWhere('status', 'active');
+                })
+                ->orderBy('created_at', 'asc')
+                ->get();
+        }
+
+        $withdrawalsQuery = WithdrawalRequest::with(['user', 'verifier']);
+        if ($user->isCreator()) {
+            $withdrawalsQuery->where('user_id', $user->id);
+        }
+        $withdrawals = $withdrawalsQuery->orderBy('created_at', 'asc')->get();
+
+        $ledgerEntries = collect();
+        $settings = FinancialSetting::current();
+
+        foreach ($payments as $p) {
+            $amount = (float) $p->amount;
+            $isAutomatic = ! empty($p->midtrans_transaction_id);
+            $grossTotal = (float) $p->amount;
+
+            if ($user->isCreator()) {
+                $amount = $isAutomatic
+                    ? $settings->computeNetAutomaticForActivity($amount, (int) $p->activity_id)
+                    : $settings->computeNet($amount);
+            }
+            $ledgerEntries->push([
+                'date' => $p->created_at,
+                'type' => 'payment',
+                'category' => 'income',
+                'amount' => $amount,
+                'title' => 'Pembayaran Kegiatan',
+                'description' => $p->activity ? ($p->activity->name.' (User: '.($p->user->name ?? '-').')') : ('User: '.($p->user->name ?? '-')),
+                'status' => $p->status,
+                'is_automatic' => $isAutomatic,
+            ]);
+        }
+
+        foreach ($subscriptions as $s) {
+            $planPrice = (float) ($s->plan->price ?? 0);
+            $hasMidtrans = ! empty($s->midtrans_order_id) || ! empty($s->midtrans_payment_token);
+            $amount = $hasMidtrans ? $planPrice : 0.0;
+            
+            $ledgerEntries->push([
+                'date' => $s->created_at,
+                'type' => 'subscription',
+                'category' => 'income',
+                'amount' => $amount,
+                'title' => 'Pembayaran Langganan',
+                'description' => ($s->plan->name ?? 'Paket').' (User: '.($s->user->name ?? '-').')',
+                'status' => $s->status,
+                'is_automatic' => $hasMidtrans,
+            ]);
+        }
+
+        foreach ($withdrawals as $w) {
+            $ledgerEntries->push([
+                'date' => $w->created_at,
+                'type' => 'withdrawal',
+                'category' => 'expense',
+                'amount' => (float) $w->amount,
+                'title' => 'Penarikan Dana',
+                'description' => 'Oleh: '.($w->user->name ?? '-').(empty($w->notes) ? '' : (' | Catatan: '.$w->notes)),
+                'status' => $w->status,
+                'is_automatic' => true,
+            ]);
+        }
+
+        // Apply View Type Filter if passed (optional, default to general)
+        $viewType = $request->input('view_type', 'general');
+        
+        if ($viewType === 'special') {
+           $ledgerEntries = $ledgerEntries->filter(function($entry) {
+               return $entry['is_automatic'] === true || $entry['type'] === 'withdrawal';
+           });
+        }
+
+        // Summary Calculation
+        $totalIncome = $ledgerEntries->where('category', 'income')
+            ->filter(fn($e) => in_array($e['status'], ['approved', 'active', 'paid']))
+            ->sum('amount');
+            
+        $totalExpense = $ledgerEntries->where('category', 'expense')
+            ->filter(fn($e) => in_array($e['status'], ['paid']))
+            ->sum('amount');
+            
+        $balance = $totalIncome - $totalExpense;
+
+        // Generate PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.ledger', [
+            'entries' => $ledgerEntries,
+            'summary' => [
+                'income' => $totalIncome,
+                'expense' => $totalExpense,
+                'balance' => $balance,
+            ],
+            'user' => $user,
+        ]);
+
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->download('Laporan_Keuangan_'.date('Y-m-d_His').'.pdf');
+    }
+
     /**
      * Halaman Keuangan Creator: khusus untuk creator murni
      * Menampilkan pendapatan dari kegiatan yang dibuat dan riwayat penarikan
      */
-    public function creatorFinance(Request $request)
+    private function getCreatorFinanceData($user)
     {
-        $user = auth()->user();
-        if (! $user || ! ($user->isCreator() || $user->isAdmin() || $user->isSuperAdmin())) {
-            abort(403, 'Anda tidak memiliki akses ke halaman ini');
-        }
-
         // Creator hanya melihat pembayaran dari kegiatan miliknya/diampunya
         $userProfile = $user->profile;
         $paymentsQuery = Payment::with(['user', 'activity'])
@@ -3774,6 +3943,10 @@ class PaymentController extends Controller
                 'title' => 'Penarikan Dana',
                 'description' => 'Rekening: '.$w->bank_name.' - '.$w->account_number.(empty($w->notes) ? '' : (' | '.$w->notes)),
                 'status' => $w->status,
+                'notes' => $w->notes,
+                'bank_name' => $w->bank_name,
+                'account_number' => $w->account_number,
+                'account_name' => $w->account_name,
             ]);
         }
 
@@ -3786,10 +3959,47 @@ class PaymentController extends Controller
         // Balance available for withdrawal (Only Gateway Income - Expenses)
         $balance = $totalIncomeGateway - $totalExpense;
 
-        // Urutkan entri berdasarkan tanggal desc
-        $entries = $entries->sortByDesc('date')->values();
+        // Hitung Saldo Berjalan (Running Balance)
+        // Kita urutkan dulu dari yang terlama (ASC) untuk menghitung saldo kumulatif
+        $sortedEntries = $entries->sortBy('date')->values();
+        $runningBalance = 0;
+        
+        // Transformasi entries untuk menambahkan running_balance
+        $entriesWithBalance = $sortedEntries->map(function ($entry) use (&$runningBalance) {
+            // Logika saldo:
+            // Income menambah saldo, Expense mengurangi saldo.
+            // PENTING: Untuk konsistensi dengan "Saldo Bisa Ditarik",
+            // kita hanya menghitung Income Gateway dan Expense yang Paid.
+            // NAMUN, User meminta "Neraca Umum", yang biasanya mencakup SEMUA arus kas.
+            // Jika kita hanya pakai Gateway, maka transaksi Manual akan punya Debit tapi Saldo tidak naik. Ini aneh di tabel.
+            // Jadi untuk Tabel Neraca, kita gunakan "Total Balance" (Semua Income - Semua Expense).
+            // Tapi kita harus ingat bahwa saldo ini mungkin berbeda dengan "Saldo Bisa Ditarik".
+            
+            // Opsi: Kita gunakan logic "Saldo Bisa Ditarik" agar konsisten dengan card di atas.
+            // Artinya: Manual Income TIDAK menambah saldo di tabel ini.
+            // Tapi nanti kolom Debit ada angka, saldo tetap. User mungkin bingung.
+            // Solusi: Kita hitung saldo total (Manual + Gateway).
+            
+            if ($entry['category'] === 'income') {
+                $runningBalance += $entry['amount']; // Total Income (Manual + Gateway)
+            } elseif ($entry['category'] === 'expense') {
+                // Expense biasanya mengurangi saldo saat statusnya paid/approved?
+                // Atau saat request dibuat? Dalam akuntansi, saat uang keluar.
+                // Jika status pending, uang belum keluar dari saldo riil, tapi sudah "dicadangkan" atau "hutang".
+                // Untuk simplifikasi tampilan, kita kurangi jika status bukan 'rejected'/'cancelled'.
+                if (!in_array($entry['status'], ['rejected', 'cancelled', 'failed'])) {
+                     $runningBalance -= $entry['amount'];
+                }
+            }
+            
+            $entry['running_balance'] = $runningBalance;
+            return $entry;
+        });
 
-        return Inertia::render('Payments/CreatorFinance', [
+        // Urutkan kembali berdasarkan tanggal desc untuk tampilan (Terbaru diatas)
+        $entries = $entriesWithBalance->sortByDesc('date')->values();
+
+        return [
             'entries' => $entries,
             'summary' => [
                 'income' => $totalIncome,
@@ -3797,9 +4007,44 @@ class PaymentController extends Controller
                 'income_gateway' => $totalIncomeGateway,
                 'expense' => $totalExpense,
                 'balance' => $balance,
-            ],
+            ]
+        ];
+    }
+
+    public function creatorFinance(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! ($user->isCreator() || $user->isAdmin() || $user->isSuperAdmin())) {
+            abort(403, 'Anda tidak memiliki akses ke halaman ini');
+        }
+
+        $data = $this->getCreatorFinanceData($user);
+
+        return Inertia::render('Payments/CreatorFinance', [
+            'entries' => $data['entries'],
+            'summary' => $data['summary'],
             'bankAccount' => $this->getSavedBankAccount($user->id),
         ]);
+    }
+
+    public function downloadCreatorFinancePdf(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! ($user->isCreator() || $user->isAdmin() || $user->isSuperAdmin())) {
+            abort(403, 'Anda tidak memiliki akses ke halaman ini');
+        }
+
+        $data = $this->getCreatorFinanceData($user);
+        
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.ledger', [
+            'entries' => $data['entries'],
+            'summary' => $data['summary'],
+            'user' => $user,
+        ]);
+
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->download('Laporan_Keuangan_Creator_'.date('Y-m-d_His').'.pdf');
     }
 
     /**

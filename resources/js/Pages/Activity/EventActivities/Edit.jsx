@@ -125,9 +125,9 @@ export default function Edit({ activity, eventActivity }) {
         <AcaraLayout activity={activity}>
             <Head title={`Edit Kegiatan - ${activity.name}`} />
 
-            <div className="py-12 bg-gray-50 min-h-screen">
+            <div className="py-2 sm:py-8 bg-gray-50 min-h-screen">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
-                    <div className="mb-6 px-4 sm:px-0">
+                    <div className="mb-3 sm:mb-5 px-4 sm:px-0">
                         <Link 
                             href={route('activity.event-activities.index', activity.id)}
                             className="text-sm text-primary hover:text-indigo-900 flex items-center mb-2"
@@ -139,9 +139,9 @@ export default function Edit({ activity, eventActivity }) {
                     </div>
 
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 bg-white border-b border-gray-200">
+                        <div className="p-3 sm:p-5 bg-white border-b border-gray-200">
                             <form onSubmit={handleSubmit} encType="multipart/form-data">
-                                <div className="grid grid-cols-1 gap-6">
+                                <div className="grid grid-cols-1 gap-3 sm:gap-5">
                                     {/* Basic Info */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Judul Kegiatan</label>
@@ -245,7 +245,7 @@ export default function Edit({ activity, eventActivity }) {
                                     )}
 
                                     {/* Questions / Items Section */}
-                                    <div className="border-t pt-6 mt-2">
+                                    <div className="border-t pt-4 sm:pt-6 mt-2">
                                         <div className="flex justify-between items-center mb-4">
                                             <h3 className="text-lg font-medium text-gray-900">
                                                 {data.type === 'voting' ? 'Item Voting' : 'Pertanyaan / Item'}
@@ -262,7 +262,7 @@ export default function Edit({ activity, eventActivity }) {
 
                                         <div className="space-y-6">
                                             {data.questions.map((question, qIndex) => (
-                                                <div key={qIndex} className="bg-gray-50 rounded-lg p-4 border border-gray-200 relative">
+                                                <div key={qIndex} className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200 relative">
                                                     <button
                                                         type="button"
                                                         onClick={() => removeQuestion(qIndex)}

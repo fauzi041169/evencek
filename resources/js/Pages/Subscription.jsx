@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import WebLayout from '@/Layouts/WebLayout';
 import PageHero from '@/Components/PageHero';
 
 export default function Subscription({ plans, activePlanIds, heroAnim, midtransStatus }) {
@@ -25,10 +26,9 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
     const currentCsrfToken = getCsrfToken();
 
     return (
-        <div className="min-h-screen bg-white">
+        <WebLayout hasHeaderSpacer={false} fluid={true} noPadding={true}>
             <Head>
                 <title>Paket Berlangganan</title>
-                <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
             </Head>
 
             {/* Hero Section */}
@@ -39,7 +39,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
             />
 
             {/* Section: Paket Berlangganan */}
-            <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
+            <section className="py-0 sm:py-8 px-2 sm:px-6 lg:px-8 bg-gray-50">
                 <div className="max-w-7xl mx-auto">
                     {/* Error Alert */}
                     {(flash?.error || (flash?.success === false)) && (
@@ -79,7 +79,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                     )}
 
                     {/* Header Section */}
-                    <div className="text-center mb-12">
+                    <div className="text-center mb-4 sm:mb-8">
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Pilih Paket Terbaik Untuk Anda</h2>
                         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                             Semua paket dilengkapi dengan fitur lengkap untuk manajemen kegiatan, berita, dan sistem manajemen acara dengan dukungan profesional 24/7
@@ -88,7 +88,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                     </div>
 
                     {/* Pricing Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 mb-8 sm:mb-10">
                         {plans.map((plan, index) => {
                             const isPro = plan.slug === 'pro';
                             const isBasic = plan.slug === 'basic';
@@ -124,7 +124,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                                             Paling Populer
                                         </div>
                                     )}
-                                    <div className={`bg-gradient-to-br ${gradientClass} p-6 text-center`}>
+                                    <div className={`bg-gradient-to-br ${gradientClass} p-4 sm:p-6 text-center`}>
                                         <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
                                         <div className="mt-4">
                                             <span className="text-4xl font-bold text-white">
@@ -138,8 +138,8 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                                             </div>
                                         )}
                                     </div>
-                                    <div className="p-8">
-                                        <ul className="space-y-4 mb-8">
+                                    <div className="p-3 sm:p-8">
+                        <ul className="space-y-4 mb-6 sm:mb-8">
                                             {/* Max Activities */}
                                             <li className="flex items-start">
                                                 <i className="fas fa-check-circle text-green-500 mr-3 mt-1"></i>
@@ -273,9 +273,9 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
             </section>
 
             {/* Section: Keuntungan Berlangganan */}
-            <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+            <section className="py-2 sm:py-8 px-4 sm:px-6 lg:px-8 bg-white">
                 <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-12">
+                    <div className="text-center mb-4 sm:mb-8">
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Keuntungan Berlangganan</h2>
                         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                             Nikmati berbagai keuntungan eksklusif dengan menjadi pelanggan kami
@@ -283,9 +283,9 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                         <div className="mt-4 h-1 w-24 bg-primary rounded mx-auto"></div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
                         {/* Keuntungan 1 */}
-                        <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 hover:shadow-lg transition-all duration-300" data-aos="fade-up">
+                                    <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 hover:shadow-lg transition-all duration-300" data-aos="fade-up">
                             <div className="bg-secondary/10 rounded-full w-16 h-16 flex items-center justify-center mb-4">
                                 <i className="fas fa-cloud text-secondary text-2xl"></i>
                             </div>
@@ -352,7 +352,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
                     </div>
                 </div>
             </section>
-        </div>
+        </WebLayout>
     );
 }
 

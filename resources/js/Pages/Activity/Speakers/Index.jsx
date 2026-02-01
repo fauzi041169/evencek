@@ -280,10 +280,10 @@ export default function Index({ activity, speakers: initialSpeakers }) {
         <AcaraLayout activity={activity}>
             <Head title="Manajemen Narasumber" />
 
-            <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 pb-20">
+            <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 pb-2 sm:pb-6">
                 {/* Header Section */}
                 <div className="bg-gradient-to-r from-primary via-purple-600 to-pink-600 border-b border-indigo-400 sticky top-0 z-30 shadow-lg">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <div>
                                 <h1 className="text-2xl font-bold text-white sm:text-3xl tracking-tight leading-tight flex items-center gap-3">
@@ -312,7 +312,7 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                     </div>
                 </div>
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
                     {flashMessage && (
                         <div className="fixed top-4 right-4 bg-primary text-white rounded-lg px-4 py-3 shadow-lg z-50">
                             <i className="fas fa-check-circle mr-2"></i>{flashMessage}
@@ -320,7 +320,7 @@ export default function Index({ activity, speakers: initialSpeakers }) {
                     )}
 
                     {speakers.length === 0 ? (
-                        <div className="text-center py-20 bg-gradient-to-br from-white to-purple-50 rounded-3xl border-2 border-dashed border-purple-300 shadow-lg">
+                        <div className="text-center py-3 sm:py-8 bg-gradient-to-br from-white to-purple-50 rounded-3xl border-2 border-dashed border-purple-300 shadow-lg">
                             <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white mb-6 shadow-lg">
                                 <i className="fas fa-microphone text-4xl"></i>
                             </div>

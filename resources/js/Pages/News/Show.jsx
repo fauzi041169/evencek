@@ -53,7 +53,7 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
         <WebLayout>
             <Head title={news.title} />
 
-            <div className="py-12 pt-24 min-h-screen bg-gray-50">
+            <div className="py-1 sm:py-6 min-h-screen bg-gray-50">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Breadcrumb */}
                     <nav className="flex text-sm text-gray-500 mb-6">
@@ -65,7 +65,7 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
                     </nav>
 
                     {/* Main Content */}
-                    <article className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
+                    <article className="bg-white rounded-2xl shadow-xl overflow-hidden mb-4 sm:mb-8">
                         {/* Featured Image */}
                         <div className="relative h-64 md:h-96 w-full">
                             <img 
@@ -78,11 +78,11 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
                                 }}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                            <div className="absolute bottom-0 left-0 p-6 md:p-8 text-white w-full">
+                            <div className="absolute bottom-0 left-0 p-3 sm:p-6 md:p-8 text-white w-full">
                                 <span className="bg-secondary text-white text-xs font-bold px-3 py-1 rounded-full mb-3 inline-block">
                                     {news.category?.name || 'Umum'}
                                 </span>
-                                <h1 className="text-2xl md:text-4xl font-bold leading-tight mb-2 text-shadow">
+                                <h1 className="text-xl md:text-4xl font-bold leading-tight mb-2 text-shadow">
                                     {news.title}
                                 </h1>
                                 <div className="flex items-center text-sm md:text-base text-gray-200">
@@ -103,14 +103,14 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
                         </div>
 
                         {/* Article Body */}
-                        <div className="p-6 md:p-10">
+                        <div className="p-3 sm:p-6 md:p-10">
                             <div 
                                 className="prose prose-lg max-w-none prose-blue text-gray-700 leading-relaxed"
                                 dangerouslySetInnerHTML={{ __html: news.content }} 
                             />
                             
                             {/* Tags / Meta Footer */}
-                            <div className="mt-10 pt-6 border-t border-gray-100 flex justify-between items-center">
+                            <div className="mt-6 pt-4 sm:mt-10 sm:pt-6 border-t border-gray-100 flex justify-between items-center">
                                 <div className="flex items-center space-x-4">
                                     <span className="text-gray-500 text-sm flex items-center">
                                         <i className="far fa-eye mr-2"></i> {news.views_count} Views
@@ -133,14 +133,14 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
                     </article>
 
                     {/* Ratings & Comments Section */}
-                    <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-8">
-                        <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <div className="bg-white rounded-2xl shadow-lg p-3 sm:p-6 md:p-8 mb-4 sm:mb-8">
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center">
                             <i className="far fa-comments mr-3 text-secondary"></i>
                             Diskusi & Ulasan
                         </h3>
 
                         {/* Rating Summary */}
-                        <div className="flex flex-col md:flex-row items-center mb-8 bg-gray-50 rounded-xl p-6">
+                        <div className="flex flex-col md:flex-row items-center mb-6 bg-gray-50 rounded-xl p-4 sm:p-6">
                             <div className="text-center md:text-left md:mr-10 mb-4 md:mb-0">
                                 <div className="text-5xl font-bold text-gray-900 mb-1">{parseFloat(averageRating).toFixed(1)}</div>
                                 <div className="flex justify-center md:justify-start text-yellow-400 text-lg mb-2">
@@ -223,10 +223,10 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
                         )}
 
                         {/* Comments List */}
-                        <div className="space-y-6">
+                        <div className="space-y-4 sm:space-y-6">
                             {news.comments && news.comments.length > 0 ? (
                                 news.comments.map((comment) => (
-                                    <div key={comment.id} className="flex space-x-4 border-b border-gray-100 pb-6 last:border-0">
+                                    <div key={comment.id} className="flex space-x-4 border-b border-gray-100 pb-4 last:border-0">
                                         <img 
                                             src={comment.user?.profile_photo_url || '/assets/images/profilefoto/default-profile.png'} 
                                             alt={comment.user?.name} 
@@ -235,7 +235,7 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
                                         <div className="flex-1">
                                             <div className="flex items-center justify-between mb-1">
                                                 <h4 className="font-bold text-gray-900">{comment.user?.name}</h4>
-                                                <span className="text-xs text-gray-500">{moment(comment.created_at).fromNow()}</span>
+                                                <span className="text-xs text-gray-500">{formatDate(comment.created_at)}</span>
                                             </div>
                                             {comment.rating && (
                                                 <div className="text-yellow-400 text-xs mb-2">

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Swal from 'sweetalert2';
@@ -60,7 +60,7 @@ export default function Edit({ news, categories }) {
         <MainLayout>
             <Head title="Edit Berita" />
 
-            <div className="py-12 pt-24 min-h-screen bg-gray-50">
+            <div className="py-2 sm:py-8">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between mb-6">
                         <h1 className="text-2xl font-bold text-gray-900">Edit Berita</h1>
@@ -77,7 +77,7 @@ export default function Edit({ news, categories }) {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-md overflow-hidden p-6 md:p-8">
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden p-3 sm:p-6 md:p-8">
                         <form onSubmit={handleSubmit}>
                             {/* Title */}
                             <div className="mb-6">

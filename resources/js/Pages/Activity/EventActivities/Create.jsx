@@ -107,23 +107,23 @@ export default function Create({ activity, initialType = 'other' }) {
     return (
         <AcaraLayout activity={activity} title={`Buat Kegiatan Baru - ${activity.name}`}>
 
-            <div className="py-12 bg-gray-50 min-h-screen">
+            <div className="py-2 sm:py-8 bg-gray-50 min-h-screen">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
-                    <div className="mb-6 px-4 sm:px-0">
-                        <Link 
-                            href={route('activity.event-activities.index', activity.id)}
-                            className="text-sm text-primary hover:text-indigo-900 flex items-center mb-2"
+                    <div className="mb-3 sm:mb-5 px-4 sm:px-0">
+                        <Link
+                            href={route('activity.event-activities.index', { activity_slug: activity.slug })}
+                            className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors mb-2"
                         >
-                            <ArrowLeft className="w-4 h-4 mr-1" />
+                            <ArrowLeft className="w-5 h-5 mr-2" />
                             Kembali ke Daftar Kegiatan
                         </Link>
                         <h1 className="text-2xl font-bold text-gray-800">Buat Kegiatan Baru</h1>
                     </div>
 
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 bg-white border-b border-gray-200">
+                    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                        <div className="p-3 sm:p-5 bg-white border-b border-gray-200">
                             <form onSubmit={handleSubmit} encType="multipart/form-data">
-                                <div className="grid grid-cols-1 gap-6">
+                                <div className="grid grid-cols-1 gap-3 sm:gap-5">
                                     {/* Basic Info */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Judul Kegiatan</label>
@@ -209,7 +209,7 @@ export default function Create({ activity, initialType = 'other' }) {
 
                                     {/* Voting Specific Options */}
                                     {data.type === 'voting' && (
-                                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                                        <div className="bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-100">
                                             <label className="block text-sm font-medium text-purple-900 mb-1">Mode Pilihan Voting</label>
                                             <select
                                                 value={votingType}
@@ -224,7 +224,7 @@ export default function Create({ activity, initialType = 'other' }) {
                                     )}
 
                                     {/* Questions / Items Section */}
-                                    <div className="border-t pt-6 mt-2">
+                                    <div className="border-t pt-3 sm:pt-6 mt-2">
                                         <div className="flex justify-between items-center mb-4">
                                             <h3 className="text-lg font-medium text-gray-900">
                                                 {data.type === 'voting' ? 'Item Voting' : 'Pertanyaan / Item'}
@@ -239,9 +239,9 @@ export default function Create({ activity, initialType = 'other' }) {
                                             </button>
                                         </div>
 
-                                        <div className="space-y-6">
+                                        <div className="space-y-4 sm:space-y-6">
                                             {data.questions.map((question, qIndex) => (
-                                                <div key={qIndex} className="bg-gray-50 rounded-lg p-4 border border-gray-200 relative">
+                                                <div key={qIndex} className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200 relative">
                                                     <button
                                                         type="button"
                                                         onClick={() => removeQuestion(qIndex)}

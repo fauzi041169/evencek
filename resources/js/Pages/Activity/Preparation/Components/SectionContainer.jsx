@@ -24,8 +24,8 @@ export default function SectionContainer({ title, children, activity, controls =
     };
 
     return (
-        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-8 transition-all hover:shadow-md duration-300">
-            <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center flex-wrap gap-4">
+        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-4 sm:mb-8 transition-all hover:shadow-md duration-300">
+            <div className="px-4 py-4 sm:px-8 sm:py-6 border-b border-gray-100 bg-gray-50/30 flex justify-between items-center flex-wrap gap-4">
                 <h3 className="text-xl font-bold text-gray-900 tracking-tight">{title}</h3>
                 
                 <div className="flex items-center gap-4">

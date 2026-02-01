@@ -756,12 +756,12 @@ export default function Edit({
                                                     <button
                                                         type="button"
                                                         className="text-xs sm:text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors flex items-center border border-gray-300 font-medium"
-                                                        title="Gunakan kembali kolom yang pernah dibuat sebelumnya"
+                                                        title="Gunakan kolom yang sudah ada di sistem"
                                                     >
-                                                        <i className="fas fa-history mr-1"></i> Ambil dari Riwayat ({globalCustomFields.length})
+                                                        <i className="fas fa-database mr-1"></i> Pilih dari Sistem ({globalCustomFields.length})
                                                     </button>
                                                     <div className="hidden group-hover/picker:block absolute bottom-full right-0 mb-2 w-72 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto p-2">
-                                                        <p className="text-[10px] font-bold text-gray-500 uppercase px-2 py-1 mb-1 border-b border-gray-100 italic">Riwayat Kolom Custom:</p>
+                                                        <p className="text-[10px] font-bold text-gray-500 uppercase px-2 py-1 mb-1 border-b border-gray-100 italic">Daftar Kolom Sistem:</p>
                                                         {globalCustomFields.map(gf => (
                                                             <button
                                                                 key={gf.id}
@@ -785,7 +785,7 @@ export default function Edit({
                                     {data.custom_fields.length === 0 ? (
                                         <div className="bg-gray-50 p-6 rounded-xl border-2 border-dashed border-gray-300 text-center">
                                             <p className="text-gray-500 text-sm mb-2">Belum ada kolom tambahan.</p>
-                                            <p className="text-xs text-gray-400">Gunakan kolom tambahan untuk meminta data khusus. Anda dapat membuat baru atau mengambil dari riwayat kolom sebelumnya.</p>
+                                            <p className="text-xs text-gray-400">Gunakan kolom tambahan untuk meminta data khusus. Anda dapat membuat baru atau mengambil dari kolom sistem yang sudah ada.</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-4">

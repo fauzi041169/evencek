@@ -207,13 +207,13 @@ export default function DashboardIndex(props) {
         <MainLayout>
             <Head title="Dashboard" />
 
-            <div className="py-6">
-                <div className="w-full px-4 sm:px-6 lg:px-8">
+            <div className="py-2 sm:py-6">
+                <div className="w-full px-2 sm:px-6 lg:px-8">
                     
                     {/* Row 1: User Visit Trend + Total User */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 mb-3 sm:mb-6">
                         <div className="lg:col-span-9">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-full">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6 h-full">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="font-bold text-gray-800">TREN KUNJUNGAN USER</h3>
                                 </div>
@@ -223,7 +223,7 @@ export default function DashboardIndex(props) {
                             </div>
                         </div>
                         <div className="lg:col-span-3">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-full flex flex-col">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6 h-full flex flex-col">
                                 <h3 className="font-bold text-gray-800 text-center mb-4">TOTAL USER</h3>
                                 <div className="h-48 flex-grow relative">
                                     <Doughnut options={totalUserOptions} data={totalUserData} />
@@ -236,9 +236,9 @@ export default function DashboardIndex(props) {
                     </div>
 
                     {/* Row 2: Activity Trend + Subscription Stats / Creator Trend */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 mb-3 sm:mb-6">
                         <div className="lg:col-span-9">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-full">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6 h-full">
                                 <h3 className="font-bold text-gray-800 mb-4">TREN KEGIATAN</h3>
                                 <div className="h-64">
                                     <Bar options={activityTrendOptions} data={activityTrendData} />
@@ -248,8 +248,8 @@ export default function DashboardIndex(props) {
                         <div className="lg:col-span-3">
                             <div className="h-full">
                                 {showSubscriptionCards ? (
-                                    <div className="grid grid-cols-1 gap-6 h-full">
-                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 h-full">
+                                    <div className="grid grid-cols-1 gap-3 sm:gap-6 h-full">
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 h-full">
                                             <h3 className="font-bold text-gray-800 text-center mb-2 text-sm">STATUS LANGGANAN</h3>
                                             <div className="h-32">
                                                 <Doughnut options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} data={subscriptionStatusData} />
@@ -259,7 +259,7 @@ export default function DashboardIndex(props) {
                                                 <div className="flex items-center"><span className="w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>Pending</div>
                                             </div>
                                         </div>
-                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 h-full">
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 h-full">
                                             <h3 className="font-bold text-gray-800 text-center mb-2 text-sm">JENIS LANGGANAN</h3>
                                             <div className="h-32">
                                                 <Doughnut options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} data={subscriptionTypeData} />
@@ -267,7 +267,7 @@ export default function DashboardIndex(props) {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-full">
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6 h-full">
                                         <h3 className="font-bold text-gray-800 text-center mb-4">TREN USER AKTIF</h3>
                                         <div className="h-64">
                                             <Line options={{ maintainAspectRatio: false }} data={creatorActiveTrendData} />
@@ -279,8 +279,8 @@ export default function DashboardIndex(props) {
                     </div>
 
                     {/* Row 3: User by Province */}
-                    <div className="mb-6">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                    <div className="mb-3 sm:mb-6">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6">
                              <div className="flex justify-between items-center mb-4">
                                 <h3 className="font-bold text-gray-800">USER BERDASARKAN PROVINSI</h3>
                             </div>
@@ -291,17 +291,17 @@ export default function DashboardIndex(props) {
                     </div>
 
                     {/* Row 4: Lists */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
                         {/* Top Active Users */}
                         {showTopActiveUsers && (
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                            <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50">
                                 <h3 className="font-bold text-gray-800">10 USER TERAKTIF</h3>
                             </div>
                             <div className="p-0">
                                 <ul className="divide-y divide-gray-100">
                                     {(topActiveUsers || []).map((u, i) => (
-                                        <li key={i} className="flex items-center justify-between px-6 py-3 hover:bg-gray-50 transition">
+                                        <li key={i} className="flex items-center justify-between px-3 py-2 sm:px-6 sm:py-3 hover:bg-gray-50 transition">
                                             <div className="flex items-center gap-3">
                                                 <img 
                                                     src={u.photo ? `/assets/images/profilefoto/${u.photo}` : '/assets/images/profilefoto/default-profile.png'} 
@@ -330,7 +330,7 @@ export default function DashboardIndex(props) {
 
                         {/* Top Rated Activities */}
                         {showTopRatedActivities && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6">
                             <h3 className="font-bold text-gray-800 mb-4">5 AKTIVITAS RATING TERTINGGI</h3>
                             <ul className="space-y-3 mb-6">
                                 {(topRatedActivities || []).map((a, i) => (
@@ -368,22 +368,22 @@ export default function DashboardIndex(props) {
                         {/* Top Creators */}
                         {showTopCreators && (
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                            <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50">
                                 <h3 className="font-bold text-gray-800">10 CREATOR TERBAIK</h3>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left">
                                     <thead className="text-xs text-gray-500 uppercase bg-gray-50">
                                         <tr>
-                                            <th className="px-4 py-3">Author</th>
-                                            <th className="px-4 py-3 text-right">Akt.</th>
-                                            <th className="px-4 py-3 text-right">Peserta</th>
+                                            <th className="px-2 py-2 sm:px-4 sm:py-3">Author</th>
+                                            <th className="px-2 py-2 sm:px-4 sm:py-3 text-right">Akt.</th>
+                                            <th className="px-2 py-2 sm:px-4 sm:py-3 text-right">Peserta</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {(topCreators || []).map((c, i) => (
                                             <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                                                <td className="px-4 py-3 font-medium text-gray-900">
+                                                <td className="px-2 py-2 sm:px-4 sm:py-3 font-medium text-gray-900">
                                                     <div className="flex items-center gap-2">
                                                         <img 
                                                             src={c.photo ? `/assets/images/profilefoto/${c.photo}` : '/assets/images/profilefoto/default-profile.png'} 
@@ -394,12 +394,12 @@ export default function DashboardIndex(props) {
                                                         <div className="truncate max-w-[80px] sm:max-w-none">{c.name}</div>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-right">{c.activities_active || c.activities_all || 0}</td>
-                                                <td className="px-4 py-3 text-right">{c.participants_active || c.participants_total || 0}</td>
+                                                <td className="px-2 py-2 sm:px-4 sm:py-3 text-right">{c.activities_active || c.activities_all || 0}</td>
+                                                <td className="px-2 py-2 sm:px-4 sm:py-3 text-right">{c.participants_active || c.participants_total || 0}</td>
                                             </tr>
                                         ))}
                                         {(!topCreators || topCreators.length === 0) && (
-                                            <tr><td colSpan="3" className="px-4 py-3 text-center text-gray-500">Belum ada data</td></tr>
+                                            <tr><td colSpan="3" className="px-2 py-2 sm:px-4 sm:py-3 text-center text-gray-500">Belum ada data</td></tr>
                                         )}
                                     </tbody>
                                 </table>

@@ -401,6 +401,44 @@ class MaintenanceController extends Controller
         ];
     }
 
+    /**
+     * Update permission for a role
+     */
+    public function updatePermission(Request $request)
+    {
+        $request->validate([
+            'role' => 'required|string',
+            'permission' => 'required|string',
+            'allowed' => 'required|boolean',
+        ]);
+
+        // Prevent modifying superadmin permissions
+        if ($request->role === 'superadmin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot modify superadmin permissions',
+            ], 403);
+        }
+
+        try {
+            \App\Models\RolePermission::setPermission(
+                $request->role,
+                $request->permission,
+                $request->allowed
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Permission updated successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update permission: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
     private function incrementVersion($version)
     {
         $parts = explode('.', $version);
@@ -660,6 +698,198 @@ class MaintenanceController extends Controller
             'output' => implode("\n", $summary),
             'deleted' => $deleted,
             'failed' => $failed,
+        ]);
+    }
+
+    public function cleanupUnusedFiles()
+    {
+        // Define targets: [folder => relative to public disk, model => Eloquent Class, column => field name]
+        $targets = [
+            [
+                'folder' => 'profile-photos',
+                'model' => \App\Models\User::class,
+                'column' => 'avatar'
+            ],
+            [
+                'folder' => 'assets/images/profilefoto',
+                'model' => \App\Models\Profile::class,
+                'column' => 'foto',
+                'type' => 'legacy_public'
+            ],
+            [
+                'folder' => 'activities',
+                'model' => \App\Models\Activity::class,
+                'column' => 'image'
+            ],
+            [
+                'folder' => 'partners',
+                'model' => \App\Models\Partner::class,
+                'column' => 'logo'
+            ],
+            [
+                'folder' => 'mitras', // Check both potential folders for partners
+                'model' => \App\Models\Partner::class,
+                'column' => 'logo'
+            ],
+            [
+                'folder' => 'news',
+                'model' => \App\Models\News::class,
+                'column' => 'image'
+            ],
+            [
+                'folder' => 'speakers',
+                'model' => \App\Models\ActivitySpeaker::class,
+                'column' => 'photo'
+            ],
+            [
+                'folder' => 'payment-proofs',
+                'model' => \App\Models\Payment::class,
+                'column' => 'proof_of_payment'
+            ],
+            [
+                'folder' => 'id-card-backgrounds',
+                'model' => \App\Models\IdCardBackground::class,
+                'column' => 'filename'
+            ],
+             [
+                'folder' => 'activity_materials',
+                'model' => \App\Models\ActivityMaterial::class,
+                'column' => 'file_path'
+            ],
+        ];
+
+        $summary = [];
+        $totalDeleted = 0;
+        $activeFiles = []; // Cache active files to avoid repeated DB queries if multiple folders map to same table
+
+        // Pre-fetch all active files first to ensure we have a complete picture
+        // Iterate targets to build a massive list of "Preserved Files"
+        $allUsedFiles = [];
+        foreach ($targets as $target) {
+            $key = $target['model'] . '_' . $target['column'];
+            if (!isset($activeFiles[$key])) {
+                try {
+                    $activeFiles[$key] = $target['model']::whereNotNull($target['column'])
+                        ->pluck($target['column'])
+                        ->map(function($path) {
+                            return str_replace('\\', '/', $path); // Normalize slashes
+                        })
+                        ->toArray();
+                } catch (\Exception $e) {
+                    $summary[] = "Error querying " . $target['model'] . ": " . $e->getMessage();
+                    $activeFiles[$key] = [];
+                }
+            }
+            $allUsedFiles = array_merge($allUsedFiles, $activeFiles[$key]);
+        }
+        $allUsedFiles = array_unique($allUsedFiles);
+
+        foreach ($targets as $target) {
+            $folder = $target['folder'];
+            $type = $target['type'] ?? 'storage';
+
+            if ($type === 'legacy_public') {
+                $fullPath = public_path($folder);
+                if (!File::isDirectory($fullPath)) {
+                     $summary[] = "Legacy folder '$folder' not found (Skipped).";
+                     continue;
+                }
+
+                $files = File::files($fullPath);
+                $deletedCount = 0;
+
+                foreach ($files as $file) {
+                    $filename = $file->getFilename();
+                    
+                    if (str_contains(strtolower($filename), 'default')) {
+                        continue;
+                    }
+                    
+                    if (!in_array($filename, $allUsedFiles)) {
+                         $relativePath = $folder . '/' . $filename;
+                         if (in_array($relativePath, $allUsedFiles)) {
+                             continue;
+                         }
+
+                         try {
+                            File::delete($file->getPathname());
+                            $deletedCount++;
+                        } catch (\Exception $e) {
+                            // ignore
+                        }
+                    }
+                }
+                
+                $totalDeleted += $deletedCount;
+                if ($deletedCount > 0) {
+                    $summary[] = "Legacy folder '$folder': deleted $deletedCount unused files.";
+                } else {
+                     $summary[] = "Legacy folder '$folder': clean.";
+                }
+                continue;
+            }
+
+            if (!Storage::disk('public')->exists($folder)) {
+                 $summary[] = "Folder '$folder' not found (Skipped).";
+                 continue;
+            }
+
+            // Get all files in directory (recursive)
+            $files = Storage::disk('public')->allFiles($folder);
+            $deletedCount = 0;
+
+            foreach ($files as $file) {
+                // $file is relative path to public disk e.g. "activities/image.jpg"
+                $normalizedFile = str_replace('\\', '/', $file);
+                $filename = basename($normalizedFile);
+                
+                // Skip default files (protected)
+                if (str_contains(strtolower($filename), 'default')) {
+                    continue;
+                }
+                
+                // Check if file is in used list
+                if (!in_array($normalizedFile, $allUsedFiles)) {
+                    // Try to be safe: check if the filename exists at END of any used path
+                    // (Handle case where DB stores 'image.jpg' but file is 'folder/image.jpg')
+                    // Only apply this loose check if strict check failed.
+                    $isUsedLoose = false;
+                    /* 
+                    // LOOSE CHECK IS DANGEROUS because different folders might have same filename 'image.jpg'
+                    // We only use strict path check as Laravel stores full relative path usually.
+                    foreach ($allUsedFiles as $used) {
+                        if (str_ends_with($used, $normalizedFile) || str_ends_with($normalizedFile, $used)) {
+                            $isUsedLoose = true;
+                            break;
+                        }
+                    }
+                    */
+
+                    // Special case for Partners stored as 'partners/file.jpg' but existing in 'mitras/file.jpg' or vice versa?
+                    // No, usually DB path matches storage path.
+                    
+                    // Proceed to delete
+                    try {
+                        Storage::disk('public')->delete($file);
+                        $deletedCount++;
+                    } catch (\Exception $e) {
+                        // ignore error
+                    }
+                }
+            }
+            
+            $totalDeleted += $deletedCount;
+            if ($deletedCount > 0) {
+                $summary[] = "Folder '$folder': deleted $deletedCount unused files.";
+            } else {
+                 $summary[] = "Folder '$folder': clean.";
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Pembersihan file selesai. Total $totalDeleted file dihapus.",
+            'output' => implode("\n", $summary),
         ]);
     }
 

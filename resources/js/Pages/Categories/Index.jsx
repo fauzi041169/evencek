@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
@@ -41,7 +41,7 @@ export default function CategoriesIndex({ categories = [], flash, auth }) {
         <AdminLayout title="List Kategori">
             <Head title="Kategori" />
 
-            <div className="min-h-screen bg-white py-4 px-4">
+            <div className="min-h-screen bg-white py-2 sm:py-4 px-4">
                 <div className="w-full">
                     {/* Header */}
                     <div className="mb-4">
@@ -119,7 +119,7 @@ export default function CategoriesIndex({ categories = [], flash, auth }) {
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan={canManage ? 4 : 3} className="px-6 py-12 text-center">
+                                            <td colSpan={canManage ? 4 : 3} className="px-6 py-2 sm:py-6 text-center">
                                                 <div className="flex flex-col items-center">
                                                     <div className="bg-gray-100 rounded-full p-6 mb-4">
                                                         <i className="fas fa-tags text-4xl text-gray-400"></i>

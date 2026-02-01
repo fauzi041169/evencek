@@ -45,7 +45,8 @@ export default function Show({
     cardSetting,
     printSettings,
     certificateSetting,
-    certificatePrintSettings
+    certificatePrintSettings,
+    requiredProfileLabels // Added this prop
 }) {
     const { t, i18n } = useTranslation();
 
@@ -324,7 +325,7 @@ export default function Show({
         }
     };
 
-    const handleEnroll = async (type = 'mandiri', force = false) => {
+    const handleEnroll = async (type = 'mandiri', force = false, voucherCode = null) => {
         setRegistrationTypeModalOpen(false);
 
         setTimeout(async () => {
@@ -335,7 +336,8 @@ export default function Show({
                 if (!force && ((missingProfileFields && missingProfileFields.length > 0) || hasDefaultPhoto)) {
                     sessionStorage.setItem('pending_enrollment', JSON.stringify({
                         activityId: activity.id,
-                        type: type
+                        type: type,
+                        voucherCode: voucherCode // Save voucher code
                     }));
                     setLocalMissingProfileData(missingProfileData || []);
                     setIsMissingDataModalOpen(true);
@@ -344,13 +346,14 @@ export default function Show({
 
                 // Check for Custom Fields
                 if (activity.custom_fields && Array.isArray(activity.custom_fields) && activity.custom_fields.length > 0) {
-                    setPendingEnrollmentData({ type, force });
+                    setPendingEnrollmentData({ type, force, voucherCode });
                     setIsCustomFieldsModalOpen(true);
                     return;
                 }
 
                 // Proceed directly if no custom fields
-                processEnrollment(type, force);
+                // Pass voucherCode in customData object (will be extracted in processEnrollment)
+                processEnrollment(type, force, { committee_voucher_code: voucherCode });
             }
         }, 100);
     };
@@ -358,7 +361,13 @@ export default function Show({
     const handleCustomFieldsSubmit = (formData) => {
         setIsCustomFieldsModalOpen(false);
         if (pendingEnrollmentData) {
-            processEnrollment(pendingEnrollmentData.type, pendingEnrollmentData.force, formData);
+            // Merge voucher code into form data if it exists
+            const finalData = { ...formData };
+            if (pendingEnrollmentData.voucherCode) {
+                finalData.committee_voucher_code = pendingEnrollmentData.voucherCode;
+            }
+            
+            processEnrollment(pendingEnrollmentData.type, pendingEnrollmentData.force, finalData);
             setPendingEnrollmentData(null);
         }
     };
@@ -617,12 +626,12 @@ export default function Show({
     const timeLabel = formatTimeRange(activity.start_time, activity.end_time);
 
     return (
-        <WebLayout hasHeaderSpacer={false} transparentNavbar={true}>
-            <div className="pb-12">
+        <WebLayout hasHeaderSpacer={false} transparentNavbar={true} fluid={true} noPadding={true}>
+            <div className="pb-4 sm:pb-6">
                 <Head title={`Detail - ${activity.name}`} />
 
                 {/* Hero Section */}
-                <div className="relative bg-slate-900 overflow-hidden min-h-[400px] lg:min-h-[500px] flex items-center">
+                <div className="relative bg-slate-900 overflow-hidden min-h-[80px] sm:min-h-[400px] lg:min-h-[500px] flex items-center">
                     <style>{`
                         @keyframes fade-up {
                             from { opacity: 0; transform: translateY(20px); }
@@ -734,7 +743,7 @@ export default function Show({
                     </div>
 
                     {/* Content Container */}
-                    <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-5 pt-16 pb-20 lg:pb-32">
+                    <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-3 sm:gap-5 pt-2 pb-2 sm:pt-8 sm:pb-10 lg:pb-16">
 
                         {/* Left Column: Text & Actions */}
                         <div className="w-full max-w-4xl mx-auto text-center space-y-6 animate-fade-up">
@@ -817,7 +826,7 @@ export default function Show({
                                         className="inline-flex items-center gap-3 h-14 px-8 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold hover:shadow-lg hover:shadow-amber-500/30 transition-all transform hover:-translate-y-1"
                                     >
                                         {loadingPaymentModal ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-credit-card"></i>}
-                                        <span>{t('activities.finish_payment')}</span>
+                                        <span>{pendingPayment.proof_of_payment && pendingPayment.proof_of_payment !== 'imported' ? 'Menunggu Verifikasi' : t('activities.finish_payment')}</span>
                                     </button>
                                 ) : registrationTarget?.type === 'disabled' ? (
                                     <span className="inline-flex items-center gap-2 h-14 px-8 rounded-full bg-gray-500/50 backdrop-blur-sm text-white font-bold cursor-not-allowed border border-white/10">
@@ -862,82 +871,15 @@ export default function Show({
                     </div>
                 </div>
 
-                <div className="bg-gray-50 min-h-screen pb-20">
+                <div className="bg-gray-50 min-h-screen pb-2 sm:pb-10">
 
-                    {/* Registration Type Modal */}
-                    {registrationTypeModalOpen && (
-                        <div className="fixed inset-0 z-[100100] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                                <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setRegistrationTypeModalOpen(false)}></div>
-                                <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                                <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                                    <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                        <div className="sm:flex sm:items-start">
-                                            <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 sm:mx-0 sm:h-10 sm:w-10">
-                                                <i className="fas fa-users text-primary"></i>
-                                            </div>
-                                            <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                                                <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                                    {t('activities.pilih_metode')}
-                                                </h3>
-                                                <div className="mt-2">
-                                                    <p className="text-sm text-gray-500">
-                                                        {t('activities.silakan_pilih_jenis')}
-                                                    </p>
-                                                </div>
+                    {/* Registration Type Modal Removed (Moved to Component) */}
 
-                                                <div className="mt-6 grid grid-cols-1 gap-4">
-                                                    <Link
-                                                        href={route('activity.enroll', {
-                                                            activity: activity.id,
-                                                            batch_id: filterBatch || selectedBatchId
-                                                        })}
-                                                        className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-gray-100 hover:border-primary hover:bg-primary/5 transition-all group w-full"
-                                                    >
-                                                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                                            <i className="fas fa-user"></i>
-                                                        </div>
-                                                        <span className="font-bold text-gray-900">{t('activities.daftar_mandiri')}</span>
-                                                        <span className="text-xs text-gray-500">{t('activities.daftar_diri_sendiri')}</span>
-                                                    </Link>
+                    <div id="content" className="container mx-auto px-4 pt-2 sm:pt-6 relative z-10">
 
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setRegistrationTypeModalOpen(false);
-                                                            setIsBulkImportModalOpen(true);
-                                                        }}
-                                                        className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-emerald-100 hover:border-emerald-500 hover:bg-emerald-50 transition-all group w-full"
-                                                    >
-                                                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                                            <i className="fas fa-users"></i>
-                                                        </div>
-                                                        <span className="font-bold text-gray-900">{t('activities.daftar_kelompok')}</span>
-                                                        <span className="text-xs text-gray-500">{t('activities.import_kolektif')}</span>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                        <button
-                                            type="button"
-                                            className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                                            onClick={() => setRegistrationTypeModalOpen(false)}
-                                        >
-                                            {t('activities.cancel')}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <div id="content" className="container mx-auto px-4 pt-12 relative z-10">
-
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start">
                             {/* Main Content (Left) */}
-                            <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
+                            <div className="lg:col-span-2 space-y-4 sm:space-y-6 order-2 lg:order-1">
 
                                 {/* Visibility Controls */}
                                 {canConfigureView && (
@@ -973,7 +915,7 @@ export default function Show({
 
                                 {/* Description */}
                                 {isVisible('description') && activity.description && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5">
                                         <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
                                             <i className="fas fa-info-circle text-primary text-sm"></i>
                                             {t('activities.about')}
@@ -987,12 +929,12 @@ export default function Show({
 
                                 {/* Speakers Section */}
                                 {isVisible('speakers') && activity.speakers && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                                        <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
+                                        <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
                                             <i className="fas fa-user-tie text-primary text-sm"></i>
                                             {t('activities.speakers')}
                                         </h3>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-2">
                                             {activity.speakers.length > 0 ? (
                                                 activity.speakers.map((speaker, index) => {
                                                     const color = colors[index % colors.length];
@@ -1029,7 +971,7 @@ export default function Show({
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            <div className="p-3 bg-white flex flex-col flex-1">
+                                                            <div className="p-2 bg-white flex flex-col flex-1">
                                                                 <h4 className="text-sm font-bold text-gray-900 line-clamp-2 leading-tight mb-1" title={speaker.name}>{speaker.name}</h4>
                                                                 <p className={`text-[10px] ${color.text} font-bold mb-0.5 flex items-center gap-1 uppercase tracking-tight`}>
                                                                     <i className="fas fa-briefcase text-[8px]"></i>
@@ -1085,7 +1027,7 @@ export default function Show({
 
                                 {/* Materials Section */}
                                 {isVisible('materials') && materials && materials.length > 0 && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
                                         <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-file-alt text-indigo-500 text-sm"></i>
                                             {t('activities.materi_kegiatan')}
@@ -1152,7 +1094,7 @@ export default function Show({
 
                                 {/* Rundown Section */}
                                 {isVisible('rundown') && activity.rundowns && activity.rundowns.length > 0 && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-6">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                             <i className="fas fa-list-ol text-indigo-500"></i>
                                             {t('activities.rangkaian_acara')}
@@ -1285,7 +1227,7 @@ export default function Show({
                                                     );
                                                 })
                                             ) : (
-                                                <div className="text-center py-10 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                                <div className="text-center py-2 sm:py-10 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
                                                     Belum ada peserta terdaftar.
                                                 </div>
                                             )}
@@ -1293,7 +1235,7 @@ export default function Show({
 
                                         {/* Pagination */}
                                         {participants.links && participants.last_page > 1 && (
-                                            <div className="mt-6 flex flex-col items-center gap-3 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-lg shadow-sm border border-purple-100 p-4">
+                                            <div className="mt-4 sm:mt-8 flex flex-col items-center gap-3 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-lg shadow-sm border border-purple-100 p-4">
                                                 <div className="flex flex-wrap justify-center gap-1">
                                                     {participants.links.map((link, i) => (
                                                         link.url ? (
@@ -1632,8 +1574,9 @@ export default function Show({
                 <RegistrationTypeModal
                     isOpen={registrationTypeModalOpen}
                     onClose={() => setRegistrationTypeModalOpen(false)}
-                    onSelect={handleEnroll}
+                    onSelectType={handleEnroll}
                     activity={activity}
+                    requiredFields={requiredProfileLabels}
                 />
 
                 <MissingDataModal

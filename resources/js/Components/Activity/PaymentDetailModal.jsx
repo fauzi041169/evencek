@@ -149,7 +149,7 @@ export default function PaymentDetailModal({ show, onClose, payment, loading }) 
                             )}
                         </div>
                     ) : (
-                        <div className="text-center py-10 text-gray-500">Data pembayaran tidak ditemukan.</div>
+                        <div className="text-center py-6 sm:py-10 text-gray-500">Data pembayaran tidak ditemukan.</div>
                     )}
                 </div>
             </div>

@@ -1,17 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function RegistrationTypeModal({ isOpen, onClose, onSelectType, requiredFields = [] }) {
+    const [voucherCode, setVoucherCode] = useState('');
+
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-[10040] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             {/* Centering Container */}
             <div className="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
-                
+
                 {/* Backdrop: Transparent/Blur instead of dark gray */}
-                <div 
-                    className="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity" 
-                    aria-hidden="true" 
+                <div
+                    className="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
+                    aria-hidden="true"
                     onClick={onClose}
                 ></div>
 
@@ -21,14 +23,14 @@ export default function RegistrationTypeModal({ isOpen, onClose, onSelectType, r
                     <div className="h-2 w-full bg-gradient-to-r from-indigo-500 to-purple-600"></div>
 
                     {/* Close Button */}
-                    <button 
+                    <button
                         onClick={onClose}
                         className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100 focus:outline-none"
                     >
                         <i className="fas fa-times text-xl"></i>
                     </button>
 
-                    <div className="px-8 py-10">
+                    <div className="px-6 py-6 sm:px-8 sm:py-10">
                         <div className="text-center mb-8">
                             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 mb-5 ring-4 ring-indigo-50">
                                 <i className="fas fa-clipboard-check text-2xl text-indigo-600"></i>
@@ -60,12 +62,27 @@ export default function RegistrationTypeModal({ isOpen, onClose, onSelectType, r
                                 </p>
                             </div>
                         )}
-                        
+
+                        {/* Voucher Code Input */}
+                        <div className="mb-4">
+                            <label htmlFor="voucher_code" className="block text-sm font-medium text-gray-700 mb-1 text-left">
+                                Kode Voucher Panitia (Opsional)
+                            </label>
+                            <input
+                                type="text"
+                                id="voucher_code"
+                                className="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                placeholder="Masukkan kode jika ada"
+                                value={voucherCode}
+                                onChange={(e) => setVoucherCode(e.target.value)}
+                            />
+                        </div>
+
                         <div className="space-y-4">
                             {/* Mandiri Button */}
-                            <button 
+                            <button
                                 type="button"
-                                onClick={() => onSelectType('mandiri')}
+                                onClick={() => onSelectType('mandiri', false, voucherCode)}
                                 className="group relative flex w-full items-center rounded-xl border border-gray-200 p-4 hover:border-primary hover:bg-primary/5 hover:shadow-md transition-all duration-200 text-left"
                             >
                                 <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-200">
@@ -79,10 +96,10 @@ export default function RegistrationTypeModal({ isOpen, onClose, onSelectType, r
                                     <i className="fas fa-chevron-right"></i>
                                 </div>
                             </button>
-                            
+
                             {/* Kelompok Button */}
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 onClick={() => onSelectType('kelompok')}
                                 className="group relative flex w-full items-center rounded-xl border border-gray-200 p-4 hover:border-emerald-500 hover:bg-emerald-50/50 hover:shadow-md transition-all duration-200 text-left"
                             >

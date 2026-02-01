@@ -165,7 +165,7 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-12">
+        <div className="min-h-screen bg-gray-50 pb-3 sm:pb-6">
             <Head title="Edit Profil Peserta" />
 
             {/* Simple Navbar */}
@@ -184,7 +184,7 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
                 </div>
             </nav>
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-5 sm:mt-10">
                 <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                     <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
                         <h4 className="text-xl font-bold text-white flex items-center">

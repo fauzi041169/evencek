@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
@@ -49,7 +49,7 @@ export default function Create() {
     return (
         <MainLayout>
             <Head title="Tambah Pengurus" />
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-4 sm:py-8 px-4">
                 <div className="max-w-4xl mx-auto">
                     <div className="mb-6">
                         <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl shadow-lg px-6 py-4">

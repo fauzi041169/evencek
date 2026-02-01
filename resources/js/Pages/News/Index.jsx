@@ -151,7 +151,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
     };
 
     return (
-        <WebLayout hasHeaderSpacer={false}>
+        <WebLayout hasHeaderSpacer={false} fluid={true} noPadding={true}>
             <Head title="Berita & Artikel" />
             <style>{`
                 .reveal{opacity:0;transform:translateY(16px) scale(.98);transition:opacity .6s ease,transform .6s ease}
@@ -267,7 +267,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
             <div className="relative" style={{ fontFamily: "'Inter','Poppins','Montserrat',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji','Segoe UI Symbol'" }}>
 
                 {/* Hero Section */}
-                <div className="relative bg-slate-900 overflow-hidden min-h-[500px] flex items-center">
+                <div className="relative bg-slate-900 overflow-hidden min-h-[120px] sm:min-h-[500px] flex items-center">
                     {/* Background Elements */}
                     <div className="absolute inset-0">
                         {/* Gradient Overlay - Adjusted for better visibility of background image */}
@@ -303,6 +303,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                     }}></div>
                                 ))}
                             </div>
+
                         )}
 
                         {heroAnim === 'particles' && (
@@ -321,12 +322,12 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                         )}
                     </div>
 
-                    <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-6">
                         <div className="text-center max-w-3xl mx-auto">
-                            <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-6 drop-shadow-sm">
+                            <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-4 sm:mb-6 drop-shadow-sm">
                                 Berita & Artikel
                             </h1>
-                            <p className="text-xl text-slate-300 mb-10 leading-relaxed">
+                            <p className="text-xl text-slate-300 mb-6 sm:mb-10 leading-relaxed">
                                 Informasi terbaru seputar kegiatan dan event terkini untuk Anda.
                             </p>
 
@@ -358,7 +359,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                 </div>
 
                 {/* Stats Section */}
-                <section className="py-10 bg-white relative z-10 -mt-8 mx-4 sm:mx-8 rounded-3xl shadow-xl border border-gray-100 max-w-5xl lg:mx-auto">
+                <section className="py-3 sm:py-6 bg-white relative z-10 -mt-8 mx-4 sm:mx-8 rounded-3xl shadow-xl border border-gray-100 max-w-5xl lg:mx-auto">
                     <div className="flex flex-wrap justify-center items-center gap-8 sm:gap-16">
                         <Reveal direction="up" className="flex items-center gap-4">
                             <div
@@ -394,13 +395,13 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                     </div>
                 </section>
 
-                <div className="py-12 min-h-screen bg-gray-50">
+                <div className="py-2 sm:py-6 min-h-screen bg-gray-50">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         {/* Header & Search removed from here as it is now in Hero */}
 
                         {/* Featured News (Only show on main index, not search results) */}
                         {!latestNews && featuredNews && featuredNews.length > 0 && (
-                            <div className="mb-12">
+                            <div className="mb-4 sm:mb-8">
                                 <h2 className="text-2xl font-bold text-gray-800 mb-6 border-l-4 border-secondary pl-3">
                                     Berita Utama
                                 </h2>
@@ -540,7 +541,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+                                <div className="text-center py-2 sm:py-10 bg-white rounded-xl shadow-sm">
                                     <i className="far fa-newspaper text-5xl text-gray-300 mb-4"></i>
                                     <h3 className="text-xl font-medium text-gray-900">Tidak ada berita ditemukan</h3>
                                     <p className="text-gray-500 mt-2">Coba kata kunci lain atau kembali nanti.</p>
@@ -575,6 +576,41 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                 </div>
                             )}
                         </div>
+
+                        {/* Newsletter Section */}
+                        <div className="mt-4 sm:mt-10 bg-gradient-to-br from-white to-primary-50 rounded-2xl shadow-xl overflow-hidden border border-primary-100">
+                            <div className="flex flex-col md:flex-row items-center">
+                                <div className="w-full md:w-1/2 p-4 sm:p-10">
+                                    <h2 className="text-2xl sm:text-3xl font-bold mb-4 text-gray-900">
+                                        Jangan Lewatkan Berita Terbaru!
+                                    </h2>
+                                    <p className="text-gray-600 mb-4 text-lg">
+                                        Berlangganan newsletter kami untuk mendapatkan update terkini seputar event dan fitur baru langsung di inbox Anda.
+                                    </p>
+                                    <form className="flex flex-col sm:flex-row gap-3">
+                                        <input 
+                                            type="email" 
+                                            placeholder="Masukkan email Anda" 
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-secondary focus:border-secondary outline-none transition-all"
+                                        />
+                                        <button type="submit" className="px-6 py-3 bg-secondary text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg hover:shadow-secondary/30 whitespace-nowrap">
+                                            Berlangganan
+                                        </button>
+                                    </form>
+                                </div>
+                                <div className="w-full md:w-1/2 h-64 md:h-auto bg-[url('/images/newsletter-bg.jpg')] bg-cover bg-center relative">
+                                    <div className="absolute inset-0 bg-primary-900/40 backdrop-blur-[2px]"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="text-center py-2 sm:py-6 bg-white rounded-xl shadow-sm">
+                                            <i className="fas fa-envelope-open-text text-4xl text-secondary mb-3"></i>
+                                            <div className="font-bold text-gray-900">Subscribe</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
                     </div>
                 </div>
             </div>

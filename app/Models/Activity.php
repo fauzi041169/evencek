@@ -42,6 +42,10 @@ class Activity extends Model
         'manual_payment_details',
         'visible_sections',
         'visible_sections',
+        'committee_voucher_code',
+        'committee_voucher_usage_limit',
+        'committee_voucher_usage_count',
+        'committee_voucher_valid_until',
         // 'custom_fields', // Removed, using relationship
     ];
 
@@ -52,6 +56,7 @@ class Activity extends Model
         'end_date' => 'date',
         'start_time' => 'datetime',
         'end_time' => 'datetime',
+        'committee_voucher_valid_until' => 'datetime',
         'show_price' => 'boolean',
         'enable_comments' => 'boolean',
         'pendaftaran' => 'integer',
@@ -102,14 +107,61 @@ class Activity extends Model
                     // Guess label: utusan -> Utusan, my_field -> My Field
                     $label = ucwords(str_replace(['_', '-'], ' ', $baseKey));
                     
+                    // Try to extract type/options from import_template if available
+                    $type = 'text';
+                    $options = '';
+                    $isRequired = false;
+
+                    if (!empty($this->import_template)) {
+                        $cols = explode(',', $this->import_template);
+                        foreach ($cols as $col) {
+                            $col = trim($col);
+                            // Format: Label|type:options*
+                            // Extract parts
+                            $parts = explode('|', $col);
+                            $colLabel = $parts[0];
+                            
+                            $colRequired = false;
+                            // Check if required
+                            if (str_ends_with($colLabel, '*')) {
+                                $colLabel = substr($colLabel, 0, -1);
+                                $colRequired = true;
+                            }
+                            
+                            // Normalize check
+                            if (strtolower($colLabel) === strtolower($label)) {
+                                // Match found!
+                                $isRequired = $colRequired;
+                                
+                                if (count($parts) > 1) {
+                                    $def = $parts[1]; // e.g. dropdown:Option1~Option2*
+                                    if (str_ends_with($def, '*')) $def = substr($def, 0, -1);
+                                    
+                                    if (str_starts_with($def, 'dropdown:')) {
+                                         $type = 'dropdown';
+                                         // Convert ~ to , for frontend compatibility
+                                         $options = str_replace('~', ',', substr($def, 9));
+                                     } elseif ($def === 'text') {
+                                        $type = 'text';
+                                    } elseif ($def === 'number') {
+                                        $type = 'number';
+                                    } elseif ($def === 'date') {
+                                        $type = 'date';
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+
                     $fields[] = [
                         'id' => null,
                         'label' => $label,
                         'key' => $baseKey,
-                        'type' => 'text',
-                        'options' => '',
-                        'is_required' => false,
-                        'is_optional' => true
+                        'type' => $type,
+                        'options' => $options,
+                        'is_required' => $isRequired,
+                        'is_optional' => !$isRequired
                     ];
                 }
             }
@@ -344,6 +396,11 @@ class Activity extends Model
     public function materials()
     {
         return $this->hasMany(ActivityMaterial::class)->orderBy('created_at', 'desc');
+    }
+
+    public function vouchers()
+    {
+        return $this->hasMany(ActivityVoucher::class);
     }
 
     public function comments()

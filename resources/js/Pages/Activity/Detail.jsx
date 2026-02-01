@@ -52,7 +52,7 @@ export default function Detail({
     const getStorageUrl = (path) => {
         if (!path) return null;
         if (path.startsWith('http')) return path;
-        if (path.startsWith('storage/')) return '/' + path;
+        if (path.startsWith('/')) return path;
         return '/' + path;
     };
 
@@ -342,7 +342,7 @@ export default function Detail({
         }
     };
 
-    const handleEnroll = async (type = 'mandiri', force = false) => {
+    const handleEnroll = async (type = 'mandiri', force = false, voucherCode = null) => {
         setIsRegistrationTypeModalOpen(false);
 
         setTimeout(async () => {
@@ -354,8 +354,10 @@ export default function Detail({
                     // Save intent for auto-enroll after profile update
                     sessionStorage.setItem('pending_enrollment', JSON.stringify({
                         activityId: activity.id,
-                        type: type
+                        type: type,
+                        voucherCode: voucherCode
                     }));
+                    setLocalMissingProfileData(missingProfileData || []);
                     setIsMissingDataModalOpen(true);
                     return;
                 }
@@ -365,8 +367,8 @@ export default function Detail({
                     ? Number(activeBatch.price)
                     : Number(activity.price);
 
-                // Jika berbayar, arahkan langsung ke form pembayaran
-                if (currentPrice > 0) {
+                // Jika berbayar DAN tidak ada voucher code, arahkan langsung ke form pembayaran
+                if (currentPrice > 0 && !voucherCode) {
                     openManualPaymentModal();
                     return;
                 }
@@ -377,7 +379,8 @@ export default function Detail({
                         // Ensure we use axios directly
                         const response = await axios.post(registrationTarget.url, {
                             modal: true, // Meminta respons JSON
-                            batch_id: activeBatch?.id
+                            batch_id: activeBatch?.id,
+                            committee_voucher_code: voucherCode
                         }, {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest',
@@ -424,7 +427,7 @@ export default function Detail({
                                     onClose: () => window.location.reload()
                                 });
                             } else {
-                                // Jika sukses tanpa redirect (misal kegiatan gratis), reload untuk update status
+                                // Jika sukses tanpa redirect (misal kegiatan gratis atau voucher valid), reload untuk update status
                                 window.location.reload();
                             }
                         } else {
@@ -496,10 +499,11 @@ export default function Detail({
             try {
                 const { activityId, type } = JSON.parse(pendingEnroll);
                 if (activityId === activity.id && type === 'mandiri') {
+                    const voucherCode = JSON.parse(pendingEnroll).voucherCode; // Retrieve voucher code
                     sessionStorage.removeItem('pending_enrollment');
 
                     // Re-trigger enroll flow which handles price check (paid vs free)
-                    handleEnroll(type, true);
+                    handleEnroll(type, true, voucherCode);
                     return;
                 }
             } catch (e) {
@@ -573,11 +577,11 @@ export default function Detail({
     const shouldShowPrice = showPrice;
 
     return (
-        <WebLayout hasHeaderSpacer={false} transparentNavbar={true}>
+        <WebLayout hasHeaderSpacer={false} transparentNavbar={true} fluid={true} noPadding={true}>
             <Head title={activity.title || activity.name} />
 
             {/* Hero Section */}
-            <div className="relative bg-slate-900 overflow-hidden min-h-[400px] lg:min-h-[500px] flex items-center">
+                    <div className="relative bg-slate-900 overflow-hidden min-h-[80px] sm:min-h-[400px] lg:min-h-[500px] flex items-center">
                 <style>{`
                     @keyframes fade-up {
                         from { opacity: 0; transform: translateY(20px); }
@@ -718,10 +722,10 @@ export default function Detail({
                 </div>
 
                 {/* Content Container */}
-                <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-5 pt-16 pb-20 lg:pb-32">
+                <div className="relative z-30 container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-2 sm:gap-5 pt-0 pb-2 sm:pt-8 sm:pb-10 lg:pb-16">
 
                     {/* Left Column: Text & Actions */}
-                    <div className="w-full max-w-4xl mx-auto text-center space-y-6 animate-fade-up">
+                    <div className="w-full max-w-4xl mx-auto text-center space-y-3 sm:space-y-6 animate-fade-up">
 
                         {/* Badges Row */}
                         <div className="flex flex-wrap justify-center gap-3">
@@ -880,10 +884,10 @@ export default function Detail({
             </div>
 
             {/* Content Section */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1 sm:py-6">
                 {/* Admin Controls */}
                 {canEdit && (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-8">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 mb-4 sm:mb-8">
                         <h3 className="text-sm font-bold text-gray-900 mb-3">{t('activities.admin_controls')}</h3>
                         <div className="flex flex-wrap gap-2">
                             {[
@@ -909,9 +913,9 @@ export default function Detail({
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
                     {/* Main Content */}
-                    <div className="lg:col-span-2 space-y-8">
+                    <div className="lg:col-span-2 space-y-4 sm:space-y-8">
                         {/* Activity Image - Moved from Hero */}
                         <div className="bg-white rounded-2xl shadow-sm p-2 overflow-hidden">
                             <div className="aspect-video w-full bg-slate-100 relative rounded-xl overflow-hidden group">
@@ -934,7 +938,7 @@ export default function Detail({
 
                         {/* Description */}
                         {isVisible('detail_description') && (
-                            <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+                            <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 md:p-8">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-4">{t('activities.about')}</h2>
                                 <div
                                     ref={descriptionRef}
@@ -946,7 +950,7 @@ export default function Detail({
 
                         {/* Gallery */}
                         {isVisible('detail_gallery') && (
-                            <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+                            <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 md:p-8">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-2xl font-bold text-gray-900">{t('activities.gallery')}</h2>
                                     {canEdit && (
@@ -1048,12 +1052,12 @@ export default function Detail({
                         )}
 
                         {/* Rating & Comments */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
-                            <div className="border-b border-gray-100 pb-4 mb-6">
-                                <h2 className="text-2xl font-bold text-gray-900">{t('activities.rating_comments')}</h2>
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-6 md:p-8">
+                            <div className="border-b border-gray-100 pb-4 mb-4 sm:mb-6">
+                                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('activities.rating_comments')}</h2>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center mb-8">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 items-center mb-6 sm:mb-8">
                                 <div className="col-span-1 flex items-center gap-4">
                                     <div>
                                         <div className="text-5xl font-bold text-gray-900">{Number(activity.rating_avg || 0).toFixed(1)}</div>
@@ -1068,7 +1072,7 @@ export default function Detail({
                             </div>
 
                             {auth.user ? (
-                                <form onSubmit={handleCommentSubmit} className="mb-8 bg-gray-50 rounded-xl p-6 border border-gray-100">
+                                <form onSubmit={handleCommentSubmit} className="mb-6 sm:mb-8 bg-gray-50 rounded-xl p-3 sm:p-6 border border-gray-100">
                                     <div className="mb-4">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">{t('activities.give_rating')}</label>
                                         <div className="flex items-center gap-2">
@@ -1105,7 +1109,7 @@ export default function Detail({
                                     </div>
                                 </form>
                             ) : (
-                                <div className="bg-gray-50 rounded-xl p-6 text-center mb-8 border border-gray-100">
+                                <div className="bg-gray-50 rounded-xl p-4 sm:p-6 text-center mb-8 border border-gray-100">
                                     <p className="text-gray-600 mb-4">{t('activities.login_to_comment')}</p>
                                     <button
                                         onClick={() => router.visit(route('login'), { data: { return_url: window.location.href } })}
@@ -1132,7 +1136,7 @@ export default function Detail({
                     <div className="space-y-6">
                         {/* Map / Location */}
                         {activity.location && (
-                            <div className="bg-white rounded-2xl shadow-sm p-6">
+                            <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.location')}</h3>
                                 <p className="text-gray-600 mb-4">
                                     <i className="fas fa-map-marker-alt text-primary mr-2"></i>
@@ -1156,7 +1160,7 @@ export default function Detail({
 
                         {/* Contact Person */}
                         {isVisible('detail_contact_person') && (
-                            <div className="bg-white rounded-2xl shadow-sm p-6">
+                            <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
                                 <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.contact_person')}</h3>
                                 <div className="space-y-4">
                                     {contactPersons && contactPersons.length > 0 ? (
@@ -1204,8 +1208,8 @@ export default function Detail({
 
                         {/* Speakers */}
                         {isVisible('detail_speakers') && activity.speakers && activity.speakers.length > 0 && (
-                            <div className="bg-white rounded-2xl shadow-sm p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.speakers')}</h3>
+                            <div className="bg-white rounded-2xl shadow-sm p-3 sm:p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-3 sm:mb-4">{t('activities.speakers')}</h3>
                                 <div className="space-y-4">
                                     {activity.speakers.map((speaker) => (
                                         <div key={speaker.id} className="flex items-center gap-3">
@@ -1231,10 +1235,10 @@ export default function Detail({
                         {/* Participants List */}
                         {isVisible('detail_participants') && (
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[500px] overflow-hidden">
-                                <div className="px-6 py-4 border-b flex items-center justify-between bg-amber-50 border-yellow-200">
+                                <div className="px-3 py-2 sm:px-6 sm:py-4 border-b flex items-center justify-between bg-amber-50 border-yellow-200">
                                     <h5 className="m-0 font-bold text-yellow-800">{t('activities.participants_list')}</h5>
                                 </div>
-                                <div className="px-6 py-5 flex-1 flex flex-col min-h-0">
+                                <div className="px-3 py-3 sm:px-6 sm:py-5 flex-1 flex flex-col min-h-0">
                                     <div className="mb-3">
                                         <div className="relative">
                                             <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>

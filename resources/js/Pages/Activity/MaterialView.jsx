@@ -132,7 +132,7 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
         <MainLayout title={`Materi: ${material.name}`}>
             <Head title={`Materi: ${material.name}`} />
 
-            <div className="py-12 bg-gray-50 min-h-screen">
+            <div className="py-2 sm:py-6 bg-gray-50 min-h-screen">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     {/* Header */}
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
@@ -239,7 +239,7 @@ export default function MaterialView({ activity, material, embedUrl, materialUrl
                                 !(ext === 'docx') &&
                                 !(ext === 'pptx')
                             ) && (
-                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <div className="flex flex-col items-center justify-center py-3 sm:py-8 text-center">
                                         <div className="w-20 h-20 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mb-4">
                                             <FileText className="w-10 h-10" />
                                         </div>

@@ -209,6 +209,30 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
         });
     };
 
+    const handleCleanupFiles = () => {
+        Swal.fire({
+            title: 'Bersihkan File Sampah?',
+            text: "Ini akan MENGHAPUS file (foto/dokumen) yang tidak terhubung ke database. Pastikan Anda memiliki backup!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Bersihkan!',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await requestJson(route('maintenance.cleanup-unused-files'), { method: 'POST' });
+                    setArtisanOutput(res.output || res.message || '');
+                    showAlert('success', res.message || 'Berhasil');
+                } catch (err) {
+                    setArtisanOutput(err.message);
+                    showAlert('error', err.message);
+                }
+            }
+        });
+    };
+
     const runArtisan = async (url) => {
         Swal.fire({
             title: 'Jalankan perintah?',
@@ -485,6 +509,7 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
                             <button onClick={() => runArtisan(route('maintenance.artisan.route-clear'))} className="px-3 py-2 bg-gray-100 rounded">Route Clear</button>
                             <button onClick={() => runArtisan(route('maintenance.artisan.view-clear'))} className="px-3 py-2 bg-gray-100 rounded">View Clear</button>
                             <button onClick={() => runArtisan(route('maintenance.cleanup-storage'))} className="px-3 py-2 bg-gray-100 rounded">Cleanup Runtime</button>
+                            <button onClick={handleCleanupFiles} className="px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded hover:bg-rose-100 font-medium font-bold">Bersihkan File</button>
                             <button onClick={() => runArtisan(route('maintenance.cleanup-clockwork'))} className="px-3 py-2 bg-gray-100 rounded">Clean Clockwork</button>
                             <button onClick={clearBrowserCache} className="px-3 py-2 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded hover:bg-yellow-100">Clean Browser Cache</button>
                             <button onClick={() => runArtisan(route('maintenance.artisan.clear-all'))} className="px-3 py-2 bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100">Clear All</button>
@@ -529,7 +554,12 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
                                                     {row.permission}
                                                 </td>
                                                 {roles.map(role => (
-                                                    <td key={role} className="px-6 py-2 whitespace-nowrap text-center">
+                                                    <td 
+                                                        key={role} 
+                                                        className={`px-6 py-2 whitespace-nowrap text-center ${role !== 'superadmin' ? 'cursor-pointer hover:bg-gray-100' : 'cursor-not-allowed opacity-50'}`}
+                                                        onClick={() => togglePermission(role, row.permission, row[role])}
+                                                        title={role === 'superadmin' ? 'Superadmin permissions cannot be changed' : 'Click to toggle permission'}
+                                                    >
                                                         {row[role] ? (
                                                             <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-600">
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -537,9 +567,9 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
                                                                 </svg>
                                                             </span>
                                                         ) : (
-                                                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-50 text-red-300">
+                                                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-100 text-rose-600">
                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                                                                 </svg>
                                                             </span>
                                                         )}

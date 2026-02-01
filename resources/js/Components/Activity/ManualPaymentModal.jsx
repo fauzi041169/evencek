@@ -140,7 +140,7 @@ export default function ManualPaymentModal({ show, onClose, activity, paymentMet
                 </div>
 
                 {successMessage ? (
-                    <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                    <div className="flex flex-col items-center justify-center py-6 sm:py-10 space-y-4">
                         <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
                             <i className="fas fa-check text-3xl"></i>
                         </div>

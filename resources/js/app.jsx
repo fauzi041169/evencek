@@ -12,5 +12,10 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
         root.render(<App {...props} />);
+
+        // Enable global drag-to-scroll
+        import('./Utils/enableGlobalDragScroll').then(({ enableGlobalDragScroll }) => {
+            enableGlobalDragScroll();
+        });
     },
 });

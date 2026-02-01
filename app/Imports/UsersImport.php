@@ -123,7 +123,7 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
 
         if (empty($provinceId) || empty($regencyId) || empty($districtId)) {
             $provinceName = $cleanedRow['provinsi'] ?? $cleanedRow['province'] ?? null;
-            $regencyName = $cleanedRow['kabupaten'] ?? $cleanedRow['kota'] ?? $cleanedRow['regency'] ?? null;
+            $regencyName = $cleanedRow['kabupaten_kota'] ?? $cleanedRow['kabupaten'] ?? $cleanedRow['kota'] ?? $cleanedRow['regency'] ?? null;
             $districtName = $cleanedRow['kecamatan'] ?? $cleanedRow['district'] ?? null;
 
             if (! empty($provinceName) || ! empty($regencyName) || ! empty($districtName)) {

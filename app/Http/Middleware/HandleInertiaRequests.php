@@ -57,6 +57,7 @@ class HandleInertiaRequests extends Middleware
                 'hero_animation_style' => \App\Models\Setting::get('hero_animation_style', 'circles'),
                 'hero_background_1' => self::formatAssetUrl(\App\Models\Setting::get('home_hero_background_1') ?? \App\Models\Setting::get('home_hero_background')),
                 'navbar_opacity' => \App\Models\Setting::get('navbar_opacity', '1'),
+                'subscription_service_enabled' => \App\Models\Setting::get('subscription_service_enabled', '0') === '1',
                 'colors' => \App\Models\Setting::getColors(),
             ],
         ]);

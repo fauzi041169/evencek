@@ -32,9 +32,9 @@ export default function List({ news }) {
         <MainLayout>
             <Head title="Manajemen Berita" />
 
-            <div className="py-12 pt-24 min-h-screen bg-gray-50">
+            <div className="py-2 sm:py-6 min-h-screen bg-gray-50">
                 <div className="w-full px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-4 sm:mb-6">
                         <h1 className="text-2xl font-bold text-gray-900">Manajemen Berita</h1>
                         <Link
                             href={route('news.create')}
@@ -123,9 +123,14 @@ export default function List({ news }) {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                                                <i className="far fa-newspaper text-4xl mb-3 text-gray-300"></i>
-                                                <p>Belum ada berita yang dibuat.</p>
+                                            <td colSpan="6" className="px-6 py-2 sm:py-6 text-center text-gray-500">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                                        <i className="far fa-newspaper text-2xl text-gray-400"></i>
+                                                    </div>
+                                                    <h3 className="text-lg font-medium text-gray-900 mb-1">Belum ada berita</h3>
+                                                    <p className="text-gray-500 text-sm">Mulai buat berita baru untuk ditampilkan</p>
+                                                </div>
                                             </td>
                                         </tr>
                                     )}

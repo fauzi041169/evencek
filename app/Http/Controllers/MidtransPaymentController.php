@@ -375,6 +375,15 @@ class MidtransPaymentController extends Controller
             $price = $activeBatch->price;
         }
 
+        // Check minimum payment amount for automatic payment
+        $financialSettings = FinancialSetting::first();
+        $minAutoPrice = $financialSettings ? $financialSettings->min_auto_price : 10000;
+        
+        if ($price > 0 && $price < $minAutoPrice) {
+            return redirect()->back()
+                ->with('error', 'Biaya kegiatan (Rp ' . number_format($price, 0, ',', '.') . ') di bawah batas minimum pembayaran otomatis (Rp ' . number_format($minAutoPrice, 0, ',', '.') . '). Silakan hubungi admin atau gunakan metode manual.');
+        }
+
         if ($price == 0) {
             return redirect()->back()
                 ->with('error', 'Kegiatan ini gratis, tidak perlu pembayaran.');
@@ -1557,7 +1566,7 @@ class MidtransPaymentController extends Controller
     /**
      * Approve payment and register user to activity
      */
-    private function approvePayment(Payment $payment)
+    public function approvePayment(Payment $payment)
     {
         DB::beginTransaction();
 

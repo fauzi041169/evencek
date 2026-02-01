@@ -170,7 +170,11 @@ class User extends Authenticatable
                                  if (str_contains($k, '|')) $kClean = explode('|', $k)[0];
                                  elseif (str_contains($k, ':')) $kClean = explode(':', $k)[0];
                                  
-                                 if (strtolower(trim($kClean)) === strtolower(trim($effectiveKey))) {
+                                 // Normalize: lowercase and replace underscores with spaces
+                                 $kNormalized = str_replace('_', ' ', strtolower(trim($kClean)));
+                                 $keyNormalized = str_replace('_', ' ', strtolower(trim($effectiveKey)));
+                                 
+                                 if ($kNormalized === $keyNormalized) {
                                      $val = $v;
                                      break;
                                  }

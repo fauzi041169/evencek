@@ -873,8 +873,8 @@ export default function Index({
         >
             <div className="">
                 {/* Stats & Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 sm:gap-6 mb-2 sm:mb-8">
+                    <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-2 sm:p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Users className="w-24 h-24 transform translate-x-4 -translate-y-4" />
                         </div>
@@ -889,7 +889,7 @@ export default function Index({
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-3 sm:p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <MapPin className="w-24 h-24 transform translate-x-4 -translate-y-4" />
                         </div>
@@ -904,7 +904,7 @@ export default function Index({
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-3 sm:p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <Building className="w-24 h-24 transform translate-x-4 -translate-y-4" />
                         </div>
@@ -919,7 +919,7 @@ export default function Index({
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-3 sm:p-6 rounded-2xl shadow-lg text-white transform transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <MapPin className="w-24 h-24 transform translate-x-4 -translate-y-4" />
                         </div>
@@ -937,7 +937,7 @@ export default function Index({
                 </div>
 
                 {/* Filters & Toolbar */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 mb-8">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 mb-4 sm:mb-6">
                     <div className="flex items-center gap-4">
                         <div className="relative flex-1 group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 w-5 h-5 transition-colors" />
@@ -1114,7 +1114,7 @@ export default function Index({
                         <table className="w-full min-w-max text-sm text-left">
                             <thead className="bg-slate-50/80 backdrop-blur border-b border-slate-200">
                                 <tr>
-                                    {visibleColumns['col-index'] && <th className="px-4 py-4 font-semibold text-slate-700 uppercase tracking-wider text-xs whitespace-nowrap w-12">
+                                    {visibleColumns['col-index'] && <th className="px-4 py-2 font-semibold text-slate-700 uppercase tracking-wider text-xs whitespace-nowrap w-12">
                                         <div className="flex items-center justify-center">
                                             <input
                                                 type="checkbox"
@@ -1125,7 +1125,7 @@ export default function Index({
                                         </div>
                                     </th>}
                                     {visibleColumns['col-name'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-2 whitespace-nowrap">
                                             <ColumnFilter
                                                 label="Nama Lengkap"
                                                 options={nameOptions}
@@ -1135,7 +1135,7 @@ export default function Index({
                                         </th>
                                     )}
                                     {visibleColumns['col-email'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-2 whitespace-nowrap">
                                             <ColumnFilter
                                                 label="Email"
                                                 options={emailOptions}
@@ -1145,7 +1145,7 @@ export default function Index({
                                         </th>
                                     )}
                                     {visibleColumns['col-hp'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-2 whitespace-nowrap">
                                             <ColumnFilter
                                                 label="No. HP"
                                                 options={hpOptions}
@@ -1155,7 +1155,7 @@ export default function Index({
                                         </th>
                                     )}
                                     {visibleColumns['col-nik'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-2 whitespace-nowrap">
                                             <ColumnFilter
                                                 label="NIK"
                                                 options={nikOptions}
@@ -1165,7 +1165,7 @@ export default function Index({
                                         </th>
                                     )}
                                     {visibleColumns['col-instansi'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-2 whitespace-nowrap">
                                             <ColumnFilter
                                                 label="Instansi"
                                                 options={instansiOptions}
@@ -1574,7 +1574,7 @@ export default function Index({
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-6 py-12 text-center text-slate-500">
+                                        <td colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-4 sm:px-6 py-2 sm:py-6 text-center text-slate-500">
                                             <div className="flex flex-col items-center justify-center gap-2">
                                                 <Search className="w-8 h-8 text-slate-300" />
                                                 <p>Tidak ada data peserta ditemukan.</p>

@@ -78,9 +78,9 @@ export default function Show({ activity, eventActivity, existingResponse }) {
         <MainLayout>
             <Head title={`${eventActivity.title} - ${activity.name}`} />
 
-            <div className="py-12 bg-gray-50 min-h-screen">
+            <div className="py-0 sm:py-6 bg-gray-50 min-h-screen">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
-                    <div className="mb-6 px-4 sm:px-0">
+                    <div className="mb-4 sm:mb-6 px-4 sm:px-0">
                         <Link
                             href={route('activity.event-activities.index', activity.id)}
                             className="text-sm text-primary hover:text-indigo-900 flex items-center mb-2"
@@ -90,8 +90,8 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                         </Link>
                     </div>
 
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                        <div className="p-6 border-b border-gray-200">
+                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-4 sm:mb-6">
+                        <div className="p-4 sm:p-6 border-b border-gray-200">
                             <div className="flex justify-between items-start">
                                 <div>
                                     <h1 className="text-2xl font-bold text-gray-900">{eventActivity.title}</h1>
@@ -132,7 +132,7 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                             </div>
                         </div>
 
-                        <div className="p-6">
+                        <div className="p-3 sm:p-6">
                             {existingResponse ? (
                                 <div>
                                     <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-6">
@@ -179,7 +179,7 @@ export default function Show({ activity, eventActivity, existingResponse }) {
 
                                                 {/* Rich Options (Voting Candidates) */}
                                                 {question.activity_options && question.activity_options.length > 0 ? (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                                         {question.activity_options.map((option) => (
                                                             <div key={option.id} className="relative group">
                                                                 {/* Info Button */}
@@ -321,7 +321,7 @@ export default function Show({ activity, eventActivity, existingResponse }) {
                 {/* Candidate Modal */}
                 {candidateModal && (
                     <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-                        <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                        <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-4 text-center sm:block sm:p-0">
                             <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setCandidateModal(null)}></div>
                             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
                             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">

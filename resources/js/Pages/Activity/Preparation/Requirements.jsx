@@ -101,10 +101,10 @@ export default function Requirements({ activity, division, requirements: initial
         <MainLayout>
             <Head title={`Kebutuhan Divisi - ${division.name}`} />
             
-            <div className="min-h-screen bg-gray-50 py-8">
+            <div className="min-h-screen bg-gray-50 py-1 sm:py-6">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Header */}
-                    <div className="mb-6">
+                    <div className="mb-3 sm:mb-6">
                         <div className="flex items-center justify-between">
                             <div>
                                 <Link 
@@ -129,7 +129,7 @@ export default function Requirements({ activity, division, requirements: initial
                     </div>
 
                     {/* Divisi Info Card */}
-                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <div className="bg-white rounded-lg shadow-md p-3 sm:p-6 mb-3 sm:mb-6">
                         <h2 className="text-xl font-bold text-gray-900 mb-3">Informasi Divisi</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -155,7 +155,7 @@ export default function Requirements({ activity, division, requirements: initial
                     </div>
 
                     {/* Requirements List */}
-                    <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="bg-white rounded-lg shadow-md p-3 sm:p-6">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold text-gray-900">Daftar Kebutuhan</h2>
                             <div className="text-sm text-gray-600">
@@ -212,8 +212,8 @@ export default function Requirements({ activity, division, requirements: initial
                                 </div>
 
                                 {/* Statistics */}
-                                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="bg-yellow-50 rounded-lg p-4">
+                                <div className="mt-4 sm:mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-yellow-50 rounded-lg p-3 sm:p-4">
                                         <div className="flex items-center">
                                             <i className="fas fa-clock text-yellow-600 text-2xl mr-3"></i>
                                             <div>
@@ -243,7 +243,7 @@ export default function Requirements({ activity, division, requirements: initial
                                 </div>
                             </>
                         ) : (
-                            <div className="text-center py-12">
+                            <div className="text-center py-4 sm:py-6">
                                 <i className="fas fa-clipboard-list text-4xl text-gray-400 mb-4"></i>
                                 <p className="text-gray-600">Belum ada kebutuhan. Klik tombol "Tambah Kebutuhan" untuk menambahkan.</p>
                             </div>
@@ -268,7 +268,7 @@ export default function Requirements({ activity, division, requirements: initial
                                 </button>
                             </div>
                             <form onSubmit={handleAddSubmit}>
-                                <div className="p-4 space-y-4">
+                                <div className="p-3 sm:p-4 space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Nama Kebutuhan *</label>
                                         <input 

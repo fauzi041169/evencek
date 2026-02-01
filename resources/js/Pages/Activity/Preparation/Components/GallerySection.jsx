@@ -41,9 +41,9 @@ export default function GallerySection({ activity, materials }) {
     };
 
     return (
-        <div className="p-8 bg-white font-primary relative">
+        <div className="p-3 sm:p-8 bg-white font-primary relative">
             {/* Header with Add Button */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-3 sm:mb-6">
                 <div>
                     <h3 className="text-lg font-bold text-gray-900">Koleksi Foto</h3>
                     <p className="text-sm text-gray-500">Dokumentasi kegiatan</p>
@@ -56,7 +56,7 @@ export default function GallerySection({ activity, materials }) {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                 {materials.map((material) => (
                     <div key={material.id} className="group relative bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                         <div className="aspect-w-16 aspect-h-12 bg-gray-200 relative">
@@ -95,7 +95,7 @@ export default function GallerySection({ activity, materials }) {
                 ))}
 
                 {materials.length === 0 && (
-                    <div className="col-span-full text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <div className="col-span-full text-center py-3 sm:py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                         <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-gray-300">
                             <Image className="w-8 h-8" />
                         </div>

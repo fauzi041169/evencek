@@ -70,16 +70,16 @@ export default function List({
     };
 
     return (
-        <MainLayout>
+        <MainLayout noPadding={true}>
             <Head title={title || "Daftar Aktivitas"} />
 
-            <div className="py-12">
-                <div className="w-full sm:px-6 lg:px-8">
+            <div className="py-2 sm:py-6">
+                <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 bg-white border-b border-gray-200">
+                        <div className="p-0 sm:p-6 bg-white border-b border-gray-200">
 
-                            {/* Header & Filters Section */}
-                            <div className="flex flex-row items-center gap-4 mb-6 overflow-x-auto pb-2">
+                                {/* Header & Filters Section */}
+                                <div className="flex flex-row items-center gap-2 px-2 py-2 sm:px-0 sm:py-0 mb-0 sm:mb-6 overflow-x-auto">
                                 <h2 className="text-2xl font-bold text-gray-800 whitespace-nowrap shrink-0">
                                     {titlepage || "Daftar Aktivitas"}
                                     {currentCategory && <span className="text-secondary"> - {currentCategory.name}</span>}
@@ -133,23 +133,23 @@ export default function List({
                             </div>
 
                             {/* Activity List */}
-                            <div className="bg-white rounded-b-lg sm:rounded-b-xl shadow-xl overflow-hidden">
+                            <div className="bg-white rounded-none sm:rounded-b-xl shadow-xl overflow-hidden">
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200 table-activity">
                                         <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                                             <tr>
-                                                <th className="px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">No</th>
-                                                <th className="px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nama Aktivitas</th>
-                                                <th className="px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Kategori</th>
-                                                <th className="px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Tanggal</th>
-                                                <th className="px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Waktu</th>
-                                                <th className="px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Metode Pembayaran</th>
-                                                <th className="px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">No</th>
+                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nama Aktivitas</th>
+                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Kategori</th>
+                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Tanggal</th>
+                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Waktu</th>
+                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Metode Pembayaran</th>
+                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
                                                 {user && (
                                                     <>
-                                                        <th className="px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Pendaftaran</th>
+                                                        <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Pendaftaran</th>
                                                         {(isCreator || isAdmin) && (
-                                                            <th className="px-6 py-2 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>
+                                                            <th className="px-2 sm:px-6 py-2 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>
                                                         )}
                                                     </>
                                                 )}
@@ -227,10 +227,10 @@ export default function List({
 
                                                     return (
                                                         <tr key={activity.id} className="hover:bg-blue-50 transition-colors duration-150">
-                                                            <td className="px-6 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                            <td className="px-1 sm:px-6 py-1 whitespace-nowrap text-sm font-medium text-gray-900">
                                                                 {startIndex + index}
                                                             </td>
-                                                            <td className="px-6 py-2">
+                                                            <td className="px-1 sm:px-6 py-1">
                                                                 <div className="flex flex-col">
                                                                     <div className="text-sm font-semibold text-gray-900 max-w-md truncate" title={activity.name}>
                                                                         {activity.name}
@@ -242,18 +242,18 @@ export default function List({
                                                                     )}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-2 whitespace-nowrap">
+                                                            <td className="px-1 sm:px-6 py-1 whitespace-nowrap">
                                                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-secondary/10 text-secondary">
                                                                     {activity.category?.name || '-'}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-600">
+                                                            <td className="px-1 sm:px-6 py-1 whitespace-nowrap text-sm text-gray-600">
                                                                 <div className="flex items-center">
                                                                     <i className="fas fa-calendar-alt mr-1.5 text-gray-400 text-xs"></i>
                                                                     {formatDateRange(activity.date, activity.end_date)}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-600">
+                                                            <td className="px-1 sm:px-6 py-1 whitespace-nowrap text-sm text-gray-600">
                                                                 <div className="flex items-center">
                                                                     <i className="fas fa-clock mr-1.5 text-gray-400 text-xs"></i>
                                                                     {activity.start_time ? (
@@ -264,7 +264,7 @@ export default function List({
                                                                     ) : '-'}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-2 whitespace-nowrap">
+                                                            <td className="px-1 sm:px-6 py-1 whitespace-nowrap">
                                                                 {isAuto ? (
                                                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-indigo-700">
                                                                         Payment Gateway
@@ -275,7 +275,7 @@ export default function List({
                                                                     </span>
                                                                 )}
                                                             </td>
-                                                            <td className="px-6 py-2 whitespace-nowrap">
+                                                            <td className="px-1 sm:px-6 py-1 whitespace-nowrap">
                                                                 {canManage ? (
                                                                     <div className="relative w-28">
                                                                         <select
@@ -298,7 +298,7 @@ export default function List({
                                                             </td>
                                                             {auth.user && (
                                                                 <>
-                                                                    <td className="px-6 py-2 whitespace-nowrap">
+                                                                    <td className="px-1 sm:px-6 py-1 whitespace-nowrap">
                                                                         {canManage ? (
                                                                             <button
                                                                                 type="button"
@@ -316,7 +316,7 @@ export default function List({
                                                                         )}
                                                                     </td>
                                                                     {(isCreator || isAdmin) && (
-                                                                        <td className="px-6 py-2 whitespace-nowrap text-center text-sm font-medium">
+                                                                        <td className="px-1 sm:px-6 py-1 whitespace-nowrap text-center text-sm font-medium">
                                                                             {canManage && (
                                                                                 <div className="flex items-center justify-center gap-1.5">
                                                                                     {canManage && (
@@ -368,22 +368,23 @@ export default function List({
                                                 })
                                             ) : (
                                                 <tr>
-                                                    <td colSpan="10" className="px-6 py-12 text-center">
-                                                        <div className="flex flex-col items-center">
-                                                            <div className="bg-gray-100 rounded-full p-6 mb-4">
-                                                                <i className="fas fa-calendar-alt text-4xl text-gray-400"></i>
+                                                    <td colSpan="10" className="px-2 sm:px-6 py-2 sm:py-6 text-center">
+                                                        <div className="flex flex-col items-center justify-center">
+                                                            <img
+                                                                src="/images/empty-state.svg"
+                                                                alt="No Data"
+                                                                className="w-32 h-32 mb-4 opacity-50"
+                                                                onError={(e) => {
+                                                                    e.target.onerror = null;
+                                                                    e.target.style.display = 'none';
+                                                                    e.target.nextSibling.style.display = 'block';
+                                                                }}
+                                                            />
+                                                            <div className="hidden mb-4">
+                                                                <i className="fas fa-calendar-times text-6xl text-gray-300"></i>
                                                             </div>
-                                                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Tidak ada aktivitas</h3>
-                                                            <p className="text-gray-600 mb-4">Belum ada aktivitas yang ditambahkan</p>
-                                                            {user && (isCreator || isAdmin) && (
-                                                                <Link
-                                                                    href={route('activity.create')}
-                                                                    className="inline-flex items-center px-4 py-2 bg-secondary hover:bg-blue-700 text-white rounded-lg transition-all"
-                                                                >
-                                                                    <i className="fas fa-plus mr-2"></i>
-                                                                    Tambah Aktivitas Pertama
-                                                                </Link>
-                                                            )}
+                                                            <p className="text-gray-500 text-lg font-medium">Belum ada kegiatan</p>
+                                                            <p className="text-gray-400 text-sm">Silakan buat kegiatan baru</p>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -395,7 +396,7 @@ export default function List({
 
                             {/* Pagination */}
                             {paginationLinks && paginationLinks.length > 3 && (
-                                <div className="mt-8 flex justify-center">
+                                <div className="mt-4 sm:mt-8 flex justify-center">
                                     <div className="flex flex-wrap gap-1">
                                         {paginationLinks.map((link, key) => (
                                             link.url ? (

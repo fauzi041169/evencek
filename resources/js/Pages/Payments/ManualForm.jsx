@@ -43,7 +43,7 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
     const totalAmount = bulk_import_payment?.gross_amount || activity?.price || 0;
 
     const content = (
-        <div className={`w-full bg-white ${is_modal ? 'p-4' : 'p-6 rounded-xl shadow-sm border border-gray-100'}`}>
+        <div className={`w-full bg-white ${is_modal ? 'p-3' : 'p-3 sm:p-6 rounded-xl shadow-sm border border-gray-100'}`}>
             {flash?.error && (
                 <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">
                     {flash.error}
@@ -198,7 +198,7 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
     return (
         <WebLayout>
             <Head title="Pembayaran Manual" />
-            <div className="py-12 bg-gray-50 min-h-screen">
+            <div className="py-2 sm:py-6 bg-gray-50 min-h-screen">
                 <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="mb-6">
                         <h1 className="text-2xl font-bold text-gray-900">Selesaikan Pembayaran</h1>

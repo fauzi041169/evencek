@@ -399,6 +399,24 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                                     // Format: "Label|Dropdown:Option1~Option2~Option3"
                                     let isDropdown = originalField.type === 'select';
                                     let options = originalField.options || [];
+
+                                    // Robust options handling
+                                    if (typeof options === 'string') {
+                                        try {
+                                            if (options.trim().startsWith('[')) {
+                                                options = JSON.parse(options);
+                                            } else {
+                                                options = options.split(',').map(o => {
+                                                    const val = o.trim();
+                                                    return { id: val, name: val };
+                                                });
+                                            }
+                                        } catch (e) {
+                                            console.warn('Failed to parse options for field', originalField.key, e);
+                                            options = [];
+                                        }
+                                    }
+
                                     let label = originalField.label || originalField.key.replace(/_/g, ' ');
 
                                     // Special handling for region fields

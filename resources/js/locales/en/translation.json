@@ -115,8 +115,8 @@
     "service_game": "Educational Games",
     "service_it": "IT Consulting",
     "contact_title": "Contact Us",
-    "rights": "All rights reserved. Powered by Innovation."
-  },
+        "rights": "All rights reserved."
+    },
   "activities": {
     "title": "Explore Activities",
     "ongoing": "ONGOING",

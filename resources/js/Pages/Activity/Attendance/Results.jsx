@@ -76,10 +76,10 @@ export default function Results({ activity, attendance, participants }) {
             <Head title={`Hasil Absensi - ${activity.name}`} />
             
             <div 
-                className="min-h-screen bg-cover bg-center bg-fixed p-5" 
+                className="min-h-screen bg-cover bg-center bg-fixed p-3 sm:p-5" 
                 style={backgroundStyle}
             >
-                <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+                <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:py-6 lg:py-8">
                     {/* Main Title Section */}
                     <div className="text-center mb-4 sm:mb-6 lg:mb-8 bg-white rounded-xl sm:rounded-2xl shadow-md p-4 sm:p-6">
                         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-secondary mb-1 sm:mb-2">
@@ -165,7 +165,7 @@ export default function Results({ activity, attendance, participants }) {
                                 </div>
                             ))
                         ) : (
-                            <div className="col-span-full text-center py-12 sm:py-16 bg-white rounded-xl sm:rounded-2xl shadow-md px-4">
+                            <div className="col-span-full text-center py-2 sm:py-6 bg-white rounded-xl sm:rounded-2xl shadow-md px-4">
                                 <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-100 mb-3 sm:mb-4">
                                     <i className="fas fa-inbox text-3xl sm:text-4xl text-gray-400"></i>
                                 </div>

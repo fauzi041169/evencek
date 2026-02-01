@@ -38,9 +38,9 @@ class GenerateImportTemplate extends Command
             'pekerjaan',
             'jabatan',
             'jenis_kelamin',
-            'province_id',
-            'regency_id',
-            'district_id',
+            'Provinsi',
+            'Kabupaten/Kota',
+            'Kecamatan',
         ];
 
         // Add headers
@@ -89,9 +89,9 @@ class GenerateImportTemplate extends Command
                 'Guru',
                 'Ketua',
                 'Laki-laki',
-                '1',
-                '10',
-                '100',
+                'ACEH',
+                'KABUPATEN ACEH SELATAN',
+                'BAKONGAN',
             ],
             [
                 'Siti Aminah',
@@ -106,9 +106,9 @@ class GenerateImportTemplate extends Command
                 'Dosen',
                 'Anggota',
                 'Perempuan',
-                '2',
-                '20',
-                '200',
+                'SUMATERA UTARA',
+                'KABUPATEN DELI SERDANG',
+                'PERCUT SEI TUAN',
             ],
         ];
 
@@ -145,20 +145,20 @@ class GenerateImportTemplate extends Command
 
         // Data validation for Province (Column M)
         if ($provinces->isNotEmpty()) {
-            $provinceFormula = "'Province List'!\$A\$2:\$A\$".($provinces->count() + 1);
-            $this->addDropdownValidation($sheet, 'M', $provinceFormula, 'Province ID', 2, 5000, true);
+            $provinceFormula = "'Province List'!\$B\$2:\$B\$".($provinces->count() + 1);
+            $this->addDropdownValidation($sheet, 'M', $provinceFormula, 'Provinsi', 2, 5000, true);
         }
 
         // Data validation for Regency (Column N)
         if ($regencies->isNotEmpty()) {
-            $regencyFormula = "'Regency List'!\$A\$2:\$A\$".($regencies->count() + 1);
-            $this->addDropdownValidation($sheet, 'N', $regencyFormula, 'Regency ID', 2, 5000, true);
+            $regencyFormula = "'Regency List'!\$B\$2:\$B\$".($regencies->count() + 1);
+            $this->addDropdownValidation($sheet, 'N', $regencyFormula, 'Kabupaten/Kota', 2, 5000, true);
         }
 
         // Data validation for District (Column O)
         if ($districts->isNotEmpty()) {
-            $districtFormula = "'District List'!\$A\$2:\$A\$".($districts->count() + 1);
-            $this->addDropdownValidation($sheet, 'O', $districtFormula, 'District ID', 2, 5000, true);
+            $districtFormula = "'District List'!\$B\$2:\$B\$".($districts->count() + 1);
+            $this->addDropdownValidation($sheet, 'O', $districtFormula, 'Kecamatan', 2, 5000, true);
         }
         // --- End of Dropdown ---
 

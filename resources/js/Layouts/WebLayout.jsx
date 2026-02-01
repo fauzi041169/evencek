@@ -6,7 +6,7 @@ import Alerts from '../Components/Alerts';
 import LoginDropdown from '../Components/LoginDropdown';
 import Modal from '../Components/Modal';
 
-export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = false }) {
+export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = false, noPadding = false, fluid = false }) {
     const { props, url } = usePage();
     const { t: tOrig, i18n } = useTranslation();
     const t = tOrig || ((key) => key); // Fallback to avoid crash
@@ -176,6 +176,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                     { name: t('nav.about'), href: '/about', icon: 'fa-info-circle' },
                                     { name: t('nav.news'), href: '/news', icon: 'fa-newspaper' },
                                     { name: t('nav.activities'), href: '/activity', icon: 'fa-calendar-alt' },
+                                    ...(settings.subscription_service_enabled ? [{ name: 'Langganan', href: '/subscriptions/pricing', icon: 'fa-crown' }] : [])
                                 ].map((link) => {
                                     const isActive = url === link.href || (link.href !== '/' && url.startsWith(link.href));
                                     return (
@@ -482,15 +483,15 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                 </Modal>
             </nav>
 
-            {/* Content Spacer for Fixed Navbar */}
-            <div className={`flex-grow ${hasHeaderSpacer ? "pt-14" : ""}`}>
+            {/* Children Content */}
+            <main className={`${hasHeaderSpacer ? 'pt-20 sm:pt-24' : 'pt-0'} ${noPadding ? 'p-0' : 'p-3 sm:p-6 lg:p-8'} ${fluid ? 'max-w-none' : 'max-w-7xl mx-auto'}`}>
                 {children}
-            </div>
+            </main>
 
             {/* Footer */}
-            <div className="pb-24 md:pb-0">
+            <div className="pb-20 md:pb-0">
                 <Footer
-                    appName={settings.app_name || 'ADZKIATEKNO'}
+                    appName={settings.app_name || 'EventCek'}
                     appLogo={getLogoUrl(settings.app_logo)}
                 />
             </div>

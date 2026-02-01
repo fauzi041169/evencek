@@ -61,7 +61,7 @@ export default function Certificates({ auth, activity, participants }) {
             title={`Cetak Sertifikat - ${activity.name}`}
             activity={activity}
         >
-            <div className="bg-gray-50 min-h-screen p-6">
+            <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
                 <div className="flex justify-between items-center mb-6">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">Cetak Sertifikat</h1>
@@ -152,7 +152,7 @@ export default function Certificates({ auth, activity, participants }) {
                                             ))
                                         ) : (
                                             <tr>
-                                                <td colSpan="5" className="px-6 py-10 text-center text-gray-500">
+                                                <td colSpan="5" className="px-6 py-2 sm:py-6 text-center text-gray-500">
                                                     Tidak ada peserta ditemukan.
                                                 </td>
                                             </tr>

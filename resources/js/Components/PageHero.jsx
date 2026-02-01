@@ -25,6 +25,13 @@ export default function PageHero({ title, description, heroAnim, shape = 'waves'
                     overflow: hidden;
                     padding-bottom: 80px;
                 }
+
+                @media (max-width: 640px) {
+                    .page-hero {
+                        min-height: 80px;
+                        padding-bottom: 2px;
+                    }
+                }
                 
                 .hero-gradient-bg {
                     position: absolute !important;
@@ -210,7 +217,7 @@ export default function PageHero({ title, description, heroAnim, shape = 'waves'
             )}
 
             {/* Content */}
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 text-center">
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-12 md:py-24 text-center">
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
                     {title}
                 </h1>

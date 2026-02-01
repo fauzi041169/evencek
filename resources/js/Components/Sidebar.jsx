@@ -113,8 +113,8 @@ export default function Sidebar({ collapsed = false, showProfile = true, auth: p
     );
 
     return (
-        <div className="w-full flex flex-col pb-20">
-            {/* Logo Section */}
+            <div className="w-full flex flex-col pb-1 sm:pb-10">
+                {/* Logo Section */}
             <div className={`flex items-center justify-center py-6 ${collapsed ? 'px-2' : 'px-6'}`}>
                 <Link href={safeRoute('home') || '/'} className="block w-full text-center">
                     <img
@@ -159,6 +159,17 @@ export default function Sidebar({ collapsed = false, showProfile = true, auth: p
                             <NavLink href={safeRoute('partners.list')} icon="fas fa-handshake" label="Mitra" />
                             <NavLink href={safeRoute('pengurus.index')} icon="fas fa-user-tie" label="Pengurus" />
                             <NavLink href={safeRoute('user-management.index')} icon="fas fa-users-cog" label="User Management" />
+                            {appSettings.subscription_service_enabled && (
+                                <NavLink 
+                                    href={safeRoute('subscriptions.manage')} 
+                                    icon="fas fa-calendar-alt" 
+                                    label="Langganan" 
+                                    activeRoutes={[
+                                        '/subscriptions/manage',
+                                        '/subscriptions/manage-payments'
+                                    ]}
+                                />
+                            )}
                             <NavLink
                                 href={safeRoute('payments.rules')}
                                 icon="fas fa-money-bill-wave"
@@ -192,7 +203,7 @@ export default function Sidebar({ collapsed = false, showProfile = true, auth: p
             </nav>
 
             {/* Bottom Button */}
-            <div className="p-4 mt-10">
+            <div className="p-4 mt-2 sm:mt-10">
                 <Link
                     as="button"
                     method="post"

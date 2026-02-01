@@ -125,7 +125,7 @@ export default function Index({ activity, batches }) {
         <AcaraLayout activity={activity}>
             <Head title={`Manajemen Batch - ${activity.name}`} />
             
-            <div className="min-h-screen bg-gray-50/50 pb-20">
+            <div className="min-h-screen bg-gray-50/50 pb-3 sm:pb-10">
                 {/* Header Section */}
                 <div className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -161,9 +161,9 @@ export default function Index({ activity, batches }) {
                     </div>
                 </div>
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1 sm:py-8">
                     {/* Stats Overview */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-10">
                         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                             <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase">Total Batch</p>
@@ -211,7 +211,7 @@ export default function Index({ activity, batches }) {
                         </div>
 
                         {batches.length === 0 ? (
-                            <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-gray-200 shadow-sm">
+                            <div className="text-center py-4 sm:py-8 bg-white rounded-3xl border-2 border-dashed border-gray-200 shadow-sm">
                                 <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-50 mb-6">
                                     <i className="fas fa-clipboard-list text-gray-300 text-4xl"></i>
                                 </div>
@@ -231,7 +231,7 @@ export default function Index({ activity, batches }) {
                                         <div className="absolute top-0 left-0 w-1.5 h-full bg-secondary"></div>
                                     )}
                                     
-                                    <div className="p-6 sm:p-8">
+                                    <div className="p-3 sm:p-8">
                                         {/* Card Header */}
                                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
                                             <div className="flex items-start gap-5">

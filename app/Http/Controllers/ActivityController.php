@@ -678,10 +678,39 @@ class ActivityController extends Controller
         $userBatch = $userEnrollment ? $userEnrollment->batch : null;
 
         // Cek apakah ada payment pending untuk user ini
-        $pendingPayment = Payment::where('user_id', auth()->id())
+        if (auth()->check()) {
+            // Auto-sync Midtrans status if pending
+            try {
+                $pendingMidtrans = Payment::where('user_id', auth()->id())
+                    ->where('activity_id', $activity->id)
+                    ->where('status', 'pending')
+                    ->whereNotNull('midtrans_transaction_id')
+                    ->latest()
+                    ->first();
+
+                if ($pendingMidtrans) {
+                    $mpc = new \App\Http\Controllers\MidtransPaymentController();
+                    $mpc->checkPaymentStatus($pendingMidtrans);
+                }
+            } catch (\Throwable $e) {
+                // Silent fail
+            }
+        }
+
+        $hasApprovedPayment = Payment::where('user_id', auth()->id())
             ->where('activity_id', $activity->id)
-            ->where('status', 'pending')
-            ->first();
+            ->where('status', 'approved')
+            ->exists();
+
+        $pendingPayment = null;
+        // Only look for pending payment if no approved payment exists and user is not already active
+        if (! $hasApprovedPayment && ! ($isEnrolled ?? false)) {
+            $pendingPayment = Payment::where('user_id', auth()->id())
+                ->where('activity_id', $activity->id)
+                ->where('status', 'pending')
+                ->latest()
+                ->first();
+        }
         $isAutomaticPayment = method_exists($activity, 'hasAutomaticPayment')
             ? $activity->hasAutomaticPayment()
             : false;
@@ -1269,18 +1298,10 @@ class ActivityController extends Controller
         // Calculate required profile labels from import_template (Universal check)
         $template = $activity->import_template;
         $hasCustomRequirements = false;
+        $requiredCols = [];
         $customMissingFields = []; // Will be populated per user inside auth check
 
-        if ($template) {
-            $cols = array_map('trim', explode(',', $template));
-            $requiredCols = [];
-            foreach ($cols as $col) {
-                if (str_ends_with($col, '*')) {
-                    $requiredCols[] = substr($col, 0, -1);
-                }
-            }
-
-            $map = [
+        $map = [
                 'nama' => ['field' => 'name', 'label' => 'Nama Lengkap', 'source' => 'user', 'type' => 'text'],
                 'name' => ['field' => 'name', 'label' => 'Nama Lengkap', 'source' => 'user', 'type' => 'text'],
                 'nama lengkap' => ['field' => 'name', 'label' => 'Nama Lengkap', 'source' => 'user', 'type' => 'text'],
@@ -1347,6 +1368,15 @@ class ActivityController extends Controller
                 'district id' => ['field' => 'district_id', 'label' => 'Kecamatan', 'source' => 'profile', 'type' => 'select'],
             ];
 
+        if ($template) {
+            $cols = array_map('trim', explode(',', $template));
+            $requiredCols = [];
+            foreach ($cols as $col) {
+                if (str_ends_with($col, '*')) {
+                    $requiredCols[] = substr($col, 0, -1);
+                }
+            }
+
             if (! empty($requiredCols)) {
                 $hasCustomRequirements = true;
 
@@ -1376,6 +1406,23 @@ class ActivityController extends Controller
                 }
                 $requiredProfileLabels = array_unique($requiredProfileLabels);
             }
+        }
+
+        // Also include mandatory fields from database setting
+        if ($activity->mandatory_profile_fields) {
+             foreach ($activity->mandatory_profile_fields as $mKey) {
+                $mKey = strtolower(trim($mKey));
+                if (isset($map[$mKey])) {
+                    $requiredProfileLabels[] = $map[$mKey]['label'];
+                } else {
+                    $requiredProfileLabels[] = ucwords(str_replace(['_', '-'], ' ', $mKey));
+                }
+             }
+             $requiredProfileLabels = array_unique($requiredProfileLabels);
+             
+             if (!empty($requiredProfileLabels)) {
+                 $hasCustomRequirements = true;
+             }
         }
 
         if (auth()->check()) {
@@ -3271,9 +3318,6 @@ class ActivityController extends Controller
                         $q->where('user_id', $user->id)
                             ->orWhereHas('owners', function ($subQ) use ($user) {
                                 $subQ->where('user_id', $user->id);
-                            })
-                            ->orWhereHas('committeeStructures', function ($subQ) use ($user) {
-                                $subQ->where('user_id', $user->id);
                             });
                     });
                 }
@@ -3747,6 +3791,7 @@ class ActivityController extends Controller
 
         // Cek apakah user sudah terdaftar sebagai peserta
         $isJoined = false;
+        $isParticipantActive = false;
         if (auth()->check()) {
             try {
                 $q = ActivityUser::where('activity_id', $activity->id)
@@ -3757,9 +3802,14 @@ class ActivityController extends Controller
                     $q->where('activity_batch_id', $activeBatch->id);
                 }
 
-                $isJoined = $q->exists();
+                $au = $q->first();
+                $isJoined = $au ? true : false;
+                if ($au && $au->status == ActivityUser::STATUS_ACTIVE) {
+                    $isParticipantActive = true;
+                }
             } catch (\Exception $e) {
                 $isJoined = false;
+                $isParticipantActive = false;
             }
         }
 
@@ -3772,17 +3822,20 @@ class ActivityController extends Controller
 
         if (auth()->check()) {
             try {
-                $userPayment = Payment::where('activity_id', $activity->id)
+                $userPaymentQuery = Payment::where('activity_id', $activity->id)
                     ->where('user_id', auth()->id());
 
                 // FIX: Check pending payment strictly for the active batch if exists
                 if ($activeBatch) {
-                    $userPayment->where('activity_batch_id', $activeBatch->id);
+                    $userPaymentQuery->where('activity_batch_id', $activeBatch->id);
                 }
 
-                $userPayment = $userPayment->latest('id')->first();
+                // Check if there is ANY approved payment
+                $hasApprovedPayment = (clone $userPaymentQuery)->where('status', 'approved')->exists();
 
-                if ($activity->price > 0 && $userPayment && $userPayment->status === 'pending') {
+                $userPayment = $userPaymentQuery->latest('id')->first();
+
+                if ($activity->price > 0 && $userPayment && $userPayment->status === 'pending' && !$isParticipantActive && !$hasApprovedPayment) {
                     $showCompletePaymentCTA = true;
                     $isAutomatic = method_exists($activity, 'hasAutomaticPayment') && $activity->hasAutomaticPayment();
                     $hasManualProof = (bool) ($userPayment->payment_method_id && ! $userPayment->midtrans_transaction_id && $userPayment->proof_of_payment && $userPayment->proof_of_payment !== 'imported');

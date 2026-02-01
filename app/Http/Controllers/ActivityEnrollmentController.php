@@ -329,34 +329,37 @@ class ActivityEnrollmentController extends Controller
             // Use unified method from User model
             $user->load('profile');
             $missingProfileData = $user->getIncompleteProfileData($allRequiredKeys);
+
+            // Enrich missing data with custom field metadata (options, type) if available
+            if ($activity->custom_fields && is_array($activity->custom_fields)) {
+                foreach ($missingProfileData as &$item) {
+                    foreach ($activity->custom_fields as $cf) {
+                        // Check key match (case insensitive)
+                        if (isset($cf['key']) && strtolower($item['key']) === strtolower($cf['key'])) {
+                            $item['type'] = $cf['type'] ?? $item['type'];
+                            $item['label'] = $cf['label'] ?? $item['label'];
+                            if (isset($cf['options'])) {
+                                $item['options'] = $cf['options'];
+                            }
+                            break;
+                        }
+                    }
+                }
+                unset($item); // Break reference
+            }
+
             $missingFields = array_column($missingProfileData, 'label');
             $missingFieldKeys = array_column($missingProfileData, 'key');
             $debugPayload = config('app.debug') ? ['debug_validation' => $debugValidation] : [];
 
-            if (! empty($missingFields)) {
-                $debugValidation['missing_fields_final'] = $missingFields;
-                Log::info('Validation Failed: Missing fields', $debugValidation);
-                
-                $msg = 'Profil Anda belum lengkap. Lengkapi data berikut: '.implode(', ', $missingFields);
-
-                if ($wantsJson) {
-                    return response()->json(array_merge([
-                        'success' => false,
-                        'message' => $msg,
-                        'missing_fields' => $missingFields, // Labels for display
-                        'missing_data' => $missingProfileData, // Full structure for frontend logic
-                    ], $debugPayload), 422);
-                }
-
-                return redirect()->back()
-                    ->with('error', $msg)
-                    ->with('missing_profile_fields', $missingFieldKeys);
-            }
+            // Combine missing fields check (Standard + Custom) to avoid two-step validation
+            $missingCustomFields = [];
+            $missingCustomFieldObjects = []; // For frontend modal
 
             // Validate Custom Activity Fields
             if ($activity->custom_fields && is_array($activity->custom_fields)) {
-                $missingCustomFields = [];
                 $currentCustomData = $request->input('custom_data', []);
+                $customDataUpdated = false;
                 
                 foreach ($activity->custom_fields as $field) {
                     // Check if required field is missing or empty
@@ -367,22 +370,104 @@ class ActivityEnrollmentController extends Controller
                             $currentCustomData[$key] === '' || 
                             $currentCustomData[$key] === null
                         )) {
-                            $missingCustomFields[] = $field['label'] ?? $key;
+                            // Fallback: Check user profile additional_data
+                            $foundInProfile = false;
+                            $user = auth()->user();
+                            if ($user && $user->profile && !empty($user->profile->additional_data)) {
+                                $additionalData = $user->profile->additional_data;
+                                
+                                // Direct check
+                                if (isset($additionalData[$key]) && !empty($additionalData[$key])) {
+                                    $foundInProfile = true;
+                                    $currentCustomData[$key] = $additionalData[$key];
+                                    $customDataUpdated = true;
+                                } 
+                                // Check case-insensitive
+                                elseif (isset($additionalData[strtolower($key)]) && !empty($additionalData[strtolower($key)])) {
+                                    $foundInProfile = true;
+                                    $currentCustomData[$key] = $additionalData[strtolower($key)];
+                                    $customDataUpdated = true;
+                                }
+                                // Robust Fuzzy Check (Handle underscores vs spaces and mixed case)
+                                else {
+                                    $keyNormalized = str_replace('_', ' ', strtolower(trim($key)));
+                                    foreach ($additionalData as $k => $v) {
+                                        $kNormalized = str_replace('_', ' ', strtolower(trim($k)));
+                                        if ($kNormalized === $keyNormalized && !empty($v)) {
+                                            $foundInProfile = true;
+                                            $currentCustomData[$key] = $v;
+                                            $customDataUpdated = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (!$foundInProfile) {
+                                $missingCustomFields[] = $field['label'] ?? $key;
+                                
+                                // Ensure options is an array
+                                $fieldOptions = $field['options'] ?? [];
+                                if (is_string($fieldOptions)) {
+                                    if (str_starts_with($fieldOptions, '[')) {
+                                        $fieldOptions = json_decode($fieldOptions, true) ?? [];
+                                    } else {
+                                        $fieldOptions = array_map('trim', explode(',', $fieldOptions));
+                                    }
+                                }
+
+                                // Construct missing data object for frontend modal
+                                $missingCustomFieldObjects[] = [
+                                    'key' => $key,
+                                    'label' => $field['label'] ?? $key,
+                                    'type' => $field['type'] ?? 'text',
+                                    'options' => $fieldOptions, 
+                                ];
+                            }
                         }
                     }
                 }
 
-                if (!empty($missingCustomFields)) {
-                    $msg = 'Data tambahan berikut wajib diisi: ' . implode(', ', $missingCustomFields);
-                    if ($wantsJson) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => $msg,
-                            'missing_custom_fields' => $missingCustomFields
-                        ], 422);
-                    }
-                    return redirect()->back()->with('error', $msg);
+                // If we found data in profile, update the request so subsequent logic uses it
+                if ($customDataUpdated) {
+                    $request->merge(['custom_data' => $currentCustomData]);
                 }
+            }
+
+            // AGGREGATE ALL MISSING FIELDS
+            $allMissingFields = array_unique(array_merge($missingFields, $missingCustomFields));
+            $allMissingData = array_merge($missingProfileData, $missingCustomFieldObjects);
+            
+            // Deduplicate allMissingData by key
+            $uniqueMissingData = [];
+            $seenKeys = [];
+            foreach ($allMissingData as $item) {
+                // Normalize key for deduplication check
+                $keyCheck = strtolower($item['key']);
+                if (!in_array($keyCheck, $seenKeys)) {
+                    $seenKeys[] = $keyCheck;
+                    $uniqueMissingData[] = $item;
+                }
+            }
+
+            if (! empty($uniqueMissingData)) {
+                $debugValidation['missing_fields_final'] = $allMissingFields;
+                Log::info('Validation Failed: Missing fields (Aggregated)', $debugValidation);
+                
+                $msg = 'Profil Anda belum lengkap. Lengkapi data berikut: '.implode(', ', $allMissingFields);
+
+                if ($wantsJson) {
+                    return response()->json(array_merge([
+                        'success' => false,
+                        'message' => $msg,
+                        'missing_fields' => $allMissingFields, // Labels for display
+                        'missing_data' => $uniqueMissingData, // Full structure for frontend logic
+                    ], $debugPayload), 422);
+                }
+
+                return redirect()->back()
+                    ->with('error', $msg)
+                    ->with('missing_profile_fields', array_column($uniqueMissingData, 'key'));
             }
 
             // Check if user is already enrolled in this batch (or activity if no batch)
@@ -496,7 +581,56 @@ class ActivityEnrollmentController extends Controller
 
             // Calculate price first to determine status
             // Fix: If activity price is explicitly 0, treat as free (Master Override)
-            if ((int)$activity->price === 0) {
+            $isCommitteeVoucherValid = false;
+            $voucherCode = $request->input('committee_voucher_code');
+            $validVoucher = null;
+            
+            if ($voucherCode) {
+                // Check new ActivityVoucher table
+                $validVoucher = \App\Models\ActivityVoucher::where('activity_id', $activity->id)
+                    ->where('code', $voucherCode)
+                    ->where('is_active', true)
+                    ->first();
+
+                // If found, validate constraints
+                if ($validVoucher) {
+                     // Check Expiration
+                    if ($validVoucher->valid_until && now()->gt($validVoucher->valid_until)) {
+                        $msg = 'Kode voucher sudah kadaluarsa';
+                        if ($wantsJson) return response()->json(['success' => false, 'message' => $msg], 422);
+                        return redirect()->back()->with('error', $msg);
+                    }
+
+                    // Check Usage Limit
+                    if ($validVoucher->usage_limit !== null && $validVoucher->usage_count >= $validVoucher->usage_limit) {
+                        $msg = 'Kuota voucher sudah habis';
+                         if ($wantsJson) return response()->json(['success' => false, 'message' => $msg], 422);
+                        return redirect()->back()->with('error', $msg);
+                    }
+
+                    $isCommitteeVoucherValid = true;
+                    $price = 0; // Force free for committee voucher
+                } 
+                // Legacy check fallback (optional, but code migrated so maybe not needed)
+                elseif (!empty($activity->committee_voucher_code) && $voucherCode === $activity->committee_voucher_code) {
+                    // Check Expiration
+                    if ($activity->committee_voucher_valid_until && now()->gt($activity->committee_voucher_valid_until)) {
+                        $msg = 'Kode voucher sudah kadaluarsa';
+                        if ($wantsJson) return response()->json(['success' => false, 'message' => $msg], 422);
+                        return redirect()->back()->with('error', $msg);
+                    }
+
+                    // Check Usage Limit
+                    if ($activity->committee_voucher_usage_limit !== null && $activity->committee_voucher_usage_count >= $activity->committee_voucher_usage_limit) {
+                        $msg = 'Kuota voucher sudah habis';
+                        if ($wantsJson) return response()->json(['success' => false, 'message' => $msg], 422);
+                        return redirect()->back()->with('error', $msg);
+                    }
+
+                    $isCommitteeVoucherValid = true;
+                    $price = 0;
+                }
+            } elseif ((int)$activity->price === 0) {
                 $price = 0;
             } else {
                 $price = $activity->price;
@@ -510,6 +644,17 @@ class ActivityEnrollmentController extends Controller
                 'activity_id' => $activityId,
                 'activity_batch_id' => $activeBatch ? $activeBatch->id : null,
             ];
+
+            if ($isCommitteeVoucherValid) {
+                // Find Panitia participation type
+                $panitiaType = \App\Models\ActivityParticipationType::where('activity_id', $activityId)
+                    ->where('name', 'LIKE', '%Panitia%')
+                    ->first();
+                
+                if ($panitiaType) {
+                    $payload['activity_participation_type_id'] = $panitiaType->id;
+                }
+            }
 
             if (Schema::hasColumn($tableName, 'status')) {
                 // If paid, status is PENDING (waiting for payment)
@@ -534,6 +679,48 @@ class ActivityEnrollmentController extends Controller
             // Only create ActivityUser immediately if FREE
             if ($price == 0) {
                 $enrollment = ActivityUser::create($payload);
+
+                if ($isCommitteeVoucherValid) {
+                    if ($validVoucher) {
+                        $validVoucher->increment('usage_count');
+                    } else {
+                        $activity->increment('committee_voucher_usage_count');
+                    }
+
+                    // Add to Committee Structure
+                    $userId = auth()->id();
+                    $existingCommittee = \App\Models\ActivityCommitteeStructure::where('activity_id', $activity->id)
+                        ->where('user_id', $userId)
+                        ->first();
+
+                    if (!$existingCommittee) {
+                        // Find default committee type
+                        $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)
+                            ->where('name', 'like', '%Seksi%')
+                            ->first();
+                        
+                        if (!$defaultCommitteeType) {
+                            $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)->first();
+                        }
+
+                        // Create structure
+                        try {
+                            \App\Models\ActivityCommitteeStructure::create([
+                                'activity_id' => $activity->id,
+                                'user_id' => $userId,
+                                'name' => auth()->user()->name,
+                                'email' => auth()->user()->email,
+                                'phone' => auth()->user()->profile->no_hp ?? null,
+                                'position' => 'Anggota Panitia', // Default position
+                                'committee_type_id' => $defaultCommitteeType ? $defaultCommitteeType->id : null,
+                                'order' => 99,
+                            ]);
+                        } catch (\Exception $e) {
+                            Log::error('Failed to auto-add committee member: ' . $e->getMessage());
+                        }
+                    }
+                }
+
                 $debugValidation['enrollment_created'] = $enrollment->toArray();
                 Log::info('Enrollment Success (Free)', $debugValidation);
             } else {

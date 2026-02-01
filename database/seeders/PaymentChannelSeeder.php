@@ -17,6 +17,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'bank_transfer',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/bca.svg',
+                'fee' => 4000,
+                'fee_type' => 'fixed',
             ],
             [
                 'code' => 'bni_va',
@@ -24,6 +26,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'bank_transfer',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/bni.svg',
+                'fee' => 4000,
+                'fee_type' => 'fixed',
             ],
             [
                 'code' => 'bri_va',
@@ -31,6 +35,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'bank_transfer',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/bri.svg',
+                'fee' => 4000,
+                'fee_type' => 'fixed',
             ],
             [
                 'code' => 'mandiri_bill',
@@ -38,6 +44,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'bank_transfer',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/mandiri.svg',
+                'fee' => 4000,
+                'fee_type' => 'fixed',
             ],
             [
                 'code' => 'permata_va',
@@ -45,6 +53,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'bank_transfer',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/permata.svg',
+                'fee' => 4000,
+                'fee_type' => 'fixed',
             ],
             [
                 'code' => 'cimb_va',
@@ -52,6 +62,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'bank_transfer',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/cimb.svg',
+                'fee' => 4000,
+                'fee_type' => 'fixed',
             ],
             [
                 'code' => 'danamon_va',
@@ -59,6 +71,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'bank_transfer',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/danamon.svg',
+                'fee' => 4000,
+                'fee_type' => 'fixed',
             ],
             [
                 'code' => 'bsi_va',
@@ -66,6 +80,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'bank_transfer',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/bsi.svg',
+                'fee' => 4000,
+                'fee_type' => 'fixed',
             ],
 
             // E-Wallet
@@ -75,6 +91,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'e_wallet',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/gopay.svg',
+                'fee' => 2,
+                'fee_type' => 'percent',
             ],
             [
                 'code' => 'shopeepay',
@@ -82,6 +100,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'e_wallet',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/shopeepay.svg',
+                'fee' => 2,
+                'fee_type' => 'percent',
             ],
             [
                 'code' => 'qris',
@@ -89,6 +109,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'e_wallet',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/qris.svg',
+                'fee' => 0.7,
+                'fee_type' => 'percent',
             ],
             [
                 'code' => 'dana',
@@ -96,6 +118,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'e_wallet',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/dana.svg',
+                'fee' => 1.5,
+                'fee_type' => 'percent',
             ],
             [
                 'code' => 'ovo',
@@ -103,6 +127,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'e_wallet',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/ovo.svg',
+                'fee' => 1.5,
+                'fee_type' => 'percent',
             ],
 
             // Credit Card
@@ -112,6 +138,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'credit_card',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/visa.svg',
+                'fee' => 2.9,
+                'fee_type' => 'percent',
             ],
 
             // C-Store
@@ -121,6 +149,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'cstore',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/indomaret.png',
+                'fee' => 5000,
+                'fee_type' => 'fixed',
             ],
             [
                 'code' => 'alfamart',
@@ -128,6 +158,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'cstore',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/alfamart.svg',
+                'fee' => 5000,
+                'fee_type' => 'fixed',
             ],
 
             // Cardless Credit
@@ -137,6 +169,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'cardless_credit',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/akulaku.svg',
+                'fee' => 2.5,
+                'fee_type' => 'percent',
             ],
             [
                 'code' => 'kredivo',
@@ -144,6 +178,8 @@ class PaymentChannelSeeder extends Seeder
                 'type' => 'cardless_credit',
                 'is_active' => true,
                 'icon_url' => 'assets/images/payment-channels/kredivo.svg',
+                'fee' => 2.5,
+                'fee_type' => 'percent',
             ],
         ];
 

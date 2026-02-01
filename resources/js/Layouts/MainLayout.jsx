@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import Sidebar from '../Components/Sidebar';
 import Alerts from '../Components/Alerts';
 import Swal from 'sweetalert2';
 import Modal from '../Components/Modal';
 import { useTranslation } from 'react-i18next';
 
-export default function MainLayout({ children, title = 'Dashboard' }) {
+export default function MainLayout({ children, title = 'Dashboard', fluid = false, noPadding = false }) {
     const { auth, flash, errors, appSettings } = usePage().props;
     const { url } = usePage();
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -16,12 +16,84 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
     });
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
     const [editMode, setEditMode] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
     const { t: tOrig } = useTranslation();
     const t = tOrig || ((key) => key);
 
     const settings = appSettings || {};
+
+    const fetchNotifications = async () => {
+        try {
+            const res = await fetch(route('notifications.index'));
+            if (res.ok) {
+                const data = await res.json();
+                setNotifications(data);
+                // Count unread (withdrawal requests count as unread if read_at is null)
+                setUnreadCount(data.filter(n => !n.read_at).length);
+            }
+        } catch (error) {
+            console.error("Failed to fetch notifications", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchNotifications();
+        // Poll every 60 seconds
+        const interval = setInterval(fetchNotifications, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleNotificationClick = async (n) => {
+        if (!n.read_at) {
+            try {
+                await fetch(route('notifications.read', n.id), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+                // Optimistically update
+                setNotifications(prev => prev.map(item => 
+                    item.id === n.id ? { ...item, read_at: new Date().toISOString() } : item
+                ));
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        
+        setIsNotificationOpen(false);
+
+        if (n.data.url) {
+             // Use Inertia router if possible, otherwise window.location
+             if (n.data.url.startsWith('http')) {
+                 window.location.href = n.data.url;
+             } else {
+                 router.visit(n.data.url);
+             }
+        }
+    };
+
+    const markAllRead = async () => {
+        try {
+            await fetch(route('notifications.read-all'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            });
+            setNotifications(prev => prev.map(item => ({ ...item, read_at: new Date().toISOString() })));
+            setUnreadCount(0);
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     useEffect(() => {
         const storedEditMode = localStorage.getItem('editMode');
@@ -200,11 +272,79 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                                 <i className="fas fa-home text-lg"></i>
                             </Link>
 
-                            {/* Notifications (Placeholder) */}
-                            <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary transition-colors relative">
-                                <i className="fas fa-bell text-lg"></i>
-                                <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-                            </button>
+                            {/* Notifications */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                                    className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary transition-colors relative focus:outline-none"
+                                >
+                                    <i className="fas fa-bell text-lg"></i>
+                                    {unreadCount > 0 && (
+                                        <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border border-white animate-pulse"></span>
+                                    )}
+                                </button>
+
+                                {/* Notification Dropdown */}
+                                {isNotificationOpen && (
+                                    <>
+                                        <div 
+                                            className="fixed inset-0 z-40" 
+                                            onClick={() => setIsNotificationOpen(false)}
+                                        ></div>
+                                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl ring-1 ring-black ring-opacity-5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                                <h3 className="text-sm font-bold text-gray-700">Notifikasi</h3>
+                                                {unreadCount > 0 && (
+                                                    <button 
+                                                        onClick={markAllRead}
+                                                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                                                    >
+                                                        Tandai semua dibaca
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                                                {notifications.length > 0 ? (
+                                                    notifications.map((n) => (
+                                                        <div 
+                                                            key={n.id}
+                                                            onClick={() => handleNotificationClick(n)}
+                                                            className={`px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${!n.read_at ? 'bg-indigo-50/50' : ''}`}
+                                                        >
+                                                            <div className="flex items-start gap-3">
+                                                                <div className={`mt-1 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${n.type === 'withdrawal_request' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                                    <i className={`fas ${n.type === 'withdrawal_request' ? 'fa-money-bill-wave' : 'fa-info'}`}></i>
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className={`text-sm font-medium text-gray-900 ${!n.read_at ? 'font-bold' : ''}`}>
+                                                                        {n.data.message || 'Notifikasi Baru'}
+                                                                    </p>
+                                                                    {n.data.amount && (
+                                                                        <p className="text-xs text-green-600 font-semibold mt-0.5">
+                                                                            {n.data.amount}
+                                                                        </p>
+                                                                    )}
+                                                                    <p className="text-xs text-gray-500 mt-1">
+                                                                        {n.created_at}
+                                                                    </p>
+                                                                </div>
+                                                                {!n.read_at && (
+                                                                    <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2"></div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="px-4 py-8 text-center text-gray-500">
+                                                        <i className="fas fa-bell-slash text-2xl mb-2 text-gray-300"></i>
+                                                        <p className="text-sm">Tidak ada notifikasi</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
 
                             {/* User Dropdown */}
                             <div
@@ -397,12 +537,10 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                 </nav>
 
                 {/* Page Content */}
-                <main className="flex-1 px-0 py-4 md:p-6 lg:p-8 overflow-x-hidden">
+                <main className={`flex-1 overflow-x-hidden ${noPadding ? '' : 'p-2 md:p-6 lg:p-8'}`}>
                     <div className="w-full">
-                        {/* Global Alerts */}
-                        <div className="mb-6">
-                            <Alerts flash={flash} errors={errors} />
-                        </div>
+                        {/* Global Alerts - Fixed Position, no layout space needed */}
+                        <Alerts flash={flash} errors={errors} />
 
                         {/* Children Content */}
                         <div className="animate-fade-in-up">
@@ -412,8 +550,8 @@ export default function MainLayout({ children, title = 'Dashboard' }) {
                 </main>
 
                 {/* Simple Footer */}
-                <footer className="bg-white border-t border-gray-200 py-4 px-6 text-center text-sm text-gray-500 pb-32 md:pb-4">
-                    &copy; {new Date().getFullYear()} {usePage().props.appName || 'EventCek'}. All rights reserved.
+                <footer className="bg-white border-t border-gray-200 py-4 px-6 text-center text-sm text-gray-500">
+                    &copy; {new Date().getFullYear()} {usePage().props.appName || 'EventCek'}. Developed by PT. ADZKIATEKNO EDU SOLUTION. All rights reserved.
                 </footer>
             </div>
 

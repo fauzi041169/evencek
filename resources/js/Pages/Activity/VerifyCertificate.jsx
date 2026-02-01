@@ -78,17 +78,17 @@ export default function VerifyCertificate({
     const qrSizeUsed = Math.max(qrSizeScaled, 40);
 
     return (
-        <div className="min-h-screen bg-gray-50 py-6 flex flex-col items-center justify-center sm:py-12">
+        <div className="min-h-screen bg-gray-50 py-1 flex flex-col items-center justify-center sm:py-6">
             <Head title="Verifikasi Sertifikat" />
             
-            <div className="w-full max-w-4xl px-4">
-                <div className="bg-white shadow-lg rounded-xl overflow-hidden p-6 md:p-8">
-                    <div className="mb-6">
+            <div className="w-full max-w-4xl px-2 sm:px-4">
+                <div className="bg-white shadow-lg rounded-xl overflow-hidden p-3 md:p-8">
+                    <div className="mb-4 md:mb-6">
                         <h1 className="text-2xl font-extrabold text-gray-900">Verifikasi Sertifikat</h1>
                         <p className="text-gray-600">{activity?.name || 'Kegiatan'}</p>
                     </div>
 
-                    <div className="mb-8">
+                    <div className="mb-4 md:mb-8">
                         {isValid ? (
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-green-500 text-white">
                                 Sertifikat Asli
@@ -100,7 +100,7 @@ export default function VerifyCertificate({
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8">
                         <div className="bg-gray-100 p-4 rounded-lg">
                             <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">ID Sertifikat</div>
                             <div className="text-lg font-bold text-gray-900 break-all">
@@ -128,13 +128,13 @@ export default function VerifyCertificate({
                         </div>
                     </div>
 
-                    <div className="text-sm text-gray-600 mb-8 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <div className="text-sm text-gray-600 mb-4 md:mb-8 bg-blue-50 p-4 rounded-lg border border-blue-100">
                         Halaman ini digunakan untuk memverifikasi keaslian sertifikat yang dipindai menggunakan QR.
                         Jika status tidak valid, silakan hubungi panitia kegiatan terkait.
                     </div>
 
                     {!isValid && invalidReason && (
-                        <div className="mb-8 p-4 bg-red-50 text-red-700 rounded-lg border border-red-100 font-medium">
+                        <div className="mb-4 md:mb-8 p-4 bg-red-50 text-red-700 rounded-lg border border-red-100 font-medium">
                             Alasan: {invalidReason}
                         </div>
                     )}
@@ -142,10 +142,10 @@ export default function VerifyCertificate({
 
 
                     {isValid && (
-                        <div className="border-t border-gray-200 pt-8">
-                            <h3 className="text-lg font-bold text-gray-900 mb-6">Preview Sertifikat</h3>
+                        <div className="border-t border-gray-200 pt-4 md:pt-8">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4 md:mb-6">Preview Sertifikat</h3>
                             <div className="flex flex-col items-center overflow-auto">
-                                <div className="relative mb-8" style={{ width: pxW, height: pxH }}>
+                                <div className="relative mb-4 md:mb-8" style={{ width: pxW, height: pxH }}>
                                     <div className="absolute inset-0 bg-white shadow-lg rounded-xl overflow-hidden origin-top-left" 
                                          style={{ width: pxW, height: pxH }}>
                                         
