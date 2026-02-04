@@ -1,4 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 
 export default function ResetPassword({ token, email }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -7,6 +8,9 @@ export default function ResetPassword({ token, email }) {
         password: '',
         password_confirmation: '',
     });
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const submit = (e) => {
         e.preventDefault();
@@ -26,12 +30,8 @@ export default function ResetPassword({ token, email }) {
                         onError={(e) => {
                             e.target.onerror = null;
                             e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
                         }}
                     />
-                    <div className="hidden w-20 h-20 bg-gray-100 rounded-full mx-auto flex items-center justify-center">
-                        <i className="fas fa-shield-alt text-3xl text-gray-400"></i>
-                    </div>
                 </div>
 
                 <h1 className="text-[#333] text-2xl font-bold text-center mb-5">Reset Password</h1>
@@ -47,7 +47,8 @@ export default function ResetPassword({ token, email }) {
                             value={data.email}
                             onChange={(e) => setData('email', e.target.value)}
                             required
-                            className="w-full px-4 py-3 border-2 border-[#e1e1e1] rounded-xl text-[15px] transition-all duration-300 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                            readOnly
+                            className="w-full px-4 py-3 border-2 border-[#e1e1e1] rounded-xl text-[15px] transition-all duration-300 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 bg-gray-50 cursor-not-allowed"
                         />
                         {errors.email && (
                             <div className="text-red-500 text-sm mt-1">{errors.email}</div>
@@ -56,14 +57,23 @@ export default function ResetPassword({ token, email }) {
 
                     <div className="mb-6 relative">
                         <label htmlFor="password" className="block mb-2 text-[#333] font-medium text-sm">Password Baru</label>
-                        <input
-                            type="password"
-                            id="password"
-                            value={data.password}
-                            onChange={(e) => setData('password', e.target.value)}
-                            required
-                            className="w-full px-4 py-3 border-2 border-[#e1e1e1] rounded-xl text-[15px] transition-all duration-300 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
-                        />
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                id="password"
+                                value={data.password}
+                                onChange={(e) => setData('password', e.target.value)}
+                                required
+                                className="w-full px-4 py-3 border-2 border-[#e1e1e1] rounded-xl text-[15px] transition-all duration-300 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 pr-10"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                            >
+                                <i className={`fas ${showPassword ? 'fa-eye' : 'fa-eye-slash'}`}></i>
+                            </button>
+                        </div>
                         {errors.password && (
                             <div className="text-red-500 text-sm mt-1">{errors.password}</div>
                         )}
@@ -71,14 +81,23 @@ export default function ResetPassword({ token, email }) {
 
                     <div className="mb-6 relative">
                         <label htmlFor="password_confirmation" className="block mb-2 text-[#333] font-medium text-sm">Konfirmasi Password</label>
-                        <input
-                            type="password"
-                            id="password_confirmation"
-                            value={data.password_confirmation}
-                            onChange={(e) => setData('password_confirmation', e.target.value)}
-                            required
-                            className="w-full px-4 py-3 border-2 border-[#e1e1e1] rounded-xl text-[15px] transition-all duration-300 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
-                        />
+                        <div className="relative">
+                            <input
+                                type={showConfirmPassword ? "text" : "password"}
+                                id="password_confirmation"
+                                value={data.password_confirmation}
+                                onChange={(e) => setData('password_confirmation', e.target.value)}
+                                required
+                                className="w-full px-4 py-3 border-2 border-[#e1e1e1] rounded-xl text-[15px] transition-all duration-300 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 pr-10"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-indigo-600 focus:outline-none"
+                            >
+                                <i className={`fas ${showConfirmPassword ? 'fa-eye' : 'fa-eye-slash'}`}></i>
+                            </button>
+                        </div>
                     </div>
 
                     <button

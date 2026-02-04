@@ -26,6 +26,13 @@ class ForgotPasswordController extends Controller
         $hpField = (string) $request->input('hp_field', '');
         $hpTime = (int) $request->input('hp_time', 0);
         if ($hpField !== '' || ($hpTime > 0 && (time() - $hpTime) < 3)) {
+            \Log::warning('Honeypot triggered', [
+                'hp_field' => $hpField,
+                'hp_time' => $hpTime,
+                'current_time' => time(),
+                'diff' => time() - $hpTime,
+                'email' => $request->email
+            ]);
             return redirect()->route('login')
                 ->with('status', 'Jika email yang Anda masukkan terdaftar, kami akan mengirimkan link reset password ke email Anda.');
         }

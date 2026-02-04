@@ -518,6 +518,27 @@ export default function Show({
         }
     }, [missingProfileData]);
 
+    // Handle Auto Enroll after Profile Update (Resume from MissingDataModal)
+    useEffect(() => {
+        const pendingEnroll = sessionStorage.getItem('pending_enrollment');
+
+        if (pendingEnroll) {
+            try {
+                const { activityId, type } = JSON.parse(pendingEnroll);
+                if (activityId === activity.id) {
+                    // Check if profile is now complete
+                    if (!missingProfileData || missingProfileData.length === 0) {
+                        sessionStorage.removeItem('pending_enrollment');
+                        handleEnroll(type || 'mandiri', true);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to parse pending enrollment', e);
+                sessionStorage.removeItem('pending_enrollment');
+            }
+        }
+    }, [activity.id, missingProfileData]);
+
     const togglePriceVisibility = async () => {
         const result = await Swal.fire({
             title: t('activities.change_visibility_title'),

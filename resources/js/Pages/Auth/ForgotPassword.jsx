@@ -28,9 +28,7 @@ export default function ForgotPassword({ status, hp_time }) {
                             e.target.nextSibling.style.display = 'flex';
                         }}
                     />
-                    <div className="hidden w-20 h-20 bg-gray-100 rounded-full mx-auto flex items-center justify-center">
-                        <i className="fas fa-shield-alt text-3xl text-gray-400"></i>
-                    </div>
+
                 </div>
 
                 <h1 className="text-[#333] text-2xl font-bold text-center mb-5">Lupa Password</h1>
