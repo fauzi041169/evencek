@@ -28,16 +28,16 @@ class SecurityHeaders
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
         $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
 
-        // Permissions Policy: allow camera for profile photo upload, restrict others
-        // Allow camera for same-origin (localhost/127.0.0.1) to enable profile photo capture
-        $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+        // Permissions Policy: allow camera and microphone for same-origin
+        $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
+
 
         $csp = "default-src 'self'; "
              ."img-src 'self' data: blob: https:; "
              ."style-src 'self' 'unsafe-inline' https:; "
              ."script-src 'self' 'unsafe-inline' 'unsafe-eval' https: https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com; "
              ."font-src 'self' data: https:; "
-             ."connect-src 'self' https:; "
+             ."connect-src 'self' https: https://generativelanguage.googleapis.com; "
              ."frame-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://view.officeapps.live.com; "
              ."child-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://view.officeapps.live.com; "
              ."frame-ancestors 'none';";
@@ -74,16 +74,16 @@ class SecurityHeaders
             $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         }
 
-        // In local/dev, allow Vite dev server assets and HMR websocket
         if (app()->environment(['local', 'development'])) {
             // For development, use permissive policy with localhost and 127.0.0.1
             // Note: CSP doesn't support IPv6 bracket notation [::1], so we use broader rules
+            $ollamaUrl = env('OLLAMA_URL', 'http://localhost:11434');
             $csp = "default-src 'self'; "
                  ."img-src 'self' data: blob: https: http:; "
                  ."style-src 'self' 'unsafe-inline' https: http: localhost:* 127.0.0.1:* 10.10.115.108:*; "
                  ."script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http: localhost:* 127.0.0.1:* 10.10.115.108:*; "
                  ."font-src 'self' data: https: http:; "
-                 ."connect-src 'self' https: http: ws: wss: localhost:* 127.0.0.1:* 10.10.115.108:*; "
+                 ."connect-src 'self' https: http: ws: wss: localhost:* 127.0.0.1:* 10.10.115.108:* $ollamaUrl https://generativelanguage.googleapis.com; "
                  ."frame-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://view.officeapps.live.com; "
                  ."child-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://view.officeapps.live.com; "
                  ."frame-ancestors 'self';";

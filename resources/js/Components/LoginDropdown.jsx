@@ -47,17 +47,37 @@ export default function LoginDropdown() {
     }, []);
 
     useEffect(() => {
-        function handleClickOutside(event) {
+        if (!isOpen) return;
+
+        // Auto-close only if mouse moves far left or right of the modal
+        // This prevents accidental closing when moving vertically within the 'column'
+        const handleGlobalMouseMove = (e) => {
+            if (!dropdownRef.current) return;
+            const dropdownContent = dropdownRef.current.querySelector('.login-dropdown-card');
+            if (!dropdownContent) return;
+
+            const rect = dropdownContent.getBoundingClientRect();
+            const horizontalBuffer = 150; // pixels to the left/right
+
+            if (e.clientX < rect.left - horizontalBuffer || e.clientX > rect.right + horizontalBuffer) {
+                setIsOpen(false);
+            }
+        };
+
+        const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsOpen(false);
             }
-        }
+        };
 
+        window.addEventListener('mousemove', handleGlobalMouseMove);
         document.addEventListener("mousedown", handleClickOutside);
+
         return () => {
+            window.removeEventListener('mousemove', handleGlobalMouseMove);
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [dropdownRef]);
+    }, [isOpen, dropdownRef]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -65,6 +85,7 @@ export default function LoginDropdown() {
             setMode('login');
         }
     }, [isOpen]);
+
 
     const submitLogin = (e) => {
         e.preventDefault();
@@ -81,12 +102,13 @@ export default function LoginDropdown() {
     };
 
     return (
-        <div className="relative" ref={dropdownRef} onMouseLeave={() => setIsOpen(false)}>
+        <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 onMouseEnter={() => setIsOpen(true)}
                 className="flex items-center focus:outline-none transition-all duration-300 hover:scale-110 hover:drop-shadow-lg"
             >
+
                 <img
                     src="/assets/images/icon/login.png"
                     alt="Login"
@@ -96,7 +118,8 @@ export default function LoginDropdown() {
 
             {isOpen && (
                 <div className="absolute right-0 top-full w-96 pt-3 z-50">
-                    <div className="bg-white rounded-2xl shadow-2xl p-6 ring-1 ring-black ring-opacity-5 transform origin-top-right transition-all duration-200 ease-out">
+                    <div className="login-dropdown-card bg-white rounded-2xl shadow-2xl p-6 ring-1 ring-black ring-opacity-5 transform origin-top-right transition-all duration-200 ease-out">
+
 
                         {/* Header */}
                         <div className="text-center mb-6">

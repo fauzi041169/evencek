@@ -330,7 +330,9 @@ class ActivityController extends Controller
             return $activity;
         });
 
-        $latestActivities = $query->with(['activeBatch', 'batches', 'category', 'owners'])->latest()->paginate(12);
+        $perPage = (int) $request->input('per_page', 12);
+        if ($perPage > 500) $perPage = 500;
+        $latestActivities = $query->with(['activeBatch', 'batches', 'category', 'owners'])->latest()->paginate($perPage);
 
         // Transform images for latestActivities using ImageHelper
         $latestActivities->getCollection()->transform(function ($activity) {
@@ -1242,7 +1244,7 @@ class ActivityController extends Controller
             // Gunakan per_page dari request, default 20
             $perPage = (int) request()->input('per_page', 20);
             // Validasi per_page untuk mencegah nilai yang tidak valid
-            $allowedPerPage = [10, 20, 50, 100];
+            $allowedPerPage = [10, 20, 25, 50, 100, 250, 500];
             if (! in_array($perPage, $allowedPerPage)) {
                 $perPage = 20;
             }
@@ -3346,7 +3348,7 @@ class ActivityController extends Controller
             if (request()->boolean('all') || ($perPageParam === 'all')) {
                 $latestActivities = $query->get();
             } else {
-                $allowed = [10, 25, 50, 100];
+                $allowed = [10, 25, 50, 100, 250, 500];
                 $perPage = (int) ($perPageParam ?: 10);
                 if (! in_array($perPage, $allowed, true)) {
                     $perPage = 10;
@@ -3688,8 +3690,8 @@ class ActivityController extends Controller
         if ($perPage < 5) {
             $perPage = 5;
         }
-        if ($perPage > 100) {
-            $perPage = 100;
+        if ($perPage > 500) {
+            $perPage = 500;
         }
 
         // Ambil peserta melalui relasi langsung agar pivot tetap tersedia dan ter-filter oleh activity
@@ -4593,7 +4595,7 @@ class ActivityController extends Controller
                 'col-regency' => ['label' => 'Kabupaten/Kota', 'default' => true, 'value' => fn ($u) => optional(optional($u->profile)->regency)->name ?? (optional($u->profile)->other_regency ?? '-')],
                 'col-district' => ['label' => 'Kecamatan', 'default' => true, 'value' => fn ($u) => optional(optional($u->profile)->district)->name ?? '-'],
                 'col-alamat' => ['label' => 'Alamat', 'default' => true, 'value' => fn ($u) => optional($u->profile)->alamat ?? '-'],
-                'col-gender' => ['label' => 'Jenis Kelamin', 'default' => true, 'value' => fn ($u) => optional($u->profile)->gender == 'L' ? 'Laki-laki' : (optional($u->profile)->gender == 'P' ? 'Perempuan' : '-')],
+                'col-gender' => ['label' => 'Jenis Kelamin', 'default' => true, 'value' => fn ($u) => optional($u->profile)->jenis_kelamin == 'L' ? 'Laki-laki' : (optional($u->profile)->jenis_kelamin == 'P' ? 'Perempuan' : '-')],
                 'col-birthplace' => ['label' => 'Tempat Lahir', 'default' => true, 'value' => fn ($u) => optional($u->profile)->birth_place ?? '-'],
                 'col-birthdate' => ['label' => 'Tanggal Lahir', 'default' => true, 'value' => fn ($u) => optional($u->profile)->birth_date ?? '-'],
             ];
@@ -4949,7 +4951,8 @@ class ActivityController extends Controller
     {
         $search = $request->input('search');
         $batchId = $request->input('batch_id');
-        $perPage = 50;
+        $perPage = (int) $request->input('per_page', 50);
+        if ($perPage > 500) $perPage = 500;
         $query = ActivityUser::with(['user.profile.province'])
             ->where('activity_id', $id);
 

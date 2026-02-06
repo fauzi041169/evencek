@@ -100,15 +100,15 @@ export default function Requirements({ activity, division, requirements: initial
     return (
         <MainLayout>
             <Head title={`Kebutuhan Divisi - ${division.name}`} />
-            
+
             <div className="min-h-screen bg-gray-50 py-1 sm:py-6">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Header */}
                     <div className="mb-3 sm:mb-6">
                         <div className="flex items-center justify-between">
                             <div>
-                                <Link 
-                                    href={route('activity.preparation.index', activity.id)} 
+                                <Link
+                                    href={route('activity.preparation.index', activity.id)}
                                     className="text-secondary hover:text-secondary mb-2 inline-block"
                                 >
                                     <i className="fas fa-arrow-left mr-2"></i>Kembali ke Manajemen Persiapan
@@ -116,7 +116,7 @@ export default function Requirements({ activity, division, requirements: initial
                                 <h1 className="text-3xl font-bold text-gray-900">Kebutuhan Divisi</h1>
                                 <p className="text-gray-600 mt-1">{division.name} - {activity.name}</p>
                             </div>
-                            <button 
+                            <button
                                 className="btn btn-primary"
                                 onClick={() => {
                                     reset();
@@ -169,7 +169,7 @@ export default function Requirements({ activity, division, requirements: initial
                                     <table className="table table-striped">
                                         <thead>
                                             <tr>
-                                                <th>No</th>
+                                                <th className="text-center">No</th>
                                                 <th>Nama Kebutuhan</th>
                                                 <th>Jumlah</th>
                                                 <th>Satuan</th>
@@ -181,7 +181,7 @@ export default function Requirements({ activity, division, requirements: initial
                                         <tbody>
                                             {requirements.map((requirement, index) => (
                                                 <tr key={requirement.id}>
-                                                    <td>{index + 1}</td>
+                                                    <td className="text-center">{index + 1}</td>
                                                     <td className="font-medium">{requirement.name}</td>
                                                     <td>{requirement.quantity}</td>
                                                     <td>{requirement.unit || '-'}</td>
@@ -192,13 +192,13 @@ export default function Requirements({ activity, division, requirements: initial
                                                     </td>
                                                     <td>{requirement.notes ? requirement.notes.substring(0, 50) + (requirement.notes.length > 50 ? '...' : '') : '-'}</td>
                                                     <td>
-                                                        <button 
+                                                        <button
                                                             className="btn btn-sm btn-warning mr-1"
                                                             onClick={() => openEditModal(requirement)}
                                                         >
                                                             <i className="fas fa-edit"></i>
                                                         </button>
-                                                        <button 
+                                                        <button
                                                             className="btn btn-sm btn-danger"
                                                             onClick={() => handleDelete(requirement)}
                                                         >
@@ -260,7 +260,7 @@ export default function Requirements({ activity, division, requirements: initial
                         <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md">
                             <div className="p-4 border-b">
                                 <h5 className="text-lg font-semibold">Tambah Kebutuhan</h5>
-                                <button 
+                                <button
                                     className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
                                     onClick={() => setShowAddModal(false)}
                                 >
@@ -271,8 +271,8 @@ export default function Requirements({ activity, division, requirements: initial
                                 <div className="p-3 sm:p-4 space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Nama Kebutuhan *</label>
-                                        <input 
-                                            type="text" 
+                                        <input
+                                            type="text"
                                             className="form-control mt-1"
                                             value={data.name}
                                             onChange={e => setData('name', e.target.value)}
@@ -284,8 +284,8 @@ export default function Requirements({ activity, division, requirements: initial
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Jumlah *</label>
-                                            <input 
-                                                type="number" 
+                                            <input
+                                                type="number"
                                                 className="form-control mt-1"
                                                 value={data.quantity}
                                                 onChange={e => setData('quantity', e.target.value)}
@@ -295,8 +295,8 @@ export default function Requirements({ activity, division, requirements: initial
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Satuan</label>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 className="form-control mt-1"
                                                 value={data.unit}
                                                 onChange={e => setData('unit', e.target.value)}
@@ -306,7 +306,7 @@ export default function Requirements({ activity, division, requirements: initial
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Status</label>
-                                        <select 
+                                        <select
                                             className="form-control mt-1"
                                             value={data.status}
                                             onChange={e => setData('status', e.target.value)}
@@ -318,7 +318,7 @@ export default function Requirements({ activity, division, requirements: initial
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Catatan</label>
-                                        <textarea 
+                                        <textarea
                                             className="form-control mt-1"
                                             rows="3"
                                             value={data.notes}
@@ -328,15 +328,15 @@ export default function Requirements({ activity, division, requirements: initial
                                     </div>
                                 </div>
                                 <div className="p-4 border-t flex justify-end space-x-2">
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         className="btn btn-secondary"
                                         onClick={() => setShowAddModal(false)}
                                     >
                                         Batal
                                     </button>
-                                    <button 
-                                        type="submit" 
+                                    <button
+                                        type="submit"
                                         className="btn btn-primary"
                                         disabled={processing}
                                     >
@@ -357,7 +357,7 @@ export default function Requirements({ activity, division, requirements: initial
                         <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md">
                             <div className="p-4 border-b">
                                 <h5 className="text-lg font-semibold">Edit Kebutuhan</h5>
-                                <button 
+                                <button
                                     className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
                                     onClick={() => setShowEditModal(false)}
                                 >
@@ -368,8 +368,8 @@ export default function Requirements({ activity, division, requirements: initial
                                 <div className="p-4 space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Nama Kebutuhan *</label>
-                                        <input 
-                                            type="text" 
+                                        <input
+                                            type="text"
                                             className="form-control mt-1"
                                             value={data.name}
                                             onChange={e => setData('name', e.target.value)}
@@ -380,8 +380,8 @@ export default function Requirements({ activity, division, requirements: initial
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Jumlah *</label>
-                                            <input 
-                                                type="number" 
+                                            <input
+                                                type="number"
                                                 className="form-control mt-1"
                                                 value={data.quantity}
                                                 onChange={e => setData('quantity', e.target.value)}
@@ -391,8 +391,8 @@ export default function Requirements({ activity, division, requirements: initial
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Satuan</label>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 className="form-control mt-1"
                                                 value={data.unit}
                                                 onChange={e => setData('unit', e.target.value)}
@@ -401,7 +401,7 @@ export default function Requirements({ activity, division, requirements: initial
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Status</label>
-                                        <select 
+                                        <select
                                             className="form-control mt-1"
                                             value={data.status}
                                             onChange={e => setData('status', e.target.value)}
@@ -413,7 +413,7 @@ export default function Requirements({ activity, division, requirements: initial
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700">Catatan</label>
-                                        <textarea 
+                                        <textarea
                                             className="form-control mt-1"
                                             rows="3"
                                             value={data.notes}
@@ -422,15 +422,15 @@ export default function Requirements({ activity, division, requirements: initial
                                     </div>
                                 </div>
                                 <div className="p-4 border-t flex justify-end space-x-2">
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         className="btn btn-secondary"
                                         onClick={() => setShowEditModal(false)}
                                     >
                                         Batal
                                     </button>
-                                    <button 
-                                        type="submit" 
+                                    <button
+                                        type="submit"
                                         className="btn btn-primary"
                                         disabled={processing}
                                     >

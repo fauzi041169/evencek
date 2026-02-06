@@ -2,7 +2,7 @@
 import { Filter, Search, X } from 'lucide-react';
 import { Transition } from '@headlessui/react';
 
-export default function ColumnFilter({ label, options = [], value, onChange, className = '' }) {
+export default function ColumnFilter({ label, options = [], value, onChange, className = '', dark = false }) {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const dropdownRef = useRef(null);
@@ -24,7 +24,7 @@ export default function ColumnFilter({ label, options = [], value, onChange, cla
     const filteredOptions = useMemo(() => {
         if (!search) return normalizedOptions;
         const s = search.toLowerCase();
-        return normalizedOptions.filter(opt => 
+        return normalizedOptions.filter(opt =>
             opt.label.toLowerCase().includes(s)
         );
     }, [normalizedOptions, search]);
@@ -46,7 +46,7 @@ export default function ColumnFilter({ label, options = [], value, onChange, cla
 
     return (
         <div className={`flex items-center gap-2 ${className}`} ref={dropdownRef}>
-            <span className={`font-semibold uppercase tracking-wider text-xs whitespace-nowrap ${value ? 'text-primary' : 'text-slate-700'}`}>
+            <span className={`font-bold uppercase tracking-wider text-[10px] whitespace-nowrap ${value ? (dark ? 'text-white underline decoration-2' : 'text-primary') : (dark ? 'text-indigo-100' : 'text-slate-700')}`}>
                 {label}
             </span>
             <div className="relative">
@@ -55,7 +55,7 @@ export default function ColumnFilter({ label, options = [], value, onChange, cla
                         e.stopPropagation();
                         setIsOpen(!isOpen);
                     }}
-                    className={`p-1 rounded hover:bg-slate-200 transition-colors ${value ? 'text-primary bg-indigo-50 ring-1 ring-indigo-200' : 'text-slate-400'}`}
+                    className={`p-1 rounded transition-all duration-200 ${value ? (dark ? 'text-white bg-white/20 ring-1 ring-white/30' : 'text-primary bg-indigo-50 ring-1 ring-indigo-200') : (dark ? 'text-white/70 hover:bg-white/10 hover:text-white' : 'text-slate-400 hover:bg-slate-200')}`}
                     title={`Filter ${label}`}
                 >
                     <Filter className="w-3.5 h-3.5" />
@@ -83,7 +83,7 @@ export default function ColumnFilter({ label, options = [], value, onChange, cla
                             />
                             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
                             {search && (
-                                <button 
+                                <button
                                     onClick={() => setSearch('')}
                                     className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
                                 >
@@ -91,7 +91,7 @@ export default function ColumnFilter({ label, options = [], value, onChange, cla
                                 </button>
                             )}
                         </div>
-                        
+
                         <div className="max-h-56 overflow-y-auto space-y-0.5 custom-scrollbar">
                             <button
                                 onClick={() => {
@@ -103,7 +103,7 @@ export default function ColumnFilter({ label, options = [], value, onChange, cla
                                 <span>Semua</span>
                                 {!value && <span className="text-primary text-[10px]">â—</span>}
                             </button>
-                            
+
                             {filteredOptions.map((opt, idx) => {
                                 const isSelected = String(value) === opt.value;
                                 return (
@@ -120,7 +120,7 @@ export default function ColumnFilter({ label, options = [], value, onChange, cla
                                     </button>
                                 );
                             })}
-                            
+
                             {filteredOptions.length === 0 && (
                                 <div className="px-2 py-4 text-xs text-slate-400 text-center italic">
                                     Tidak ada data

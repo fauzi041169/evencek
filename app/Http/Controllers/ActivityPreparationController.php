@@ -1111,7 +1111,8 @@ class ActivityPreparationController extends Controller
                 // ActivityUser model uses standard timestamps
                 $orderColumn = 'created_at';
 
-                $perPage = request('per_page', 15);
+                $perPage = (int) request('per_page', 25);
+                if ($perPage > 500) $perPage = 500;
                 $participants = $query->orderBy($orderColumn, 'desc')->paginate($perPage)->appends(request()->query());
 
                 // Map roomAssignment.room to room for frontend compatibility

@@ -5,6 +5,8 @@ import Alerts from '../Components/Alerts';
 import Swal from 'sweetalert2';
 import Modal from '../Components/Modal';
 import { useTranslation } from 'react-i18next';
+import FloatingAI from '../Components/FloatingAI';
+
 
 export default function MainLayout({ children, title = 'Dashboard', fluid = false, noPadding = false }) {
     const { auth, flash, errors, appSettings } = usePage().props;
@@ -58,7 +60,7 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
                     }
                 });
                 // Optimistically update
-                setNotifications(prev => prev.map(item => 
+                setNotifications(prev => prev.map(item =>
                     item.id === n.id ? { ...item, read_at: new Date().toISOString() } : item
                 ));
                 setUnreadCount(prev => Math.max(0, prev - 1));
@@ -66,16 +68,16 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
                 console.error(e);
             }
         }
-        
+
         setIsNotificationOpen(false);
 
         if (n.data.url) {
-             // Use Inertia router if possible, otherwise window.location
-             if (n.data.url.startsWith('http')) {
-                 window.location.href = n.data.url;
-             } else {
-                 router.visit(n.data.url);
-             }
+            // Use Inertia router if possible, otherwise window.location
+            if (n.data.url.startsWith('http')) {
+                window.location.href = n.data.url;
+            } else {
+                router.visit(n.data.url);
+            }
         }
     };
 
@@ -287,15 +289,15 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
                                 {/* Notification Dropdown */}
                                 {isNotificationOpen && (
                                     <>
-                                        <div 
-                                            className="fixed inset-0 z-40" 
+                                        <div
+                                            className="fixed inset-0 z-40"
                                             onClick={() => setIsNotificationOpen(false)}
                                         ></div>
                                         <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl ring-1 ring-black ring-opacity-5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                             <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                                                 <h3 className="text-sm font-bold text-gray-700">Notifikasi</h3>
                                                 {unreadCount > 0 && (
-                                                    <button 
+                                                    <button
                                                         onClick={markAllRead}
                                                         className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
                                                     >
@@ -306,7 +308,7 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
                                             <div className="max-h-96 overflow-y-auto custom-scrollbar">
                                                 {notifications.length > 0 ? (
                                                     notifications.map((n) => (
-                                                        <div 
+                                                        <div
                                                             key={n.id}
                                                             onClick={() => handleNotificationClick(n)}
                                                             className={`px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 transition-colors ${!n.read_at ? 'bg-indigo-50/50' : ''}`}
@@ -537,8 +539,10 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
                 </nav>
 
                 {/* Page Content */}
-                <main className={`flex-1 overflow-x-hidden ${noPadding ? '' : 'p-2 md:p-6 lg:p-8'}`}>
-                    <div className="w-full">
+                <main className={`flex-1 ${noPadding ? '' : 'p-2 md:p-6 lg:p-8'}`}>
+                    {/* Added slight horizontal padding for better aesthetics */}
+                    <div className="w-full px-4 sm:px-6 lg:px-8">
+
                         {/* Global Alerts - Fixed Position, no layout space needed */}
                         <Alerts flash={flash} errors={errors} />
 
@@ -548,6 +552,7 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
                         </div>
                     </div>
                 </main>
+
 
                 {/* Simple Footer */}
                 <footer className="bg-white border-t border-gray-200 py-4 px-6 text-center text-sm text-gray-500">
@@ -617,6 +622,9 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
                 {/* Safe Area Fill */}
                 <div className="h-safe bg-white"></div>
             </div>
+            {/* Floating AI Robot */}
+            <FloatingAI />
         </div>
     );
 }
+

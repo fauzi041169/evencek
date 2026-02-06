@@ -643,7 +643,7 @@ export default function Dashboard({
             <div className="min-h-screen bg-gray-50/50 pb-2 sm:pb-10">
                 {/* Header */}
                 <div className="bg-white rounded-lg sm:rounded-xl shadow-md p-2 sm:p-6 mb-1 sm:mb-6 transform transition-all hover:translate-y-[-2px] hover:shadow-lg">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
                         <div className="flex-1 min-w-0">
                             <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-700 mb-1">Dashboard Acara</h2>
                             <p className="text-xs sm:text-sm text-gray-500 truncate">{activity.name}</p>
@@ -785,10 +785,7 @@ export default function Dashboard({
                                                             'border-orange-400'
                                                         }`}
                                                 />
-                                                <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm ${index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                                                    index === 1 ? 'bg-gray-300 text-gray-800' :
-                                                        'bg-orange-600 text-white'
-                                                    }`}>
+                                                <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm bg-indigo-600 text-white text-center">
                                                     {index + 1}
                                                 </div>
                                             </div>

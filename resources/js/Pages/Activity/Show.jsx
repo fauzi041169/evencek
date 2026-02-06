@@ -366,7 +366,7 @@ export default function Show({
             if (pendingEnrollmentData.voucherCode) {
                 finalData.committee_voucher_code = pendingEnrollmentData.voucherCode;
             }
-            
+
             processEnrollment(pendingEnrollmentData.type, pendingEnrollmentData.force, finalData);
             setPendingEnrollmentData(null);
         }
@@ -1175,8 +1175,11 @@ export default function Show({
                                                 >
                                                     <option value="10">10</option>
                                                     <option value="20">20</option>
+                                                    <option value="25">25</option>
                                                     <option value="50">50</option>
                                                     <option value="100">100</option>
+                                                    <option value="250">250</option>
+                                                    <option value="500">500</option>
                                                 </select>
                                             </div>
                                             {activity.activity_type !== 'non_batch' && batches && batches.length > 1 && (

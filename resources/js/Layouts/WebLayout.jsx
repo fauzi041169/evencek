@@ -5,6 +5,8 @@ import Footer from '../Components/Footer';
 import Alerts from '../Components/Alerts';
 import LoginDropdown from '../Components/LoginDropdown';
 import Modal from '../Components/Modal';
+import FloatingAI from '../Components/FloatingAI';
+
 
 export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = false, noPadding = false, fluid = false }) {
     const { props, url } = usePage();
@@ -569,6 +571,9 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                 {/* Safe Area Fill */}
                 <div className="h-safe bg-white"></div>
             </div>
+            {/* Floating AI Robot */}
+            <FloatingAI />
         </div>
     );
 }
+

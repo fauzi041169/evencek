@@ -1109,12 +1109,12 @@ export default function Index({
 
 
                 {/* Table */}
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="mt-6 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-max text-sm text-left">
-                            <thead className="bg-slate-50/80 backdrop-blur border-b border-slate-200">
-                                <tr>
-                                    {visibleColumns['col-index'] && <th className="px-4 py-2 font-semibold text-slate-700 uppercase tracking-wider text-xs whitespace-nowrap w-12">
+                            <thead>
+                                <tr className="bg-indigo-600 text-white">
+                                    {visibleColumns['col-index'] && <th className="px-4 py-4 font-bold uppercase tracking-wider text-xs whitespace-nowrap w-12 first:rounded-tl-2xl">
                                         <div className="flex items-center justify-center">
                                             <input
                                                 type="checkbox"
@@ -1125,217 +1125,237 @@ export default function Index({
                                         </div>
                                     </th>}
                                     {visibleColumns['col-name'] && (
-                                        <th className="px-4 py-2 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap">
                                             <ColumnFilter
                                                 label="Nama Lengkap"
                                                 options={nameOptions}
                                                 value={filters.name}
                                                 onChange={(val) => handleFilterChange('name', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-email'] && (
-                                        <th className="px-4 py-2 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap">
                                             <ColumnFilter
                                                 label="Email"
                                                 options={emailOptions}
                                                 value={filters.email}
                                                 onChange={(val) => handleFilterChange('email', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-hp'] && (
-                                        <th className="px-4 py-2 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap">
                                             <ColumnFilter
                                                 label="No. HP"
                                                 options={hpOptions}
                                                 value={filters.no_hp}
                                                 onChange={(val) => handleFilterChange('no_hp', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-nik'] && (
-                                        <th className="px-4 py-2 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap">
                                             <ColumnFilter
                                                 label="NIK"
                                                 options={nikOptions}
                                                 value={filters.nik}
                                                 onChange={(val) => handleFilterChange('nik', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-instansi'] && (
-                                        <th className="px-4 py-2 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap">
                                             <ColumnFilter
                                                 label="Instansi"
                                                 options={instansiOptions}
                                                 value={filters.instansi}
                                                 onChange={(val) => handleFilterChange('instansi', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-pekerjaan'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Pekerjaan"
                                                 options={pekerjaanOptions}
                                                 value={filters.pekerjaan}
                                                 onChange={(val) => handleFilterChange('pekerjaan', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-jabatan'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Jabatan"
                                                 options={jabatanOptions}
                                                 value={filters.jabatan}
                                                 onChange={(val) => handleFilterChange('jabatan', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-prov'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Provinsi"
                                                 options={provinceOptions}
                                                 value={filters.province_name}
                                                 onChange={(val) => handleFilterChange('province_name', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-regency'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Kabupaten/Kota"
                                                 options={regencyNameOptions}
                                                 value={filters.regency_name}
                                                 onChange={(val) => handleFilterChange('regency_name', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-district'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Kecamatan"
                                                 options={districtNameOptions}
                                                 value={filters.district_name}
                                                 onChange={(val) => handleFilterChange('district_name', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-alamat'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Alamat"
                                                 options={addressOptions}
                                                 value={filters.address}
                                                 onChange={(val) => handleFilterChange('address', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-gender'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Jenis Kelamin"
                                                 options={genderOptions}
                                                 value={filters.gender}
                                                 onChange={(val) => handleFilterChange('gender', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-birthplace'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Tempat Lahir"
                                                 options={birthPlaceOptions}
                                                 value={filters.birth_place}
                                                 onChange={(val) => handleFilterChange('birth_place', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-birthdate'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Tanggal Lahir"
                                                 options={birthYearOptions}
                                                 value={filters.birth_year}
                                                 onChange={(val) => handleFilterChange('birth_year', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-room'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Kamar"
                                                 options={roomOptions}
                                                 value={filters.room_number}
                                                 onChange={(val) => handleFilterChange('room_number', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-group'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Kelompok"
                                                 options={participantGroups}
                                                 value={filters.group_id}
                                                 onChange={(val) => handleFilterChange('group_id', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
-                                    {visibleColumns['col-created-at'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Tanggal Daftar</th>}
-                                    {visibleColumns['col-updated-at'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Terakhir Update</th>}
-                                    {visibleColumns['col-batch'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Batch</th>}
-                                    {visibleColumns['col-card-status'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Status Kartu</th>}
-                                    {visibleColumns['col-certificate-id'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">ID Sertifikat</th>}
-                                    {visibleColumns['col-print-count'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Jml Cetak</th>}
-                                    {visibleColumns['col-created-by'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Dibuat Oleh</th>}
-                                    {visibleColumns['col-updated-by'] && <th className="px-6 py-4 whitespace-nowrap font-semibold text-slate-700 uppercase tracking-wider text-xs">Diupdate Oleh</th>}
+                                    {visibleColumns['col-created-at'] && <th className="px-4 py-4 whitespace-nowrap font-bold text-white uppercase tracking-wider text-xs">Tanggal Daftar</th>}
+                                    {visibleColumns['col-updated-at'] && <th className="px-4 py-4 whitespace-nowrap font-bold text-white uppercase tracking-wider text-xs">Terakhir Update</th>}
+                                    {visibleColumns['col-batch'] && <th className="px-4 py-4 whitespace-nowrap font-bold text-white uppercase tracking-wider text-xs">Batch</th>}
+                                    {visibleColumns['col-card-status'] && <th className="px-4 py-4 whitespace-nowrap font-bold text-white uppercase tracking-wider text-xs">Status Kartu</th>}
+                                    {visibleColumns['col-certificate-id'] && <th className="px-4 py-4 whitespace-nowrap font-bold text-white uppercase tracking-wider text-xs">ID Sertifikat</th>}
+                                    {visibleColumns['col-print-count'] && <th className="px-4 py-4 whitespace-nowrap font-bold text-white uppercase tracking-wider text-xs">Jml Cetak</th>}
+                                    {visibleColumns['col-created-by'] && <th className="px-4 py-4 whitespace-nowrap font-bold text-white uppercase tracking-wider text-xs">Dibuat Oleh</th>}
+                                    {visibleColumns['col-updated-by'] && <th className="px-4 py-4 whitespace-nowrap font-bold text-white uppercase tracking-wider text-xs">Diupdate Oleh</th>}
                                     {availableCustomKeys.map(key => {
                                         const baseKey = key.split('|')[0].trim();
                                         return visibleColumns[`col-custom-${kebabCase(baseKey)}`] && (
-                                            <th key={key} className="px-6 py-4 whitespace-nowrap">
+                                            <th key={key} className="px-4 py-4 whitespace-nowrap text-white">
                                                 <ColumnFilter
                                                     label={getCleanLabel(key, availableCustomKeys)}
                                                     options={customOptions[key] || []}
                                                     value={filters[`custom_${key}`]}
                                                     onChange={(val) => handleFilterChange(`custom_${key}`, val)}
+                                                    dark={true}
                                                 />
                                             </th>
                                         );
                                     })}
                                     {visibleColumns['col-status'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Status"
                                                 options={statusOptions}
                                                 value={filters.participant_status}
                                                 onChange={(val) => handleFilterChange('participant_status', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-payment-method'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Metode Pembayaran"
                                                 options={paymentMethodOptions}
                                                 value={filters.payment_method}
                                                 onChange={(val) => handleFilterChange('payment_method', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
                                     {visibleColumns['col-registration-method'] && (
-                                        <th className="px-6 py-4 whitespace-nowrap">
+                                        <th className="px-4 py-4 whitespace-nowrap text-white">
                                             <ColumnFilter
                                                 label="Metode Daftar"
                                                 options={registrationMethodOptions}
                                                 value={filters.registration_method}
                                                 onChange={(val) => handleFilterChange('registration_method', val)}
+                                                dark={true}
                                             />
                                         </th>
                                     )}
-                                    {visibleColumns['col-action'] && <th className="px-6 py-4 font-semibold text-slate-700 uppercase tracking-wider text-xs text-right whitespace-nowrap">Aksi</th>}
+                                    {visibleColumns['col-action'] && <th className="px-4 py-4 font-bold uppercase tracking-wider text-xs text-right whitespace-nowrap text-white last:rounded-tr-2xl">Aksi</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">

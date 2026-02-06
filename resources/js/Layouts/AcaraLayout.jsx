@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import Alerts from '../Components/Alerts';
 import Modal from '../Components/Modal';
+import FloatingAI from '../Components/FloatingAI';
+
 
 export default function AcaraLayout({ children, activity, title = 'Acara', fluid = false, noPadding = false }) {
     const { auth, flash, errors, appSettings } = usePage().props;
@@ -502,6 +504,9 @@ export default function AcaraLayout({ children, activity, title = 'Acara', fluid
                     &copy; {new Date().getFullYear()} {usePage().props.appName || 'EventCek'}. Developed by PT. ADZKIATEKNO EDU SOLUTION. All rights reserved.
                 </footer>
             </div>
+            {/* Floating AI Robot */}
+            <FloatingAI />
         </div >
     );
 }
+

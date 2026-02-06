@@ -16,10 +16,24 @@ use App\Models\PaymentChannel;
 use App\Models\ActivityBatch;
 use App\Models\Voucher;
 use App\Models\User;
+use App\Models\FinancialSetting;
 use Exception;
 
 class MidtransPaymentController extends Controller
 {
+    public function getChannels()
+    {
+        $channels = PaymentChannel::where('is_active', true)
+            ->orderBy('type')
+            ->orderBy('name')
+            ->get();
+            
+        return response()->json([
+            'success' => true,
+            'channels' => $channels
+        ]);
+    }
+
     public function __construct()
     {
         $this->configureMidtrans();
@@ -310,7 +324,7 @@ class MidtransPaymentController extends Controller
             $missingFields = $user->getIncompleteProfileFields();
         }
 
-        if (! empty($missingFields)) {
+        if (! empty($missingFields) && ! $request->boolean('is_bulk')) {
             $msg = 'Profil Anda belum lengkap. Lengkapi data berikut: '.implode(', ', $missingFields);
 
             if ($isAjax || $isModal) {
@@ -375,13 +389,24 @@ class MidtransPaymentController extends Controller
             $price = $activeBatch->price;
         }
 
-        // Check minimum payment amount for automatic payment
-        $financialSettings = FinancialSetting::first();
+        // Check minimum payment amount for automatic payment (Adjust for bulk if applicable)
+        $financialSettings = FinancialSetting::current();
         $minAutoPrice = $financialSettings ? $financialSettings->min_auto_price : 10000;
         
-        if ($price > 0 && $price < $minAutoPrice) {
-            return redirect()->back()
-                ->with('error', 'Biaya kegiatan (Rp ' . number_format($price, 0, ',', '.') . ') di bawah batas minimum pembayaran otomatis (Rp ' . number_format($minAutoPrice, 0, ',', '.') . '). Silakan hubungi admin atau gunakan metode manual.');
+        $bulk = session('import_bulk_payment') ?? session('import_bulk_payment_payload');
+        $checkPrice = $price;
+        if ($request->boolean('is_bulk') && is_array($bulk)) {
+            $checkPrice = (int) ($bulk['gross_amount'] ?? $checkPrice);
+        }
+
+        if ($checkPrice > 0 && $checkPrice < $minAutoPrice) {
+            $errorMsg = 'Total tagihan (Rp ' . number_format($checkPrice, 0, ',', '.') . ') di bawah batas minimum pembayaran otomatis (Rp ' . number_format($minAutoPrice, 0, ',', '.') . '). Silakan gunakan metode manual.';
+            
+            if ($isAjax || $isModal) {
+                 return response()->json(['status' => 'error', 'message' => $errorMsg], 422);
+            }
+
+            return redirect()->back()->with('error', $errorMsg);
         }
 
         if ($price == 0) {

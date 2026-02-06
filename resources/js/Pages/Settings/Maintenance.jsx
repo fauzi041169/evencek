@@ -378,15 +378,69 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
         }
     };
 
+    const togglePermission = async (role, permission, currentStatus) => {
+        if (role === 'superadmin') return;
+
+        Swal.fire({
+            title: currentStatus ? 'Cabut Izin?' : 'Berikan Izin?',
+            text: `${currentStatus ? 'Menonaktifkan' : 'Mengaktifkan'} izin '${permission}' untuk role '${role}'.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: currentStatus ? '#d33' : '#10b981',
+            cancelButtonColor: '#718096',
+            confirmButtonText: 'Ya, Ubah!',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await requestJson(route('maintenance.update-permission'), {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            role: role,
+                            permission: permission,
+                            allowed: !currentStatus
+                        }),
+                    });
+
+                    if (res.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: res.message,
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    }
+                } catch (err) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: err.message,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
+            }
+        });
+    };
+
     useEffect(() => {
         fetchLogs();
     }, [logLevel, logLines]);
+
 
     return (
         <MainLayout>
             <Head title="Maintenance" />
             <div className="min-h-screen bg-gray-100 py-6 px-4">
-                <div className="max-w-7xl mx-auto space-y-6">
+                <div className="w-full space-y-6">
+
                     {alert && (
                         <div className={`px-4 py-3 rounded border ${alert.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
                             {alert.message}
@@ -554,8 +608,8 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
                                                     {row.permission}
                                                 </td>
                                                 {roles.map(role => (
-                                                    <td 
-                                                        key={role} 
+                                                    <td
+                                                        key={role}
                                                         className={`px-6 py-2 whitespace-nowrap text-center ${role !== 'superadmin' ? 'cursor-pointer hover:bg-gray-100' : 'cursor-not-allowed opacity-50'}`}
                                                         onClick={() => togglePermission(role, row.permission, row[role])}
                                                         title={role === 'superadmin' ? 'Superadmin permissions cannot be changed' : 'Click to toggle permission'}

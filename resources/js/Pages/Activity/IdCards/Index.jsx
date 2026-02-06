@@ -142,7 +142,7 @@ export default function IdCards({ auth, activity, participants, committees = [],
                                         checked={isAllSelected}
                                     />
                                 </th>
-                                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                                <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
                                     Nama
                                     <input
@@ -210,7 +210,7 @@ export default function IdCards({ auth, activity, participants, committees = [],
                                                 onChange={() => toggleSelection(p.user?.id)}
                                             />
                                         </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{i + 1}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center">{i + 1}</td>
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">{p.user?.name || '-'}</div>
                                             <div className="text-xs text-gray-500">{p.user?.email || ''}</div>

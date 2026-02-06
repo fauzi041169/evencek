@@ -3,7 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import Swal from 'sweetalert2';
 
-const typeLabels = {
+export const typeLabels = {
     bank_transfer: 'Bank Transfer (Virtual Account)',
     e_wallet: 'E-Wallet / QRIS',
     cstore: 'Convenience Store',
@@ -12,23 +12,34 @@ const typeLabels = {
     other: 'Lainnya',
 };
 
-export default function Channels({ channels = [] }) {
-    const { flash } = usePage().props;
+export function ChannelList({
+    channels = [],
+    isSelectionMode = false,
+    onSelect = null,
+    selectedId = null,
+    manualMethods = [] // For selecting manual banks in the same list
+}) {
     const [items, setItems] = useState(channels);
+    const csrfToken = typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') : '';
 
     const grouped = useMemo(() => {
         const map = {};
+        // Midtrans Channels
         items.forEach((ch) => {
             const key = ch.type || 'other';
-            if (!map[key]) {
-                map[key] = [];
-            }
-            map[key].push(ch);
+            if (!map[key]) map[key] = [];
+            map[key].push({ ...ch, is_manual: false });
         });
+        // Inject Manual Methods into bank_transfer or separate
+        if (manualMethods.length > 0) {
+            const key = 'bank_transfer';
+            if (!map[key]) map[key] = [];
+            manualMethods.forEach(m => {
+                map[key].push({ ...m, is_manual: true, type: 'bank_transfer' });
+            });
+        }
         return map;
-    }, [items]);
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }, [items, manualMethods]);
 
     const updateChannel = async (id, payload) => {
         const res = await fetch(route('payments.channels.update', id), {
@@ -40,23 +51,16 @@ export default function Channels({ channels = [] }) {
             },
             body: JSON.stringify(payload),
         });
-        if (!res.ok) {
-            throw new Error('Gagal memperbarui channel');
-        }
+        if (!res.ok) throw new Error('Gagal memperbarui channel');
         return res.json();
     };
 
     const toggleChannel = async (id) => {
         const res = await fetch(route('payments.channels.toggle', id), {
             method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                Accept: 'application/json',
-            },
+            headers: { 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
         });
-        if (!res.ok) {
-            throw new Error('Gagal memperbarui status channel');
-        }
+        if (!res.ok) throw new Error('Gagal memperbarui status channel');
         return res.json();
     };
 
@@ -65,42 +69,144 @@ export default function Channels({ channels = [] }) {
         setItems(next);
         try {
             const data = await toggleChannel(channel.id);
-            if (!data?.success) {
-                throw new Error(data?.message || 'Gagal memperbarui status');
-            }
+            if (!data?.success) throw new Error(data?.message || 'Gagal memperbarui status');
         } catch (err) {
             setItems(items);
-            Swal.fire({
-                title: 'Gagal',
-                text: err.message,
-                icon: 'error',
-                confirmButtonColor: '#E02424'
-            });
+            Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', confirmButtonColor: '#E02424' });
         }
     };
 
     const handleFeeChange = (channel, field, value) => {
-        setItems((prev) =>
-            prev.map((item) => (item.id === channel.id ? { ...item, [field]: value } : item))
-        );
+        setItems((prev) => prev.map((item) => (item.id === channel.id ? { ...item, [field]: value } : item)));
     };
 
     const handleFeeSave = async (channel) => {
         try {
             const payload = { fee: channel.fee ?? 0, fee_type: channel.fee_type || 'fixed' };
             const data = await updateChannel(channel.id, payload);
-            if (!data?.success) {
-                throw new Error(data?.message || 'Gagal menyimpan');
-            }
+            if (!data?.success) throw new Error(data?.message || 'Gagal menyimpan');
         } catch (err) {
-            Swal.fire({
-                title: 'Gagal',
-                text: err.message,
-                icon: 'error',
-                confirmButtonColor: '#E02424'
-            });
+            Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', confirmButtonColor: '#E02424' });
         }
     };
+
+    return (
+        <div className="space-y-8">
+            {Object.keys(grouped).length === 0 ? (
+                <p className="text-sm text-gray-500">Tidak ada channel tersedia.</p>
+            ) : (
+                Object.entries(grouped).map(([type, list]) => (
+                    <div key={type} className="space-y-4">
+                        {/* Category Header matching image: Gray, Uppercase, Tracking-widest */}
+                        <div className="flex items-center gap-4 px-1">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em] whitespace-nowrap">
+                                {typeLabels[type] || type}
+                            </p>
+                            <div className="h-px bg-gray-100 flex-1"></div>
+                        </div>
+
+                        {/* Grid 2 Columns matching image */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {list.map((channel) => (
+                                <div
+                                    key={channel.is_manual ? `manual-${channel.id}` : channel.code}
+                                    onClick={() => isSelectionMode && onSelect && onSelect(channel)}
+                                    className={`group relative flex flex-col p-4 bg-white border border-gray-100 rounded-2xl transition-all duration-300 ${isSelectionMode
+                                            ? 'cursor-pointer hover:border-secondary hover:shadow-lg hover:-translate-y-0.5'
+                                            : 'shadow-sm'
+                                        } ${selectedId === (channel.is_manual ? channel.id : channel.code) ? 'border-secondary ring-2 ring-secondary/10 bg-blue-50/30' : ''}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        {/* Logo Box - Styled to match image proportions */}
+                                        <div className="w-20 h-14 bg-white rounded-xl flex items-center justify-center p-2 shrink-0 border border-transparent group-hover:border-gray-50 transition-colors">
+                                            {channel.is_manual ? (
+                                                <i className="fas fa-university text-orange-400 text-3xl"></i>
+                                            ) : channel.icon_url ? (
+                                                <img
+                                                    src={channel.icon_url.startsWith('http') ? channel.icon_url : `/${channel.icon_url}`}
+                                                    alt={channel.name}
+                                                    className="max-h-full max-w-full object-contain"
+                                                />
+                                            ) : (
+                                                <i className="fas fa-university text-gray-200 text-3xl"></i>
+                                            )}
+                                        </div>
+
+                                        {/* Info Box - matching typography from image */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-bold text-gray-800 leading-tight">
+                                                {channel.name}
+                                                {channel.is_manual && <span className="ml-2 text-[9px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Manual</span>}
+                                            </div>
+                                            <div className="text-[11px] text-gray-500 mt-1 uppercase font-semibold tracking-wide">
+                                                {channel.is_manual ? (
+                                                    <span className="text-orange-500">Verifikasi Manual</span>
+                                                ) : (
+                                                    <span>Biaya: {channel.fee > 0 ? (channel.fee_type === 'percent' ? `${channel.fee}%` : `Rp ${Number(channel.fee).toLocaleString('id-ID')}`) : 'Rp 0'}</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {isSelectionMode && (
+                                            <div className="text-gray-300 group-hover:text-secondary transition-colors">
+                                                <i className="fas fa-chevron-right text-xs"></i>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Admin Controls - Positioned neatly inside the card */}
+                                    {!isSelectionMode && (
+                                        <div className="mt-4 pt-4 border-t border-gray-50 flex flex-wrap items-center justify-between gap-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                                                    <select
+                                                        className="text-[10px] py-1 pl-2 border-none bg-transparent focus:ring-0 cursor-pointer font-bold text-gray-600"
+                                                        value={channel.fee_type || 'fixed'}
+                                                        onChange={(e) => handleFeeChange(channel, 'fee_type', e.target.value)}
+                                                    >
+                                                        <option value="fixed">Rp</option>
+                                                        <option value="percent">%</option>
+                                                    </select>
+                                                    <input
+                                                        type="number"
+                                                        className="w-20 text-[10px] py-1 border-none focus:ring-0 font-bold"
+                                                        value={channel.fee ?? 0}
+                                                        onChange={(e) => handleFeeChange(channel, 'fee', e.target.value)}
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={() => handleFeeSave(channel)}
+                                                    className="w-8 h-8 flex items-center justify-center bg-secondary text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                                                    title="Simpan"
+                                                >
+                                                    <i className="fas fa-save text-xs"></i>
+                                                </button>
+                                            </div>
+
+                                            <button
+                                                onClick={() => handleToggle(channel)}
+                                                className={`px-4 py-1.5 text-[10px] font-black rounded-full transition-all flex items-center gap-2 ${channel.is_active
+                                                        ? 'bg-green-50 text-green-600 border border-green-100'
+                                                        : 'bg-gray-50 text-gray-400 border border-gray-200'
+                                                    }`}
+                                            >
+                                                <span className={`w-1.5 h-1.5 rounded-full ${channel.is_active ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></span>
+                                                {channel.is_active ? 'ACTIVE' : 'DISABLED'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+    );
+}
+
+export default function Channels({ channels = [] }) {
+    const { flash } = usePage().props;
 
     return (
         <MainLayout>
@@ -152,69 +258,8 @@ export default function Channels({ channels = [] }) {
                             </form>
                         </div>
 
-                        <div className="p-6 space-y-6">
-                            {Object.keys(grouped).length === 0 ? (
-                                <p className="text-sm text-gray-500">Tidak ada channel tersedia.</p>
-                            ) : (
-                                Object.entries(grouped).map(([type, list]) => (
-                                    <div key={type} className="border rounded-lg overflow-hidden">
-                                        <div className="bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-700">
-                                            {typeLabels[type] || type}
-                                        </div>
-                                        <div className="divide-y divide-gray-200">
-                                            {list.map((channel) => (
-                                                <div key={channel.id} className="px-4 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 rounded-lg bg-gray-50 border flex items-center justify-center">
-                                                            {channel.icon_url ? (
-                                                                <img src={channel.icon_url} alt={channel.name} className="h-8 w-8 object-contain" />
-                                                            ) : (
-                                                                <i className="fas fa-university text-gray-400"></i>
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            <div className="text-sm font-semibold text-gray-900">{channel.name}</div>
-                                                            <div className="text-xs text-gray-500 font-mono">{channel.code}</div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex flex-wrap items-center gap-3">
-                                                        <select
-                                                            className="text-xs border-gray-300 rounded-md"
-                                                            value={channel.fee_type || 'fixed'}
-                                                            onChange={(e) => handleFeeChange(channel, 'fee_type', e.target.value)}
-                                                        >
-                                                            <option value="fixed">Rp</option>
-                                                            <option value="percent">%</option>
-                                                        </select>
-                                                        <input
-                                                            type="number"
-                                                            className="w-24 text-sm border-gray-300 rounded-md"
-                                                            value={channel.fee ?? 0}
-                                                            min="0"
-                                                            onChange={(e) => handleFeeChange(channel, 'fee', e.target.value)}
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleFeeSave(channel)}
-                                                            className="px-3 py-1.5 text-xs rounded-md bg-secondary text-white hover:bg-blue-700"
-                                                        >
-                                                            Simpan
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleToggle(channel)}
-                                                            className={`px-3 py-1.5 text-xs rounded-md ${channel.is_active ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-                                                        >
-                                                            {channel.is_active ? 'Aktif' : 'Nonaktif'}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                        <div className="p-6">
+                            <ChannelList channels={channels} />
                         </div>
                     </div>
                 </div>

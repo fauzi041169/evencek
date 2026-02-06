@@ -558,6 +558,7 @@ export default function Management({
                                     <table className="w-full">
                                         <thead className="bg-gray-50 border-b border-gray-200">
                                             <tr>
+                                                <th className="px-5 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">No</th>
                                                 <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama</th>
                                                 <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider hidden md:table-cell">Provinsi</th>
                                                 <th className="px-5 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider hidden md:table-cell">Kabupaten</th>
@@ -571,12 +572,15 @@ export default function Management({
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
                                             {participants?.data?.length > 0 ? (
-                                                participants.data.map((participant) => {
+                                                participants.data.map((participant, index) => {
                                                     const status = getAttendanceStatus(participant);
                                                     const isPresent = status?.status === 1;
 
                                                     return (
                                                         <tr key={participant.id} className="hover:bg-gray-50">
+                                                            <td className="px-5 py-3 text-center align-top text-gray-500 text-sm">
+                                                                {((participants.current_page - 1) * participants.per_page) + index + 1}
+                                                            </td>
                                                             <td className="px-4 py-3 align-top">
                                                                 <strong>{participant.user?.name || '-'}</strong>
                                                             </td>
@@ -614,7 +618,7 @@ export default function Management({
                                                 })
                                             ) : (
                                                 <tr>
-                                                    <td colSpan={selectedAttendanceId ? (isManualType ? 5 : 4) : 3} className="px-4 py-8 text-center text-gray-500">
+                                                    <td colSpan={selectedAttendanceId ? (isManualType ? 6 : 5) : 4} className="px-4 py-8 text-center text-gray-500">
                                                         Tidak ada peserta ditemukan.
                                                     </td>
                                                 </tr>

@@ -3,6 +3,8 @@ import { Link, usePage } from '@inertiajs/react';
 import Sidebar from '../Components/Sidebar';
 import Alerts from '../Components/Alerts';
 import Modal from '../Components/Modal';
+import FloatingAI from '../Components/FloatingAI';
+
 
 export default function AdminLayout({ children, title = '', noPadding = false }) {
     const { auth, flash, errors, appSettings } = usePage().props;
@@ -311,6 +313,9 @@ export default function AdminLayout({ children, title = '', noPadding = false })
                     &copy; {new Date().getFullYear()} {usePage().props.appName || 'EventCek'}. Developed by PT. ADZKIATEKNO EDU SOLUTION. All rights reserved.
                 </footer>
             </div>
+            {/* Floating AI Robot */}
+            <FloatingAI />
         </div>
     );
 }
+

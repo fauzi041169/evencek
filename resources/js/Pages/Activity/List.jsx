@@ -18,6 +18,7 @@ export default function List({
     const { auth } = usePage().props;
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters?.category || currentCategory?.id || '');
+    const [perPage, setPerPage] = useState(filters?.per_page || '10');
 
     // Role helpers
     const user = auth?.user;
@@ -31,7 +32,7 @@ export default function List({
             if (searchTerm !== (filters?.search || '')) {
                 router.get(
                     route('activity.list'),
-                    { search: searchTerm, category: selectedCategory },
+                    { search: searchTerm, category: selectedCategory, per_page: perPage },
                     { preserveState: true, replace: true }
                 );
             }
@@ -45,7 +46,17 @@ export default function List({
         setSelectedCategory(categoryId);
         router.get(
             route('activity.list'),
-            { search: searchTerm, category: categoryId },
+            { search: searchTerm, category: categoryId, per_page: perPage },
+            { preserveState: true, replace: true }
+        );
+    };
+
+    const handlePerPageChange = (e) => {
+        const value = e.target.value;
+        setPerPage(value);
+        router.get(
+            route('activity.list'),
+            { search: searchTerm, category: selectedCategory, per_page: value },
             { preserveState: true, replace: true }
         );
     };
@@ -74,12 +85,13 @@ export default function List({
             <Head title={title || "Daftar Aktivitas"} />
 
             <div className="py-2 sm:py-6">
-                <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div className="w-full">
+                    <div className="bg-white overflow-hidden shadow-sm">
+
                         <div className="p-0 sm:p-6 bg-white border-b border-gray-200">
 
-                                {/* Header & Filters Section */}
-                                <div className="flex flex-row items-center gap-2 px-2 py-2 sm:px-0 sm:py-0 mb-0 sm:mb-6 overflow-x-auto">
+                            {/* Header & Filters Section */}
+                            <div className="flex flex-row items-center gap-2 px-2 py-2 sm:px-0 sm:py-0 mb-0 sm:mb-6 overflow-x-auto">
                                 <h2 className="text-2xl font-bold text-gray-800 whitespace-nowrap shrink-0">
                                     {titlepage || "Daftar Aktivitas"}
                                     {currentCategory && <span className="text-secondary"> - {currentCategory.name}</span>}
@@ -106,6 +118,20 @@ export default function List({
                                                 {cat.name}
                                             </option>
                                         ))}
+                                    </select>
+                                </div>
+                                <div className="min-w-[100px] shrink-0">
+                                    <select
+                                        className="w-full border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm"
+                                        value={perPage}
+                                        onChange={handlePerPageChange}
+                                    >
+                                        <option value="10">10 Baris</option>
+                                        <option value="25">25 Baris</option>
+                                        <option value="50">50 Baris</option>
+                                        <option value="100">100 Baris</option>
+                                        <option value="250">250 Baris</option>
+                                        <option value="500">500 Baris</option>
                                     </select>
                                 </div>
 
@@ -135,21 +161,21 @@ export default function List({
                             {/* Activity List */}
                             <div className="bg-white rounded-none sm:rounded-b-xl shadow-xl overflow-hidden">
                                 <div className="overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-gray-200 table-activity">
-                                        <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                                            <tr>
-                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">No</th>
-                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nama Aktivitas</th>
-                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Kategori</th>
-                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Tanggal</th>
-                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Waktu</th>
-                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Metode Pembayaran</th>
-                                                <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead>
+                                            <tr className="bg-indigo-600 text-white">
+                                                <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider first:rounded-tl-lg">No</th>
+                                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Nama Aktivitas</th>
+                                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Kategori</th>
+                                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Tanggal</th>
+                                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Waktu</th>
+                                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Metode Pembayaran</th>
+                                                <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Status</th>
                                                 {user && (
                                                     <>
-                                                        <th className="px-2 sm:px-6 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Pendaftaran</th>
+                                                        <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider">Pendaftaran</th>
                                                         {(isCreator || isAdmin) && (
-                                                            <th className="px-2 sm:px-6 py-2 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>
+                                                            <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider last:rounded-tr-lg">Aksi</th>
                                                         )}
                                                     </>
                                                 )}
@@ -227,7 +253,7 @@ export default function List({
 
                                                     return (
                                                         <tr key={activity.id} className="hover:bg-blue-50 transition-colors duration-150">
-                                                            <td className="px-1 sm:px-6 py-1 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                            <td className="px-1 sm:px-6 py-1 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
                                                                 {startIndex + index}
                                                             </td>
                                                             <td className="px-1 sm:px-6 py-1">

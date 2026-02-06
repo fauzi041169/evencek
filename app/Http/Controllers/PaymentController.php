@@ -275,9 +275,23 @@ class PaymentController extends Controller
             if ($activity->user && $activity->user->isCreator() && ! $activity->user->hasActiveSubscription()) {
                 if ($activity->hasAutomaticPayment()) {
                     $minAuto = (int) (FinancialSetting::current()->min_auto_price ?? 15000);
-                    if ($activity->price > 0 && $activity->price < $minAuto) {
+                    $bulkData = session('import_bulk_payment') ?? session('import_bulk_payment_payload');
+                    $checkPrice = $activity->price;
+                    if (request()->boolean('is_bulk') && is_array($bulkData)) {
+                        $checkPrice = (int) ($bulkData['gross_amount'] ?? $checkPrice);
+                    }
+
+                    if ($checkPrice > 0 && $checkPrice < $minAuto) {
+                        $errorMsg = 'Untuk pembayaran otomatis, total tagihan minimal Rp'.number_format($minAuto, 0, ',', '.').'.';
+                        if (request()->expectsJson() || request()->boolean('modal')) {
+                            return response()->json([
+                                'success' => false,
+                                'status' => 'error',
+                                'message' => $errorMsg,
+                            ], 422);
+                        }
                         return redirect()->route('activity.show', $activity->id)
-                            ->with('error', 'Untuk pembayaran otomatis, harga kegiatan minimal Rp'.number_format($minAuto, 0, ',', '.').'.');
+                            ->with('error', $errorMsg);
                     }
                     if ($activity->price > 0) {
                         if (request()->expectsJson() || request()->boolean('modal')) {

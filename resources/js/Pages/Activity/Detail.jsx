@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Head, usePage, router, useForm } from '@inertiajs/react';
+import { Head, Link, usePage, router, useForm } from '@inertiajs/react';
 import axios from 'axios';
 import WebLayout from '@/Layouts/WebLayout';
 import LoginModal from '@/Components/Auth/LoginModal';
@@ -115,14 +115,15 @@ export default function Detail({
     // Comments & Rating State
     const [rating, setRating] = useState(userRating || 0);
     const [commentBody, setCommentBody] = useState('');
+    const [perPage, setPerPage] = useState(participants?.per_page || 20);
     const [participantSearch, setParticipantSearch] = useState('');
 
     // Debounce search for participants
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (participantSearch.trim() !== '') {
+            if (participantSearch.trim() !== '' || perPage !== (participants?.per_page || 20)) {
                 router.reload({
-                    data: { search: participantSearch },
+                    data: { search: participantSearch, per_page: perPage },
                     only: ['participants'],
                     preserveState: true,
                     preserveScroll: true,
@@ -130,7 +131,12 @@ export default function Detail({
             }
         }, 500);
         return () => clearTimeout(timer);
-    }, [participantSearch]);
+    }, [participantSearch, perPage]);
+
+    const handlePerPageChange = (e) => {
+        const value = e.target.value;
+        setPerPage(value);
+    };
 
     // Handle Auto Enroll after Profile Update
     useEffect(() => {
@@ -581,7 +587,7 @@ export default function Detail({
             <Head title={activity.title || activity.name} />
 
             {/* Hero Section */}
-                    <div className="relative bg-slate-900 overflow-hidden min-h-[80px] sm:min-h-[400px] lg:min-h-[500px] flex items-center">
+            <div className="relative bg-slate-900 overflow-hidden min-h-[80px] sm:min-h-[400px] lg:min-h-[500px] flex items-center">
                 <style>{`
                     @keyframes fade-up {
                         from { opacity: 0; transform: translateY(20px); }
@@ -1234,21 +1240,37 @@ export default function Detail({
 
                         {/* Participants List */}
                         {isVisible('detail_participants') && (
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[500px] overflow-hidden">
-                                <div className="px-3 py-2 sm:px-6 sm:py-4 border-b flex items-center justify-between bg-amber-50 border-yellow-200">
-                                    <h5 className="m-0 font-bold text-yellow-800">{t('activities.participants_list')}</h5>
+                            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 flex flex-col h-[500px] overflow-hidden transition-all duration-300 hover:shadow-2xl">
+                                <div className="px-3 py-3 sm:px-6 sm:py-4 border-b flex items-center justify-between bg-indigo-600 border-indigo-700">
+                                    <h5 className="m-0 font-bold text-white">{t('activities.participants_list')}</h5>
                                 </div>
                                 <div className="px-3 py-3 sm:px-6 sm:py-5 flex-1 flex flex-col min-h-0">
-                                    <div className="mb-3">
-                                        <div className="relative">
-                                            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                                    <div className="mb-4 flex flex-col sm:flex-row gap-3">
+                                        <div className="relative flex-1 group">
+                                            <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
                                             <input
                                                 type="search"
                                                 value={participantSearch}
                                                 onChange={(e) => setParticipantSearch(e.target.value)}
-                                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none text-sm"
                                                 placeholder={t('activities.search_participants')}
                                             />
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-xl border border-gray-100">
+                                            <label className="text-[10px] font-bold uppercase tracking-tight text-gray-400 whitespace-nowrap">{t('activities.show')}:</label>
+                                            <select
+                                                className="bg-transparent border-none focus:ring-0 text-sm font-semibold text-gray-700 cursor-pointer"
+                                                value={perPage}
+                                                onChange={handlePerPageChange}
+                                            >
+                                                <option value="10">10</option>
+                                                <option value="20">20</option>
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                                <option value="100">100</option>
+                                                <option value="250">250</option>
+                                                <option value="500">500</option>
+                                            </select>
                                         </div>
                                     </div>
                                     <div className="flex-1 min-h-0 overflow-y-auto pr-1">
@@ -1281,6 +1303,34 @@ export default function Detail({
                                             </div>
                                         )}
                                     </div>
+                                    {participants.links && participants.last_page > 1 && (
+                                        <div className="px-3 pb-3">
+                                            <div className="flex flex-wrap justify-center gap-1">
+                                                {participants.links.map((link, i) => (
+                                                    link.url ? (
+                                                        <Link
+                                                            key={i}
+                                                            href={link.url}
+                                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${link.active
+                                                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                                                                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                                                                }`}
+                                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                                            preserveScroll={true}
+                                                            preserveState={true}
+                                                            only={['participants']}
+                                                        />
+                                                    ) : (
+                                                        <span
+                                                            key={i}
+                                                            className="px-2 py-1 rounded text-xs text-gray-400 bg-gray-50 border border-gray-200 cursor-not-allowed"
+                                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                                        />
+                                                    )
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

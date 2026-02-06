@@ -59,8 +59,11 @@ class HandleInertiaRequests extends Middleware
                 'navbar_opacity' => \App\Models\Setting::get('navbar_opacity', '1'),
                 'subscription_service_enabled' => \App\Models\Setting::get('subscription_service_enabled', '0') === '1',
                 'colors' => \App\Models\Setting::getColors(),
+                'isLocal' => app()->environment(['local', 'development']),
             ],
         ]);
+
+
     }
     private static function formatAssetUrl($path)
     {

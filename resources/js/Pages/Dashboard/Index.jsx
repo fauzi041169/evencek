@@ -2,31 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    ArcElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    BarElement,
+    ArcElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
 );
 
 export default function DashboardIndex(props) {
@@ -171,7 +171,7 @@ export default function DashboardIndex(props) {
             }
         ]
     };
-    
+
     const userProvinceOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -208,8 +208,9 @@ export default function DashboardIndex(props) {
             <Head title="Dashboard" />
 
             <div className="py-2 sm:py-6">
-                <div className="w-full px-2 sm:px-6 lg:px-8">
-                    
+                <div className="w-full px-2">
+
+
                     {/* Row 1: User Visit Trend + Total User */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 mb-3 sm:mb-6">
                         <div className="lg:col-span-9">
@@ -281,7 +282,7 @@ export default function DashboardIndex(props) {
                     {/* Row 3: User by Province */}
                     <div className="mb-3 sm:mb-6">
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6">
-                             <div className="flex justify-between items-center mb-4">
+                            <div className="flex justify-between items-center mb-4">
                                 <h3 className="font-bold text-gray-800">USER BERDASARKAN PROVINSI</h3>
                             </div>
                             <div className="h-80">
@@ -294,117 +295,117 @@ export default function DashboardIndex(props) {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
                         {/* Top Active Users */}
                         {showTopActiveUsers && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 overflow-hidden">
-                            <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50">
-                                <h3 className="font-bold text-gray-800">10 USER TERAKTIF</h3>
-                            </div>
-                            <div className="p-0">
-                                <ul className="divide-y divide-gray-100">
-                                    {(topActiveUsers || []).map((u, i) => (
-                                        <li key={i} className="flex items-center justify-between px-3 py-2 sm:px-6 sm:py-3 hover:bg-gray-50 transition">
-                                            <div className="flex items-center gap-3">
-                                                <img 
-                                                    src={u.photo ? `/assets/images/profilefoto/${u.photo}` : '/assets/images/profilefoto/default-profile.png'} 
-                                                    alt={u.name}
-                                                    className="w-8 h-8 rounded-full object-cover"
-                                                    onError={(e) => {e.target.src = '/assets/images/profilefoto/default-profile.png'}}
-                                                />
-                                                <div>
-                                                    <div className="text-sm font-medium text-gray-900">{i+1}. {u.name}</div>
-                                                    <span className="inline-block px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 text-[10px] font-bold">AKTIF</span>
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 overflow-hidden">
+                                <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50">
+                                    <h3 className="font-bold text-gray-800">10 USER TERAKTIF</h3>
+                                </div>
+                                <div className="p-0">
+                                    <ul className="divide-y divide-gray-100">
+                                        {(topActiveUsers || []).map((u, i) => (
+                                            <li key={i} className="flex items-center justify-between px-3 py-2 sm:px-6 sm:py-3 hover:bg-gray-50 transition">
+                                                <div className="flex items-center gap-3">
+                                                    <img
+                                                        src={u.photo ? `/assets/images/profilefoto/${u.photo}` : '/assets/images/profilefoto/default-profile.png'}
+                                                        alt={u.name}
+                                                        className="w-8 h-8 rounded-full object-cover"
+                                                        onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png' }}
+                                                    />
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-900">{i + 1}. {u.name}</div>
+                                                        <span className="inline-block px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 text-[10px] font-bold">AKTIF</span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="font-bold text-gray-900">{u.total}</div>
-                                                <div className={`text-xs ${u.delta > 0 ? 'text-green-500' : (u.delta < 0 ? 'text-red-500' : 'text-gray-400')}`}>
-                                                    {u.delta > 0 ? '▲' : (u.delta < 0 ? '▼' : '▬')} {Math.abs(u.delta)}
+                                                <div className="text-right">
+                                                    <div className="font-bold text-gray-900">{u.total}</div>
+                                                    <div className={`text-xs ${u.delta > 0 ? 'text-green-500' : (u.delta < 0 ? 'text-red-500' : 'text-gray-400')}`}>
+                                                        {u.delta > 0 ? '▲' : (u.delta < 0 ? '▼' : '▬')} {Math.abs(u.delta)}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </li>
-                                    ))}
-                                    {(!topActiveUsers || topActiveUsers.length === 0) && <li className="px-6 py-4 text-gray-500 text-center">Belum ada data</li>}
-                                </ul>
+                                            </li>
+                                        ))}
+                                        {(!topActiveUsers || topActiveUsers.length === 0) && <li className="px-6 py-4 text-gray-500 text-center">Belum ada data</li>}
+                                    </ul>
+                                </div>
                             </div>
-                        </div>
                         )}
 
                         {/* Top Rated Activities */}
                         {showTopRatedActivities && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6">
-                            <h3 className="font-bold text-gray-800 mb-4">5 AKTIVITAS RATING TERTINGGI</h3>
-                            <ul className="space-y-3 mb-6">
-                                {(topRatedActivities || []).map((a, i) => (
-                                    <li key={i} className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-700 truncate w-3/4">{i+1}. {a.name}</span>
-                                        <span className="font-bold bg-yellow-100 text-yellow-700 px-2 py-1 rounded">{Number(a.rating).toFixed(1)}</span>
-                                    </li>
-                                ))}
-                                {(!topRatedActivities || topRatedActivities.length === 0) && <li className="text-gray-500 text-center">Belum ada data</li>}
-                            </ul>
-
-                            <div className="pt-4 border-t border-gray-100">
-                                <h4 className="font-bold text-gray-800 text-sm mb-3">10 USER TERAKTIF HARI INI</h4>
-                                <ul className="space-y-2">
-                                    {(topDailyActiveUsers || []).map((u, i) => (
-                                        <li key={i} className="flex items-center justify-between text-sm">
-                                            <div className="flex items-center gap-2">
-                                                <img 
-                                                    src={u.photo ? `/assets/images/profilefoto/${u.photo}` : '/assets/images/profilefoto/default-profile.png'} 
-                                                    alt={u.name}
-                                                    className="w-6 h-6 rounded-full object-cover"
-                                                    onError={(e) => {e.target.src = '/assets/images/profilefoto/default-profile.png'}}
-                                                />
-                                                <span className="text-gray-700 truncate max-w-[120px]">{u.name}</span>
-                                            </div>
-                                            <span className="font-semibold text-gray-900">{u.total}</span>
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6">
+                                <h3 className="font-bold text-gray-800 mb-4">5 AKTIVITAS RATING TERTINGGI</h3>
+                                <ul className="space-y-3 mb-6">
+                                    {(topRatedActivities || []).map((a, i) => (
+                                        <li key={i} className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-700 truncate w-3/4">{i + 1}. {a.name}</span>
+                                            <span className="font-bold bg-yellow-100 text-yellow-700 px-2 py-1 rounded">{Number(a.rating).toFixed(1)}</span>
                                         </li>
                                     ))}
-                                     {(!topDailyActiveUsers || topDailyActiveUsers.length === 0) && <li className="text-gray-500 text-center text-xs">Belum ada data hari ini</li>}
+                                    {(!topRatedActivities || topRatedActivities.length === 0) && <li className="text-gray-500 text-center">Belum ada data</li>}
                                 </ul>
+
+                                <div className="pt-4 border-t border-gray-100">
+                                    <h4 className="font-bold text-gray-800 text-sm mb-3">10 USER TERAKTIF HARI INI</h4>
+                                    <ul className="space-y-2">
+                                        {(topDailyActiveUsers || []).map((u, i) => (
+                                            <li key={i} className="flex items-center justify-between text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <img
+                                                        src={u.photo ? `/assets/images/profilefoto/${u.photo}` : '/assets/images/profilefoto/default-profile.png'}
+                                                        alt={u.name}
+                                                        className="w-6 h-6 rounded-full object-cover"
+                                                        onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png' }}
+                                                    />
+                                                    <span className="text-gray-700 truncate max-w-[120px]">{u.name}</span>
+                                                </div>
+                                                <span className="font-semibold text-gray-900">{u.total}</span>
+                                            </li>
+                                        ))}
+                                        {(!topDailyActiveUsers || topDailyActiveUsers.length === 0) && <li className="text-gray-500 text-center text-xs">Belum ada data hari ini</li>}
+                                    </ul>
+                                </div>
                             </div>
-                        </div>
                         )}
 
                         {/* Top Creators */}
                         {showTopCreators && (
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 overflow-hidden">
-                            <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50">
-                                <h3 className="font-bold text-gray-800">10 CREATOR TERBAIK</h3>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-gray-500 uppercase bg-gray-50">
-                                        <tr>
-                                            <th className="px-2 py-2 sm:px-4 sm:py-3">Author</th>
-                                            <th className="px-2 py-2 sm:px-4 sm:py-3 text-right">Akt.</th>
-                                            <th className="px-2 py-2 sm:px-4 sm:py-3 text-right">Peserta</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(topCreators || []).map((c, i) => (
-                                            <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                                                <td className="px-2 py-2 sm:px-4 sm:py-3 font-medium text-gray-900">
-                                                    <div className="flex items-center gap-2">
-                                                        <img 
-                                                            src={c.photo ? `/assets/images/profilefoto/${c.photo}` : '/assets/images/profilefoto/default-profile.png'} 
-                                                            alt={c.name}
-                                                            className="w-7 h-7 rounded-full object-cover"
-                                                            onError={(e) => {e.target.src = '/assets/images/profilefoto/default-profile.png'}}
-                                                        />
-                                                        <div className="truncate max-w-[80px] sm:max-w-none">{c.name}</div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-2 py-2 sm:px-4 sm:py-3 text-right">{c.activities_active || c.activities_all || 0}</td>
-                                                <td className="px-2 py-2 sm:px-4 sm:py-3 text-right">{c.participants_active || c.participants_total || 0}</td>
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-0 overflow-hidden">
+                                <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50">
+                                    <h3 className="font-bold text-gray-800">10 CREATOR TERBAIK</h3>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                                            <tr>
+                                                <th className="px-2 py-2 sm:px-4 sm:py-3">Author</th>
+                                                <th className="px-2 py-2 sm:px-4 sm:py-3 text-right">Akt.</th>
+                                                <th className="px-2 py-2 sm:px-4 sm:py-3 text-right">Peserta</th>
                                             </tr>
-                                        ))}
-                                        {(!topCreators || topCreators.length === 0) && (
-                                            <tr><td colSpan="3" className="px-2 py-2 sm:px-4 sm:py-3 text-center text-gray-500">Belum ada data</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {(topCreators || []).map((c, i) => (
+                                                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                                                    <td className="px-2 py-2 sm:px-4 sm:py-3 font-medium text-gray-900">
+                                                        <div className="flex items-center gap-2">
+                                                            <img
+                                                                src={c.photo ? `/assets/images/profilefoto/${c.photo}` : '/assets/images/profilefoto/default-profile.png'}
+                                                                alt={c.name}
+                                                                className="w-7 h-7 rounded-full object-cover"
+                                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png' }}
+                                                            />
+                                                            <div className="truncate max-w-[80px] sm:max-w-none">{c.name}</div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-2 py-2 sm:px-4 sm:py-3 text-right">{c.activities_active || c.activities_all || 0}</td>
+                                                    <td className="px-2 py-2 sm:px-4 sm:py-3 text-right">{c.participants_active || c.participants_total || 0}</td>
+                                                </tr>
+                                            ))}
+                                            {(!topCreators || topCreators.length === 0) && (
+                                                <tr><td colSpan="3" className="px-2 py-2 sm:px-4 sm:py-3 text-center text-gray-500">Belum ada data</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
                         )}
                     </div>
 

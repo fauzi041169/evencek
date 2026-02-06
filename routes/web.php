@@ -62,6 +62,8 @@ Route::get('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout
 Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout'); // Keep POST for standard compatibility
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::post('/ai/chat', [App\Http\Controllers\AIController::class, 'chat'])->name('ai.chat');
+
 // Fix for 404 on /login - redirect to home with login modal
 Route::get('/login', function() {
     return redirect()->route('home', ['login' => 'true']);
@@ -177,6 +179,7 @@ Route::post('/creator/{subdomain}/settings', [ActivityController::class, 'update
 Route::prefix('payments')->name('payments.')->middleware(['auth'])->controller(PaymentController::class)->group(function () {
     Route::get('/create/{activity}', 'create')->name('create');
     Route::get('/methods/{activity}', 'getPaymentMethodsJson')->name('methods');
+    Route::get('/midtrans-channels', [MidtransPaymentController::class, 'getChannels'])->name('midtrans.channels');
     Route::post('/store/{activity}', 'store')->name('store');
     Route::get('/ledger', 'financialLedger')->name('ledger');
     Route::get('/ledger/pdf', 'downloadFinancialLedgerPdf')->name('ledger.pdf');
