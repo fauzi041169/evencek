@@ -188,6 +188,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     text-transform: uppercase;
                     transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
                     background: var(--seg-bg, transparent);
+                    color: var(--seg-text, #ffffff);
                     border-top-left-radius: 16px;
                     border-bottom-left-radius: 16px;
                     box-shadow: 0 8px 20px rgba(0,0,0,.18), inset 0 -6px 10px rgba(0,0,0,.08), inset 0 6px 10px rgba(255,255,255,.08);
