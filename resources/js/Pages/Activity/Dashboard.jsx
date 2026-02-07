@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 import {
     Chart as ChartJS,
@@ -71,6 +71,11 @@ export default function Dashboard({
     participationTypeStats
 }) {
     const { auth } = usePage().props;
+    const { startDateStr, endDateStr } = usePage().props;
+    const defaultEnd = endDateStr || new Date().toISOString().slice(0, 10);
+    const defaultStart = startDateStr || new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const [startDate, setStartDate] = useState(defaultStart);
+    const [endDate, setEndDate] = useState(defaultEnd);
 
     // --- Chart Configurations ---
 
@@ -952,7 +957,30 @@ export default function Dashboard({
                                 </div>
                                 <h5 className="text-lg font-bold text-gray-800">Trend Pendaftaran</h5>
                             </div>
-                            <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">30 hari terakhir</span>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="border border-gray-300 rounded-lg px-2 py-1 text-xs"
+                                />
+                                <span className="text-xs text-gray-500">sampai</span>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="border border-gray-300 rounded-lg px-2 py-1 text-xs"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        router.get(route('activity.dashboard', activity.id), { start_date: startDate, end_date: endDate }, { preserveScroll: true, preserveState: true, only: ['registrationTrend', 'startDateStr', 'endDateStr'] });
+                                    }}
+                                    className="inline-flex items-center px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90"
+                                >
+                                    Terapkan
+                                </button>
+                            </div>
                         </div>
                         <div className="relative flex-1 h-64 sm:h-80">
                             <Line data={registrationChartData} options={registrationChartOptions} />
@@ -1197,4 +1225,3 @@ export default function Dashboard({
         </AcaraLayout >
     );
 }
-

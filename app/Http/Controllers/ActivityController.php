@@ -6269,7 +6269,7 @@ class ActivityController extends Controller
     /**
      * Display dashboard for a specific activity
      */
-    public function dashboard($activityId)
+    public function dashboard(Request $request, $activityId)
     {
         $activity = Activity::with(['category', 'divisions', 'divisions.requirements', 'committeeStructures.user.profile', 'rundowns'])
             ->findOrFail($activityId);
@@ -6674,21 +6674,34 @@ class ActivityController extends Controller
         // Statistik rundown
         $totalRundown = $activity->rundowns->count();
 
-        // Trend pendaftaran peserta (30 hari terakhir)
+        $requestedStart = $request->query('start_date');
+        $requestedEnd = $request->query('end_date');
+        $startDate = $requestedStart ? \Carbon\Carbon::parse($requestedStart)->startOfDay() : now()->subDays(29)->startOfDay();
+        $endDate = $requestedEnd ? \Carbon\Carbon::parse($requestedEnd)->endOfDay() : now()->endOfDay();
+        if ($endDate->lt($startDate)) {
+            $endDate = $startDate->copy()->endOfDay();
+        }
+        $maxDays = 180;
+        $days = $startDate->diffInDays($endDate) + 1;
+        if ($days > $maxDays) {
+            $endDate = $startDate->copy()->addDays($maxDays - 1)->endOfDay();
+            $days = $maxDays;
+        }
         $registrationTrend = collect();
-        for ($i = 29; $i >= 0; $i--) {
-            $date = now()->subDays($i);
+        for ($i = 0; $i < $days; $i++) {
+            $date = $startDate->copy()->addDays($i);
             $count = DB::table($tableName)
                 ->where('activity_id', $activityId)
                 ->whereNotIn('user_id', $committeeUserIds)
                 ->whereDate('created_at', $date->format('Y-m-d'))
                 ->count();
-
             $registrationTrend->push([
                 'date' => $date->format('d M'),
                 'count' => $count,
             ]);
         }
+        $startDateStr = $startDate->toDateString();
+        $endDateStr = $endDate->toDateString();
 
         // Statistik tugas per divisi
         $divisionTaskStats = [];
@@ -6888,7 +6901,9 @@ class ActivityController extends Controller
             'committee_stats',
             'panitiaAktif',
             'panitiaPending',
-            'participationTypeStats'
+            'participationTypeStats',
+            'startDateStr',
+            'endDateStr'
         ));
     }
 
@@ -7297,5 +7312,3 @@ class ActivityController extends Controller
     }
 
 }
-
-
