@@ -1,1 +1,0 @@
-import{j as e}from"./app-BH46H8Yl.js";function r({activity:s}){return e.jsx("div",{className:"p-6 bg-white",children:e.jsx("div",{className:"prose max-w-none text-gray-600",children:s.description?e.jsx("div",{dangerouslySetInnerHTML:{__html:s.description}}):e.jsx("p",{className:"italic text-gray-400",children:"Tidak ada deskripsi."})})})}export{r as default};

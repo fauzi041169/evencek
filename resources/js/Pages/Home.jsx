@@ -398,7 +398,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                             <div id="heroContent" className="relative z-10">
                                 {currentSlide % 3 === 1 ? (
                                     <>
-                                        <h1 className={`text-5xl sm:text-6xl md:text-7xl font-black text-white leading-tight mb-6 tracking-tight drop-shadow-xl ${heroTitleFont}`}>
+                                        <h1 className={`text-4xl sm:text-5xl md:text-6xl font-black text-white leading-tight mb-6 tracking-tight drop-shadow-xl ${heroTitleFont}`}>
                                             {heroTitle}
                                         </h1>
                                         <p className={`text-base sm:text-lg md:text-xl text-white/80 mb-8 leading-relaxed max-w-2xl ${currentStyle.descMargin} ${heroDescFont}`}>
@@ -427,7 +427,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                                         <i className="fas fa-star mr-2" style={{ color: appSettings?.colors?.secondary || '#3b82f6' }}></i>
                                                         <span className="font-semibold">{t('home.featured')}</span>
                                                     </div>
-                                                    <h1 className={`text-5xl sm:text-6xl md:text-7xl font-black text-white leading-tight mb-5 tracking-tight ${heroTitleFont}`}>{heroTitle}</h1>
+                                                    <h1 className={`text-4xl sm:text-5xl md:text-6xl font-black text-white leading-tight mb-5 tracking-tight ${heroTitleFont}`}>{heroTitle}</h1>
                                                     <p className={`text-base sm:text-lg md:text-xl text-white/85 leading-relaxed mb-8 max-w-2xl ${heroDescFont}`}>{heroDesc}</p>
                                                     <div className="flex flex-wrap gap-4 justify-start">
                                                         <Link href={heroLink} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 font-bold shadow-lg hover:shadow-xl transition-all">
