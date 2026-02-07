@@ -8,7 +8,7 @@ import Modal from '../Components/Modal';
 import FloatingAI from '../Components/FloatingAI';
 
 
-export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = false, noPadding = false, fluid = false }) {
+export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = true, noPadding = false, fluid = false }) {
     const { props, url } = usePage();
     const { t: tOrig, i18n } = useTranslation();
     const t = tOrig || ((key) => key); // Fallback to avoid crash
