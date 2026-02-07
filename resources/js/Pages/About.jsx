@@ -99,7 +99,7 @@ export default function About() {
             <div className="bg-white font-sans text-slate-800">
 
                 {/* HERO SECTION */}
-                <div className="relative overflow-hidden bg-slate-900 pt-0 pb-2 sm:pt-16 sm:pb-10 lg:pt-24 lg:pb-16">
+                <div className="relative overflow-hidden bg-slate-900 pt-12 pb-4 sm:pt-24 sm:pb-10 lg:pt-32 lg:pb-16">
                     {/* Background Pattern */}
                     <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
                         {/* Base Background */}
