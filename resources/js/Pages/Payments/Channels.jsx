@@ -14,12 +14,13 @@ export const typeLabels = {
 
 export function ChannelList({
     channels = [],
+    setItems = () => {},
     isSelectionMode = false,
     onSelect = null,
     selectedId = null,
     manualMethods = [] // For selecting manual banks in the same list
 }) {
-    const [items, setItems] = useState(channels);
+    const items = channels;
     const csrfToken = typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') : '';
 
     const grouped = useMemo(() => {
@@ -87,6 +88,38 @@ export function ChannelList({
             if (!data?.success) throw new Error(data?.message || 'Gagal menyimpan');
         } catch (err) {
             Swal.fire({ title: 'Gagal', text: err.message, icon: 'error', confirmButtonColor: '#E02424' });
+        }
+    };
+
+    const saveAll = async (original) => {
+        const changes = [];
+        items.forEach((item) => {
+            const prev = original.find((c) => c.id === item.id);
+            if (!prev) return;
+            const feeChanged = Number(prev.fee ?? 0) !== Number(item.fee ?? 0);
+            const typeChanged = (prev.fee_type || 'fixed') !== (item.fee_type || 'fixed');
+            if (feeChanged || typeChanged) {
+                changes.push({ id: item.id, payload: { fee: item.fee ?? 0, fee_type: item.fee_type || 'fixed' } });
+            }
+        });
+        if (changes.length === 0) {
+            Swal.fire({ title: 'Tidak ada perubahan', text: 'Semua pengaturan sudah tersimpan.', icon: 'info', confirmButtonColor: '#2563eb' });
+            return;
+        }
+        let ok = 0;
+        let fail = 0;
+        for (const ch of changes) {
+            try {
+                const data = await updateChannel(ch.id, ch.payload);
+                if (data?.success) ok++; else fail++;
+            } catch (e) {
+                fail++;
+            }
+        }
+        if (fail === 0) {
+            Swal.fire({ title: 'Berhasil', text: `Tersimpan ${ok} perubahan.`, icon: 'success', confirmButtonColor: '#16a34a' });
+        } else {
+            Swal.fire({ title: 'Sebagian gagal', text: `Berhasil ${ok}, gagal ${fail}.`, icon: 'warning', confirmButtonColor: '#eab308' });
         }
     };
 
@@ -208,6 +241,54 @@ export function ChannelList({
 export default function Channels({ channels = [] }) {
     const { flash } = usePage().props;
     const csrfToken = typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') : '';
+    const [items, setItems] = useState(channels || []);
+
+    const updateChannel = async (id, payload) => {
+        const res = await fetch(route('payments.channels.update', id), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                Accept: 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Gagal memperbarui channel');
+        return res.json();
+    };
+
+    const saveAll = async () => {
+        const original = channels || [];
+        const changes = [];
+        items.forEach((item) => {
+            const prev = original.find((c) => c.id === item.id);
+            if (!prev) return;
+            const feeChanged = Number(prev.fee ?? 0) !== Number(item.fee ?? 0);
+            const typeChanged = (prev.fee_type || 'fixed') !== (item.fee_type || 'fixed');
+            if (feeChanged || typeChanged) {
+                changes.push({ id: item.id, payload: { fee: item.fee ?? 0, fee_type: item.fee_type || 'fixed' } });
+            }
+        });
+        if (changes.length === 0) {
+            Swal.fire({ title: 'Tidak ada perubahan', text: 'Semua pengaturan sudah tersimpan.', icon: 'info', confirmButtonColor: '#2563eb' });
+            return;
+        }
+        let ok = 0;
+        let fail = 0;
+        for (const ch of changes) {
+            try {
+                const data = await updateChannel(ch.id, ch.payload);
+                if (data?.success) ok++; else fail++;
+            } catch (e) {
+                fail++;
+            }
+        }
+        if (fail === 0) {
+            Swal.fire({ title: 'Berhasil', text: `Tersimpan ${ok} perubahan.`, icon: 'success', confirmButtonColor: '#16a34a' });
+        } else {
+            Swal.fire({ title: 'Sebagian gagal', text: `Berhasil ${ok}, gagal ${fail}.`, icon: 'warning', confirmButtonColor: '#eab308' });
+        }
+    };
  
     return (
         <FinanceContainer title="Manajemen Channel Pembayaran">
@@ -227,7 +308,15 @@ export default function Channels({ channels = [] }) {
                 <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
                     <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                         <h2 className="text-lg font-semibold text-gray-800">Daftar Channel Pembayaran</h2>
-                        <form
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={saveAll}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition font-medium"
+                            >
+                                <i className="fas fa-save mr-1"></i> Simpan Semua Perubahan
+                            </button>
+                            <form
                             action={route('payments.channels.sync')}
                             method="post"
                             onSubmit={(e) => {
@@ -256,10 +345,11 @@ export default function Channels({ channels = [] }) {
                                 <i className="fas fa-sync-alt mr-1"></i> Reset / Sync Data
                             </button>
                         </form>
+                        </div>
                     </div>
  
                     <div className="p-6">
-                        <ChannelList channels={channels} />
+                        <ChannelList channels={items} setItems={setItems} />
                     </div>
                 </div>
             </div>
