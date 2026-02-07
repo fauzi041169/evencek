@@ -393,7 +393,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                     </div>
 
                     {/* Content */}
-                    <div className={`relative z-10 w-full ${currentSlide % 3 === 2 ? 'max-w-none mx-0 px-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'} py-0 sm:py-10 flex flex-col ${currentSlide % 3 === 2 ? 'items-center' : currentStyle.container} justify-center min-h-[60vh] sm:min-h-[85vh]`}>
+                    <div className={`relative z-10 w-full ${currentSlide % 3 === 2 ? 'max-w-none mx-0 px-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'} pt-16 sm:pt-24 lg:pt-32 pb-0 sm:pb-10 flex flex-col ${currentSlide % 3 === 2 ? 'items-center' : currentStyle.container} justify-center min-h-[60vh] sm:min-h-[85vh]`}>
                         <div className={`${currentSlide % 3 === 2 ? 'max-w-none mx-0' : 'max-w-6xl mx-auto'} ${currentSlide % 3 === 2 ? '' : currentStyle.text}`}>
                             <div id="heroContent" className="relative z-10">
                                 {currentSlide % 3 === 1 ? (
