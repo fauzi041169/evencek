@@ -502,6 +502,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/search', 'searchUsers')->name('search');
         Route::get('/template', 'downloadTemplate')->name('download-template');
         Route::post('/import', 'import')->name('import');
+        Route::post('/fill-gender', 'fillGenderGlobal')->name('fill-gender');
         Route::put('/{user}/role', 'updateRole')->name('update-role');
         Route::put('/{user}/subscription', 'updateSubscription')->name('update-subscription');
         Route::post('/{user}/reset-password', 'resetPassword')->name('reset-password');

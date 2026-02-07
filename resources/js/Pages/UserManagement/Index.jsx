@@ -225,12 +225,50 @@ export default function UserManagementIndex({
                                 </h2>
                                 <p className="text-white/80 mt-1">Kelola user dan role dalam sistem</p>
                             </div>
-                            <button
-                                onClick={() => setImportModalOpen(true)}
-                                className="bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-xl backdrop-blur-sm transition-all flex items-center gap-2 border border-white/30 shadow-sm font-semibold hover:shadow-md"
-                            >
-                                <i className="fas fa-file-excel"></i> Update User (Excel)
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setImportModalOpen(true)}
+                                    className="bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-xl backdrop-blur-sm transition-all flex items-center gap-2 border border-white/30 shadow-sm font-semibold hover:shadow-md"
+                                >
+                                    <i className="fas fa-file-excel"></i> Update User (Excel)
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        const confirm = await Swal.fire({
+                                            title: 'Isi Jenis Kelamin Otomatis',
+                                            text: 'Sistem akan menganalisa nama dan mengisi jenis kelamin yang kosong. Lanjutkan?',
+                                            icon: 'question',
+                                            showCancelButton: true,
+                                            confirmButtonText: 'Ya, Jalankan',
+                                            cancelButtonText: 'Batal'
+                                        });
+                                        if (!confirm.isConfirmed) return;
+                                        try {
+                                            const res = await fetch(route('user-management.fill-gender'), {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]')?.content,
+                                                    'Accept': 'application/json'
+                                                },
+                                                body: JSON.stringify({ limit: 1000 })
+                                            });
+                                            const data = await res.json();
+                                            if (data.success) {
+                                                Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message });
+                                                router.reload({ only: ['users'] });
+                                            } else {
+                                                Swal.fire({ icon: 'error', title: 'Gagal', text: data.message || 'Gagal menjalankan pengisian' });
+                                            }
+                                        } catch (e) {
+                                            Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan saat menjalankan pengisian' });
+                                        }
+                                    }}
+                                    className="bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-xl backdrop-blur-sm transition-all flex items-center gap-2 border border-white/30 shadow-sm font-semibold hover:shadow-md"
+                                >
+                                    <i className="fas fa-robot"></i> Isi Jenis Kelamin Otomatis
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -611,4 +649,3 @@ export default function UserManagementIndex({
         </AdminLayout>
     );
 }
-

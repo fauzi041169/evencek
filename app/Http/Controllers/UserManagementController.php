@@ -70,6 +70,63 @@ class UserManagementController extends Controller
     }
 
     /**
+     * Fill missing gender for all users using name-based prediction
+     * Admin/Superadmin only
+     */
+    public function fillGenderGlobal(Request $request)
+    {
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+        $limit = (int) ($request->input('limit') ?? 1000);
+        if ($limit < 1) $limit = 1000;
+        $stats = ['success' => 0, 'failed' => 0, 'skipped' => 0, 'total' => 0];
+        $query = User::with('profile')->whereHas('profile', function ($q) {
+            $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-');
+        });
+        if ($request->filled('role')) {
+            $query->where('role', $request->string('role'));
+        }
+        if ($request->filled('search')) {
+            $search = trim($request->string('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+        $users = $query->limit($limit)->get();
+        foreach ($users as $user) {
+            $stats['total']++;
+            $profile = $user->profile;
+            if (! $profile) {
+                $stats['skipped']++;
+                continue;
+            }
+            if (! empty($profile->jenis_kelamin) && $profile->jenis_kelamin !== '-') {
+                $stats['skipped']++;
+                continue;
+            }
+            $pred = \App\Helpers\GenderHelper::predict($user->name ?? '');
+            if ($pred && in_array($pred, ['L', 'P'])) {
+                try {
+                    $profile->jenis_kelamin = $pred;
+                    $profile->save();
+                    $stats['success']++;
+                } catch (\Exception $e) {
+                    \Log::error('Fill gender error', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+                    $stats['failed']++;
+                }
+            } else {
+                $stats['failed']++;
+            }
+        }
+        return response()->json([
+            'success' => true,
+            'message' => "Berhasil mengisi {$stats['success']} jenis kelamin dari {$stats['total']} user yang diproses.",
+            'stats' => $stats,
+        ]);
+    }
+
+    /**
      * Update user role
      */
     public function updateRole(Request $request, User $user)
@@ -655,4 +712,3 @@ class UserManagementController extends Controller
         }
     }
 }
-
