@@ -24,6 +24,8 @@ class SettingController extends Controller
             'Navbar' => $colors->whereIn('key', [
                 'color_navbar_bg_start',
                 'color_navbar_bg_end',
+                'color_navbar_cap_start',
+                'color_navbar_cap_end',
                 'color_navbar_start',
                 'color_navbar_end',
                 'color_navbar_brand_text',
@@ -150,6 +152,8 @@ class SettingController extends Controller
             $defaults = [
                 'color_navbar_bg_start' => '#1e293b',
                 'color_navbar_bg_end' => '#0f172a',
+                'color_navbar_cap_start' => '#1f2937',
+                'color_navbar_cap_end' => '#111827',
                 'color_navbar_start' => '#4973ec',
                 'color_navbar_end' => '#6600ff',
                 'color_navbar_brand_text' => '#000000',

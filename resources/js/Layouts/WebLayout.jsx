@@ -134,6 +134,8 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     --color-navbar-text: ${settings.colors?.navbar_text || '#f8fafc'};
                     --color-navbar-bg-start: ${settings.colors?.color_navbar_bg_start || '#1e293b'};
                     --color-navbar-bg-end: ${settings.colors?.color_navbar_bg_end || '#0f172a'};
+                    --color-navbar-cap-start: ${settings.colors?.color_navbar_cap_start || '#1f2937'};
+                    --color-navbar-cap-end: ${settings.colors?.color_navbar_cap_end || '#111827'};
                     --color-navbar-start: ${settings.colors?.color_navbar_start || '#4973ec'};
                     --color-navbar-end: ${settings.colors?.color_navbar_end || '#6600ff'};
                     --color-navbar-link-text: ${settings.colors?.color_navbar_link_text || '#330000'};
@@ -219,7 +221,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     top:0;
                     width:78px;
                     height:100%;
-                    background: var(--seg-bg, transparent);
+                    background: linear-gradient(to right, var(--color-navbar-cap-start), var(--color-navbar-cap-end));
                     border-radius: 999px;
                     box-shadow: 0 6px 18px rgba(0,0,0,.12);
                     z-index: -1;
