@@ -219,7 +219,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     top:0;
                     width:78px;
                     height:100%;
-                    background: linear-gradient(to right, var(--color-navbar-bg-start), var(--color-navbar-bg-end));
+                    background: var(--seg-bg, transparent);
                     border-radius: 999px;
                     box-shadow: 0 6px 18px rgba(0,0,0,.12);
                     z-index: -1;
