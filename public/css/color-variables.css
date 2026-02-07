@@ -5,17 +5,21 @@
     --color-danger: #ef4444;
     --color-warning: #f59e0b;
     --color-info: #06b6d4;
-    --color-navbar-start: #3c157f;
-    --color-navbar-end: #3b82f6;
+    --color-navbar-start: #000d42;
+    --color-navbar-end: #000d42;
     --color-hero-start: #7c3aed;
     --color-hero-end: #3b82f6;
     --color-card-blue: #f0f7ff;
     --color-card-pink: #fef3f2;
     --color-card-green: #f0fdf4;
-    --color-navbar-brand-text: #230101;
+    --color-navbar-brand-text: #f2f2f3;
     --color-navbar-link-text: #ffffff;
     --color-navbar-link-hover-bg: #db0a99;
     --color-navbar-link-active-card: #fa9200;
     --color-navbar-link-active-border: #ffcf66;
     --color-navbar-opacity: 1;
+    --color-navbar-bg-start: #002d75;
+    --color-navbar-bg-end: #fbff00;
+    --color-navbar-cap-start: #000d42;
+    --color-navbar-cap-end: #000d42;
 }
