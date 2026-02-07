@@ -463,12 +463,12 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                                         <div className="absolute inset-0 bg-gradient-to-br from-slate-900/60 via-slate-800/40 to-black/20"></div>
                                                         <div className="absolute -right-12 -top-12 w-[420px] h-[420px] rounded-full" style={{ background: `radial-gradient(circle, ${hexToRgba(accent, 0.25)} 0%, transparent 60%)` }}></div>
                                                         <div className="absolute top-4 left-4 flex gap-3">
-                                                            <div className="px-4 py-2 rounded-full bg-white/15 text-white backdrop-blur-md border border-white/20 flex items-center gap-2">
-                                                                <i className="fas fa-heartbeat" style={{ color: accent }}></i>
+                                                            <div className="px-4 py-2 rounded-full bg-white text-slate-800 border border-slate-200 shadow-sm flex items-center gap-2">
+                                                                <i className="fas fa-heartbeat text-rose-500"></i>
                                                                 <span className="text-xs sm:text-sm font-semibold">{t('home.heart_rate')}</span>
                                                             </div>
-                                                            <div className="px-4 py-2 rounded-full bg-white/15 text-white backdrop-blur-md border border-white/20 flex items-center gap-2">
-                                                                <i className="fas fa-user-astronaut" style={{ color: appSettings?.colors?.secondary || '#3b82f6' }}></i>
+                                                            <div className="px-4 py-2 rounded-full bg-white text-slate-800 border border-slate-200 shadow-sm flex items-center gap-2">
+                                                                <i className="fas fa-user-astronaut text-indigo-500"></i>
                                                                 <span className="text-xs sm:text-sm font-semibold">{t('home.spacewalks')}</span>
                                                             </div>
                                                         </div>
