@@ -156,10 +156,10 @@ class GenderHelper
         if (preg_match('/(WATI|SARI|DEWI|YANTI|YANI|ASTUTI|NINGSIH|NURUL|AYU|PUTRI)$/', $name)) return 'P';
         if (preg_match('/(PUTRA|SANTOSO|WIBOWO|SAPUTRA|HIDAYAT|PRATAMA|PERDANA|LAKSANA)$/', $name)) return 'L';
 
-        // Akhiran (Weak Heuristics)
-        $lastChar = substr($firstName, -1);
-        if (in_array($lastChar, ['o', 'u', 'k'])) return 'L'; 
-        if (in_array($lastChar, ['a', 'e'])) {
+        // Akhiran (Weak Heuristics) - case-insensitive
+        $lastChar = strtoupper(substr($firstName, -1));
+        if (in_array($lastChar, ['O', 'U', 'K'])) return 'L'; 
+        if (in_array($lastChar, ['A', 'E'])) {
             // Check pengecualian nama berakhiran 'a' tapi cowok (misal: Eka, Indra, Reza, Rama)
             $maleEndsA = ['EKA', 'INDRA', 'REZA', 'RAMA', 'YUDHA', 'SATRIA', 'ARYA', 'DWI', 'EZZA', 'PRADANA', 'MAHENDRA'];
             if (in_array($firstName, $maleEndsA)) return 'L';

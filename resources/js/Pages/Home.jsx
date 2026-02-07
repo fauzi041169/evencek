@@ -12,6 +12,9 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     // Global Settings Logic
     const heroAnim = appSettings?.hero_animation_style || 'circles';
     const heroBg1 = appSettings?.hero_background_1 || null;
+    const heroBg2 = appSettings?.hero_background_2 || null;
+    const heroBg3 = appSettings?.hero_background_3 || null;
+    const accent = appSettings?.colors?.warning || appSettings?.colors?.accent || '#f59e0b';
 
     // Helper for hex to rgba
     const hexToRgba = (hex, alpha) => {
@@ -54,22 +57,39 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
         return '/storage/' + cleanPath;
     };
 
-    // Process hero slides to ensure uniform format, prioritizing global setting if available
-    const processedSlides = heroBg1
-        ? [{ image: getStorageUrl(heroBg1) }]
+    const processedSlides = (heroBg1 || heroBg2 || heroBg3)
+        ? [heroBg1, heroBg2, heroBg3].filter(Boolean).map(img => ({ image: getStorageUrl(img) }))
         : (heroSlides.length > 0 ? heroSlides.map(slide => {
-            if (typeof slide === 'string') {
-                return { image: getStorageUrl(slide) };
-            }
+            if (typeof slide === 'string') return { image: getStorageUrl(slide) };
             return { ...slide, image: getStorageUrl(slide.image) };
         }) : [{ image: '/assets/images/hero/defoult.webp' }]);
 
     const activeSlide = processedSlides[currentSlide] || {};
-    // Force static content as requested to match the specific design
-    const heroTitle = t('home.hero_title');
-    const heroDesc = t('home.hero_desc');
+    const heroTitles = [
+        t('home.hero_title_s1'),
+        t('home.hero_title_s2'),
+        t('home.hero_title_s3')
+    ];
+    const heroDescs = [
+        t('home.hero_desc_s1'),
+        t('home.hero_desc_s2'),
+        t('home.hero_desc_s3')
+    ];
+    const heroTitle = heroTitles[currentSlide % 3] || t('home.hero_title');
+    const heroDesc = heroDescs[currentSlide % 3] || t('home.hero_desc');
     const heroLink = route('activity.index');
     const heroLinkText = t('home.start_managing');
+
+    const slideStyles = [
+        { container: 'items-center', text: 'text-center', cta: 'justify-center', descMargin: 'mx-auto' },
+        { container: 'items-start', text: 'text-left', cta: 'justify-start', descMargin: 'mr-auto ml-0' },
+        { container: 'items-end', text: 'text-right', cta: 'justify-end', descMargin: 'ml-auto mr-0' },
+    ];
+    const currentStyle = slideStyles[currentSlide % slideStyles.length];
+    const heroTitleFonts = ['font-serif', 'font-sans', 'font-mono'];
+    const heroDescFonts = ['font-sans', 'font-serif', 'font-sans'];
+    const heroTitleFont = heroTitleFonts[currentSlide % heroTitleFonts.length];
+    const heroDescFont = heroDescFonts[currentSlide % heroDescFonts.length];
 
     // Auto-advance hero slides
     useEffect(() => {
@@ -366,7 +386,6 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                     className="absolute inset-0 bg-cover bg-center animate-slow-zoom"
                                     style={{ backgroundImage: `url('${slide.image}')` }}
                                 />
-                                {/* Gradient Overlay - Modern & Deep */}
                                 <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-indigo-950/70 to-slate-900/90"></div>
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent opacity-70"></div>
                             </div>
@@ -374,57 +393,135 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                     </div>
 
                     {/* Content */}
-                    <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-0 sm:py-10 flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[85vh]">
-                        <div className="max-w-6xl mx-auto text-center">
-                            {/* Modern Clean Layout without Glass Box */}
+                    <div className={`relative z-10 w-full ${currentSlide % 3 === 2 ? 'max-w-none mx-0 px-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'} py-0 sm:py-10 flex flex-col ${currentSlide % 3 === 2 ? 'items-center' : currentStyle.container} justify-center min-h-[60vh] sm:min-h-[85vh]`}>
+                        <div className={`${currentSlide % 3 === 2 ? 'max-w-none mx-0' : 'max-w-6xl mx-auto'} ${currentSlide % 3 === 2 ? '' : currentStyle.text}`}>
                             <div id="heroContent" className="relative z-10">
-                                
-                                {/* Headline */}
-                                <h1 className="relative text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white leading-tight mb-8 reveal tracking-tighter drop-shadow-2xl">
-                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-indigo-200">
-                                        {heroTitle}
-                                    </span>
-                                </h1>
-
-                                {/* Subheadline */}
-                                <p className="relative text-lg sm:text-xl md:text-2xl text-blue-100/90 mb-10 leading-relaxed max-w-3xl mx-auto reveal font-light tracking-wide">
-                                    {heroDesc}
-                                </p>
-
-                                {/* CTAs */}
-                                <div className="relative flex flex-wrap gap-5 justify-center reveal" style={{ transitionDelay: '200ms' }}>
-                                    <Link href={heroLink}
-                                        className="group relative px-8 py-4 rounded-full bg-white text-indigo-900 font-bold text-lg shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
-                                    >
-                                        <span className="relative flex items-center gap-3">
-                                            <i className="fas fa-rocket text-indigo-600 group-hover:rotate-12 transition-transform"></i>
-                                            {heroLinkText}
-                                        </span>
-                                    </Link>
-
-                                    <a href="#fitur"
-                                        className="group px-8 py-4 rounded-full border border-white/30 bg-white/5 text-white backdrop-blur-md hover:bg-white/10 font-semibold text-lg transition-all duration-300 hover:-translate-y-1 flex items-center gap-3"
-                                    >
-                                        <i className="fas fa-layer-group group-hover:scale-110 transition-transform"></i>
-                                        {t('home.explore_features')}
-                                    </a>
-                                </div>
-
-                                {/* Trust Signals - Enhanced */}
-                                <div className="mt-16 flex flex-wrap justify-center items-center gap-4 sm:gap-8 reveal" style={{ transitionDelay: '400ms' }}>
-                                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
-                                        <i className="fas fa-check-circle text-emerald-400 text-lg"></i>
-                                        <span>{t('home.trusted')}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
-                                        <i className="fas fa-shield-alt text-blue-400 text-lg"></i>
-                                        <span>{t('home.secure_data')}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
-                                        <i className="fas fa-bolt text-amber-400 text-lg"></i>
-                                        <span>{t('home.real_time')}</span>
-                                    </div>
-                                </div>
+                                {currentSlide % 3 === 1 ? (
+                                    <>
+                                        <h1 className={`text-5xl sm:text-6xl md:text-7xl font-black text-white leading-tight mb-6 tracking-tight drop-shadow-xl ${heroTitleFont}`}>
+                                            {heroTitle}
+                                        </h1>
+                                        <p className={`text-base sm:text-lg md:text-xl text-white/80 mb-8 leading-relaxed max-w-2xl ${currentStyle.descMargin} ${heroDescFont}`}>
+                                            {heroDesc}
+                                        </p>
+                                        <div className={`flex gap-4 ${currentStyle.cta}`} style={{ transitionDelay: '200ms' }}>
+                                            <Link href={heroLink} className="px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-white text-slate-900 font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
+                                                Get Started
+                                            </Link>
+                                            <a href="#video" className="px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-white/0 border border-white/30 text-white font-semibold text-base sm:text-lg hover:bg-white/10 transition-all hover:-translate-y-0.5">
+                                                Watch Video
+                                            </a>
+                                        </div>
+                                        <div className="absolute inset-0 pointer-events-none">
+                                            <div className="absolute w-2 h-2 rounded-full bg-white/80 left-4 top-6"></div>
+                                            <div className="absolute w-3 h-3 rounded-full bg-white/70 left-10 bottom-8"></div>
+                                            <div className="absolute w-2 h-2 rounded-full bg-white/60 right-8 bottom-6"></div>
+                                        </div>
+                                    </>
+                                ) : currentSlide % 3 === 2 ? (
+                                    <>
+                                        <div className="relative w-full max-w-none mx-0 min-h-[80vh] sm:min_h-[90vh]">
+                                            <div className="relative z-10 grid grid-cols-12 gap-6 sm:gap-10 px-4 sm:px-8 lg:px-12 py-8 sm:py-12">
+                                                <div className="col-span-12 lg:col-span-7">
+                                                    <div className="inline-flex items-center px-4 py-2 rounded-full bg-black/40 text-white border border-white/10 mb-6">
+                                                        <i className="fas fa-star mr-2" style={{ color: appSettings?.colors?.secondary || '#3b82f6' }}></i>
+                                                        <span className="font-semibold">{t('home.featured')}</span>
+                                                    </div>
+                                                    <h1 className={`text-5xl sm:text-6xl md:text-7xl font-black text-white leading-tight mb-5 tracking-tight ${heroTitleFont}`}>{heroTitle}</h1>
+                                                    <p className={`text-base sm:text-lg md:text-xl text-white/85 leading-relaxed mb-8 max-w-2xl ${heroDescFont}`}>{heroDesc}</p>
+                                                    <div className="flex flex-wrap gap-4 justify-start">
+                                                        <Link href={heroLink} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 font-bold shadow-lg hover:shadow-xl transition-all">
+                                                            <i className="fas fa-rocket"></i>
+                                                            {heroLinkText}
+                                                        </Link>
+                                                        <a href="#video" className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all" style={{ backgroundColor: accent, color: '#1f2937' }}>
+                                                            <i className="fas fa-play-circle"></i>
+                                                            {t('home.watch_video')}
+                                                        </a>
+                                                    </div>
+                                                    <div className="mt-8 grid grid-cols-2 gap-6 max-w-lg">
+                                                        <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-white">
+                                                            <div className="text-3xl font-black">99.9%</div>
+                                                            <div className="text-xs sm:text-sm text-white/80">{t('home.uptime')}</div>
+                                                        </div>
+                                                        <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-white">
+                                                            <div className="text-3xl font-black">24/7</div>
+                                                            <div className="text-xs sm:text-sm text-white/80">{t('home.support')}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="col-span-12 lg:col-span-5">
+                                                    <div className="relative w-full h-[320px] sm:h-[380px] lg:h-[460px] rounded-2xl overflow-hidden border border-white/10 shadow-xl bg-white/5">
+                                                        {appSettings?.hero_slide3_right_image && (
+                                                            <img
+                                                                src={getStorageUrl(appSettings.hero_slide3_right_image)}
+                                                                alt="Preview"
+                                                                className="absolute inset-0 w-full h-full object-cover"
+                                                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                                            />
+                                                        )}
+                                                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/60 via-slate-800/40 to-black/20"></div>
+                                                        <div className="absolute -right-12 -top-12 w-[420px] h-[420px] rounded-full" style={{ background: `radial-gradient(circle, ${hexToRgba(accent, 0.25)} 0%, transparent 60%)` }}></div>
+                                                        <div className="absolute top-4 left-4 flex gap-3">
+                                                            <div className="px-4 py-2 rounded-full bg-white/15 text-white backdrop-blur-md border border-white/20 flex items-center gap-2">
+                                                                <i className="fas fa-heartbeat" style={{ color: accent }}></i>
+                                                                <span className="text-xs sm:text-sm font-semibold">{t('home.heart_rate')}</span>
+                                                            </div>
+                                                            <div className="px-4 py-2 rounded-full bg-white/15 text-white backdrop-blur-md border border-white/20 flex items-center gap-2">
+                                                                <i className="fas fa-user-astronaut" style={{ color: appSettings?.colors?.secondary || '#3b82f6' }}></i>
+                                                                <span className="text-xs sm:text-sm font-semibold">{t('home.spacewalks')}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="absolute bottom-4 right-4 px-4 py-2 rounded-full bg-white/20 text-white backdrop-blur-md border border-white/20">
+                                                            <span className="text-xs sm:text-sm font-semibold">{t('home.live')}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h1 className={`relative text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white leading-tight mb-8 tracking-tighter drop-shadow-2xl ${heroTitleFont}`}>
+                                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-indigo-200">
+                                                {heroTitle}
+                                            </span>
+                                        </h1>
+                                        <p className={`relative text-lg sm:text-xl md:text-2xl text-blue-100/90 mb-10 leading-relaxed max-w-3xl ${currentStyle.descMargin} font-light tracking-wide ${heroDescFont}`}>
+                                            {heroDesc}
+                                        </p>
+                                        <div className={`relative flex flex-wrap gap-5 ${currentStyle.cta}`} style={{ transitionDelay: '200ms' }}>
+                                            <Link href={heroLink}
+                                                className="group relative px-8 py-4 rounded-full bg-white text-indigo-900 font-bold text-lg shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                                            >
+                                                <span className="relative flex items-center gap-3">
+                                                    <i className="fas fa-rocket text-indigo-600 group-hover:rotate-12 transition-transform"></i>
+                                                    {heroLinkText}
+                                                </span>
+                                            </Link>
+                                            <a href="#fitur"
+                                                className="group px-8 py-4 rounded-full border border-white/30 bg-white/5 text-white backdrop-blur-md hover:bg-white/10 font-semibold text-lg transition-all duration-300 hover:-translate-y-1 flex items-center gap-3"
+                                            >
+                                                <i className="fas fa-layer-group group-hover:scale-110 transition-transform"></i>
+                                                {t('home.explore_features')}
+                                            </a>
+                                        </div>
+                                        <div className="mt-16 flex flex-wrap justify-center items-center gap-4 sm:gap-8" style={{ transitionDelay: '400ms' }}>
+                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
+                                                <i className="fas fa-check-circle text-emerald-400 text-lg"></i>
+                                                <span>{t('home.trusted')}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
+                                                <i className="fas fa-shield-alt text-blue-400 text-lg"></i>
+                                                <span>{t('home.secure_data')}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
+                                                <i className="fas fa-bolt text-amber-400 text-lg"></i>
+                                                <span>{t('home.real_time')}</span>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

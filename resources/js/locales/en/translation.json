@@ -7,6 +7,12 @@
   "home": {
     "hero_title": "Professional Digital Event Management Platform",
     "hero_desc": "Manage registration, participants, committee, payments, attendance, cards, and certificates in one integrated secure and modern platform.",
+    "hero_title_s1": "Professional Digital Event Management Platform",
+    "hero_desc_s1": "An integrated platform that simplifies every stage of event operations—from registration to certificates—with enterprise security, smart automation, and a delightful interface so your team can focus on participant experience.",
+    "hero_title_s2": "Trusted Solution for Your Event",
+    "hero_desc_s2": "Enterprise‑grade security, end‑to‑end auditability, and full control; clear traceability and preserved compliance. Trusted by organizations, communities, and education institutions for events of any scale.",
+    "hero_title_s3": "Reliable, Scalable, and Real‑time",
+    "hero_desc_s3": "Reliable, scalable architecture with real‑time performance and 24/7 support ensures smooth operations during peak traffic. Ready to grow with your event needs—from dozens to thousands of participants.",
     "start_managing": "Start Managing Event",
     "explore_features": "Explore Features",
     "trusted": "Trusted",
@@ -44,7 +50,14 @@
     "step_3_title": "Manage Participants",
     "step_3_desc": "Participant & committee management, digital cards and certificates",
     "step_4_title": "Event Running",
-    "step_4_desc": "QR code attendance, all activities recorded and exportable"
+    "step_4_desc": "QR code attendance, all activities recorded and exportable",
+    "featured": "Featured",
+    "watch_video": "Watch the video",
+    "uptime": "Uptime",
+    "support": "Support",
+    "heart_rate": "Heart rate",
+    "spacewalks": "Spacewalks",
+    "live": "Live"
   },
   "about": {
     "hero_badge": "LEADING INNOVATION",

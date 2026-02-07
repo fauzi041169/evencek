@@ -70,6 +70,18 @@ class SettingController extends Controller
             return $item;
         }, $heroBackgrounds);
 
+        // Slide 3 right panel image (optional)
+        $slide3RightPath = \App\Models\Setting::get('home_hero_slide3_right_image');
+        if ($slide3RightPath) {
+            if (!Str::startsWith($slide3RightPath, ['assets/', 'storage/', 'http://', 'https://'])) {
+                $slide3RightUrl = asset('storage/' . $slide3RightPath);
+            } else {
+                $slide3RightUrl = asset($slide3RightPath);
+            }
+        } else {
+            $slide3RightUrl = null;
+        }
+
         $logoFallback = file_exists(public_path('assets/images/logo_1762164536.png'))
             ? asset('assets/images/logo_1762164536.png')
             : 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2280%22 height=%2280%22/%3E%3C/svg%3E';
@@ -126,6 +138,7 @@ class SettingController extends Controller
             'heroBackgrounds' => $heroBackgrounds,
             'heroAnimationStyle' => $heroAnimationStyle,
             'navbarOpacity' => $navbarOpacity,
+            'heroSlide3RightImageUrl' => $slide3RightUrl,
         ]);
     }
 
@@ -164,6 +177,7 @@ class SettingController extends Controller
             'hero_background_1' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'hero_background_2' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'hero_background_3' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'hero_slide3_right_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'navbar_opacity' => 'nullable|numeric|min:0|max:1',
             'hero_animation_style' => 'nullable|string|in:circles,rain,waves,particles,parallax,clean',
         ]);
@@ -261,6 +275,7 @@ class SettingController extends Controller
                 'hero_background_1' => 'home_hero_background_1',
                 'hero_background_2' => 'home_hero_background_2',
                 'hero_background_3' => 'home_hero_background_3',
+                'hero_slide3_right_image' => 'home_hero_slide3_right_image',
             ];
 
             // If legacy single upload exists, treat as first image
@@ -286,7 +301,10 @@ class SettingController extends Controller
                         }
                     }
 
-                    Setting::set($settingKey, $heroPath, 'file', 'general', 'Background hero beranda '.substr($inputName, -1));
+                    $description = $inputName === 'hero_slide3_right_image'
+                        ? 'Gambar panel kanan slide 3'
+                        : ('Background hero beranda '.substr($inputName, -1));
+                    Setting::set($settingKey, $heroPath, 'file', 'general', $description);
                 }
             }
         });

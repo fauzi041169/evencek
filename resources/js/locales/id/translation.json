@@ -7,6 +7,12 @@
     "home": {
         "hero_title": "Platform Manajemen Event Digital Profesional",
         "hero_desc": "Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.",
+        "hero_title_s1": "Platform Manajemen Event Digital Profesional",
+        "hero_desc_s1": "Platform terpadu yang menyederhanakan setiap tahap pengelolaan acara—dari pendaftaran hingga sertifikat—dengan keamanan berkelas, otomatisasi cerdas, dan antarmuka yang nyaman sehingga tim Anda dapat fokus pada pengalaman peserta.",
+        "hero_title_s2": "Solusi Terpercaya untuk Event Anda",
+        "hero_desc_s2": "Keamanan enterprise, rekaman end‑to‑end, dan kontrol penuh; audit siap, keterlacakan jelas, serta kepatuhan terjaga. Dipercaya organisasi, komunitas, dan lembaga pendidikan untuk event berskala apa pun.",
+        "hero_title_s3": "Handal, Skalabel, dan Real‑time",
+        "hero_desc_s3": "Arsitektur handal dan skalabel, performa real‑time, serta dukungan 24/7 memastikan operasional mulus saat trafik tinggi. Siap tumbuh bersama kebutuhan acara Anda—dari puluhan hingga ribuan peserta.",
         "start_managing": "Mulai Kelola Event",
         "explore_features": "Jelajahi Fitur",
         "trusted": "Terpercaya",
@@ -44,7 +50,14 @@
         "step_3_title": "Kelola Peserta",
         "step_3_desc": "Manajemen peserta & panitia, kartu dan sertifikat digital",
         "step_4_title": "Event Berjalan",
-        "step_4_desc": "Absensi QR code, semua aktivitas ter-record dan dapat diekspor"
+        "step_4_desc": "Absensi QR code, semua aktivitas ter-record dan dapat diekspor",
+        "featured": "Unggulan",
+        "watch_video": "Tonton video",
+        "uptime": "Waktu aktif",
+        "support": "Dukungan",
+        "heart_rate": "Detak jantung",
+        "spacewalks": "Spacewalks",
+        "live": "Live"
     },
     "about": {
         "hero_badge": "LEADING INNOVATION",

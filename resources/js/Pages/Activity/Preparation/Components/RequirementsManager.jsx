@@ -123,9 +123,9 @@ export default function RequirementsManager({ activity, divisionId, divisions })
                     <p className="mt-2 text-gray-500">Memuat data...</p>
                 </div>
             ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[60vh] sm:max-h-[70vh]">
                     <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kebutuhan</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
@@ -134,7 +134,7 @@ export default function RequirementsManager({ activity, divisionId, divisions })
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white divide-y divide-gray-100">
                             {requirements.length > 0 ? (
                                 requirements.map((req) => (
                                     <RequirementRow
@@ -258,4 +258,3 @@ function RequirementRow({ req, onStatusChange, onNameChange, onTargetDateChange,
         </tr>
     );
 }
-

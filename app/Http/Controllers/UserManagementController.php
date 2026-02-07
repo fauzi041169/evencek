@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class UserManagementController extends Controller
@@ -119,10 +120,51 @@ class UserManagementController extends Controller
                 $stats['failed']++;
             }
         }
+        // Bersihkan cache dashboard agar statistik gender terupdate
+        try {
+            Cache::flush();
+        } catch (\Exception $e) {
+            \Log::warning('Cache flush failed after fillGenderGlobal', ['error' => $e->getMessage()]);
+        }
         return response()->json([
             'success' => true,
             'message' => "Berhasil mengisi {$stats['success']} jenis kelamin dari {$stats['total']} user yang diproses.",
             'stats' => $stats,
+        ]);
+    }
+
+    /**
+     * Debug: list users with empty gender and predicted value
+     * Admin/Superadmin only
+     */
+    public function debugEmptyGender(Request $request)
+    {
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+        $limit = (int) ($request->input('limit') ?? 100);
+        if ($limit < 1) $limit = 100;
+        $users = User::with('profile')
+            ->whereHas('profile', function ($q) {
+                $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-');
+            })
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+        $data = $users->map(function ($u) {
+            $name = $u->name ?? '';
+            $pred = \App\Helpers\GenderHelper::predict($name);
+            return [
+                'id' => $u->id,
+                'name' => $name,
+                'email' => $u->email,
+                'predicted' => $pred,
+            ];
+        });
+        return response()->json([
+            'success' => true,
+            'count' => $data->count(),
+            'data' => $data,
         ]);
     }
 

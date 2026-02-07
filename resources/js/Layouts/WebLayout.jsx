@@ -47,6 +47,37 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
 
     const settings = appSettings || {};
 
+    const shadeColor = (hex, amt) => {
+        try {
+            let h = hex.replace('#', '');
+            if (h.length === 3) h = h.split('').map(x => x + x).join('');
+            const num = parseInt(h, 16);
+            let r = (num >> 16) & 0xff;
+            let g = (num >> 8) & 0xff;
+            let b = num & 0xff;
+            r = Math.min(255, Math.max(0, r + Math.round(255 * (amt / 100))));
+            g = Math.min(255, Math.max(0, g + Math.round(255 * (amt / 100))));
+            b = Math.min(255, Math.max(0, b + Math.round(255 * (amt / 100))));
+            return '#' + (1 << 24 | (r << 16) | (g << 8) | b).toString(16).slice(1);
+        } catch { return hex; }
+    };
+    const gradientFrom = (base) => `linear-gradient(180deg, ${shadeColor(base, 18)}, ${shadeColor(base, -6)})`;
+    const primary = settings.colors?.primary || '#7c3aed';
+    const secondary = settings.colors?.secondary || '#db2777';
+    const accent = settings.colors?.accent || '#f59e0b';
+    const neutralBase = settings.colors?.navbar_bg || '#e2e8f0';
+    const titleColor =
+        settings.colors_text?.color_navbar_title_text
+        || settings.colors_text?.color_navbar_brand_text
+        || settings.colors?.color_navbar_brand_text
+        || settings.colors?.navbar_title_text
+        || settings.colors?.navbar_text
+        || '#f8fafc';
+    const titleHoverColor =
+        settings.colors?.color_navbar_title_hover_bg
+        || settings.colors?.color_navbar_link_hover_bg
+        || shadeColor(titleColor, -10);
+
     const getLogoUrl = (logoPath) => {
         if (!logoPath) return '/assets/images/logo.png';
         if (logoPath.startsWith('http')) return logoPath;
@@ -78,10 +109,11 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
         return '/storage/' + cleanPath;
     };
 
-    const navClasses = `fixed top-0 left-0 right-0 z-[9999] transition-all duration-300 ${transparentNavbar && !scrolled
-        ? 'bg-transparent py-4'
-        : 'navbar-gradient shadow-md bg-gradient-to-r from-primary to-secondary backdrop-blur-md bg-opacity-95'
-        }`;
+    const navClasses = `fixed top-0 left-0 right-0 z-[9999] transition-all duration-300 ${
+        transparentNavbar && !scrolled
+            ? 'bg-transparent py-4'
+            : 'bg-gray-100/95 backdrop-blur-md border-b border-gray-200 shadow-sm'
+    }`;
 
     // Helper untuk warna text navbar
     const getNavbarTextColor = () => {
@@ -100,6 +132,14 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     --color-accent: ${settings.colors?.accent || '#f59e0b'};
                     --color-navbar-bg: ${settings.colors?.navbar_bg || '#1e293b'};
                     --color-navbar-text: ${settings.colors?.navbar_text || '#f8fafc'};
+                    --color-navbar-start: ${settings.colors?.color_navbar_start || '#4973ec'};
+                    --color-navbar-end: ${settings.colors?.color_navbar_end || '#6600ff'};
+                    --color-navbar-link-text: ${settings.colors?.color_navbar_link_text || '#330000'};
+                    --color-navbar-link-hover-bg: ${settings.colors?.color_navbar_link_hover_bg || '#db0a99'};
+                    --color-navbar-link-active-card: ${settings.colors?.color_navbar_link_active_card || '#fa9200'};
+                    --color-navbar-link-active-border: ${settings.colors?.color_navbar_link_active_border || '#ffcf66'};
+                    --color-navbar-title: ${titleColor};
+                    --color-navbar-title-hover: ${titleHoverColor};
                 }
                 .navbar-gradient {
                     background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
@@ -110,6 +150,10 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                 .bg-secondary { background-color: var(--color-secondary); }
                 .hover\\:bg-primary:hover { background-color: var(--color-primary); }
                 .hover\\:text-primary:hover { color: var(--color-primary); }
+                .text-navbar-link-text { color: var(--color-navbar-link-text) !important; }
+                .hover\\:bg-navbar-link-hover-bg:hover { background-color: var(--color-navbar-link-hover-bg) !important; }
+                .navbar-title { color: var(--color-navbar-title); transition: color .2s ease; }
+                .group:hover .navbar-title { color: var(--color-navbar-title-hover); }
                 
                 /* Custom scrollbar */
                 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -129,6 +173,72 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                 .active-indicator {
                     transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
                 }
+
+                .seg-nav { display:flex; gap:0; }
+                .seg-tab {
+                    position: relative;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0;
+                    padding: 11px 30px;
+                    color: var(--seg-text, #fff);
+                    font-weight: 700;
+                    font-size: 0.875rem;
+                    letter-spacing: .015em;
+                    text-transform: uppercase;
+                    transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+                    background: var(--seg-bg, transparent);
+                    border-top-left-radius: 16px;
+                    border-bottom-left-radius: 16px;
+                    box-shadow: 0 8px 20px rgba(0,0,0,.18), inset 0 -6px 10px rgba(0,0,0,.08), inset 0 6px 10px rgba(255,255,255,.08);
+                    border: 1px solid var(--seg-border, rgba(255,255,255,.18));
+                    text-shadow: 0 1px 1px rgba(0,0,0,.15);
+                    overflow: hidden;
+                    isolation: isolate;
+                    width: 168px;
+                    justify-content: center;
+                    white-space: nowrap;
+                }
+                .seg-tab::before{
+                    content:"";
+                    position:absolute;
+                    inset:0;
+                    background: linear-gradient(to bottom, rgba(255,255,255,.30), rgba(255,255,255,0) 60%);
+                    mix-blend-mode: screen;
+                    pointer-events:none;
+                    border-top-left-radius:16px;
+                    border-bottom-left-radius:16px;
+                    z-index:0;
+                }
+                .seg-cap{
+                    position:absolute;
+                    right:-32px;
+                    top:0;
+                    width:78px;
+                    height:100%;
+                    background: inherit;
+                    border-radius: 999px;
+                    box-shadow: 0 6px 18px rgba(0,0,0,.12);
+                    z-index: -1;
+                }
+                .seg-seam{
+                    position:absolute;
+                    right: 40px;
+                    top:0;
+                    width: 16px;
+                    height:100%;
+                    background: linear-gradient(to right, rgba(255,255,255,.35), rgba(255,255,255,0));
+                    pointer-events:none;
+                    opacity:.6;
+                    transform: skewX(-28deg);
+                }
+                .seg-tab:hover{ transform: translateY(-1px); box-shadow: 0 12px 24px rgba(0,0,0,.22); background: var(--seg-bg-hover, var(--seg-bg)); }
+                .seg-tab:focus-visible{ outline: none; box-shadow: 0 0 0 2px rgba(255,255,255,.65), 0 12px 24px rgba(0,0,0,.22); }
+                .seg-tab.active{ box-shadow: 0 16px 28px rgba(0,0,0,.24), inset 0 0 0 1px rgba(255,255,255,.25); background: var(--seg-bg-active, var(--seg-bg)); border-color: var(--seg-active-border, var(--seg-border)); }
+                .seg-tab + .seg-tab { margin-left: -28px; }
+                .seg-tab:first-child { margin-left: 0; }
+
+                /* palette seg-color-* dihapus; warna kini mengikuti appSettings melalui inline style */
             `}} />
 
             {/* Flash Messages */}
@@ -165,42 +275,46 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                             }}
                                         />
                                     </div>
-                                    <span className="font-bold text-xl text-white tracking-wide uppercase hidden sm:inline group-hover:text-warning transition-colors">
+                                    <span className="font-bold text-xl tracking-wide uppercase hidden sm:inline navbar-title transition-colors">
                                         {settings.app_name || 'EVENTCEK'}
                                     </span>
                                 </Link>
                             </div>
 
-                            {/* Desktop Navigation */}
-                            <nav className="hidden md:flex items-center space-x-3">
+                            <nav className="hidden md:flex seg-nav">
                                 {[
                                     { name: t('nav.home'), href: '/', icon: 'fa-home' },
                                     { name: t('nav.about'), href: '/about', icon: 'fa-info-circle' },
                                     { name: t('nav.news'), href: '/news', icon: 'fa-newspaper' },
                                     { name: t('nav.activities'), href: '/activity', icon: 'fa-calendar-alt' },
                                     ...(settings.subscription_service_enabled ? [{ name: 'Langganan', href: '/subscriptions/pricing', icon: 'fa-crown' }] : [])
-                                ].map((link) => {
+                                ].map((link, idx) => {
                                     const isActive = url === link.href || (link.href !== '/' && url.startsWith(link.href));
+                                    const c = settings.colors || {};
+                                    const navStart = c['color_navbar_start'] || '#4973ec';
+                                    const navEnd = c['color_navbar_end'] || '#6600ff';
+                                    const linkText = c['color_navbar_link_text'] || '#330000';
+                                    const linkHover = c['color_navbar_link_hover_bg'] || '#db0a99';
+                                    const linkActiveCard = c['color_navbar_link_active_card'] || '#fa9200';
+                                    const linkActiveBorder = c['color_navbar_link_active_border'] || '#ffcf66';
+                                    const bgStyle = {
+                                        '--seg-bg': `linear-gradient(to right, ${navStart}, ${navEnd})`,
+                                        '--seg-bg-hover': gradientFrom(linkHover),
+                                        '--seg-bg-active': gradientFrom(linkActiveCard),
+                                        '--seg-text': linkText,
+                                        '--seg-border': 'transparent',
+                                        '--seg-active-border': linkActiveBorder
+                                    };
                                     return (
                                         <Link
                                             key={link.name}
                                             href={link.href}
-                                            className={`
-                                                relative px-6 py-2.5 rounded-tl-2xl rounded-br-2xl text-sm font-bold transition-all duration-300 transform group overflow-hidden
-                                                ${isActive
-                                                    ? 'bg-navbar-link-active-card text-navbar-link-active-border shadow-xl scale-105 -translate-y-0.5 ring-2 ring-navbar-link-active-border/50'
-                                                    : 'bg-white/10 text-navbar-link-text hover:bg-navbar-link-hover-bg hover:shadow-lg hover:scale-105 hover:-translate-y-0.5 backdrop-blur-sm border border-white/10'
-                                                }
-                                            `}
+                                            className={`seg-tab ${isActive ? 'active' : ''}`}
+                                            style={bgStyle}
                                         >
-                                            <span className="relative z-10 flex items-center gap-2">
-                                                <i className={`fas ${link.icon} opacity-80`}></i>
-                                                {link.name}
-                                            </span>
-                                            {isActive && (
-                                                <div className="absolute inset-0 bg-warning blur-md opacity-40 rounded-tl-2xl rounded-br-2xl -z-10"></div>
-                                            )}
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>
+                                            <span>{link.name}</span>
+                                            <span className="seg-cap"></span>
+                                            <span className="seg-seam"></span>
                                         </Link>
                                     );
                                 })}
@@ -576,4 +690,3 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
         </div>
     );
 }
-

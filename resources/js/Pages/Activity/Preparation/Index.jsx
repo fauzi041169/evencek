@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, Link } from '@inertiajs/react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 import DivisionSidebar from './Components/DivisionSidebar';
 import RequirementsManager from './Components/RequirementsManager';
@@ -52,6 +52,16 @@ export default function PreparationIndex({
                     {/* Modern Premium Header */}
                     <div className="mb-4 sm:mb-8 pt-2 sm:pt-8 pl-2 sm:pl-6 border-l-4 sm:border-l-8 border-primary rounded-l-sm bg-gradient-to-r from-slate-50 to-transparent">
                         <div className="space-y-3">
+                            <div className="text-xs font-medium text-slate-500">
+                                <Link
+                                    href={route('activity.detail', activity.id || activity.uid)}
+                                    className="text-primary hover:underline"
+                                >
+                                    Detail Acara
+                                </Link>
+                                <span className="mx-2 text-slate-400">/</span>
+                                <span className="text-slate-600">Preparation</span>
+                            </div>
                             <div className="flex items-center gap-3">
                                 <span className="px-3 py-1 rounded-full bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20">
                                     Management Center
@@ -103,9 +113,9 @@ export default function PreparationIndex({
 
                     {/* Requirements section - wider at bottom */}
                     <div className="mt-3 sm:mt-10 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md duration-300">
-                        <div className="grid grid-cols-1 sm:grid-cols-[280px_1fr] md:grid-cols-[300px_1fr] min-h-[700px] divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                        <div className="grid grid-cols-1 sm:grid-cols-[300px_1fr] min-h-[700px] divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
                             {/* Left: Divisions (Jabatan) List */}
-                            <div className="bg-gray-50/50 min-w-0">
+                            <div className="bg-gray-50/50 min-w-0 sm:sticky sm:top-0 sm:self-start sm:h-[calc(100vh-220px)]">
                                 <DivisionSidebar
                                     divisions={divisionsList}
                                     selectedDivisionId={selectedDivisionId}

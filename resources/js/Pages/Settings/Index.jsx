@@ -11,6 +11,7 @@ export default function Index({
     heroBackgrounds = [],
     heroAnimationStyle = 'circles',
     navbarOpacity = '1',
+    heroSlide3RightImageUrl = null,
 }) {
     const initialColors = useMemo(() => {
         const map = {};
@@ -31,6 +32,7 @@ export default function Index({
         }, {})
     );
     const [opacityPercent, setOpacityPercent] = useState(Math.round(parseFloat(navbarOpacity || '1') * 100));
+    const [slide3RightPreview, setSlide3RightPreview] = useState(heroSlide3RightImageUrl || '');
 
     // File size limits (in bytes)
     const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
@@ -44,6 +46,7 @@ export default function Index({
         hero_background_1: null,
         hero_background_2: null,
         hero_background_3: null,
+        hero_slide3_right_image: null,
         colors: initialColors,
         colors_text: initialColors,
         navbar_opacity: parseFloat(navbarOpacity || '1').toFixed(2),
@@ -207,6 +210,38 @@ export default function Index({
                                             />
                                         </div>
                                     ))}
+                                </div>
+                            </section>
+
+                            <section className="pb-6 border-b border-gray-200">
+                                <h2 className="text-xl font-semibold text-gray-800 mb-2">
+                                    <i className="fas fa-image mr-2"></i>Gambar Panel Kanan (Slide 3)
+                                </h2>
+                                <p className="text-gray-600 mb-3">Gambar ini tampil di panel kanan pada slide hero ke‑3.</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <img
+                                            src={slide3RightPreview || '/assets/images/hero/defoult.webp'}
+                                            alt="Slide 3 Right Preview"
+                                            className="h-24 w-full object-cover rounded-lg border mb-2"
+                                        />
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (!file) return;
+                                                if (!validateFileSize(file, MAX_HERO_SIZE, 'Gambar Slide 3')) return;
+                                                const url = URL.createObjectURL(file);
+                                                setSlide3RightPreview(url);
+                                                setData('hero_slide3_right_image', file);
+                                            }}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                        />
+                                        {errors.hero_slide3_right_image && (
+                                            <p className="text-sm text-red-600 mt-1">{errors.hero_slide3_right_image}</p>
+                                        )}
+                                    </div>
                                 </div>
                             </section>
 
