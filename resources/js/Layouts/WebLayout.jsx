@@ -217,7 +217,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     top:0;
                     width:78px;
                     height:100%;
-                    background: inherit;
+                    background: var(--seg-cap-bg, inherit);
                     border-radius: 999px;
                     box-shadow: 0 6px 18px rgba(0,0,0,.12);
                     z-index: -1;
@@ -302,6 +302,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                         '--seg-bg': `linear-gradient(to right, ${navStart}, ${navEnd})`,
                                         '--seg-bg-hover': gradientFrom(linkHover),
                                         '--seg-bg-active': gradientFrom(linkActiveCard),
+                                        '--seg-cap-bg': `linear-gradient(to right, ${navStart}, ${navEnd})`,
                                         '--seg-text': linkText,
                                         '--seg-border': 'transparent',
                                         '--seg-active-border': linkActiveBorder
