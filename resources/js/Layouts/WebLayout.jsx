@@ -294,7 +294,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                     const c = settings.colors || {};
                                     const navStart = c['color_navbar_start'] || '#4973ec';
                                     const navEnd = c['color_navbar_end'] || '#6600ff';
-                                    const linkText = c['color_navbar_link_text'] || '#330000';
+                                    const linkText = c['color_navbar_brand_text'] || c['color_navbar_link_text'] || '#ffffff';
                                     const linkHover = c['color_navbar_link_hover_bg'] || '#db0a99';
                                     const linkActiveCard = c['color_navbar_link_active_card'] || '#fa9200';
                                     const linkActiveBorder = c['color_navbar_link_active_border'] || '#ffcf66';
@@ -303,7 +303,6 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                         '--seg-bg-hover': gradientFrom(linkHover),
                                         '--seg-bg-active': gradientFrom(linkActiveCard),
                                         '--seg-text': linkText,
-                                        color: linkText,
                                         '--seg-border': 'transparent',
                                         '--seg-active-border': linkActiveBorder
                                     };
