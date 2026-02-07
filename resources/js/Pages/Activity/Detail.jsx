@@ -933,6 +933,7 @@ export default function Detail({
                                     src={heroCoverPath}
                                     alt={activity.name}
                                     className="relative w-full h-full object-contain z-10 transition-transform duration-500 group-hover:scale-[1.02]"
+                                    loading="lazy"
                                     onError={(e) => {
                                         e.target.onerror = null;
                                         e.target.src = '/assets/images/hero/defoult.webp';
@@ -1191,6 +1192,7 @@ export default function Detail({
                                                         src={person.avatar || '/assets/images/profilefoto/default-profile.png'}
                                                         alt={person.name}
                                                         className="w-full h-full object-cover"
+                                                        loading="lazy"
                                                         onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
                                                     />
                                                 </div>
@@ -1209,6 +1211,7 @@ export default function Detail({
                                                     src={activity.user?.profile_photo_url || activity.creator?.avatar || '/assets/images/profilefoto/default-profile.png'}
                                                     alt={activity.user?.name || activity.creator?.name}
                                                     className="w-full h-full object-cover"
+                                                    loading="lazy"
                                                     onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
                                                 />
                                             </div>
@@ -1238,6 +1241,7 @@ export default function Detail({
                                                     src={speaker.photo || '/assets/images/profilefoto/default-profile.png'}
                                                     alt={speaker.name}
                                                     className="w-full h-full object-cover"
+                                                    loading="lazy"
                                                     onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
                                                 />
                                             </div>
@@ -1297,6 +1301,7 @@ export default function Detail({
                                                                 src={participant.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
                                                                 alt={participant.name}
                                                                 className="w-10 h-10 rounded-full object-cover"
+                                                                loading="lazy"
                                                                 onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
                                                             />
                                                         </div>
