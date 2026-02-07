@@ -983,21 +983,27 @@ export default function Detail({
                                                 Array.from(e.target.files).forEach(file => {
                                                     formData.append('image[]', file);
                                                 });
-                                                router.post(route('gallery.store', activity.id), formData, {
-                                                    forceFormData: true,
-                                                    preserveScroll: true,
-                                                    onSuccess: () => Swal.fire({
+                                                const csrf = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || '';
+                                                axios.post(route('gallery.store', activity.id), formData, {
+                                                    headers: {
+                                                        'X-CSRF-TOKEN': csrf,
+                                                        'Accept': 'application/json'
+                                                    }
+                                                }).then(() => {
+                                                    Swal.fire({
                                                         icon: 'success',
                                                         title: t('activities.success'),
                                                         text: t('activities.comment_sent'),
-                                                        timer: 1500,
+                                                        timer: 1200,
                                                         showConfirmButton: false
-                                                    }),
-                                                    onError: () => Swal.fire({
+                                                    });
+                                                    setTimeout(() => window.location.reload(), 1200);
+                                                }).catch(() => {
+                                                    Swal.fire({
                                                         icon: 'error',
                                                         title: 'Gagal',
                                                         text: 'Gagal mengunggah foto'
-                                                    }),
+                                                    });
                                                 });
                                                 e.target.value = ''; // Reset input
                                             }
@@ -1034,8 +1040,16 @@ export default function Detail({
                                                                 confirmButtonText: 'Ya, Hapus!'
                                                             }).then((result) => {
                                                                 if (result.isConfirmed) {
-                                                                    router.delete(route('gallery.destroy', { activity: activity.id, gallery: image.id }), {
-                                                                        preserveScroll: true
+                                                                    const csrf = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || '';
+                                                                    axios.delete(route('gallery.destroy', { activity: activity.id, gallery: image.id }), {
+                                                                        headers: {
+                                                                            'X-CSRF-TOKEN': csrf,
+                                                                            'Accept': 'application/json'
+                                                                        }
+                                                                    }).then(() => {
+                                                                        window.location.reload();
+                                                                    }).catch(() => {
+                                                                        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus foto' });
                                                                     });
                                                                 }
                                                             });
