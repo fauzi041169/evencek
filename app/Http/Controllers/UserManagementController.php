@@ -43,7 +43,7 @@ class UserManagementController extends Controller
         if ($request->boolean('all') || ($perPageParam === 'all')) {
             $users = $query->orderBy('created_at', 'desc')->get();
         } else {
-            $allowed = [10, 25, 50, 100, 20];
+            $allowed = [10, 25, 50, 100, 200, 500, 20];
             $perPage = (int) ($perPageParam ?: 20);
             if (! in_array($perPage, $allowed, true)) {
                 $perPage = 20;

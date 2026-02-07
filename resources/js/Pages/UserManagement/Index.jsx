@@ -11,7 +11,7 @@ export default function UserManagementIndex({
 }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
-    const [perPage, setPerPage] = useState(20);
+    const [perPage, setPerPage] = useState('20');
     const [resetPasswordModal, setResetPasswordModal] = useState({ open: false, userId: null, userName: '' });
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -54,11 +54,16 @@ export default function UserManagementIndex({
 
     const handleSearch = (e) => {
         e?.preventDefault();
-        router.get(route('user-management.index'), {
+        const params = {
             search: searchTerm,
             role: roleFilter,
-            per_page: perPage,
-        }, { preserveState: true });
+        };
+        if (perPage === 'all') {
+            params.all = 1;
+        } else {
+            params.per_page = perPage;
+        }
+        router.get(route('user-management.index'), params, { preserveState: true });
     };
 
     const handleRoleChange = async (userId, newRole) => {
@@ -320,12 +325,15 @@ export default function UserManagementIndex({
                                     <select
                                         value={perPage}
                                         onChange={(e) => setPerPage(e.target.value)}
-                                        className="w-32 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                        className="w-40 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                                     >
                                         <option value="10">10</option>
                                         <option value="25">25</option>
                                         <option value="50">50</option>
                                         <option value="100">100</option>
+                                        <option value="200">200</option>
+                                        <option value="500">500</option>
+                                        <option value="all">Tampilkan semua</option>
                                     </select>
                                 </div>
                                 <button
