@@ -600,7 +600,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
             </nav>
 
             {/* Children Content */}
-            <main className={`${hasHeaderSpacer ? 'pt-20 sm:pt-24' : 'pt-0'} ${noPadding ? 'p-0' : 'p-3 sm:p-6 lg:p-8'} ${fluid ? 'max-w-none' : 'max-w-7xl mx-auto'}`}>
+            <main className={`${(hasHeaderSpacer || transparentNavbar) ? 'pt-24 sm:pt-28 lg:pt-32' : 'pt-0'} ${noPadding ? 'p-0' : 'p-3 sm:p-6 lg:p-8'} ${fluid ? 'max-w-none' : 'max-w-7xl mx-auto'}`}>
                 {children}
             </main>
 
