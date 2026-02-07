@@ -187,7 +187,7 @@ export default function Show({
                     try {
                         const paymentResponse = await axios.get(response.data.redirect_url, {
                             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                            params: { modal: 'true', is_ajax: 'true' }
+                            params: { modal: '1', ajax: '1' }
                         });
 
                         if (paymentResponse.data.snapToken) {
@@ -1659,4 +1659,3 @@ export default function Show({
         </WebLayout>
     );
 }
-

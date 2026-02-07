@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
-import MainLayout from '@/Layouts/MainLayout';
+import FinanceContainer from '@/Components/Finance/FinanceContainer';
 import Swal from 'sweetalert2';
 
 export const typeLabels = {
@@ -207,64 +207,63 @@ export function ChannelList({
 
 export default function Channels({ channels = [] }) {
     const { flash } = usePage().props;
-
+    const csrfToken = typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') : '';
+ 
     return (
-        <MainLayout>
+        <FinanceContainer title="Manajemen Channel Pembayaran">
             <Head title="Manajemen Channel Pembayaran" />
-            <div className="min-h-screen bg-gray-50 py-8">
-                <div className="max-w-6xl mx-auto px-4">
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-bold text-gray-900">Manajemen Channel Pembayaran</h1>
-                        <p className="text-sm text-gray-600">Atur metode pembayaran yang tersedia untuk peserta.</p>
+            <div className="p-6">
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900">Manajemen Channel Pembayaran</h1>
+                    <p className="text-sm text-gray-600">Atur metode pembayaran yang tersedia untuk peserta.</p>
+                </div>
+ 
+                {flash?.success && (
+                    <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded-r-lg shadow-sm">
+                        <p className="text-sm text-green-700">{flash.success}</p>
                     </div>
-
-                    {flash?.success && (
-                        <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded-r-lg shadow-sm">
-                            <p className="text-sm text-green-700">{flash.success}</p>
-                        </div>
-                    )}
-
-                    <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-                        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                            <h2 className="text-lg font-semibold text-gray-800">Daftar Channel Pembayaran</h2>
-                            <form
-                                action={route('payments.channels.sync')}
-                                method="post"
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    Swal.fire({
-                                        title: 'Reset & Sinkronisasi?',
-                                        text: 'Apakah Anda yakin ingin mereset/sinkronisasi data channel?',
-                                        icon: 'warning',
-                                        showCancelButton: true,
-                                        confirmButtonColor: '#E02424',
-                                        cancelButtonColor: '#718096',
-                                        confirmButtonText: 'Ya, Sinkronisasi',
-                                        cancelButtonText: 'Batal'
-                                    }).then((result) => {
-                                        if (result.isConfirmed) {
-                                            e.target.submit();
-                                        }
-                                    });
-                                }}
+                )}
+ 
+                <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                        <h2 className="text-lg font-semibold text-gray-800">Daftar Channel Pembayaran</h2>
+                        <form
+                            action={route('payments.channels.sync')}
+                            method="post"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                Swal.fire({
+                                    title: 'Reset & Sinkronisasi?',
+                                    text: 'Apakah Anda yakin ingin mereset/sinkronisasi data channel?',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#E02424',
+                                    cancelButtonColor: '#718096',
+                                    confirmButtonText: 'Ya, Sinkronisasi',
+                                    cancelButtonText: 'Batal'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        e.target.submit();
+                                    }
+                                });
+                            }}
+                        >
+                            <input type="hidden" name="_token" value={csrfToken} />
+                            <button
+                                type="submit"
+                                className="text-xs px-3 py-1.5 rounded-lg bg-secondary/10 text-blue-700 hover:bg-blue-200 transition font-medium"
                             >
-                                <input type="hidden" name="_token" value={csrfToken} />
-                                <button
-                                    type="submit"
-                                    className="text-xs px-3 py-1.5 rounded-lg bg-secondary/10 text-blue-700 hover:bg-blue-200 transition font-medium"
-                                >
-                                    <i className="fas fa-sync-alt mr-1"></i> Reset / Sync Data
-                                </button>
-                            </form>
-                        </div>
-
-                        <div className="p-6">
-                            <ChannelList channels={channels} />
-                        </div>
+                                <i className="fas fa-sync-alt mr-1"></i> Reset / Sync Data
+                            </button>
+                        </form>
+                    </div>
+ 
+                    <div className="p-6">
+                        <ChannelList channels={channels} />
                     </div>
                 </div>
             </div>
-        </MainLayout>
+        </FinanceContainer>
     );
 }
 

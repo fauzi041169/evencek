@@ -18,10 +18,18 @@ export default function Rules({ settings, financial, vouchers = [], activities =
             <div className="p-6 space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="bg-white rounded-lg border shadow-sm">
-                            <div className="px-6 py-4 border-b">
+                            <div className="px-6 py-4 border-b flex items-center justify-between">
                                 <h5 className="text-gray-900 font-semibold flex items-center">
                                     <i className="fas fa-sliders-h mr-2 text-secondary"></i> Biaya Admin
                                 </h5>
+                                <a
+                                    href={route('payments.channels')}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold bg-secondary/10 text-secondary hover:bg-blue-200 transition"
+                                    title="Kelola Channel Midtrans"
+                                >
+                                    <i className="fas fa-credit-card"></i>
+                                    Channel Midtrans
+                                </a>
                             </div>
                             <div className="p-6">
                                 <form method="post" action={route('payments.rules.store')}>

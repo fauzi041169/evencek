@@ -12,6 +12,13 @@ export default function FinanceNav() {
                 <span>Administrasi</span>
             </Link>
             <Link
+                href={route('payments.channels')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 transform hover:scale-105 ${route().current('payments.channels') ? 'bg-secondary text-white shadow-lg shadow-secondary/30 scale-105' : 'text-gray-600 hover:bg-white hover:text-secondary hover:shadow-md'}`}
+            >
+                <i className="fas fa-credit-card"></i>
+                <span>Channel Midtrans</span>
+            </Link>
+            <Link
                 href={route('payments.manage')}
                 className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 transform hover:scale-105 ${route().current('payments.manage') ? 'bg-secondary text-white shadow-lg shadow-secondary/30 scale-105' : 'text-gray-600 hover:bg-white hover:text-secondary hover:shadow-md'}`}
             >

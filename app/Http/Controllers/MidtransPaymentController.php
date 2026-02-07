@@ -21,6 +21,36 @@ use Exception;
 
 class MidtransPaymentController extends Controller
 {
+    private function normalizeChannelCode(?string $code): ?string
+    {
+        if (! $code) return null;
+        $map = [
+            // Virtual Accounts
+            'bca_va' => 'bca_va',
+            'bni_va' => 'bni_va',
+            'bri_va' => 'bri_va',
+            'permata_va' => 'permata_va',
+            'cimb_va' => 'cimb_va',
+            'danamon_va' => 'other_va',
+            'bsi_va' => 'other_va',
+            'mandiri_bill' => 'echannel',
+            // e-wallet / qris
+            'gopay' => 'gopay',
+            'shopeepay' => 'shopeepay',
+            'qris' => 'qris',
+            'ovo' => 'ovo',
+            'dana' => 'dana',
+            // cstore
+            'indomaret' => 'indomaret',
+            'alfamart' => 'alfamart',
+            // cardless credit
+            'akulaku' => 'akulaku',
+            'kredivo' => 'kredivo',
+            // credit card
+            'credit_card' => 'credit_card',
+        ];
+        return $map[strtolower($code)] ?? $code;
+    }
     public function getChannels()
     {
         $channels = PaymentChannel::where('is_active', true)
@@ -126,6 +156,10 @@ class MidtransPaymentController extends Controller
             'channel_code' => 'required|string',
         ]);
 
+        if (! auth()->user()->hasPermission('make_payment')) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 403);
+        }
+
         $payment = Payment::find($request->payment_id);
 
         // Verify ownership
@@ -183,7 +217,7 @@ class MidtransPaymentController extends Controller
             ];
         }
 
-        $transactionDetails['enabled_payments'] = [$request->channel_code];
+        $transactionDetails['enabled_payments'] = [$this->normalizeChannelCode($request->channel_code)];
         $returnTo = request('return_to', session('import_return_to'));
         
         if ($returnTo) {
@@ -234,8 +268,19 @@ class MidtransPaymentController extends Controller
      */
     public function create(Request $request, Activity $activity)
     {
-        $isAjax = ($request->query('ajax') == '1') || $request->ajax() || $request->expectsJson();
-        $isModal = ($request->query('modal') == '1');
+        $isAjax = ($request->query('ajax') == '1') || $request->boolean('is_ajax') || $request->ajax() || $request->expectsJson();
+        $isModal = ($request->query('modal') == '1' || $request->boolean('modal'));
+
+        if (! auth()->user()->hasPermission('make_payment')) {
+            if ($isAjax || $isModal) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki izin untuk melakukan pembayaran.'
+                ], 403);
+            }
+            return redirect()->route('activity.detail', $activity->id)
+                ->with('error', 'Anda tidak memiliki izin untuk melakukan pembayaran.');
+        }
 
         if (method_exists($activity, 'hasAutomaticPayment') && ! $activity->hasAutomaticPayment()) {
             $manualUrl = route('payments.create', array_merge(['activity' => $activity->id], $request->query()));
@@ -614,7 +659,7 @@ class MidtransPaymentController extends Controller
                     $payment->amount = $baseAmount + $newFee;
                     $payment->save();
 
-                    $enabledPayments = [$request->channel_code];
+                    $enabledPayments = [$this->normalizeChannelCode($request->channel_code)];
                 }
             }
 
@@ -647,6 +692,31 @@ class MidtransPaymentController extends Controller
                         'error' => route('midtrans.payment.error', ['return_to' => 'participants', 'activity_id' => $activity->id]),
                     ];
                 }
+            }
+
+            if (empty($enabledPayments)) {
+                DB::commit();
+                if ($isAjax) {
+                    return response()->json([
+                        'status' => 'choose_channel',
+                        'payment_id' => $payment->id,
+                        'redirect_url' => route('midtrans.payment.create', [
+                            'activity' => $activity->id,
+                            'is_bulk' => $request->boolean('is_bulk'),
+                            'batch_id' => $request->input('batch_id'),
+                        ]),
+                    ]);
+                }
+                $channels = PaymentChannel::where('is_active', true)->get();
+                return Inertia::render('Payments/Midtrans', [
+                    'payment' => $payment,
+                    'activity' => $activity,
+                    'snapToken' => null,
+                    'channels' => $channels,
+                    'isAjax' => $isAjax,
+                    'midtransClientKey' => config('services.midtrans.client_key'),
+                    'midtransIsProduction' => (bool) config('services.midtrans.is_production', false),
+                ]);
             }
 
             // Buat Snap token
@@ -760,7 +830,7 @@ class MidtransPaymentController extends Controller
 
             // Extract activity and user ID from order_id
             // Format: ACTIVITY-{activity_id}-USER-{user_id}-{timestamp}
-            preg_match('/ACTIVITY-(\d+)-USER-(\d+)/', $orderId, $matches);
+            preg_match('/ACTIVITY-([A-Za-z0-9]+)-USER-([A-Za-z0-9]+)/', $orderId, $matches);
             if (empty($matches)) {
                 Log::error('Invalid order_id format', ['order_id' => $orderId]);
 

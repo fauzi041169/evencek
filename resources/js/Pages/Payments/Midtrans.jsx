@@ -54,6 +54,44 @@ export default function Midtrans({ payment, activity, snapToken, isAjax, midtran
                     admin_fee: response.data.admin_fee
                 });
                 setSelectedChannel(channel);
+                
+                // Auto-open Snap immediately using the updated token
+                // This ensures user goes straight to the selected channel without reselecting inside Snap
+                if (window.snap && typeof window.snap.pay === 'function') {
+                    const finishUrl = route('midtrans.payment.finish', { activity_id: activity?.id });
+                    const errorUrl = route('midtrans.payment.error', { activity_id: activity?.id });
+                    const unfinishUrl = route('midtrans.payment.unfinish', { activity_id: activity?.id });
+                    const tkn = response.data.snapToken;
+                    
+                    const redirectWithParams = (base, params) => {
+                        try {
+                            const url = new URL(base, window.location.origin);
+                            Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value || ''));
+                            window.location.href = url.toString();
+                        } catch (err) {
+                            const qs = Object.entries(params)
+                                .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value || '')}`)
+                                .join('&');
+                            window.location.href = `${base}${base.includes('?') ? '&' : '?'}${qs}`;
+                        }
+                    };
+                    
+                    window.snap.pay(tkn, {
+                        onSuccess: (result) => {
+                            redirectWithParams(finishUrl, { order_id: result?.order_id || '', activity_id: activity?.id || '' });
+                        },
+                        onPending: (result) => {
+                            redirectWithParams(finishUrl, { order_id: result?.order_id || '', activity_id: activity?.id || '' });
+                        },
+                        onError: (result) => {
+                            redirectWithParams(errorUrl, { order_id: result?.order_id || '', activity_id: activity?.id || '' });
+                        },
+                        onClose: () => {
+                            setLoading(false);
+                            redirectWithParams(unfinishUrl, { order_id: payment?.midtrans_transaction_id || '', activity_id: activity?.id || '' });
+                        },
+                    });
+                }
             }
         } catch (error) {
             console.error('Failed to update payment channel', error);

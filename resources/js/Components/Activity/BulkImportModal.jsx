@@ -289,7 +289,12 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                     setStep('check');
                 } else {
                     setImportResult(result.stats ? result : (result.data || result));
-                    // if (onSuccess) onSuccess(); // Do not close immediately, let user see stats
+                    const finalResult = result.stats ? result : (result.data || result);
+                    if (finalResult && (finalResult.bulk_payment_available || (finalResult.stats && finalResult.stats.total_bill > 0))) {
+                        if (onPaymentRequest) {
+                            onPaymentRequest(finalResult);
+                        }
+                    }
                 }
             } else {
                 console.error('Import Failed:', result);

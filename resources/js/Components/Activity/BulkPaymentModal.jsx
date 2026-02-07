@@ -82,7 +82,7 @@ export default function BulkPaymentModal({ show, onClose, activity, importResult
 
                 const paymentResponse = await axios.get(response.data.redirect_url, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                    params: { modal: 'true', is_ajax: 'true' }
+                    params: { modal: '1', ajax: '1' }
                 });
 
                 if (paymentResponse.data.snapToken) {
@@ -95,15 +95,14 @@ export default function BulkPaymentModal({ show, onClose, activity, importResult
                         return;
                     }
 
+                    onClose();
                     window.snap.pay(paymentResponse.data.snapToken, {
                         onSuccess: (result) => {
                             console.log('Payment success:', result);
-                            onClose();
                             window.location.reload();
                         },
                         onPending: (result) => {
                             console.log('Payment pending:', result);
-                            onClose();
                             window.location.reload();
                         },
                         onError: (result) => {

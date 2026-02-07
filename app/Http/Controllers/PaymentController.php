@@ -58,6 +58,17 @@ class PaymentController extends Controller
     public function create(Activity $activity)
     {
         try {
+            if (! auth()->user()->hasPermission('make_payment')) {
+                if (request()->expectsJson() || request()->boolean('modal')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda tidak memiliki izin untuk melakukan pembayaran.'
+                    ], 403);
+                }
+                return redirect()->route('activity.detail', $activity->id)
+                    ->with('error', 'Anda tidak memiliki izin untuk melakukan pembayaran.');
+            }
+
             // Check profile completeness
             $user = auth()->user();
             if (! $user->relationLoaded('profile')) {
@@ -301,6 +312,7 @@ class PaymentController extends Controller
                                     'activity' => $activity->id,
                                     'is_bulk' => request()->boolean('is_bulk'),
                                     'batch_id' => request()->input('batch_id'),
+                                    'channel_code' => request()->input('channel_code'),
                                 ])
                             ]);
                         }
@@ -308,6 +320,7 @@ class PaymentController extends Controller
                             'activity' => $activity->id,
                             'is_bulk' => request()->boolean('is_bulk'),
                             'batch_id' => request()->input('batch_id'),
+                            'channel_code' => request()->input('channel_code'),
                         ]);
                     }
                 }
@@ -333,6 +346,7 @@ class PaymentController extends Controller
                             'activity' => $activity->id,
                             'is_bulk' => request()->boolean('is_bulk'),
                             'batch_id' => request()->input('batch_id'),
+                            'channel_code' => request()->input('channel_code'),
                         ])
                     ]);
                 }
@@ -340,6 +354,7 @@ class PaymentController extends Controller
                     'activity' => $activity->id,
                     'is_bulk' => request()->boolean('is_bulk'),
                     'batch_id' => request()->input('batch_id'),
+                    'channel_code' => request()->input('channel_code'),
                 ]);
             }
 

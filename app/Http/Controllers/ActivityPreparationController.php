@@ -1284,6 +1284,38 @@ class ActivityPreparationController extends Controller
                         \Log::warning('Failed to attach group members to payments', ['error' => $e->getMessage()]);
                     }
 
+                    // Build global index: map user_id -> covering group payment
+                    // This allows attaching the payer's group payment to non-payer members
+                    $groupPaymentIndex = [];
+                    try {
+                        foreach ($participants as $participant) {
+                            if ($participant->user && $participant->user->payments) {
+                                foreach ($participant->user->payments as $payment) {
+                                    if (! empty($payment->is_group_payment) && $payment->relationLoaded('group_members')) {
+                                        foreach ($payment->group_members as $member) {
+                                            if (! empty($member->id)) {
+                                                // Do not overwrite if already mapped; prefer most recent payment
+                                                if (! isset($groupPaymentIndex[$member->id])) {
+                                                    $groupPaymentIndex[$member->id] = $payment;
+                                                } else {
+                                                    // Prefer newer payment by created_at if available
+                                                    $current = $groupPaymentIndex[$member->id];
+                                                    if (($payment->created_at ?? null) && ($current->created_at ?? null)) {
+                                                        if ($payment->created_at->gt($current->created_at)) {
+                                                            $groupPaymentIndex[$member->id] = $payment;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed to build groupPaymentIndex', ['error' => $e->getMessage()]);
+                    }
+
                     // Loop for nested relationships removed as it is now handled by eager loading above
                 }
             } catch (\Exception $e) {
@@ -1356,6 +1388,12 @@ class ActivityPreparationController extends Controller
                             })
                             ->sortByDesc('created_at')
                             ->first();
+                    }
+                    // Fallback: if user has no own payment, attach payer's group payment that includes this user
+                    if (! $payment && isset($groupPaymentIndex) && is_array($groupPaymentIndex)) {
+                        if (isset($groupPaymentIndex[$participant->user_id])) {
+                            $payment = $groupPaymentIndex[$participant->user_id];
+                        }
                     }
                     $participant->setRelation('payment', $payment);
 
@@ -2543,19 +2581,13 @@ class ActivityPreparationController extends Controller
         }
         $activityId = $activity->id;
 
-        // Check permission: Admin, SuperAdmin, Creator, Committee, or Authenticated User (for public registration)
+        // Check permission strictly using RBAC: only Admin, SuperAdmin, Creator, or Committee
         $isOrganizer = auth()->user()->isAdmin() || auth()->user()->isSuperAdmin() || $activity->user_id === auth()->id() || $activity->canManageRegistration(auth()->id());
-
-        if (! $isOrganizer) {
-            // If not organizer, must be authenticated
-            if (! auth()->check()) {
-                abort(401, 'Silakan login terlebih dahulu untuk melakukan pendaftaran kelompok.');
-            }
-            // Regular users cannot mark as paid
-            $markPaid = false;
-        } else {
-            $markPaid = $request->boolean('mark_paid');
+        $canImport = auth()->user()->hasPermission('import_participants') || $isOrganizer;
+        if (! $canImport) {
+            abort(403, 'Anda tidak memiliki izin untuk mengimpor peserta.');
         }
+        $markPaid = $isOrganizer ? $request->boolean('mark_paid') : false;
 
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls,csv,txt|mimetypes:application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain',
