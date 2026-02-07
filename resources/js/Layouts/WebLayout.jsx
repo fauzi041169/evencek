@@ -303,6 +303,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                         '--seg-bg-hover': gradientFrom(linkHover),
                                         '--seg-bg-active': gradientFrom(linkActiveCard),
                                         '--seg-text': linkText,
+                                        color: linkText,
                                         '--seg-border': 'transparent',
                                         '--seg-active-border': linkActiveBorder
                                     };
