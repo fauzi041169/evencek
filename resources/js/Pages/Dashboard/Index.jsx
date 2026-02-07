@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 import {
     Chart as ChartJS,
@@ -63,8 +63,15 @@ export default function DashboardIndex(props) {
         showTopRatedActivities = true,
         showTopCreators = true,
         showSubscriptionCards = true,
-        creatorActiveTrend
+        creatorActiveTrend,
+        startDateStr,
+        endDateStr
     } = props;
+    const [startDate, setStartDate] = useState(startDateStr || new Date(new Date().setMonth(new Date().getMonth() - 11)).toISOString().slice(0, 10));
+    const [endDate, setEndDate] = useState(endDateStr || new Date().toISOString().slice(0, 10));
+    const applyDateFilter = () => {
+        router.get(route('dashboard.index'), { start_date: startDate, end_date: endDate }, { preserveScroll: true, preserveState: true, only: ['userVisitTrend', 'activityTrend', 'trendDual', 'startDateStr', 'endDateStr'] });
+    };
 
     // Charts Configuration
     const trendUserOptions = {
@@ -217,6 +224,12 @@ export default function DashboardIndex(props) {
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6 h-full">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="font-bold text-gray-800">TREN KUNJUNGAN USER</h3>
+                                    <div className="flex items-center gap-2">
+                                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs" />
+                                        <span className="text-xs text-gray-500">sampai</span>
+                                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs" />
+                                        <button onClick={applyDateFilter} className="px-3 py-1.5 bg-primary text-white rounded text-xs">Terapkan</button>
+                                    </div>
                                 </div>
                                 <div className="h-64">
                                     <Line options={trendUserOptions} data={trendUserData} />
@@ -240,7 +253,15 @@ export default function DashboardIndex(props) {
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 mb-3 sm:mb-6">
                         <div className="lg:col-span-9">
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-6 h-full">
-                                <h3 className="font-bold text-gray-800 mb-4">TREN KEGIATAN</h3>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-gray-800">TREN KEGIATAN</h3>
+                                    <div className="flex items-center gap-2">
+                                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs" />
+                                        <span className="text-xs text-gray-500">sampai</span>
+                                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-xs" />
+                                        <button onClick={applyDateFilter} className="px-3 py-1.5 bg-primary text-white rounded text-xs">Terapkan</button>
+                                    </div>
+                                </div>
                                 <div className="h-64">
                                     <Bar options={activityTrendOptions} data={activityTrendData} />
                                 </div>

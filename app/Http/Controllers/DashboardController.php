@@ -393,33 +393,43 @@ class DashboardController extends Controller
             'pageViews' => $pageViews,
             'userSessions' => $userSessions,
         ];
+        $startDateInput = request()->query('start_date');
+        $endDateInput = request()->query('end_date');
+        $startMonth = $startDateInput ? \Carbon\Carbon::parse($startDateInput)->startOfMonth() : now()->subMonths(11)->startOfMonth();
+        $endMonth = $endDateInput ? \Carbon\Carbon::parse($endDateInput)->endOfMonth() : now()->endOfMonth();
+        if ($startMonth->gt($endMonth)) {
+            $startMonth = $endMonth->copy()->subMonths(11)->startOfMonth();
+        }
+        $months = $startMonth->diffInMonths($endMonth) + 1;
+        if ($months > 24) {
+            $startMonth = $endMonth->copy()->subMonths(23)->startOfMonth();
+            $months = 24;
+        }
+        $startDateStr = $startMonth->toDateString();
+        $endDateStr = $endMonth->toDateString();
 
         // Aktivitas per bulan (12 bulan terakhir) - untuk tren kegiatan
         $activityTrendKey = 'dashboard_activity_trend_' . md5(json_encode([
             'act' => $selectedActivity,
-            'prov' => $selectedProvince
+            'prov' => $selectedProvince,
+            'start' => $startDateStr,
+            'end' => $endDateStr
         ]));
-        $activityTrend = Cache::remember($activityTrendKey, 3600, function() use ($activityQuery) {
+        $activityTrend = Cache::remember($activityTrendKey, 3600, function() use ($activityQuery, $startMonth, $endMonth, $months) {
             $trend = [
                 'labels' => [],
                 'data' => [],
             ];
-            
-            // Optimize: Single query with grouping
-            $endDate = now()->endOfMonth();
-            $startDate = now()->subMonths(11)->startOfMonth();
-            
             $monthlyData = $activityQuery->clone()
                 ->selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(*) as count')
-                ->whereBetween('created_at', [$startDate, $endDate])
+                ->whereBetween('created_at', [$startMonth, $endMonth])
                 ->groupBy('year', 'month')
                 ->get()
                 ->mapWithKeys(function($item) {
                     return [$item->year . '-' . $item->month => $item->count];
                 });
-
-            for ($i = 11; $i >= 0; $i--) {
-                $date = now()->subMonths($i);
+            for ($i = 0; $i < $months; $i++) {
+                $date = $startMonth->copy()->addMonths($i);
                 $key = $date->year . '-' . $date->month;
                 $trend['labels'][] = $date->format('M Y');
                 $trend['data'][] = $monthlyData[$key] ?? 0;
@@ -430,16 +440,15 @@ class DashboardController extends Controller
         // Tren Kunjungan User per bulan (12 bulan terakhir) - menggunakan data aktual
         $userVisitTrendKey = 'dashboard_user_visit_trend_' . md5(json_encode([
             'act' => $selectedActivity,
-            'prov' => $selectedProvince
+            'prov' => $selectedProvince,
+            'start' => $startDateStr,
+            'end' => $endDateStr
         ]));
-        $userVisitTrend = Cache::remember($userVisitTrendKey, 3600, function() use ($viewsExist, $userQuery) {
+        $userVisitTrend = Cache::remember($userVisitTrendKey, 3600, function() use ($viewsExist, $userQuery, $startMonth, $endMonth, $months) {
             $trend = [
                 'labels' => [],
                 'data' => [],
             ];
-            
-            $endDate = now()->endOfMonth();
-            $startDate = now()->subMonths(11)->startOfMonth();
 
             $monthlyData = [];
 
@@ -447,7 +456,7 @@ class DashboardController extends Controller
                 try {
                     $monthlyData = DB::table('views')
                         ->selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(DISTINCT user_id) as count')
-                        ->whereBetween('created_at', [$startDate, $endDate])
+                        ->whereBetween('created_at', [$startMonth, $endMonth])
                         ->whereNotNull('user_id')
                         ->groupBy('year', 'month')
                         ->get()
@@ -455,15 +464,13 @@ class DashboardController extends Controller
                             return [$item->year . '-' . $item->month => $item->count];
                         });
                 } catch (Exception $e) {
-                    // Fallback to empty if error
                 }
             }
             
-            // If no views data, fallback to last_login_at
             if (empty($monthlyData) || $monthlyData->isEmpty()) {
                 $monthlyData = $userQuery->clone()
                     ->selectRaw('YEAR(last_login_at) as year, MONTH(last_login_at) as month, COUNT(*) as count')
-                    ->whereBetween('last_login_at', [$startDate, $endDate])
+                    ->whereBetween('last_login_at', [$startMonth, $endMonth])
                     ->groupBy('year', 'month')
                     ->get()
                     ->mapWithKeys(function($item) {
@@ -471,8 +478,8 @@ class DashboardController extends Controller
                     });
             }
 
-            for ($i = 11; $i >= 0; $i--) {
-                $date = now()->subMonths($i);
+            for ($i = 0; $i < $months; $i++) {
+                $date = $startMonth->copy()->addMonths($i);
                 $key = $date->year . '-' . $date->month;
                 $trend['labels'][] = $date->format('M Y');
                 $trend['data'][] = $monthlyData[$key] ?? 0;
@@ -489,19 +496,19 @@ class DashboardController extends Controller
         }
 
         // Trend ganda (Input vs Output) mengikuti desain: Input = Aktivitas per bulan, Output = Berita per bulan
-        $trendDual = Cache::remember('dashboard_trend_dual_' . ($selectedActivity ?: 'all'), 3600, function() use ($activityQuery) {
+        $trendDual = Cache::remember('dashboard_trend_dual_' . md5(json_encode([
+            'act' => $selectedActivity ?: 'all',
+            'start' => $startDateStr,
+            'end' => $endDateStr,
+        ])), 3600, function() use ($activityQuery, $startMonth, $endMonth, $months) {
             $trend = [
                 'labels' => [],
                 'input' => [],
                 'output' => [],
             ];
-            
-            $endDate = now()->endOfMonth();
-            $startDate = now()->subMonths(11)->startOfMonth();
-            
             $activityData = $activityQuery->clone()
                 ->selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(*) as count')
-                ->whereBetween('created_at', [$startDate, $endDate])
+                ->whereBetween('created_at', [$startMonth, $endMonth])
                 ->groupBy('year', 'month')
                 ->get()
                 ->mapWithKeys(function($item) {
@@ -509,15 +516,15 @@ class DashboardController extends Controller
                 });
                 
             $newsData = News::selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(*) as count')
-                ->whereBetween('created_at', [$startDate, $endDate])
+                ->whereBetween('created_at', [$startMonth, $endMonth])
                 ->groupBy('year', 'month')
                 ->get()
                 ->mapWithKeys(function($item) {
                     return [$item->year . '-' . $item->month => $item->count];
                 });
 
-            for ($i = 11; $i >= 0; $i--) {
-                $date = now()->subMonths($i);
+            for ($i = 0; $i < $months; $i++) {
+                $date = $startMonth->copy()->addMonths($i);
                 $key = $date->year . '-' . $date->month;
                 $trend['labels'][] = $date->format('M');
                 $trend['input'][] = $activityData[$key] ?? 0;
@@ -1000,7 +1007,9 @@ class DashboardController extends Controller
             'topActiveUsers',
             'topRatedActivities',
             'topDailyActiveUsers',
-            'topCreators'
+            'topCreators',
+            'startDateStr',
+            'endDateStr'
         ));
     }
 
