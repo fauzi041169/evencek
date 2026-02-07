@@ -618,17 +618,24 @@ class UserManagementController extends Controller
         }
 
         // Get pagination info
-        $perPage = (int) ($request->input('per_page') ?? 20);
-        $allowed = [10, 25, 50, 100, 20];
+        $perPageParam = $request->input('per_page');
+        $showAll = $request->boolean('all') || ($perPageParam === 'all');
+        $allowed = [10, 25, 50, 100, 200, 500, 20];
+        $perPage = (int) ($perPageParam ?? 20);
         if (! in_array($perPage, $allowed, true)) {
             $perPage = 20;
         }
 
-        // Paginate results
-        $users = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        // Paginate or get all results
+        if ($showAll) {
+            $users = $query->orderBy('created_at', 'desc')->get();
+        } else {
+            $users = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        }
 
         // Transform data for response
-        $usersData = $users->map(function ($user) {
+        $collection = $showAll ? $users : $users->getCollection();
+        $usersData = $collection->map(function ($user) {
             return [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -645,12 +652,12 @@ class UserManagementController extends Controller
             'success' => true,
             'data' => $usersData,
             'pagination' => [
-                'total' => $users->total(),
-                'per_page' => $users->perPage(),
-                'current_page' => $users->currentPage(),
-                'last_page' => $users->lastPage(),
-                'from' => $users->firstItem(),
-                'to' => $users->lastItem(),
+                'total' => $showAll ? $users->count() : $users->total(),
+                'per_page' => $showAll ? $users->count() : $users->perPage(),
+                'current_page' => $showAll ? 1 : $users->currentPage(),
+                'last_page' => $showAll ? 1 : $users->lastPage(),
+                'from' => $showAll ? ($users->count() ? 1 : 0) : $users->firstItem(),
+                'to' => $showAll ? $users->count() : $users->lastItem(),
             ],
         ]);
     }

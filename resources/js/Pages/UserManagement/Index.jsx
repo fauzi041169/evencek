@@ -12,6 +12,11 @@ export default function UserManagementIndex({
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
     const [perPage, setPerPage] = useState('20');
+    const initialUsers = (users?.data || users || []);
+    const initialPagination = (users?.meta || users);
+    const [usersData, setUsersData] = useState(initialUsers);
+    const [pagination, setPagination] = useState(initialPagination);
+    const [loading, setLoading] = useState(false);
     const [resetPasswordModal, setResetPasswordModal] = useState({ open: false, userId: null, userName: '' });
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -52,18 +57,44 @@ export default function UserManagementIndex({
         });
     };
 
-    const handleSearch = (e) => {
-        e?.preventDefault();
+    const fetchUsers = async (params) => {
+        setLoading(true);
+        try {
+            const query = new URLSearchParams(params).toString();
+            const res = await fetch(`${route('user-management.search')}?${query}`, {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await res.json();
+            if (data.success) {
+                setUsersData(data.data);
+                setPagination(data.pagination);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const buildParams = (extra = {}) => {
         const params = {
             search: searchTerm,
             role: roleFilter,
+            ...extra
         };
         if (perPage === 'all') {
             params.all = 1;
         } else {
             params.per_page = perPage;
         }
-        router.get(route('user-management.index'), params, { preserveState: true });
+        return params;
+    };
+
+    const handleSearch = (e) => {
+        e?.preventDefault();
+        fetchUsers(buildParams());
     };
 
     const handleRoleChange = async (userId, newRole) => {
@@ -211,8 +242,13 @@ export default function UserManagementIndex({
         return colors[role] || 'bg-gray-100 text-gray-800';
     };
 
-    const usersList = users?.data || users || [];
-    const pagination = users?.meta || users;
+    useEffect(() => {
+        // Auto fetch when role/perPage changes
+        fetchUsers(buildParams());
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roleFilter, perPage]);
+
+    const usersList = usersData;
 
     return (
         <AdminLayout title="Manajemen User">
@@ -368,7 +404,11 @@ export default function UserManagementIndex({
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {usersList.length > 0 ? usersList.map((user, index) => {
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan="7" className="px-6 py-8 text-center text-gray-500">Memuat data...</td>
+                                        </tr>
+                                    ) : usersList.length > 0 ? usersList.map((user, index) => {
                                         const activeSubscription = user.active_subscription;
                                         const activeSlug = activeSubscription?.plan?.slug || '';
 
@@ -380,7 +420,7 @@ export default function UserManagementIndex({
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center">
                                                         <img
-                                                            src={user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                            src={user.avatar || '/assets/images/profilefoto/default-profile.png'}
                                                             alt="Profile"
                                                             className="h-10 w-10 rounded-full object-cover mr-3"
                                                             onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
@@ -425,12 +465,12 @@ export default function UserManagementIndex({
                                                         </select>
                                                     ) : (
                                                         <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
-                                                            {activeSubscription?.plan?.name || 'Tidak Berlangganan'}
+                                                            {user.subscription || 'Tidak Berlangganan'}
                                                         </span>
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-gray-600">
-                                                    {new Date(user.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    {user.created_at}
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <div className="flex items-center justify-center gap-1.5">
@@ -488,17 +528,17 @@ export default function UserManagementIndex({
                                         Menampilkan {pagination.from} - {pagination.to} dari {pagination.total}
                                     </div>
                                     <div className="flex gap-2">
-                                        {pagination.current_page > 1 && (
+                                        {pagination?.current_page > 1 && (
                                             <button
-                                                onClick={() => router.get(route('user-management.index'), { page: pagination.current_page - 1, search: searchTerm, role: roleFilter, per_page: perPage })}
+                                                onClick={() => fetchUsers(buildParams({ page: (pagination.current_page - 1) }))}
                                                 className="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-100"
                                             >
                                                 â† Sebelumnya
                                             </button>
                                         )}
-                                        {pagination.current_page < pagination.last_page && (
+                                        {pagination?.current_page < pagination?.last_page && (
                                             <button
-                                                onClick={() => router.get(route('user-management.index'), { page: pagination.current_page + 1, search: searchTerm, role: roleFilter, per_page: perPage })}
+                                                onClick={() => fetchUsers(buildParams({ page: (pagination.current_page + 1) }))}
                                                 className="px-3 py-1 border border-gray-300 rounded-lg text-sm hover:bg-gray-100"
                                             >
                                                 Selanjutnya â†’
