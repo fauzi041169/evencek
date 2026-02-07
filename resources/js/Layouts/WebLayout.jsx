@@ -112,7 +112,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
     const navClasses = `fixed top-0 left-0 right-0 z-[9999] transition-all duration-300 ${
         transparentNavbar && !scrolled
             ? 'bg-transparent py-4'
-            : 'bg-gray-100/95 backdrop-blur-md border-b border-gray-200 shadow-sm'
+            : 'backdrop-blur-md border-b border-gray-200 shadow-sm'
     }`;
 
     // Helper untuk warna text navbar
@@ -132,6 +132,8 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     --color-accent: ${settings.colors?.accent || '#f59e0b'};
                     --color-navbar-bg: ${settings.colors?.navbar_bg || '#1e293b'};
                     --color-navbar-text: ${settings.colors?.navbar_text || '#f8fafc'};
+                    --color-navbar-bg-start: ${settings.colors?.color_navbar_bg_start || '#1e293b'};
+                    --color-navbar-bg-end: ${settings.colors?.color_navbar_bg_end || '#0f172a'};
                     --color-navbar-start: ${settings.colors?.color_navbar_start || '#4973ec'};
                     --color-navbar-end: ${settings.colors?.color_navbar_end || '#6600ff'};
                     --color-navbar-link-text: ${settings.colors?.color_navbar_link_text || '#330000'};
@@ -217,7 +219,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     top:0;
                     width:78px;
                     height:100%;
-                    background: var(--seg-cap-bg, inherit);
+                    background: linear-gradient(to right, var(--color-navbar-bg-start), var(--color-navbar-bg-end));
                     border-radius: 999px;
                     box-shadow: 0 6px 18px rgba(0,0,0,.12);
                     z-index: -1;
@@ -248,7 +250,13 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
             </div>
 
             {/* Navbar */}
-            <nav id="mainNavbar" className={navClasses}>
+            <nav
+                id="mainNavbar"
+                className={navClasses}
+                style={transparentNavbar && !scrolled ? undefined : {
+                    background: `linear-gradient(to right, ${settings.colors?.color_navbar_bg_start || '#1e293b'}, ${settings.colors?.color_navbar_bg_end || '#0f172a'})`
+                }}
+            >
                 <div className="w-full px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         {/* Left Side */}

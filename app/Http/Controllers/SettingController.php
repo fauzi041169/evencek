@@ -22,6 +22,8 @@ class SettingController extends Controller
         $colorGroups = [
             'Primary' => $colors->whereIn('key', ['color_primary', 'color_secondary', 'color_success', 'color_danger', 'color_warning', 'color_info']),
             'Navbar' => $colors->whereIn('key', [
+                'color_navbar_bg_start',
+                'color_navbar_bg_end',
                 'color_navbar_start',
                 'color_navbar_end',
                 'color_navbar_brand_text',
@@ -146,6 +148,8 @@ class SettingController extends Controller
     {
         try {
             $defaults = [
+                'color_navbar_bg_start' => '#1e293b',
+                'color_navbar_bg_end' => '#0f172a',
                 'color_navbar_start' => '#4973ec',
                 'color_navbar_end' => '#6600ff',
                 'color_navbar_brand_text' => '#000000',
