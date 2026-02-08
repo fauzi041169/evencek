@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
 
 /**
  * Reusable QR Scanner Component
@@ -28,29 +27,30 @@ export default function QRScanner({
     const [permissionError, setPermissionError] = useState(null);
     
     const scannerRef = useRef(null);
+    const html5ModuleRef = useRef(null);
     const [containerId] = useState("reader-" + Math.random().toString(36).substring(2, 9));
 
     useEffect(() => {
-        // Get available cameras
-        Html5Qrcode.getCameras().then(devices => {
-            if (devices && devices.length) {
-                setCameras(devices);
-                
-                // Try to find back camera as default
-                const backCamera = devices.find(d => 
-                    d.label.toLowerCase().includes('back') || 
-                    d.label.toLowerCase().includes('environment') ||
-                    d.label.toLowerCase().includes('belakang')
-                );
-                
-                const defaultId = backCamera ? backCamera.id : devices[0].id;
-                setSelectedCameraId(defaultId);
-            } else {
-                setPermissionError("Tidak ada kamera yang terdeteksi.");
-            }
+        import('html5-qrcode').then(mod => {
+            html5ModuleRef.current = mod;
+            mod.Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    setCameras(devices);
+                    const backCamera = devices.find(d =>
+                        d.label.toLowerCase().includes('back') ||
+                        d.label.toLowerCase().includes('environment') ||
+                        d.label.toLowerCase().includes('belakang')
+                    );
+                    const defaultId = backCamera ? backCamera.id : devices[0].id;
+                    setSelectedCameraId(defaultId);
+                } else {
+                    setPermissionError("Tidak ada kamera yang terdeteksi.");
+                }
+            }).catch(err => {
+                setPermissionError("Gagal mengakses kamera. Pastikan izin kamera diberikan.");
+            });
         }).catch(err => {
-            console.error("Error getting cameras", err);
-            setPermissionError("Gagal mengakses kamera. Pastikan izin kamera diberikan.");
+            setPermissionError("Gagal memuat modul pemindaian: " + err);
         });
 
         return () => {
@@ -71,6 +71,15 @@ export default function QRScanner({
             await stopScanning();
         }
 
+        if (!html5ModuleRef.current) {
+            try {
+                html5ModuleRef.current = await import('html5-qrcode');
+            } catch (e) {
+                setPermissionError("Gagal memuat modul pemindaian: " + e);
+                return;
+            }
+        }
+        const { Html5Qrcode } = html5ModuleRef.current;
         const html5QrCode = new Html5Qrcode(containerId);
         scannerRef.current = html5QrCode;
 

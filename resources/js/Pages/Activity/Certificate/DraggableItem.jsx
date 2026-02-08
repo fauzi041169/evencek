@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import Moveable from 'react-moveable';
+import React, { useRef, useEffect, Suspense } from 'react';
+const LazyMoveable = React.lazy(() => import('react-moveable'));
 
 export default function DraggableItem({
     id,
@@ -57,53 +57,49 @@ export default function DraggableItem({
             </div>
 
             {isSelected && targetRef.current && (
-                <Moveable
-                    target={targetRef.current}
-                    container={parentContainer} // Boundaries
-                    draggable={true}
-                    resizable={isResizable}
-                    snappable={true}
-                    snapThreshold={5}
-                    keepRatio={id === 'qr' || id === 'photo' || data.data_key === 'qr' || data.data_key === 'photo'} // Keep ratio for images/qr
-                    throttleDrag={0}
-                    throttleResize={0}
-                    origin={false} // Hide origin point
-                    edge={false} // Hide resizing edges unless resize is true
-                    renderDirections={isResizable ? ["nw", "n", "ne", "w", "e", "sw", "s", "se"] : []}
-
-                    /* DRAG EVENTS */
-                    onDragStart={() => {
-                        isDraggingRef.current = true;
-                    }}
-                    onDrag={({ target, transform, left, top }) => {
-                        // Apply transform directly for smooth performance
-                        target.style.left = `${left}px`;
-                        target.style.top = `${top}px`;
-                    }}
-                    onDragEnd={({ target }) => {
-                        // Save final position to state
-                        const left = parseFloat(target.style.left);
-                        const top = parseFloat(target.style.top);
-                        onChange(id, { left, top });
-                    }}
-
-                    /* RESIZE EVENTS (Only if resizable) */
-                    onResize={({ target, width, height, drag }) => {
-                        if (!isResizable) return;
-                        target.style.width = `${width}px`;
-                        target.style.height = `${height}px`;
-                        target.style.left = `${drag.left}px`;
-                        target.style.top = `${drag.top}px`;
-                    }}
-                    onResizeEnd={({ target }) => {
-                        if (!isResizable) return;
-                        const width = parseFloat(target.style.width);
-                        const height = parseFloat(target.style.height);
-                        const left = parseFloat(target.style.left);
-                        const top = parseFloat(target.style.top);
-                        onChange(id, { width, height, left, top });
-                    }}
-                />
+                <Suspense fallback={null}>
+                    <LazyMoveable
+                        target={targetRef.current}
+                        container={parentContainer}
+                        draggable={true}
+                        resizable={isResizable}
+                        snappable={true}
+                        snapThreshold={5}
+                        keepRatio={id === 'qr' || id === 'photo' || data.data_key === 'qr' || data.data_key === 'photo'}
+                        throttleDrag={0}
+                        throttleResize={0}
+                        origin={false}
+                        edge={false}
+                        renderDirections={isResizable ? ["nw", "n", "ne", "w", "e", "sw", "s", "se"] : []}
+                        onDragStart={() => {
+                            isDraggingRef.current = true;
+                        }}
+                        onDrag={({ target, transform, left, top }) => {
+                            target.style.left = `${left}px`;
+                            target.style.top = `${top}px`;
+                        }}
+                        onDragEnd={({ target }) => {
+                            const left = parseFloat(target.style.left);
+                            const top = parseFloat(target.style.top);
+                            onChange(id, { left, top });
+                        }}
+                        onResize={({ target, width, height, drag }) => {
+                            if (!isResizable) return;
+                            target.style.width = `${width}px`;
+                            target.style.height = `${height}px`;
+                            target.style.left = `${drag.left}px`;
+                            target.style.top = `${drag.top}px`;
+                        }}
+                        onResizeEnd={({ target }) => {
+                            if (!isResizable) return;
+                            const width = parseFloat(target.style.width);
+                            const height = parseFloat(target.style.height);
+                            const left = parseFloat(target.style.left);
+                            const top = parseFloat(target.style.top);
+                            onChange(id, { width, height, left, top });
+                        }}
+                    />
+                </Suspense>
             )}
         </>
     );
