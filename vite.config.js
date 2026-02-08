@@ -16,4 +16,19 @@ export default defineConfig({
         }),
         react(),
     ],
+    build: {
+        chunkSizeWarningLimit: 1024,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    react: ['react', 'react-dom', '@inertiajs/react'],
+                    vendor: ['axios', 'lodash', 'date-fns'],
+                    chart: ['chart.js', 'react-chartjs-2'],
+                    qrcode: ['html5-qrcode', 'qrcode.react', 'react-qr-code'],
+                    moveable: ['react-moveable'],
+                    sweetalert2: ['sweetalert2'],
+                },
+            },
+        },
+    },
 });
