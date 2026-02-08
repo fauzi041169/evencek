@@ -54,8 +54,17 @@ class ForgotPasswordController extends Controller
                 ->with('status', 'Jika email yang Anda masukkan terdaftar, kami akan mengirimkan link reset password ke email Anda.');
         }
 
-        // Generate password reset token
-        $token = Password::createToken($user);
+        $token = null;
+        try {
+            $token = Password::createToken($user);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to create password reset token', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->withErrors(['email' => 'Sistem reset password sedang bermasalah. Silakan coba lagi nanti atau hubungi administrator.']);
+        }
 
         // Send reset password email
         try {

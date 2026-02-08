@@ -43,17 +43,32 @@ class ResetPasswordController extends Controller
             return back()->withErrors(['email' => 'Email tidak ditemukan.']);
         }
 
-        // Check if token is valid
-        if (! Password::tokenExists($user, $request->token)) {
-            return back()->withErrors(['email' => 'Token reset password tidak valid atau telah kadaluarsa. Silakan request reset password baru.']);
+        try {
+            if (! Password::tokenExists($user, $request->token)) {
+                return back()->withErrors(['email' => 'Token reset password tidak valid atau telah kadaluarsa. Silakan request reset password baru.']);
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Failed to verify password reset token', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->withErrors(['email' => 'Sistem reset password sedang bermasalah. Silakan coba lagi nanti atau hubungi administrator.']);
         }
 
         // Update password
         $user->password = Hash::make($request->password);
         $user->save();
 
-        // Delete the token
-        Password::deleteToken($user);
+        try {
+            Password::deleteToken($user);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to delete password reset token after reset', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         \Log::info('Password reset successful', [
             'user_id' => $user->id,
