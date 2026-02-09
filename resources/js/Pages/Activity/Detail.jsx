@@ -498,6 +498,10 @@ export default function Detail({
 
     const handleMissingDataSuccess = () => {
         setIsMissingDataModalOpen(false);
+        setIsRegistrationTypeModalOpen(false);
+        setIsManualPaymentModalOpen(false);
+        setIsLoginModalOpen(false);
+        setIsPaymentDetailModalOpen(false);
 
         // Immediate check for pending enrollment to trigger payment modal without reload
         const pendingEnroll = sessionStorage.getItem('pending_enrollment');

@@ -177,13 +177,26 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (!isFormValid) {
+            const missing = effectiveMissingData.filter(field => {
+                if (field.key === 'foto' || field.key === 'photo') {
+                    return !data.foto_file && hasDefaultPhoto;
+                }
+                const val = data[field.key];
+                return val === null || val === undefined || String(val).trim() === '';
+            }).map(f => f.label || f.key.replace(/_/g, ' '));
+            Swal.fire({
+                title: 'Lengkapi Data',
+                html: `Mohon isi: <br/><strong>${missing.join(', ')}</strong>`,
+                icon: 'warning',
+                confirmButtonColor: '#4F46E5'
+            });
+            return;
+        }
         post(route('profile.update'), {
             onSuccess: () => {
-                if (onSuccess) {
-                    onSuccess();
-                } else {
-                    onClose();
-                }
+                try { onClose && onClose(); } catch (e) {}
+                try { onSuccess && onSuccess(); } catch (e) {}
             },
             onError: (err) => {
                 console.error('Profile update failed', err);
@@ -525,7 +538,7 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                     <button
                         type="submit"
                         form="missing-data-form"
-                        disabled={processing || !isFormValid}
+                        disabled={processing}
                         className="inline-flex justify-center items-center rounded-xl border border-transparent shadow-md px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-sm font-bold text-white hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95"
                     >
                         {processing ? (

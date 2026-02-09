@@ -301,88 +301,84 @@ class MidtransPaymentController extends Controller
             $user->load('profile');
         }
 
-        $missingFields = [];
+        // Unified Profile Validation
         $template = $activity->import_template;
-        $hasCustomRequirements = false;
-
+        $customKeys = [];
+        
         if ($template) {
+            $map = [
+                'email' => 'email',
+                'name' => 'name',
+                'no_hp' => 'no_hp',
+                'nik' => 'nik',
+                'gender' => 'jenis_kelamin',
+                'birth_place' => 'birth_place',
+                'birth_date' => 'birth_date',
+                'province' => 'province_id',
+                'district' => 'district_id',
+                'city' => 'regency_id',
+                'address' => 'alamat',
+                'photo' => 'foto',
+                'position' => 'jabatan',
+                'institution' => 'instansi',
+                'occupation' => 'pekerjaan',
+            ];
+
             $cols = array_map('trim', explode(',', $template));
-            $requiredCols = [];
             foreach ($cols as $col) {
                 if (str_ends_with($col, '*')) {
-                    $requiredCols[] = substr($col, 0, -1);
-                }
-            }
-
-            if (! empty($requiredCols)) {
-                $hasCustomRequirements = true;
-                // Mapping for validation
-                $map = [
-                    'email' => ['source' => 'user', 'field' => 'email', 'label' => 'Email'],
-                    'name' => ['source' => 'user', 'field' => 'name', 'label' => 'Nama Lengkap'],
-                    'no_hp' => ['source' => 'profile', 'field' => 'no_hp', 'label' => 'No HP / WhatsApp'],
-                    'nik' => ['source' => 'profile', 'field' => 'nik', 'label' => 'NIK'],
-                    'pekerjaan' => ['source' => 'profile', 'field' => 'pekerjaan', 'label' => 'Pekerjaan'],
-                    'instansi' => ['source' => 'profile', 'field' => 'instansi', 'label' => 'Instansi'],
-                    'jabatan' => ['source' => 'profile', 'field' => 'jabatan', 'label' => 'Jabatan'],
-                    'alamat' => ['source' => 'profile', 'field' => 'alamat', 'label' => 'Alamat'],
-                    'jenis_kelamin' => ['source' => 'profile', 'field' => 'jenis_kelamin', 'label' => 'Jenis Kelamin'],
-                    'tempat_lahir' => ['source' => 'profile', 'field' => 'birth_place', 'label' => 'Tempat Lahir'],
-                    'tgl_lahir' => ['source' => 'profile', 'field' => 'birth_date', 'label' => 'Tanggal Lahir'],
-                    // Aliases
-                    'phone' => ['source' => 'profile', 'field' => 'no_hp', 'label' => 'No HP / WhatsApp'],
-                    'gender' => ['source' => 'profile', 'field' => 'jenis_kelamin', 'label' => 'Jenis Kelamin'],
-                    'birth_place' => ['source' => 'profile', 'field' => 'birth_place', 'label' => 'Tempat Lahir'],
-                    'birth_date' => ['source' => 'profile', 'field' => 'birth_date', 'label' => 'Tanggal Lahir'],
-                ];
-
-                foreach ($requiredCols as $req) {
-                    $key = $req;
-                    if (str_starts_with($key, 'user:')) {
-                        $key = substr($key, 5);
-                    }
-                    if (str_starts_with($key, 'profile:')) {
-                        $key = substr($key, 8);
-                    }
-
-                    if ($key === 'password') {
-                        continue;
-                    }
+                    $rawKey = trim(substr($col, 0, -1));
+                    $key = preg_replace('/^\d+\./', '', $rawKey);
+                    $key = strtolower(trim($key));
+                    
+                    if (str_starts_with($key, 'user:')) $key = substr($key, 5);
+                    if (str_starts_with($key, 'profile:')) $key = substr($key, 8);
+                    
+                    if ($key === 'password') continue;
 
                     if (isset($map[$key])) {
-                        $config = $map[$key];
-                        $val = ($config['source'] === 'user')
-                            ? $user->{$config['field']}
-                            : ($user->profile ? $user->profile->{$config['field']} : null);
-
-                        if (empty($val)) {
-                            $missingFields[] = $config['label'];
-                        }
+                        $customKeys[] = $map[$key];
+                    } elseif (isset($map[str_replace(' ', '_', $key)])) {
+                        $customKeys[] = $map[str_replace(' ', '_', $key)];
+                    } else {
+                        $customKeys[] = $key;
                     }
                 }
-                $missingFields = array_unique($missingFields);
             }
         }
 
-        // Fallback to default if no custom requirements configured
-        if (! $hasCustomRequirements) {
-            $missingFields = $user->getIncompleteProfileFields();
+        // Include keys from modern custom_fields relationship
+        if ($activity->custom_fields && is_array($activity->custom_fields)) {
+            foreach ($activity->custom_fields as $cf) {
+                if (!empty($cf['is_required']) && !empty($cf['key'])) {
+                    $customKeys[] = $cf['key'];
+                }
+            }
         }
 
+        $mandatoryFields = $activity->mandatory_profile_fields ?? [];
+        $allRequiredKeys = array_unique(array_merge(['email', 'foto'], $mandatoryFields, $customKeys));
+        
+        $missingProfileData = $user->getIncompleteProfileData($allRequiredKeys);
+        $missingFields = array_column($missingProfileData, 'label');
+        $missingFieldKeys = array_column($missingProfileData, 'key');
+
         if (! empty($missingFields) && ! $request->boolean('is_bulk')) {
-            $msg = 'Profil Anda belum lengkap. Lengkapi data berikut: '.implode(', ', $missingFields);
+            $msg = 'Profil Anda belum lengkap. Lengkapi data berikut: '.implode(', ', array_unique($missingFields));
 
             if ($isAjax || $isModal) {
                 return response()->json([
                     'status' => 'error',
                     'message' => $msg,
                     'missing_fields' => $missingFields,
+                    'missing_profile_fields' => $missingFieldKeys,
+                    'is_profile_incomplete' => true
                 ], 422);
             }
 
             return redirect()->route('activity.detail', $activity->id)
                 ->with('error', $msg)
-                ->with('missing_profile_fields', $missingFields);
+                ->with('missing_profile_fields', $missingFieldKeys);
         }
 
         // Fix: Clean up stale bulk session data if this is not a bulk payment request
@@ -465,29 +461,8 @@ class MidtransPaymentController extends Controller
 
         $user = auth()->user();
 
-        // Pastikan profil lengkap sebelum boleh lanjut ke pembayaran
-        // Gunakan setting mandatory fields dari activity jika ada
-        $mandatoryFields = $activity->mandatory_profile_fields ?? [];
-        $missingProfileData = $user->getIncompleteProfileData($mandatoryFields);
-        $missingFields = array_column($missingProfileData, 'label');
-        $missingFieldKeys = array_column($missingProfileData, 'key');
-
-        if (! empty($missingFields)) {
-            $msg = 'Profil Anda belum lengkap. Lengkapi data berikut: '.implode(', ', array_unique($missingFields));
-            
-            if ($isAjax || $isModal) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => $msg,
-                    'missing_fields' => $missingFields,
-                    'is_profile_incomplete' => true
-                ], 422);
-            }
-
-            return redirect()->route('activity.detail', $activity->id)
-                ->with('error', $msg)
-                ->with('missing_profile_fields', $missingFieldKeys);
-        }
+        // Pastikan profil lengkap sudah dicek di awal method create()
+        // (Logic unified profile validation di baris ~304)
 
         // Check participant limit for creator's activity
         if ($activity->user && $activity->user->isCreator()) {

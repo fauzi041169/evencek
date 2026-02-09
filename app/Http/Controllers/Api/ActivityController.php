@@ -10,6 +10,7 @@ use App\Models\CardSettings;
 use App\Models\CertificateSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class ActivityController extends Controller
 {
@@ -257,7 +258,9 @@ class ActivityController extends Controller
                     'galleries' => $activity->galleries->map(function ($gallery) {
                         return [
                             'id' => $gallery->id,
-                            'image' => $this->formatStoragePath($gallery->image),
+                            'image' => Storage::url(str_starts_with($gallery->image, 'activities/gallery/')
+                                ? $gallery->image
+                                : ('activities/gallery/'.ltrim($gallery->image, '/'))),
                             'caption' => $gallery->caption,
                         ];
                     })->values(),

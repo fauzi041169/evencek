@@ -262,31 +262,18 @@ class ActivityEnrollmentController extends Controller
             $template = $activity->import_template;
             
             $customKeys = [];
+
+            // Parse template to get required keys
             if ($template) {
-                // Map for standard fields normalization
                 $map = [
                     'email' => 'email',
                     'name' => 'name',
-                    'nama_lengkap' => 'name',
                     'no_hp' => 'no_hp',
                     'nik' => 'nik',
-                    'pekerjaan' => 'pekerjaan',
-                    'instansi' => 'instansi',
-                    'jabatan' => 'jabatan',
-                    'alamat' => 'alamat',
-                    'jenis_kelamin' => 'jenis_kelamin',
-                    'tempat_lahir' => 'birth_place',
-                    'tgl_lahir' => 'birth_date',
-                    'foto' => 'foto',
-                    'phone' => 'no_hp',
                     'gender' => 'jenis_kelamin',
                     'birth_place' => 'birth_place',
                     'birth_date' => 'birth_date',
-                    'provinsi' => 'province_id',
-                    'kabupaten' => 'regency_id',
-                    'kecamatan' => 'district_id',
                     'province' => 'province_id',
-                    'regency' => 'regency_id',
                     'district' => 'district_id',
                     'city' => 'regency_id',
                     'address' => 'alamat',
@@ -318,6 +305,15 @@ class ActivityEnrollmentController extends Controller
                         } else {
                             $customKeys[] = $key;
                         }
+                    }
+                }
+            }
+
+            // Include keys from modern custom_fields relationship
+            if ($activity->custom_fields && is_array($activity->custom_fields)) {
+                foreach ($activity->custom_fields as $cf) {
+                    if (!empty($cf['is_required']) && !empty($cf['key'])) {
+                        $customKeys[] = $cf['key'];
                     }
                 }
             }
@@ -356,7 +352,7 @@ class ActivityEnrollmentController extends Controller
             $missingCustomFields = [];
             $missingCustomFieldObjects = []; // For frontend modal
 
-            // Validate Custom Activity Fields
+            // Validate Custom Activity Fields from relationship (those that might be provided in request)
             if ($activity->custom_fields && is_array($activity->custom_fields)) {
                 $currentCustomData = $request->input('custom_data', []);
                 $customDataUpdated = false;
@@ -392,7 +388,12 @@ class ActivityEnrollmentController extends Controller
                                 else {
                                     $keyNormalized = str_replace('_', ' ', strtolower(trim($key)));
                                     foreach ($additionalData as $k => $v) {
-                                        $kNormalized = str_replace('_', ' ', strtolower(trim($k)));
+                                        // Clean suffix if present (e.g. |dropdown:...)
+                                        $kClean = $k;
+                                        if (str_contains($k, '|')) $kClean = explode('|', $k)[0];
+                                        elseif (str_contains($k, ':')) $kClean = explode(':', $k)[0];
+
+                                        $kNormalized = str_replace('_', ' ', strtolower(trim($kClean)));
                                         if ($kNormalized === $keyNormalized && !empty($v)) {
                                             $foundInProfile = true;
                                             $currentCustomData[$key] = $v;
@@ -468,6 +469,42 @@ class ActivityEnrollmentController extends Controller
                 return redirect()->back()
                     ->with('error', $msg)
                     ->with('missing_profile_fields', array_column($uniqueMissingData, 'key'));
+            }
+
+            // Guards: Prevent staff/owners from registering as participants (Avoid Data Conflict)
+            // Superadmins can bypass to test the flow
+            if (!auth()->user()->isSuperAdmin()) {
+                // If user is creator
+                if ($activity->user_id == $user->id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda adalah pembuat kegiatan ini. Anda tidak perlu mendaftar.',
+                    ], 403);
+                }
+
+                // If user is already in committee, prevent enrollment to avoid conflict
+                if ($activity->committeeStructures()->where('user_id', $user->id)->exists()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda masuk dalam struktur panitia kegiatan ini. Tidak dapat mendaftar sebagai peserta.',
+                    ], 403);
+                }
+
+                // If user is division leader, prevent enrollment
+                if ($activity->divisions()->where('leader_name', $user->name)->exists()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda terdaftar sebagai Koordinator/Ketua Divisi. Tidak dapat mendaftar sebagai peserta.',
+                    ], 403);
+                }
+
+                // If user is in activity owners
+                if ($activity->owners()->where('user_id', $user->id)->exists()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda terdaftar sebagai instruktur/pengelola kegiatan ini.',
+                    ], 403);
+                }
             }
 
             // Check if user is already enrolled in this batch (or activity if no batch)

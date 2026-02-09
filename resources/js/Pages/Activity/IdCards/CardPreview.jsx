@@ -1,12 +1,17 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
-export default function CardPreview({ settings, user, activity, scale = 1 }) {
+export default function CardPreview({ settings, user, activity, scale = 1, customData = {} }) {
     if (!settings || !settings.card) return null;
 
     // Helper to resolve dynamic content
     const getContent = (id, config) => {
         const p = user.profile || {};
+        const cd = customData || {};
+        const cdLower = Object.keys(cd).reduce((acc, k) => {
+            if (k) acc[String(k).toLowerCase()] = cd[k];
+            return acc;
+        }, {});
 
         // Handle Photo/Avatar
         if (config.data_key === 'photo' || id === 'photo' || (id && id.toString().startsWith('photo_'))) {
@@ -74,12 +79,18 @@ export default function CardPreview({ settings, user, activity, scale = 1 }) {
                 case 'regency': text = p.regency?.name || config.text || '-'; break;
                 case 'district': text = p.district?.name || config.text || '-'; break;
                 case 'village': text = p.village?.name || config.text || '-'; break;
+                case 'group':
+                    text = cdLower['group'] || cdLower['group_name'] || config.text || '-';
+                    break;
                 case 'custom': text = config.text || '-'; break;
                 default:
                     // If we have a specific data_key but it didn't match above, keep text.
                     // If we fell back to 'id' and it didn't match, keep text.
                     if (config.data_key) {
-                        if (user[config.data_key] !== undefined && user[config.data_key] !== null) {
+                        const dk = String(config.data_key).toLowerCase();
+                        if (cdLower[dk] !== undefined && cdLower[dk] !== null && cdLower[dk] !== '') {
+                            text = cdLower[dk];
+                        } else if (user[config.data_key] !== undefined && user[config.data_key] !== null) {
                             text = user[config.data_key];
                         } else if (p[config.data_key] !== undefined && p[config.data_key] !== null) {
                             text = p[config.data_key];

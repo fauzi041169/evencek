@@ -46,7 +46,8 @@ export default function Show({
     printSettings,
     certificateSetting,
     certificatePrintSettings,
-    requiredProfileLabels // Added this prop
+    requiredProfileLabels, // Added this prop
+    enrollmentData
 }) {
     const { t, i18n } = useTranslation();
 
@@ -1335,6 +1336,7 @@ export default function Show({
                                                         settings={cardSetting}
                                                         user={currentUser || auth.user}
                                                         activity={activity}
+                                                        customData={(enrollmentData && enrollmentData.custom_data) ? { ...enrollmentData.custom_data, group: enrollmentData.group_name } : (enrollmentData ? { group: enrollmentData.group_name } : {})}
                                                         scale={cardScale}
                                                     />
                                                 </div>
@@ -1573,6 +1575,7 @@ export default function Show({
                                 settings={cardSetting}
                                 user={currentUser || auth.user}
                                 activity={activity}
+                                customData={(enrollmentData && enrollmentData.custom_data) ? { ...enrollmentData.custom_data, group: enrollmentData.group_name } : (enrollmentData ? { group: enrollmentData.group_name } : {})}
                                 scale={modalScale}
                             />
                         </div>

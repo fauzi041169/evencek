@@ -1597,6 +1597,20 @@ class ActivityController extends Controller
                 $currentUser->load(['profile.province', 'profile.regency', 'profile.district']);
             }
 
+            // Prepare enrollment data for ID Card dynamic fields (custom_data, group)
+            $enrollmentData = null;
+            if ($userEnrollment) {
+                try {
+                    $groupName = optional($userEnrollment->participantGroup)->name;
+                } catch (\Throwable $e) {
+                    $groupName = null;
+                }
+                $enrollmentData = [
+                    'custom_data' => $userEnrollment->custom_data ?? [],
+                    'group_name' => $groupName,
+                ];
+            }
+
             return Inertia::render('Activity/Show', [
                 'heroAnimationStyle' => $heroAnimationStyle,
                 'currentUser' => $currentUser,
@@ -1621,6 +1635,7 @@ class ActivityController extends Controller
                 'printSettings' => $printSettings,
                 'certificateSetting' => $certificateSetting,
                 'certificatePrintSettings' => $certificatePrintSettings,
+                'enrollmentData' => $enrollmentData,
                 'mandiriAttendances' => $mandiriAttendances,
                 'manualAttendances' => $manualAttendances,
                 'pendingPayment' => $pendingPayment,
