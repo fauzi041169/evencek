@@ -7,7 +7,7 @@ import Swal from 'sweetalert2';
 import getCroppedImg from '@/Utils/canvasUtils';
 import axios from 'axios';
 
-export default function MissingDataModal({ show, onClose, missingData = [], onSuccess }) {
+export default function MissingDataModal({ show, onClose, missingData = [], onSuccess, activityId = null }) {
     const { t } = useTranslation();
     const { auth } = usePage().props;
     const [previewUrl, setPreviewUrl] = useState(auth?.user?.profile_photo_url || null);
@@ -118,14 +118,19 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
         if (show && effectiveMissingData.length > 0) {
             const initialData = {
                 _method: 'POST',
-                foto_file: null
+                foto_file: null,
+                ...(activityId ? { activity_id: activityId } : {})
             };
             effectiveMissingData.forEach(field => {
-                initialData[field.key] = field.value || '';
+                if (field.type === 'file' && field.value) {
+                    initialData[field.key] = field.value;
+                } else {
+                    initialData[field.key] = field.value || '';
+                }
             });
             setData(initialData);
         }
-    }, [show, effectiveMissingData]);
+    }, [show, effectiveMissingData, activityId]);
 
     // Fetch Provinces on Load
     useEffect(() => {
@@ -175,12 +180,26 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
         setData((prevData) => ({ ...prevData, ...newData }));
     };
 
+    const normalizeKey = (k) => String(k).toLowerCase().trim().replace(/[\s\-]+/g, '_');
+    const getFileViewUrl = (value) => {
+        if (!value || value === '-') return null;
+        const v = String(value).trim();
+        if (v.startsWith('http://') || v.startsWith('https://')) return v;
+        if (v.toLowerCase().includes('fakepath') || /^[a-zA-Z]:\\/.test(v)) return null;
+        const path = v.startsWith('storage/') ? v : (v.startsWith('/') ? v.slice(1) : `storage/${v}`);
+        return (typeof window !== 'undefined' ? window.location.origin : '') + '/' + path.replace(/^\/+/, '');
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!isFormValid) {
             const missing = effectiveMissingData.filter(field => {
                 if (field.key === 'foto' || field.key === 'photo') {
                     return !data.foto_file && hasDefaultPhoto;
+                }
+                if (field.type === 'file') {
+                    const val = data[field.key];
+                    return !val || (typeof val === 'string' && val.trim() === '');
                 }
                 const val = data[field.key];
                 return val === null || val === undefined || String(val).trim() === '';
@@ -193,7 +212,21 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
             });
             return;
         }
+        const fileFields = effectiveMissingData.filter(f => f.type === 'file' && f.key !== 'foto' && f.key !== 'photo');
         post(route('profile.update'), {
+            transform: (data) => {
+                const custom_files = {};
+                const out = { ...data };
+                fileFields.forEach(field => {
+                    const val = out[field.key];
+                    if (val instanceof File) {
+                        custom_files[normalizeKey(field.key)] = val;
+                        delete out[field.key];
+                    }
+                });
+                if (Object.keys(custom_files).length) Object.assign(out, { custom_files });
+                return out;
+            },
             onSuccess: () => {
                 try { onClose && onClose(); } catch (e) {}
                 try { onSuccess && onSuccess(); } catch (e) {}
@@ -253,9 +286,11 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
     const isFormValid = React.useMemo(() => {
         return effectiveMissingData.every(field => {
             if (field.key === 'foto' || field.key === 'photo') {
-                // If photo is missing, we need a new file to be uploaded by user
-                // UNLESS they already have a non-default photo
                 return !!data.foto_file || !hasDefaultPhoto;
+            }
+            if (field.type === 'file') {
+                const val = data[field.key];
+                return val != null && (val instanceof File || (typeof val === 'string' && val.trim() !== '' && !String(val).toLowerCase().includes('fakepath')));
             }
             const val = data[field.key];
             return val !== null && val !== undefined && String(val).trim() !== '';
@@ -410,7 +445,8 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                                 .map((originalField, index) => {
                                     // Parse Dropdown syntax from label or key
                                     // Format: "Label|Dropdown:Option1~Option2~Option3"
-                                    let isDropdown = originalField.type === 'select';
+                                    // Custom fields use type 'dropdown', standard fields use 'select'
+                                    let isDropdown = originalField.type === 'select' || originalField.type === 'dropdown';
                                     let options = originalField.options || [];
 
                                     // Robust options handling
@@ -476,16 +512,54 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                                         label = label.replace(/\|.*/, '').trim();
                                     }
 
+                                    const isFileField = originalField.type === 'file';
+                                    const fileVal = data[originalField.key];
+                                    const savedFileUrl = (typeof fileVal === 'string' && fileVal && !fileVal.includes('fakepath')) ? getFileViewUrl(fileVal) : null;
+                                    const existingValueUrl = (originalField.value && typeof originalField.value === 'string') ? getFileViewUrl(originalField.value) : null;
+                                    const viewUrl = savedFileUrl || existingValueUrl;
+
                                     return (
                                         <div key={index} className="relative group">
                                             <label className="block text-sm font-semibold text-gray-700 mb-2 capitalize flex items-center gap-2">
                                                 <span className="w-6 h-6 rounded-md bg-gray-100 text-gray-500 flex items-center justify-center text-xs group-focus-within:bg-indigo-50 group-focus-within:text-indigo-600 transition-colors">
-                                                    <i className={`fas ${iconMap[originalField.key] || 'fa-pen'}`}></i>
+                                                    <i className={`fas ${iconMap[originalField.key] || 'fa-file-alt'}`}></i>
                                                 </span>
                                                 {label} <span className="text-red-500">*</span>
                                             </label>
 
-                                            {isDropdown ? (
+                                            {isFileField ? (
+                                                <div className="space-y-2">
+                                                    <input
+                                                        type="file"
+                                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                        onChange={(e) => handleFieldChange(originalField.key, e.target.files?.[0] || null)}
+                                                        className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 sm:text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                                    />
+                                                    {viewUrl && (
+                                                        <a href={viewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                                                            <i className="fas fa-external-link-alt text-xs"></i>
+                                                            Lihat file
+                                                        </a>
+                                                    )}
+                                                    {fileVal instanceof File && !viewUrl && (
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className="text-sm text-gray-500">
+                                                                File dipilih: {fileVal.name}.
+                                                            </span>
+                                                            <a
+                                                                href={URL.createObjectURL(fileVal)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                                                            >
+                                                                <i className="fas fa-external-link-alt text-xs"></i>
+                                                                Preview file
+                                                            </a>
+                                                            <span className="text-xs text-gray-400">Simpan untuk mengunggah ke server.</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : isDropdown ? (
                                                 <div className="relative">
                                                     <select
                                                         value={data[originalField.key] || ''}

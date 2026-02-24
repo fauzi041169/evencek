@@ -10,12 +10,13 @@ export default function CustomFieldsFormModal({
     description = 'Mohon lengkapi data berikut untuk melanjutkan pendaftaran.'
 }) {
     const [formData, setFormData] = useState({});
+    const [fileData, setFileData] = useState({});
     const [errors, setErrors] = useState({});
 
-    // Reset form when modal opens
     useEffect(() => {
         if (isOpen) {
             setFormData({});
+            setFileData({});
             setErrors({});
         }
     }, [isOpen]);
@@ -26,7 +27,17 @@ export default function CustomFieldsFormModal({
             [key]: value
         }));
 
-        // Clear error when user types
+        if (errors[key]) {
+            setErrors(prev => ({ ...prev, [key]: null }));
+        }
+    };
+
+    const handleFileChange = (key, file) => {
+        setFileData(prev => ({
+            ...prev,
+            [key]: file || null
+        }));
+
         if (errors[key]) {
             setErrors(prev => ({ ...prev, [key]: null }));
         }
@@ -35,14 +46,23 @@ export default function CustomFieldsFormModal({
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        // Validate required fields
         const newErrors = {};
         let hasError = false;
 
         customFields.forEach(field => {
-            if (field.is_required && !formData[field.key]) {
-                newErrors[field.key] = `${field.label} wajib diisi.`;
-                hasError = true;
+            const key = field.key;
+            const type = field.type || 'text';
+
+            let value = formData[key];
+            if (type === 'file') {
+                value = fileData[key];
+            }
+
+            if (field.is_required) {
+                if (!value || (typeof value === 'string' && value.trim() === '')) {
+                    newErrors[key] = `${field.label} wajib diisi.`;
+                    hasError = true;
+                }
             }
         });
 
@@ -51,7 +71,14 @@ export default function CustomFieldsFormModal({
             return;
         }
 
-        onSubmit(formData);
+        const payload = { ...formData };
+        Object.entries(fileData).forEach(([key, file]) => {
+            if (file) {
+                payload[key] = file;
+            }
+        });
+
+        onSubmit(payload);
     };
 
     if (!customFields || customFields.length === 0) return null;
@@ -127,6 +154,14 @@ export default function CustomFieldsFormModal({
                                                         );
                                                     })}
                                                 </select>
+                                            ) : field.type === 'file' ? (
+                                                <input
+                                                    type="file"
+                                                    id={field.key}
+                                                    onChange={(e) => handleFileChange(field.key, e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                                    required={field.is_required}
+                                                />
                                             ) : (
                                                 <input
                                                     type={field.type || 'text'}

@@ -26,6 +26,18 @@ use Inertia\Inertia;
 
 class PaymentController extends Controller
 {
+    /**
+     * Hapus tag HTML dan decode entity agar nama/nomor rekening tampil plain di frontend.
+     */
+    private static function stripHtmlFromPaymentMethod($method): void
+    {
+        foreach (['name', 'account_name', 'account_number'] as $attr) {
+            if (! empty($method->$attr) && is_string($method->$attr)) {
+                $method->$attr = trim(html_entity_decode(strip_tags($method->$attr), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            }
+        }
+    }
+
     public function index(Request $request)
     {
         try {
@@ -41,6 +53,10 @@ class PaymentController extends Controller
                 ->where('activity_id', $activity->id)
                 ->orderBy('created_at', 'desc')
                 ->paginate(15);
+
+            foreach ($paymentMethods as $m) {
+                self::stripHtmlFromPaymentMethod($m);
+            }
 
             return Inertia::render('Payments/Index', [
                 'activity' => $activity,
@@ -649,6 +665,10 @@ class PaymentController extends Controller
 
             $defaultSenderName = $lastPayment?->sender_name ?? auth()->user()->name;
 
+            foreach ($paymentMethods as $m) {
+                self::stripHtmlFromPaymentMethod($m);
+            }
+
             if (request()->expectsJson() || request()->boolean('modal')) {
                 return response()->json([
                     'activity' => $activity,
@@ -781,6 +801,10 @@ class PaymentController extends Controller
                 ->first();
 
             $defaultSenderName = $lastPayment?->sender_name ?? auth()->user()->name;
+
+            foreach ($paymentMethods as $m) {
+                self::stripHtmlFromPaymentMethod($m);
+            }
 
             return response()->json([
                 'success' => true,
@@ -1172,6 +1196,15 @@ class PaymentController extends Controller
                         if (is_array($notes) && isset($notes['custom_data'])) {
                             $auData['custom_data'] = $notes['custom_data'];
                         }
+                    }
+                    // Gabungkan dengan profile additional_data (mis. Surat Tugas dari Lengkapi Profil)
+                    $user = auth()->user();
+                    $profileAdditional = ($user && $user->profile && is_array($user->profile->additional_data ?? null))
+                        ? $user->profile->additional_data
+                        : null;
+                    if (! empty($profileAdditional)) {
+                        $base = $auData['custom_data'] ?? [];
+                        $auData['custom_data'] = array_merge(is_array($base) ? $base : [], $profileAdditional);
                     }
 
                     $activityUser = ActivityUser::updateOrCreate(

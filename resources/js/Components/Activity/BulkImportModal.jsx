@@ -1,4 +1,4 @@
-import React, { Fragment, useState, useEffect } from 'react';
+import React, { Fragment, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Dialog, Transition } from '@headlessui/react';
 import { X, Clipboard, Upload, FileSpreadsheet, CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
@@ -36,8 +36,13 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
     const [templateColumns, setTemplateColumns] = useState([]);
 
     const [mapping, setMapping] = useState({});
+    const [editingColumnIndex, setEditingColumnIndex] = useState(null); // untuk "Ubah" mapping di preview
     const [step, setStep] = useState('paste'); // paste, map, preview, check
     const [checkData, setCheckData] = useState(null);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [uploadError, setUploadError] = useState(null);
+    const previewRef = useRef(null);
+    const mapRef = useRef(null);
 
     const isPaidActivity = activity ? parseFloat(activity.price || 0) > 0 : false;
 
@@ -48,9 +53,12 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
             setPreviewData([]);
             setHeaders([]);
             setMapping({});
+            setEditingColumnIndex(null);
             setStep('paste');
             setImportResult(null);
             setImportErrors(null);
+            setSelectedFile(null);
+            setUploadError(null);
 
             // Fetch template specifically for this activity
             if (activityId) {
@@ -106,13 +114,9 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                     }
                                 }
 
-                                console.log(`Column: "${col}" -> clean: "${clean}" -> label: "${label}"`);
-
                                 // Check if already exists by value OR label to avoid duplicates
                                 if (!newOptions.find(o => o.value === clean || o.label === label)) {
                                     newOptions.push({ value: clean, label: label });
-                                } else {
-                                    console.log(`Skipping duplicate: "${clean}" / "${label}"`);
                                 }
                             });
                             setTemplateOptions(newOptions);
@@ -127,9 +131,12 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
         const text = e.target.value;
         setPastedText(text);
 
-        // Smart detection: if first line contains '@', assume it's data (no header)
         if (text && text.trim()) {
-            const firstLine = text.trim().split('\n')[0];
+            const lines = text.trim().split(/\r?\n/).filter(l => l.trim() !== '');
+            const firstLine = lines[0] || '';
+            if (lines.length === 1) {
+                setFileHasHeader(false);
+            }
             if (firstLine.includes('@')) {
                 setFileHasHeader(false);
             }
@@ -139,7 +146,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
     const processPaste = () => {
         if (!pastedText.trim()) return;
         parseData(pastedText);
-        setStep('map');
+        setStep('paste');
     };
 
     const parseData = (text) => {
@@ -153,14 +160,18 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
         if (lines.length === 0) return;
 
-        // Detect delimiter (tab, semicolon, or comma)
+        // Detect delimiter: tab (Excel paste), semicolon, comma, atau spasi (bila tidak ada yang lain)
         const firstLine = lines[0];
         let delimiter = '\t';
         if (firstLine.includes('\t')) delimiter = '\t';
         else if (firstLine.includes(';')) delimiter = ';';
         else if (firstLine.includes(',')) delimiter = ',';
+        else if (firstLine.includes(' ')) delimiter = /\s+/; // data tempel dengan spasi antar kolom
 
-        const parsedRows = lines.map(line => line.split(delimiter).map(cell => cell.trim().replace(/^"|"$/g, '')));
+        const parsedRows = lines.map(line =>
+            (typeof delimiter === 'string' ? line.split(delimiter) : line.split(delimiter))
+                .map(cell => cell.trim().replace(/^"|"$/g, ''))
+        );
 
         let dataRows = parsedRows;
         let detectedHeaders = [];
@@ -177,38 +188,138 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
         setHeaders(detectedHeaders);
         setPreviewData(dataRows);
 
-        // Auto-map headers
         const newMapping = {};
+        const normalizeValueKey = (val) => {
+            const v = (val || '').toLowerCase().trim();
+            if (/^regency(\s*_?id)?$/.test(v)) return 'regency';
+            if (/^district(\s*_?id)?$/.test(v)) return 'district';
+            if (/^province(\s*_?id)?$/.test(v)) return 'province';
+            return val;
+        };
+        const sanitize = (s) => (s || '')
+            .toString()
+            .toLowerCase()
+            .trim()
+            .replace(/\*/g, '')
+            .replace(/\|dropdown:.*/i, '')
+            .replace(/kabupaten\/kota/gi, 'kabupatenkota')
+            .replace(/[^\p{L}\p{N}]+/gu, ' ') // keep letters/numbers, collapse others to space
+            .replace(/\s+/g, ' ')
+            .trim();
+        // Canonical form for matching: unify synonyms so "institution" matches "Instansi", etc.
+        const canonicalizeForMatch = (str) => {
+            let c = sanitize(str);
+            const synonyms = {
+                institution: 'instansi',
+                nama: 'nama lengkap',
+                'nama lengkap': 'nama lengkap',
+                kabupaten: 'kabupatenkota',
+                kota: 'kabupatenkota',
+                kabupatenkota: 'kabupatenkota',
+                'no hp': 'no hp/wa',
+                'no hp/wa': 'no hp/wa',
+                'lembaga pendidikan': 'instansi',
+                'user email': 'email',
+                'user name': 'nama lengkap',
+                'user password': 'password',
+                'profile no hp': 'no hp/wa',
+                'profile nik': 'nik',
+                'profile institution': 'instansi',
+                'profile position': 'jabatan',
+                'profile address': 'alamat',
+                'profile gender': 'jenis kelamin',
+                'profile birth place': 'tempat lahir',
+                'profile birth date': 'tanggal lahir',
+                surat: 'surat tugas',
+                tugas: 'surat tugas',
+            };
+            return synonyms[c] ?? c;
+        };
+        // Template column -> key for matching (strip user:/profile: so "user:email" matches header "email")
+        const templateMatchKey = (tc) => {
+            let base = (tc || '').replace(/\*/g, '').replace(/\|dropdown:.*/i, '');
+            base = base.replace(/^user:\s*/i, '').replace(/^profile:\s*/i, '').trim();
+            return canonicalizeForMatch(base);
+        };
+        // Return value harus sama dengan value di template/dropdown agar kolom tidak tampil "Abaikan"
+        const canonicalFromHeader = (header) => {
+            const h = canonicalizeForMatch(header);
+            if (h === 'kabupatenkota' || h === 'kabupaten' || h === 'kota') return 'Kabupaten/Kota';
+            if (h === 'kecamatan') return 'Kecamatan';
+            if (h === 'provinsi' || h === 'province') return 'Provinsi';
+            if (h === 'instansi' || h === 'institution') return 'profile:institution';
+            if (h === 'nama' || h === 'nama lengkap') return 'user:name';
+            if (h === 'email') return 'user:email';
+            if (h === 'password') return 'user:password';
+            return null;
+        };
 
         detectedHeaders.forEach((header, index) => {
-            // Strategy 1: Map by Index (Prioritize template order as requested)
-            // The user stated that uploaded data MUST follow template order.
-            if (index < templateColumns.length) {
-                // Remove asterisk if present to match option values
-                const cleanCol = templateColumns[index].replace('*', '');
-                newMapping[index] = cleanCol;
-                return;
-            }
-
-            // Strategy 2: Map by Header Name (Fallback for extra columns)
             if (fileHasHeader) {
-                const lowerHeader = header.toLowerCase();
-                // Find best match in templateOptions
-                const match = templateOptions.find(opt =>
-                    opt.label.toLowerCase().includes(lowerHeader) ||
-                    opt.value.toLowerCase() === lowerHeader ||
-                    (lowerHeader.includes('nama') && opt.value === 'user:name') ||
-                    (lowerHeader.includes('email') && opt.value === 'user:email') ||
-                    (lowerHeader.includes('hp') && opt.value === 'profile:no_hp')
-                );
-
+                // 0) Match header ke kolom template (strip user:/profile: agar "email" cocok dengan "user:email")
+                const headerCanon = canonicalizeForMatch(header);
+                if (templateColumns && templateColumns.length > 0) {
+                    const tMatch = templateColumns.find(tc => templateMatchKey(tc) === headerCanon);
+                    if (tMatch) {
+                        const v = normalizeValueKey(
+                            tMatch
+                                .replace('*', '')
+                                .replace(/\|dropdown:.*/i, '')
+                        );
+                        newMapping[index] = v;
+                        return;
+                    }
+                }
+                // 1) Try canonical dictionary for common system fields
+                const canon = canonicalFromHeader(header);
+                if (canon) {
+                    newMapping[index] = canon;
+                    return;
+                }
+                // 2) Fuzzy match to template options (use canonical so "institution" matches "Instansi", etc.)
+                const match = templateOptions.find(opt => {
+                    const lab = (opt.label || '').toLowerCase().trim();
+                    const val = (opt.value || '').toLowerCase().trim();
+                    const labCanon = canonicalizeForMatch(opt.label || '');
+                    const valCanon = canonicalizeForMatch(opt.value || '');
+                    return labCanon === headerCanon || valCanon === headerCanon ||
+                        lab.includes(header.toLowerCase()) ||
+                        val === header.toLowerCase() ||
+                        sanitize(lab) === sanitize(header) ||
+                        sanitize(val) === sanitize(header) ||
+                        (header.toLowerCase().includes('nama') && opt.value === 'user:name') ||
+                        (header.toLowerCase().includes('email') && opt.value === 'user:email') ||
+                        (header.toLowerCase().includes('hp') && opt.value === 'profile:no_hp') ||
+                        (header.toLowerCase().includes('instansi') && opt.value === 'profile:institution');
+                });
                 if (match) {
                     newMapping[index] = match.value;
+                    return;
                 }
+                // 3) Do NOT fall back to index when header exists to avoid wrong mapping.
+            }
+            // Only when there is no header (headerless data), rely on template order
+            if (!fileHasHeader && index < templateColumns.length) {
+                const rawCol = templateColumns[index]
+                    .replace('*', '')
+                    .replace(/\|dropdown:.*/i, '');
+                const cleanCol = normalizeValueKey(rawCol);
+                newMapping[index] = cleanCol;
+                return;
             }
         });
 
         setMapping(newMapping);
+        setStep('paste');
+        setTimeout(() => {
+            try { 
+                if (mapRef.current) { 
+                    mapRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' }); 
+                } else if (previewRef.current) {
+                    previewRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+            } catch {}
+        }, 0);
     };
 
     // Re-parse when fileHasHeader changes, pastedText updates, or template changes
@@ -289,6 +400,9 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                     setStep('check');
                 } else {
                     setImportResult(result.stats ? result : (result.data || result));
+                    if (result.failures && result.failures.length > 0) {
+                        setImportErrors(result.failures);
+                    }
                     const finalResult = result.stats ? result : (result.data || result);
                     if (finalResult && (finalResult.bulk_payment_available || (finalResult.stats && finalResult.stats.total_bill > 0))) {
                         if (onPaymentRequest) {
@@ -298,12 +412,50 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                 }
             } else {
                 console.error('Import Failed:', result);
-                setImportErrors(result.errors || [{ row: 0, email: 'Unknown', name: 'Unknown', error: result.message || 'Import failed' }]);
+                const errList = result.failures || result.errors || (result.message ? [{ row: 0, email: '', name: '', error: result.message }] : [{ row: 0, email: 'Unknown', name: 'Unknown', error: 'Import failed' }]);
+                setImportErrors(errList);
             }
 
         } catch (error) {
             console.error('Import Exception:', error);
             setImportErrors([{ row: 0, error: 'Network or server error: ' + (error.message || String(error)) }]);
+        } finally {
+            setIsImporting(false);
+        }
+    };
+
+    const handleUploadImport = async (file = null) => {
+        const fileToUpload = file || selectedFile;
+        if (!fileToUpload) return;
+        setIsImporting(true);
+        setImportResult(null);
+        setImportErrors(null);
+        setUploadError(null);
+        try {
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch(route('activity.preparation.preview-upload', activityId), {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken
+                }
+            });
+            const result = await response.json();
+            if (result.success && Array.isArray(result.headers) && Array.isArray(result.rows)) {
+                const lines = [
+                    result.headers.join('\t'),
+                    ...result.rows.map(row => row.join('\t'))
+                ].join('\n');
+                setPastedText(lines);
+                setStep('paste');
+            } else {
+                setUploadError(result.message || 'Gagal memproses file untuk pratinjau');
+            }
+        } catch (e) {
+            setUploadError(e.message || String(e));
         } finally {
             setIsImporting(false);
         }
@@ -355,27 +507,37 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                                             Template Kolom yang Didukung
                                                         </label>
                                                         <div className="flex flex-wrap gap-2 text-xs text-gray-600 mb-4">
-                                                            {(templateColumns.length > 0 ? templateColumns : templateOptions.map(o => o.value)).map(col => {
-                                                                const isMandatory = col.endsWith('*');
-                                                                const cleanCol = isMandatory ? col.slice(0, -1) : col;
-                                                                const option = templateOptions.find(o => o.value === cleanCol);
-                                                                let label = option ? option.label : cleanCol;
-
-                                                                // If it's a dropdown/custom column, only show the name part
-                                                                if (label.includes('|')) {
-                                                                    label = label.split('|')[0];
-                                                                }
-
-                                                                return (
-                                                                    <span key={col} className={`px-2 py-1 rounded border ${isMandatory ? 'bg-red-50 border-red-200 text-red-700 font-medium' : 'bg-gray-100 border-gray-200 text-gray-600'}`}>
-                                                                        {label}{isMandatory && '*'}
-                                                                    </span>
-                                                                );
-                                                            })}
+                                                            {(() => {
+                                                                const rawList = templateColumns.length > 0 ? templateColumns : templateOptions.map(o => o.value);
+                                                                const canonicalKey = (c) => {
+                                                                    const x = (c || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                                                                    if (/^province|provinsi|province_id/.test(x)) return 'provinsi';
+                                                                    if (/^regency|kabupaten|kota|kabupaten\/kota/.test(x)) return 'regency';
+                                                                    if (/^district|kecamatan|district_id/.test(x)) return 'district';
+                                                                    return x;
+                                                                };
+                                                                const seen = new Set();
+                                                                return rawList.filter(col => {
+                                                                    const key = canonicalKey(col.replace(/\*$/, '').split('|')[0]);
+                                                                    if (seen.has(key)) return false;
+                                                                    seen.add(key);
+                                                                    return true;
+                                                                }).map(col => {
+                                                                    const isMandatory = col.endsWith('*');
+                                                                    const cleanCol = isMandatory ? col.slice(0, -1) : col;
+                                                                    const option = templateOptions.find(o => o.value === cleanCol || (o.value && cleanCol && o.value.toLowerCase() === cleanCol.toLowerCase()));
+                                                                    let label = option ? option.label : cleanCol;
+                                                                    if (label.includes('|')) label = label.split('|')[0];
+                                                                    return (
+                                                                        <span key={col} className={`px-2 py-1 rounded border ${isMandatory ? 'bg-red-50 border-red-200 text-red-700 font-medium' : 'bg-gray-100 border-gray-200 text-gray-600'}`}>
+                                                                            {label}{isMandatory && '*'}
+                                                                        </span>
+                                                                    );
+                                                                });
+                                                            })()}
                                                         </div>
 
-                                                        <div className="flex gap-2 mb-4">
-
+                                                        <div className="flex flex-wrap items-center gap-2 mb-4">
                                                             <a
                                                                 href={route('activity.preparation.download-participants-template', activityId)}
                                                                 target="_blank"
@@ -385,6 +547,54 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                                                 <FileSpreadsheet className="w-4 h-4" />
                                                                 Unduh Template .xlsx
                                                             </a>
+                                                            <input
+                                                                id="import-file"
+                                                                type="file"
+                                                                accept=".csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                                                onChange={(e) => {
+                                                                    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                                                                    setSelectedFile(f);
+                                                                    if (f) {
+                                                                        const lower = (f.name || '').toLowerCase();
+                                                                        if (lower.endsWith('.csv') || lower.endsWith('.txt')) {
+                                                                            const reader = new FileReader();
+                                                                            reader.onload = () => {
+                                                                                const text = reader.result || '';
+                                                                                setFileHasHeader(true);
+                                                                                setPastedText(String(text));
+                                                                                setStep('paste');
+                                                                            };
+                                                                            reader.readAsText(f);
+                                                                        } else {
+                                                                            handleUploadImport(f);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="hidden"
+                                                            />
+                                                            <label
+                                                                htmlFor="import-file"
+                                                                className="inline-flex items-center gap-2 rounded-lg bg-white border border-slate-300 text-slate-700 px-3 py-2 text-sm font-medium hover:bg-slate-50 cursor-pointer"
+                                                            >
+                                                                Pilih File
+                                                            </label>
+                                                            {selectedFile && (
+                                                                <span className="text-xs text-gray-500 flex items-center gap-2">
+                                                                    {selectedFile.name}
+                                                                    {isImporting && (
+                                                                        <span className="text-indigo-600 flex items-center gap-1">
+                                                                            <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                            </svg>
+                                                                            Memproses...
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                            )}
+                                                            {uploadError && (
+                                                                <span className="text-sm text-red-600">{uploadError}</span>
+                                                            )}
                                                         </div>
 
                                                         <div className="flex items-center gap-2 mb-2">
@@ -415,27 +625,43 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                                                 <h4 className="text-sm font-medium text-gray-700 mb-2">
                                                                     Pratinjau & Pemetaan Data
                                                                 </h4>
-                                                                <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-80 mb-4">
+                                                                <div ref={previewRef} className="overflow-x-auto border border-gray-200 rounded-lg max-h-80 mb-4">
                                                                     <table className="min-w-full divide-y divide-gray-200 relative">
                                                                         <thead className="bg-gray-50 sticky top-0 z-10">
                                                                             <tr>
-                                                                                {headers.map((header, index) => (
-                                                                                    <th key={index} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50 min-w-[180px]">
-                                                                                        <div className="mb-1 text-gray-400 text-[10px] truncate" title={header}>{header}</div>
-                                                                                        <select
-                                                                                            value={mapping[index] || ''}
-                                                                                            onChange={(e) => handleMappingChange(index, e.target.value)}
-                                                                                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs py-1"
-                                                                                        >
-                                                                                            <option value="">-- Abaikan --</option>
-                                                                                            {templateOptions.map(opt => (
-                                                                                                <option key={opt.value} value={opt.value}>
-                                                                                                    {opt.label}
-                                                                                                </option>
-                                                                                            ))}
-                                                                                        </select>
+                                                                                {headers.map((header, index) => {
+                                                                                    const mappedValue = mapping[index];
+                                                                                    const mappedLabel = mappedValue
+                                                                                        ? (templateOptions.find(o => o.value === mappedValue)?.label || mappedValue)
+                                                                                        : null;
+                                                                                    const showDropdown = editingColumnIndex === index || !mappedLabel;
+                                                                                    return (
+                                                                                    <th key={index} className="px-3 py-2 text-left text-xs font-medium text-gray-700 whitespace-nowrap bg-gray-50 min-w-[120px]">
+                                                                                        {mappedLabel && !showDropdown ? (
+                                                                                            <span className="block font-semibold text-gray-800" title={`Excel: ${header}`}>
+                                                                                                {mappedLabel}
+                                                                                                <button type="button" onClick={() => setEditingColumnIndex(index)} className="ml-1 text-indigo-600 hover:text-indigo-800 text-[10px] font-normal">Ubah</button>
+                                                                                            </span>
+                                                                                        ) : (
+                                                                                            <>
+                                                                                                {!mappedLabel && <div className="mb-1 text-gray-400 text-[10px] truncate" title={header}>{header}</div>}
+                                                                                                <select
+                                                                                                    value={mappedValue || ''}
+                                                                                                    onChange={(e) => { handleMappingChange(index, e.target.value); setEditingColumnIndex(null); }}
+                                                                                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-xs py-1"
+                                                                                                    onBlur={() => setEditingColumnIndex(null)}
+                                                                                                >
+                                                                                                    <option value="">-- Pilih kolom --</option>
+                                                                                                    {templateOptions.map(opt => (
+                                                                                                        <option key={opt.value} value={opt.value}>
+                                                                                                            {opt.label}
+                                                                                                        </option>
+                                                                                                    ))}
+                                                                                                </select>
+                                                                                            </>
+                                                                                        )}
                                                                                     </th>
-                                                                                ))}
+                                                                                );})}
                                                                             </tr>
                                                                         </thead>
                                                                         <tbody className="bg-white divide-y divide-gray-200">
@@ -462,7 +688,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                                 )}
 
                                                 {step === 'map' && (
-                                                    <div className="mb-4">
+                                                    <div ref={mapRef} className="mb-4">
                                                         <h4 className="text-sm font-medium text-gray-700 mb-4">Petakan Kolom CSV ke Data Peserta</h4>
                                                         <div className="max-h-[60vh] overflow-y-auto pr-2">
                                                             {headers.map((header, index) => (

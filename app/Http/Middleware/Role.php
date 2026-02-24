@@ -13,9 +13,10 @@ class Role
             return redirect('login');
         }
 
-        $userRole = auth()->user()->role;
+        $userRole = strtolower(trim((string) auth()->user()->role));
+        $allowedRoles = array_map(fn ($r) => strtolower(trim((string) $r)), $roles);
 
-        if (in_array($userRole, $roles)) {
+        if (in_array($userRole, $allowedRoles, true)) {
             return $next($request);
         }
 

@@ -58,7 +58,9 @@
 
     <!-- Scripts -->
     @routes
-    @viteReactRefresh
+    @if(app()->environment(['local', 'development']))
+        @viteReactRefresh
+    @endif
     @vite(['resources/css/app.css', 'resources/js/app.jsx'])
     @inertiaHead
 </head>

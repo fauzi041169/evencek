@@ -211,20 +211,20 @@ class UserManagementController extends Controller
 
             DB::commit();
 
-            if ($request->header('X-Inertia')) {
-                return back()->with('success', 'Role berhasil diubah');
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Role berhasil diubah',
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'role' => $user->role,
+                        'email' => $user->email,
+                    ],
+                ]);
             }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Role berhasil diubah',
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'role' => $user->role,
-                    'email' => $user->email,
-                ],
-            ]);
+            
+            return back()->with('success', 'Role berhasil diubah');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -678,14 +678,24 @@ class UserManagementController extends Controller
         // Transform data for response
         $collection = $showAll ? $users : $users->getCollection();
         $usersData = $collection->map(function ($user) {
+            $active = $user->activeSubscription;
+            $plan = $active ? $active->plan : null;
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
                 'avatar' => $user->profile?->foto_url ?? asset('assets/images/profilefoto/default-profile.png'),
-                'subscription' => $user->activeSubscription?->plan->name ?? 'Tidak Berlangganan',
-                'subscription_status' => $user->activeSubscription ? 'Berlangganan' : 'Tidak Berlanggan',
+                'subscription' => $plan?->name ?? 'Tidak Berlangganan',
+                'subscription_status' => $active ? 'Berlangganan' : 'Tidak Berlanggan',
+                'active_subscription' => $active ? [
+                    'plan' => $plan ? [
+                        'slug' => $plan->slug,
+                        'name' => $plan->name,
+                    ] : null,
+                    'status' => $active->status,
+                    'end_date' => optional($active->end_date)->format('Y-m-d'),
+                ] : null,
                 'created_at' => $user->created_at->format('d M Y'),
             ];
         });

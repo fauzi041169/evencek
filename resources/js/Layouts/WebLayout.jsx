@@ -178,69 +178,43 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
                 }
 
-                .seg-nav { display:flex; gap:0; }
+                .seg-nav { display:flex; gap:12px; }
                 .seg-tab {
                     position: relative;
                     display: inline-flex;
                     align-items: center;
-                    gap: 0;
-                    padding: 11px 30px;
-                    color: var(--seg-text, #fff);
+                    padding: 10px 18px;
+                    color: var(--seg-text, #ffffff);
                     font-weight: 700;
                     font-size: 0.875rem;
                     letter-spacing: .015em;
                     text-transform: uppercase;
-                    transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+                    transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease, background .2s ease;
                     background: var(--seg-bg, transparent);
-                    color: var(--seg-text, #ffffff);
-                    border-top-left-radius: 16px;
-                    border-bottom-left-radius: 16px;
-                    box-shadow: 0 8px 20px rgba(0,0,0,.18), inset 0 -6px 10px rgba(0,0,0,.08), inset 0 6px 10px rgba(255,255,255,.08);
+                    box-shadow: 0 6px 16px rgba(0,0,0,.18);
                     border: 1px solid var(--seg-border, rgba(255,255,255,.18));
-                    text-shadow: 0 1px 1px rgba(0,0,0,.15);
-                    overflow: hidden;
+                    text-shadow: 0 1px 1px rgba(0,0,0,.10);
+                    overflow: visible;
                     isolation: isolate;
-                    width: 168px;
-                    justify-content: center;
                     white-space: nowrap;
+                    border-radius: 9999px;
+                    width: var(--seg-width, 160px);
+                    justify-content: center;
                 }
                 .seg-tab::before{
                     content:"";
                     position:absolute;
                     inset:0;
-                    background: linear-gradient(to bottom, rgba(255,255,255,.30), rgba(255,255,255,0) 60%);
+                    background: linear-gradient(to bottom, rgba(255,255,255,.20), rgba(255,255,255,0) 60%);
                     mix-blend-mode: screen;
                     pointer-events:none;
-                    border-top-left-radius:16px;
-                    border-bottom-left-radius:16px;
                     z-index:0;
+                    border-radius: 9999px;
                 }
-                .seg-cap{
-                    position:absolute;
-                    right:-32px;
-                    top:0;
-                    width:78px;
-                    height:100%;
-                    background: linear-gradient(to right, var(--color-navbar-cap-start), var(--color-navbar-cap-end));
-                    border-radius: 999px;
-                    box-shadow: 0 6px 18px rgba(0,0,0,.12);
-                    z-index: -1;
-                }
-                .seg-seam{
-                    position:absolute;
-                    right: 40px;
-                    top:0;
-                    width: 16px;
-                    height:100%;
-                    background: linear-gradient(to right, rgba(255,255,255,.35), rgba(255,255,255,0));
-                    pointer-events:none;
-                    opacity:.6;
-                    transform: skewX(-28deg);
-                }
-                .seg-tab:hover{ transform: translateY(-1px); box-shadow: 0 12px 24px rgba(0,0,0,.22); background: var(--seg-bg-hover, var(--seg-bg)); }
-                .seg-tab:focus-visible{ outline: none; box-shadow: 0 0 0 2px rgba(255,255,255,.65), 0 12px 24px rgba(0,0,0,.22); }
-                .seg-tab.active{ box-shadow: 0 16px 28px rgba(0,0,0,.24), inset 0 0 0 1px rgba(255,255,255,.25); background: var(--seg-bg-active, var(--seg-bg)); border-color: var(--seg-active-border, var(--seg-border)); }
-                .seg-tab + .seg-tab { margin-left: -28px; }
+                .seg-tab:hover{ transform: translateY(-1px); box-shadow: 0 10px 20px rgba(0,0,0,.22); background: var(--seg-bg-hover, var(--seg-bg)); }
+                .seg-tab:focus-visible{ outline: none; box-shadow: 0 0 0 2px rgba(255,255,255,.65), 0 10px 20px rgba(0,0,0,.22); }
+                .seg-tab.active{ box-shadow: 0 12px 22px rgba(0,0,0,.24), inset 0 0 0 1px rgba(255,255,255,.25); background: var(--seg-bg-active, var(--seg-bg)); border-color: var(--seg-active-border, var(--seg-border)); }
+                .seg-tab + .seg-tab { margin-left: 0; }
                 .seg-tab:first-child { margin-left: 0; }
 
                 /* palette seg-color-* dihapus; warna kini mengikuti appSettings melalui inline style */
@@ -312,7 +286,6 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                         '--seg-bg': `linear-gradient(to right, ${navStart}, ${navEnd})`,
                                         '--seg-bg-hover': gradientFrom(linkHover),
                                         '--seg-bg-active': gradientFrom(linkActiveCard),
-                                        '--seg-cap-bg': `linear-gradient(to right, ${navStart}, ${navEnd})`,
                                         '--seg-text': linkText,
                                         '--seg-border': 'transparent',
                                         '--seg-active-border': linkActiveBorder
@@ -325,8 +298,6 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                             style={bgStyle}
                                         >
                                             <span>{link.name}</span>
-                                            <span className="seg-cap"></span>
-                                            <span className="seg-seam"></span>
                                         </Link>
                                     );
                                 })}

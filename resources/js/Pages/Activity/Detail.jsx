@@ -591,7 +591,7 @@ export default function Detail({
             <Head title={activity.title || activity.name} />
 
             {/* Hero Section */}
-            <div className="relative bg-slate-900 overflow-hidden min-h-[80px] sm:min-h-[400px] lg:min-h-[500px] flex items-center">
+            <div className="relative bg-slate-900 overflow-hidden min-h-[80px] sm:min-h-[480px] lg:min-h-[600px] flex items-center">
                 <style>{`
                     @keyframes fade-up {
                         from { opacity: 0; transform: translateY(20px); }
@@ -1414,6 +1414,7 @@ export default function Detail({
                 missingFields={missingProfileFields}
                 missingData={localMissingProfileData}
                 userId={user?.id}
+                activityId={activity?.id || activity?.uid}
                 onSuccess={handleMissingDataSuccess}
             />
 

@@ -3,6 +3,14 @@ import Modal from '@/Components/Modal';
 import axios from 'axios';
 import { usePage } from '@inertiajs/react';
 
+/** Hapus tag HTML dan decode entity agar teks tampil plain (tidak ada kode HTML terlihat). */
+function stripHtml(str) {
+    if (str == null || typeof str !== 'string') return '';
+    const div = document.createElement('div');
+    div.innerHTML = str.replace(/<[^>]*>/g, ' ');
+    return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim();
+}
+
 export default function ManualPaymentModal({ show, onClose, activity, paymentMethods = [], bulk_import_payment, defaultSenderName }) {
     const { props } = usePage();
     const [data, setData] = useState({
@@ -189,10 +197,10 @@ export default function ManualPaymentModal({ show, onClose, activity, paymentMet
                                                     className="mt-1 text-blue-600 focus:ring-blue-500"
                                                 />
                                                 <div className="flex-1">
-                                                    <div className="font-bold text-gray-900">{method.name}</div>
+                                                    <div className="font-bold text-gray-900">{stripHtml(method.name)}</div>
                                                     {(method.account_name || method.account_number) && (
                                                         <div className="text-xs text-gray-500 mt-0.5">
-                                                            {method.account_name || '-'} • {method.account_number || '-'}
+                                                            {stripHtml(method.account_name) || '-'} • {stripHtml(method.account_number) || '-'}
                                                         </div>
                                                     )}
                                                 </div>
@@ -274,7 +282,7 @@ export default function ManualPaymentModal({ show, onClose, activity, paymentMet
 
                             <button
                                 type="submit"
-                                disabled={processing}
+                                disabled={processing || !data.payment_proof}
                                 className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {processing ? (

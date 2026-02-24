@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { usePage } from '@inertiajs/react';
 import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
@@ -14,6 +14,16 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
         warning: true,
         errors: true
     });
+
+    const ignoredErrorKeys = ['login', 'email', 'password', 'name', 'password_confirmation', 'current_password'];
+    const errorList = useMemo(() => {
+        return Object.entries(errors)
+            .filter(([key]) => !ignoredErrorKeys.includes(key))
+            .map(([, value]) => value)
+            .flat()
+            .filter(Boolean);
+    }, [errors]);
+    const errorSignature = useMemo(() => errorList.join('|'), [errorList]);
 
     useEffect(() => {
         // Reset visibility when flash messages change
@@ -37,19 +47,13 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
         }, 5000);
 
         return () => clearTimeout(timer);
-    }, [flash]);
+    }, [flash?.success, flash?.error, flash?.info, flash?.warning, errorSignature]);
 
     const dismissAlert = (type) => {
         setVisibleAlerts(prev => ({ ...prev, [type]: false }));
     };
 
-    // Filter out errors that are displayed inline in forms
-    const ignoredErrorKeys = ['login', 'email', 'password', 'name', 'password_confirmation', 'current_password'];
-    const errorList = Object.entries(errors)
-        .filter(([key]) => !ignoredErrorKeys.includes(key))
-        .map(([, value]) => value)
-        .flat()
-        .filter(Boolean);
+    
 
     const Toast = ({ type, title, message, icon, colorClass, borderClass, bgClass, containerClass }) => (
         <div className={`mb-4 w-full ${containerClass} border-l-4 ${borderClass} rounded-r-xl shadow-lg transform transition-all duration-300 hover:scale-[1.02] flex items-start p-4 relative overflow-hidden`}>

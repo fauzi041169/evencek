@@ -232,18 +232,43 @@ export default function Show({
     const processEnrollment = async (type, force = false, customData = {}) => {
         if (registrationTarget.type === 'link' || registrationTarget.type === 'form') {
             try {
-                const payload = {
-                    modal: true,
-                    batch_id: activeBatch?.id,
-                    custom_data: customData
-                };
+                const hasFile =
+                    customData &&
+                    Object.values(customData).some(value => value instanceof File);
 
-                const response = await axios.post(registrationTarget.url, payload, {
+                let payload;
+                const config = {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json',
                     }
-                });
+                };
+
+                if (hasFile) {
+                    const formData = new FormData();
+                    formData.append('modal', 'true');
+                    if (activeBatch?.id) {
+                        formData.append('batch_id', activeBatch.id);
+                    }
+
+                    Object.entries(customData).forEach(([key, value]) => {
+                        if (value instanceof File) {
+                            formData.append(`custom_files[${key}]`, value);
+                        } else if (value !== undefined && value !== null) {
+                            formData.append(`custom_data[${key}]`, value);
+                        }
+                    });
+
+                    payload = formData;
+                } else {
+                    payload = {
+                        modal: true,
+                        batch_id: activeBatch?.id,
+                        custom_data: customData
+                    };
+                }
+
+                const response = await axios.post(registrationTarget.url, payload, config);
 
                 if (response.data.success) {
                     if (response.data.redirect_url) {
@@ -653,7 +678,7 @@ export default function Show({
                 <Head title={`Detail - ${activity.name}`} />
 
                 {/* Hero Section */}
-                <div className="relative bg-slate-900 overflow-hidden min-h-[80px] sm:min-h-[400px] lg:min-h-[500px] flex items-center">
+                <div className="relative bg-slate-900 overflow-hidden min-h-[80px] sm:min-h-[480px] lg:min-h-[600px] flex items-center">
                     <style>{`
                         @keyframes fade-up {
                             from { opacity: 0; transform: translateY(20px); }

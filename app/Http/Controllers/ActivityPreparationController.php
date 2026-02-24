@@ -39,6 +39,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
@@ -1364,6 +1365,37 @@ class ActivityPreparationController extends Controller
             $assignmentsKeyed = $assignments ?? collect();
             $roomsKeyed = $rooms->keyBy('id');
 
+            // Build display keys for merge (so profile additional_data is shown under the same keys the list uses)
+            $mergeDisplayKeys = [];
+            $builtinTemplateKeys = ['email', 'name', 'password', 'no_hp', 'nik', 'gender', 'birth_place', 'birth_date', 'address', 'province_id', 'regency_id', 'district_id', 'institution', 'occupation', 'category', 'position'];
+            if ($activity && ! empty($activity->custom_fields)) {
+                $fields = is_string($activity->custom_fields) ? json_decode($activity->custom_fields, true) : $activity->custom_fields;
+                if (is_array($fields)) {
+                    foreach ($fields as $field) {
+                        $label = $field['label'] ?? '';
+                        $key = $field['key'] ?? $label;
+                        if ($label === '') continue;
+                        $lower = strtolower($key);
+                        if (! in_array($lower, $builtinTemplateKeys, true)) {
+                            $mergeDisplayKeys[] = $key;
+                        }
+                    }
+                }
+            }
+            if ($activity && ! empty($activity->import_template)) {
+                $template = (string) $activity->import_template;
+                $rawParts = array_map('trim', explode(',', $template));
+                foreach ($rawParts as $col) {
+                    $baseKey = $this->normalizeImportKey($col);
+                    if ($baseKey === '') continue;
+                    $lower = strtolower($baseKey);
+                    if (! in_array($lower, $builtinTemplateKeys, true) && ! in_array($baseKey, $mergeDisplayKeys, true)) {
+                        $mergeDisplayKeys[] = $baseKey;
+                    }
+                }
+            }
+
+            $debugParticipantCount = 0;
             if ($participants instanceof LengthAwarePaginator || $participants instanceof Collection) {
                 foreach ($participants as $participant) {
                     // Payment
@@ -1396,6 +1428,105 @@ class ActivityPreparationController extends Controller
                         }
                     }
                     $participant->setRelation('payment', $payment);
+
+                    // Merge profile additional_data into custom_data for display (e.g. Surat Tugas dari Lengkapi Profil)
+                    $existingCustom = $participant->custom_data;
+                    if (is_string($existingCustom)) {
+                        $decoded = json_decode($existingCustom, true);
+                        $existingCustom = is_array($decoded) ? $decoded : [];
+                    }
+                    if (! is_array($existingCustom)) {
+                        $existingCustom = [];
+                    }
+                    $profileAdditional = $participant->user && $participant->user->profile
+                        ? ($participant->user->profile->additional_data ?? null)
+                        : null;
+                    if (is_array($profileAdditional) && ! empty($profileAdditional)) {
+                        $merged = array_merge($existingCustom, $profileAdditional);
+                        // Ensure display keys from activity (custom_fields/template) are filled from profile (key may differ: "Jabatan Organisasi" vs "jabatan_organisasi")
+                        if (! empty($mergeDisplayKeys)) {
+                            $canonical = function ($k) {
+                                $base = trim(explode('|', (string) $k)[0]);
+                                return strtolower(preg_replace('/\s+/', '_', $base));
+                            };
+                            foreach ($mergeDisplayKeys as $displayKey) {
+                                $baseKey = trim(explode('|', (string) $displayKey)[0]);
+                                if ($baseKey === '') continue;
+                                if (isset($merged[$baseKey]) && $merged[$baseKey] !== '' && $merged[$baseKey] !== null) {
+                                    continue;
+                                }
+                                $canonicalDisplay = $canonical($displayKey);
+                                foreach ($profileAdditional as $profileKey => $profileVal) {
+                                    if ($profileVal === '' || $profileVal === null) continue;
+                                    if ($canonical($profileKey) === $canonicalDisplay) {
+                                        $merged[$baseKey] = $profileVal;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        // Isi "Jabatan Organisasi" dari kolom profil jabatan bila custom kosong
+                        $jabatanOrganisasiKeys = ['Jabatan Organisasi', 'jabatan organisasi', 'jabatan_organisasi'];
+                        $profileJabatan = $participant->user && $participant->user->profile ? trim((string) ($participant->user->profile->jabatan ?? '')) : '';
+                        if ($profileJabatan !== '') {
+                            $hasAny = false;
+                            foreach ($jabatanOrganisasiKeys as $jk) {
+                                if (isset($merged[$jk]) && trim((string) $merged[$jk]) !== '') {
+                                    $hasAny = true;
+                                    break;
+                                }
+                            }
+                            if (! $hasAny) {
+                                foreach ($jabatanOrganisasiKeys as $jk) {
+                                    $merged[$jk] = $profileJabatan;
+                                }
+                            }
+                        }
+                        $participant->setAttribute('custom_data', $merged);
+                    }
+
+                    // Debug: cek isi database kolom profil (additional_data) dan kolom tambahan kegiatan (custom_data)
+                    if (config('app.debug')) {
+                        try {
+                            $cd = $participant->getAttribute('custom_data');
+                            $cdKeys = is_array($cd) ? array_keys($cd) : [];
+                            $matchKeys = [];
+                            foreach ($cdKeys as $k) {
+                                $kl = strtolower($k);
+                                if ((str_contains($kl, 'surat') && (str_contains($kl, 'tugas') || str_contains($kl, 'penugasan'))) || preg_match('/^st(_|-|\\s)?(tugas|penugasan)?/i', $kl)) {
+                                    $matchKeys[] = $k;
+                                }
+                            }
+                            \Log::info('SURAT_TUGAS_DEBUG', [
+                                'activity_id' => $activityId,
+                                'participant_id' => $participant->id,
+                                'user_id' => $participant->user_id,
+                                'match_keys' => $matchKeys,
+                                'has_custom_data' => is_array($cd),
+                                'has_profile_additional' => is_array($profileAdditional),
+                            ]);
+                            // Debug lengkap: raw DB activity_users.custom_data + profiles.additional_data (maks 5 peserta)
+                            if ($debugParticipantCount < 5) {
+                                $rawCustomFromDb = $participant->getRawOriginal('custom_data');
+                                $rawProfileAdditional = $participant->user && $participant->user->profile
+                                    ? $participant->user->profile->getRawOriginal('additional_data')
+                                    : null;
+                                \Log::debug('DEBUG_PESERTA_DB_KOLOM', [
+                                    'peserta_ke' => $debugParticipantCount + 1,
+                                    'activity_user_id' => $participant->id,
+                                    'user_id' => $participant->user_id,
+                                    'activity_users.custom_data (raw DB)' => $rawCustomFromDb,
+                                    'activity_users.custom_data (decoded)' => $existingCustom,
+                                    'profiles.additional_data (raw DB)' => $rawProfileAdditional,
+                                    'profiles.additional_data (decoded)' => $profileAdditional,
+                                    'custom_data_setelah_merge' => $participant->getAttribute('custom_data'),
+                                ]);
+                                $debugParticipantCount++;
+                            }
+                        } catch (\Throwable $e) {
+                            \Log::warning('DEBUG_PESERTA_DB_KOLOM error', ['message' => $e->getMessage()]);
+                        }
+                    }
 
                     // Room
                     $room = null;
@@ -1910,7 +2041,8 @@ class ActivityPreparationController extends Controller
             }
             $participationTypes = \App\Models\ActivityParticipationType::where('activity_id', $activityId)->get();
 
-            // Prepare activity data with committee flags
+            // Prepare activity data with committee flags (include custom_fields for file column display)
+            $activity->append('custom_fields');
             $isCommittee = $activity->canManageRegistration(auth()->id());
             $activityData = array_merge($activity->toArray(), [
                 'is_committee' => $isCommittee,
@@ -2581,9 +2713,9 @@ class ActivityPreparationController extends Controller
         }
         $activityId = $activity->id;
 
-        // Check permission strictly using RBAC: only Admin, SuperAdmin, Creator, or Committee
+        // Permission: izinkan semua user yang login untuk mengimpor/daftar via form ini
         $isOrganizer = auth()->user()->isAdmin() || auth()->user()->isSuperAdmin() || $activity->user_id === auth()->id() || $activity->canManageRegistration(auth()->id());
-        $canImport = auth()->user()->hasPermission('import_participants') || $isOrganizer;
+        $canImport = auth()->check();
         if (! $canImport) {
             abort(403, 'Anda tidak memiliki izin untuk mengimpor peserta.');
         }
@@ -2722,8 +2854,8 @@ class ActivityPreparationController extends Controller
                 'pekerjaan' => array_search('pekerjaan', $header, true) ?: array_search('profile:occupation', $header, true),
                 'jabatan' => $findHeader($header, ['jabatan', 'profile:position', 'position'])
                     ?: $findHeader($header, ['jabatan', 'position', 'posisi'], true),
-                'instansi' => $findHeader($header, ['instansi', 'profile:institution', 'institution'])
-                    ?: $findHeader($header, ['instansi', 'institusi', 'institution'], true),
+                'instansi' => $findHeader($header, ['instansi', 'profile:institution', 'institution', 'nama instansi'])
+                    ?: $findHeader($header, ['instansi', 'institusi', 'institution', 'nama instansi'], true),
                 'nik' => array_search('nik', $header, true) ?: array_search('profile:nik', $header, true),
                 'birth_place' => array_search('birth_place', $header, true) ?: array_search('profile:birth_place', $header, true),
                 'birth_date' => array_search('birth_date', $header, true) ?: array_search('profile:birth_date', $header, true),
@@ -2756,6 +2888,40 @@ class ActivityPreparationController extends Controller
                 }
                 return redirect()->back()->with('success', null)->with('error', $message);
             }
+
+            // Map label kolom custom ke key activity->custom_fields agar data tersimpan dengan key yang dipakai di tampilan
+            $activity->append('custom_fields');
+            $customFieldKeyByLabel = [];
+            $customFieldTypeByKey = [];
+            foreach ($activity->custom_fields ?? [] as $cf) {
+                $lbl = trim((string) ($cf['label'] ?? ''));
+                $keyVal = $cf['key'] ?? $lbl;
+                if ($lbl !== '') {
+                    $customFieldKeyByLabel[strtolower($lbl)] = $keyVal;
+                    $customFieldKeyByLabel[strtolower(str_replace(' ', '_', $lbl))] = $keyVal;
+                    $customFieldKeyByLabel[strtolower(str_replace(' ', '-', $lbl))] = $keyVal;
+                }
+                $key = trim((string) ($cf['key'] ?? ''));
+                if ($key !== '') {
+                    $customFieldTypeByKey[strtolower($key)] = $cf['type'] ?? 'text';
+                    $customFieldKeyByLabel[strtolower($key)] = $keyVal;
+                }
+            }
+
+            // Kumpulkan semua indeks kolom untuk provinsi/regency/district agar nilai diambil dari kolom mana pun yang terisi
+            $collectColIndices = function (array $aliases) use ($header) {
+                $indices = [];
+                foreach ($aliases as $alias) {
+                    $idx = array_search($alias, $header, true);
+                    if ($idx !== false) {
+                        $indices[$idx] = true;
+                    }
+                }
+                return array_keys($indices);
+            };
+            $provinceColIndices = $collectColIndices(['province_id', 'profile:province_id', 'province id', 'province', 'provinsi', 'province_name', 'profile:province_name']);
+            $regencyColIndices = $collectColIndices(['regency_id', 'profile:regency_id', 'regency id', 'regency', 'kabupaten', 'kota', 'kabupaten/kota', 'regency_name', 'profile:regency_name']);
+            $districtColIndices = $collectColIndices(['district_id', 'profile:district_id', 'district id', 'district', 'kecamatan', 'district_name', 'profile:district_name']);
 
             // Cache activeBatch di luar loop
             $activeBatch = $activity->activeBatch;
@@ -2802,16 +2968,111 @@ class ActivityPreparationController extends Controller
 
                 $validEmails[] = $email;
 
-                // Extract custom data
+                // Helper untuk simpan file dari URL ke storage publik
+                $storeFileFromUrl = function ($rawUrl, $emailHint) use ($activityId) {
+                    try {
+                        if (!is_string($rawUrl) || trim($rawUrl) === '') return null;
+                        $url = trim($rawUrl);
+                        if (str_starts_with($url, 'storage/')) {
+                            return $url;
+                        }
+                        if (!(str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))) {
+                            return null;
+                        }
+                        // Handle Google Drive share links
+                        $driveId = null;
+                        if (preg_match('#drive\\.google\\.com/file/d/([^/]+)#i', $url, $m)) {
+                            $driveId = $m[1];
+                        } elseif (preg_match('#drive\\.google\\.com/open\\?id=([^&]+)#i', $url, $m)) {
+                            $driveId = $m[1];
+                        } elseif (preg_match('#drive\\.google\\.com/uc\\?id=([^&]+)#i', $url, $m)) {
+                            $driveId = $m[1];
+                        }
+                        if ($driveId) {
+                            $url = 'https://drive.google.com/uc?export=download&id=' . $driveId;
+                        }
+                        $resp = Http::timeout(25)->withOptions(['allow_redirects' => true, 'verify' => false])->get($url);
+                        if (!$resp->ok()) {
+                            \Log::warning('Import file download failed', ['url' => $url, 'status' => $resp->status()]);
+                            return null;
+                        }
+                        $content = $resp->body();
+                        if ($content === '' || $content === null) {
+                            return null;
+                        }
+                        $ct = strtolower($resp->header('content-type') ?? '');
+                        $ext = null;
+                        if (preg_match('#application/pdf#', $ct)) $ext = 'pdf';
+                        elseif (preg_match('#image/jpeg#', $ct)) $ext = 'jpg';
+                        elseif (preg_match('#image/png#', $ct)) $ext = 'png';
+                        elseif (preg_match('#application/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document#', $ct)) $ext = 'docx';
+                        elseif (preg_match('#application/msword#', $ct)) $ext = 'doc';
+                        elseif (preg_match('#application/zip#', $ct)) $ext = 'zip';
+                        // Fallback from URL path
+                        if (!$ext) {
+                            $pathExt = pathinfo(parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION);
+                            if ($pathExt) $ext = strtolower($pathExt);
+                        }
+                        if (!$ext) $ext = 'bin';
+
+                        $emailSlug = Str::slug(explode('@', (string)$emailHint)[0] ?: 'file');
+                        $filename = $emailSlug . '-' . Str::random(10) . '.' . $ext;
+                        $dest = 'activities/' . $activityId . '/custom-data/imports/' . $filename;
+                        Storage::disk('public')->put($dest, $content);
+                        return 'storage/' . $dest;
+                    } catch (\Throwable $e) {
+                        \Log::warning('Import file download exception', ['error' => $e->getMessage()]);
+                        return null;
+                    }
+                };
+
+                // Extract custom data (gunakan key dari activity->custom_fields jika ada agar tampil di list)
                 $customData = [];
                 foreach ($customColMap as $colKey => $colName) {
                     $val = isset($row[$colKey]) ? trim((string) $row[$colKey]) : '';
                     if ($val !== '') {
-                        $customKey = $this->normalizeImportKey($colName);
+                        $colLabelLower = strtolower(trim(str_replace('*', '', explode('|', $colName)[0])));
+                        $customKey = $customFieldKeyByLabel[$colLabelLower] ?? $this->normalizeImportKey($colName);
                         if ($customKey !== '') {
-                            $customData[$customKey] = $val;
+                            $lowerKey = strtolower($customKey);
+                            $isFileField = ($customFieldTypeByKey[$lowerKey] ?? '') === 'file';
+                            if ($isFileField) {
+                                // Excel mode: simpan LINK apa adanya bila terlihat seperti URL
+                                // 1) http/https langsung
+                                if (str_starts_with($val, 'http://') || str_starts_with($val, 'https://')) {
+                                    $customData[$customKey] = $val;
+                                }
+                                // 2) Tanpa protokol tapi pola domain/shortener/drive
+                                elseif (preg_match('#^(www\\.|drive\\.google\\.com|docs\\.google\\.com|bit\\.ly|tinyurl\\.)#i', $val) ||
+                                        preg_match('#^[a-zA-Z0-9][-a-zA-Z0-9\\.]*\\.[a-zA-Z]{2,}(/|$)#', $val)) {
+                                    $link = $val;
+                                    if (!str_starts_with(strtolower($link), 'http')) {
+                                        $link = 'https://' . ltrim($link, '/');
+                                    }
+                                    $customData[$customKey] = $link;
+                                }
+                                // 3) Abaikan path lokal/fakepath
+                                elseif (str_contains(strtolower($val), 'fakepath') || preg_match('#^[a-zA-Z]:\\\\#', $val) || preg_match('#\\\\#', $val)) {
+                                    \Log::info('Skipping local path for file field during import', ['key' => $customKey, 'value' => $val]);
+                                }
+                                // 4) Path storage valid
+                                elseif (str_starts_with($val, 'storage/')) {
+                                    $customData[$customKey] = $val;
+                                }
+                                // 5) Selain itu: biarkan kosong (tidak memaksa unduh)
+                            } else {
+                                $customData[$customKey] = $val;
+                            }
                         }
                     }
+                }
+
+                // Compat: jika kegiatan punya custom "Jabatan Organisasi" tetapi kolom custom kosong, isi dari kolom profil jabatan.
+                $jabatanKey = $customFieldKeyByLabel['jabatan organisasi'] ?? $customFieldKeyByLabel['jabatan_organisasi'] ?? null;
+                $jabatanFromRow = ($colMap['jabatan'] !== false && isset($row[$colMap['jabatan']])) ? trim((string) $row[$colMap['jabatan']]) : '';
+                $hasJabatanOrganisasi = $jabatanKey && isset($customData[$jabatanKey]) && trim((string) ($customData[$jabatanKey] ?? '')) !== '';
+                if (! $hasJabatanOrganisasi && $jabatanKey && $jabatanFromRow !== '') {
+                    $customData[$jabatanKey] = $jabatanFromRow;
                 }
 
                 $emailToRowData[$email] = [
@@ -2869,16 +3130,52 @@ class ActivityPreparationController extends Controller
 
                 $extractId = function ($value) {
                     if (empty($value)) return null;
-                    // Extract numeric part if it looks like "1101 (Something)"
                     if (preg_match('/^(\d+)/', trim((string)$value), $matches)) {
                         return $matches[1];
                     }
                     return trim((string)$value);
                 };
 
-                $provinceRaw = $getCellValue($colMap['province_id']) ?: $getCellValue($colMap['province']);
-                $regencyRaw = $getCellValue($colMap['regency_id']) ?: $getCellValue($colMap['regency']);
-                $districtRaw = $getCellValue($colMap['district_id']) ?: $getCellValue($colMap['district']);
+                $firstNonEmpty = function (array $indices) use ($getCellValue) {
+                    foreach ($indices as $idx) {
+                        $v = $getCellValue($idx);
+                        if ($v !== '') {
+                            return $v;
+                        }
+                    }
+                    return '';
+                };
+
+                // Abaikan nilai yang jelas bukan nama wilayah (URL/link, path file) agar tidak gagal validasi
+                $isLikelyNotRegionName = function ($value) {
+                    if ($value === null || trim((string) $value) === '') {
+                        return true;
+                    }
+                    $v = strtolower(trim((string) $value));
+                    if (str_starts_with($v, 'http://') || str_starts_with($v, 'https://')) {
+                        return true;
+                    }
+                    if (str_contains($v, 'drive.google') || str_contains($v, 'view?usp=') || str_contains($v, 'docs.google')) {
+                        return true;
+                    }
+                    if (str_contains($v, 'fakepath') || preg_match('#[\\\\/][a-z0-9_.-]+\.(pdf|doc|jpg|jpeg|png)#i', $v)) {
+                        return true;
+                    }
+                    return false;
+                };
+
+                $provinceRaw = $firstNonEmpty($provinceColIndices);
+                $regencyRaw = $firstNonEmpty($regencyColIndices);
+                $districtRaw = $firstNonEmpty($districtColIndices);
+                if ($isLikelyNotRegionName($provinceRaw)) {
+                    $provinceRaw = '';
+                }
+                if ($isLikelyNotRegionName($regencyRaw)) {
+                    $regencyRaw = '';
+                }
+                if ($isLikelyNotRegionName($districtRaw)) {
+                    $districtRaw = '';
+                }
 
                 // Process Province
                 if (!empty($provinceRaw)) {
@@ -3263,17 +3560,14 @@ class ActivityPreparationController extends Controller
                         $activityUserPayload['activity_participant_group_id'] = $typeId;
                     }
 
-                    // Untuk kegiatan berbayar yang belum ditandai lunas (markPaid = false),
-                    // jangan langsung membuat ActivityUser. Peserta baru akan dibuat
-                    // setelah pembayaran atau bukti pembayaran berhasil.
-                    $shouldCreateActivityUser = ! $isPaidEvent || $markPaid;
-
-                    if ($shouldCreateActivityUser) {
+                    // Kegiatan berbayar: data hanya masuk ke DB (activity_users) setelah pembayaran selesai / mark_paid.
+                    // Jika belum bayar, User/Profile boleh dibuat tapi ActivityUser tidak dibuat dulu.
+                    $mayCreateActivityUser = ! $isPaidEvent || $markPaid;
+                    if ($mayCreateActivityUser) {
                         $activityUsersToCreate[] = $activityUserPayload;
+                        $linked++;
+                        $stats['new_participants']++;
                     }
-
-                    $linked++;
-                    $stats['new_participants']++;
 
                     if ($isPaidEvent) {
                         if (! $markPaid) {
@@ -3364,17 +3658,13 @@ class ActivityPreparationController extends Controller
                         $activityUserPayload['activity_participant_group_id'] = $typeId;
                     }
 
-                    // Untuk kegiatan berbayar yang belum ditandai lunas (markPaid = false),
-                    // tunda pembuatan ActivityUser sampai pembayaran selesai.
-                    $shouldCreateActivityUser = ! $isPaidEvent || $markPaid;
-
-                    if ($shouldCreateActivityUser) {
+                    // Kegiatan berbayar: jangan buat ActivityUser dulu sampai pembayaran selesai / mark_paid.
+                    $mayCreateActivityUser = ! $isPaidEvent || $markPaid;
+                    if ($mayCreateActivityUser) {
                         $activityUsersToCreate[] = $activityUserPayload;
+                        $linked++;
+                        $stats['new_participants']++;
                     }
-
-                    $linked++;
-                    $stats['new_participants']++;
-
                     if ($isPaidEvent && ! $markPaid) {
                         if ($newUser) {
                             $pendingUserIds[] = $newUser->id;
@@ -3835,13 +4125,11 @@ class ActivityPreparationController extends Controller
                 $isRequired = true;
             }
             $cleanBase = strtolower(trim($base));
-            
-            // Re-normalize base just in case
             $cleanBase = $keyMap[$cleanBase] ?? $cleanBase;
+            $dedupeKey = strtolower(trim($cleanBase));
 
-            if (isset($seenBases[$cleanBase])) {
-                $existingIdx = $seenBases[$cleanBase];
-                // Updates existing column to be required if strictly needed
+            if (isset($seenBases[$dedupeKey])) {
+                $existingIdx = $seenBases[$dedupeKey];
                 if ($isRequired && !str_contains($finalColumns[$existingIdx], '*')) {
                    $existingCol = $finalColumns[$existingIdx];
                    if (str_contains($existingCol, '|')) {
@@ -3852,13 +4140,84 @@ class ActivityPreparationController extends Controller
                    }
                 }
             } else {
-                $seenBases[$cleanBase] = count($finalColumns);
-                // Reconstruct column using proper base
+                $seenBases[$dedupeKey] = count($finalColumns);
                 $finalColumns[] = $cleanBase . ($isRequired ? '*' : '') . $options;
             }
         }
 
         return response()->json(['template' => implode(',', $finalColumns)]);
+    }
+
+    public function previewUploadParticipants(Request $request, $activityId)
+    {
+        if (! auth()->check()) {
+            abort(401, 'Silakan login terlebih dahulu.');
+        }
+
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt|mimetypes:application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain',
+        ]);
+
+        $file = $request->file('file');
+        $path = $file->getRealPath();
+
+        try {
+            $spreadsheet = IOFactory::load($path);
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray(null, true, true, true);
+
+            $normalizeHeader = function ($value) {
+                $h = strtolower(trim((string) $value));
+                $h = preg_replace('/^\xEF\xBB\xBF/', '', $h);
+                $h = preg_replace('/\s+/', ' ', $h);
+                return str_ends_with($h, '*') ? substr($h, 0, -1) : $h;
+            };
+
+            $headerRowIndex = 1;
+            $header = array_map($normalizeHeader, $rows[$headerRowIndex] ?? []);
+            $hasEmailHeader = in_array('email', $header, true) || in_array('user:email', $header, true);
+            if (! $hasEmailHeader) {
+                $altHeader = array_map($normalizeHeader, $rows[2] ?? []);
+                $altHasEmail = in_array('email', $altHeader, true) || in_array('user:email', $altHeader, true);
+                if ($altHasEmail) {
+                    $headerRowIndex = 2;
+                    $header = $altHeader;
+                }
+            }
+
+            $dataStartRow = $headerRowIndex + 1;
+            $rowsData = [];
+            $maxRows = 300;
+            $headerKeys = array_keys($rows[$headerRowIndex] ?? []);
+            for ($i = $dataStartRow; $i <= count($rows) && count($rowsData) < $maxRows; $i++) {
+                $row = $rows[$i] ?? [];
+                $rowValues = [];
+                foreach ($headerKeys as $key) {
+                    $rowValues[] = isset($row[$key]) ? trim((string) $row[$key]) : '';
+                }
+                if (implode('', $rowValues) === '') {
+                    continue;
+                }
+                $rowsData[] = $rowValues;
+            }
+
+            return response()->json([
+                'success' => true,
+                'headers' => array_values($header),
+                'rows' => $rowsData,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Preview upload failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memproses file untuk pratinjau: ' . $e->getMessage(),
+            ], 422);
+        }
     }
 
     public function downloadParticipantsTemplate($activityId)
@@ -4508,19 +4867,48 @@ class ActivityPreparationController extends Controller
                     $payment->delete();
                 }
 
-                // B. Delete Activity Enrollments & Files
+                // B. Delete Activity Enrollments & Files (image_path, custom_data files, certificate)
                 $enrollments = ActivityUser::where('activity_id', $activityId)->where('user_id', $uid)->get();
                 foreach ($enrollments as $enrollment) {
                     if ($enrollment->image_path) {
                         try {
-                            // Gunakan Storage facade
                             if (Storage::disk('public')->exists($enrollment->image_path)) {
                                 Storage::disk('public')->delete($enrollment->image_path);
                             } else {
-                                // Fallback ke public_path
                                 $path = public_path($enrollment->image_path);
                                 if (File::exists($path)) {
                                     File::delete($path);
+                                }
+                            }
+                        } catch (\Exception $e) {
+                        }
+                    }
+                    // Hapus file dari custom_data (Surat Tugas, dll.)
+                    $customData = $enrollment->custom_data;
+                    if (is_array($customData)) {
+                        foreach ($customData as $value) {
+                            if (is_string($value) && (strpos($value, 'storage/') === 0 || strpos($value, 'uploads/') === 0 || strpos($value, '/storage/') !== false || preg_match('#^(activities/|public/)#', $value))) {
+                                try {
+                                    $path = public_path($value);
+                                    if (File::exists($path) && is_file($path)) {
+                                        File::delete($path);
+                                    } else {
+                                        $storagePath = ltrim(preg_replace('#^storage/#', '', $value), '/');
+                                        if (Storage::disk('public')->exists($storagePath)) {
+                                            Storage::disk('public')->delete($storagePath);
+                                        }
+                                    }
+                                } catch (\Exception $e) {
+                                }
+                            }
+                        }
+                    }
+                    // Hapus file sertifikat jika ada
+                    if (! empty($enrollment->certificate_id)) {
+                        try {
+                            foreach (["certificates/{$activityId}/{$enrollment->certificate_id}.pdf", "certificates/{$enrollment->certificate_id}.pdf"] as $p) {
+                                if (Storage::disk('public')->exists($p)) {
+                                    Storage::disk('public')->delete($p);
                                 }
                             }
                         } catch (\Exception $e) {
@@ -6189,6 +6577,76 @@ class ActivityPreparationController extends Controller
 
             return redirect()->back()->with('error', 'Terjadi kesalahan saat memverifikasi email: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Serve file dari custom_data peserta secara inline
+     * Query param: key (nama field), contoh: ?key=surat_tugas
+     */
+    public function serveParticipantCustomFile(Request $request, $activityId, $userId)
+    {
+        if (! auth()->check()) {
+            abort(401, 'Silakan login terlebih dahulu');
+        }
+        $activity = Activity::findOrFail($activityId);
+        $user = auth()->user();
+        if (! $user->isAdmin() && ! $user->isSuperAdmin()) {
+            $isManager = $activity->canManageRegistration($user->id);
+            $isEnrolled = ActivityUser::where('activity_id', $activityId)
+                ->where('user_id', $user->id)
+                ->where('status', ActivityUser::STATUS_ACTIVE)
+                ->exists();
+            if (! $isManager && ! $isEnrolled) {
+                abort(403, 'Tidak diizinkan');
+            }
+        }
+
+        $au = ActivityUser::where('activity_id', $activity->id)->where('user_id', $userId)->firstOrFail();
+        $key = trim((string) $request->query('key', ''));
+        if ($key === '') {
+            abort(400, 'Parameter key wajib diisi');
+        }
+        $data = (array) ($au->custom_data ?? []);
+        $value = null;
+        if (array_key_exists($key, $data)) {
+            $value = $data[$key];
+        } else {
+            $canonical = function ($s) {
+                $s = strtolower(trim((string) $s));
+                $s = preg_replace('/^custom_/', '', $s);
+                $s = str_replace([' ', '-', '__'], ['_', '_', '_'], $s);
+                return $s;
+            };
+            $target = $canonical($key);
+            foreach ($data as $k => $v) {
+                if ($canonical($k) === $target) {
+                    $value = $v;
+                    break;
+                }
+            }
+        }
+        if (! is_string($value) || trim($value) === '') {
+            abort(404, 'File tidak tersedia');
+        }
+        $val = trim($value);
+        if (\Illuminate\Support\Str::startsWith($val, ['http://', 'https://'])) {
+            return redirect()->away($val);
+        }
+        $relative = ltrim($val, '/');
+        if (\Illuminate\Support\Str::startsWith($relative, 'storage/')) {
+            $relative = substr($relative, strlen('storage/'));
+        }
+        if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($relative)) {
+            abort(404, 'File tidak ditemukan');
+        }
+        $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($relative) ?: 'application/octet-stream';
+        $filename = basename($relative);
+        return \Illuminate\Support\Facades\Storage::disk('public')->response($relative, $filename, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control' => 'public, max-age=3600',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     /**

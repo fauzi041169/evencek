@@ -259,19 +259,163 @@ class ProfileController extends Controller
                 'no_hp', 'nik', 'pekerjaan', 'instansi', 'jabatan', 'alamat',
                 'birth_place', 'birth_date', 'tempat_lahir', 'tgl_lahir',
                 'province_id', 'regency_id', 'district_id',
-                'jenis_kelamin', 'foto_file', 'foto_data', 'cover_file', '_token', '_method',
+                'jenis_kelamin', 'foto_file', 'foto_data', 'cover_file', '_token', '_method', 'activity_id',
             ];
 
             $allInput = $request->except($standardFields);
-            $additionalData = array_filter($allInput, function ($value) {
-                return ! is_null($value) && $value !== '';
+
+            // Jangan pernah simpan nilai fakepath / path lokal (C:\fakepath\...) ke additional_data
+            $isInvalidFileValue = function ($value) {
+                if ($value === null || $value === '') {
+                    return true;
+                }
+                if (! is_string($value)) {
+                    return false;
+                }
+                $v = strtolower($value);
+                return str_contains($v, 'fakepath') || preg_match('#^[a-zA-Z]:\\\\#', $value) || preg_match('#\\\\#', $value);
+            };
+
+            $additionalData = array_filter($allInput, function ($value) use ($isInvalidFileValue) {
+                return ! $isInvalidFileValue($value);
             });
+
+            // Handle dynamic custom file fields (from Activity custom_fields) – upload file dan simpan path
+            $fileUploadsData = [];
+            if ($request->filled('activity_id')) {
+                try {
+                    $activity = \App\Models\Activity::where('uid', $request->input('activity_id'))->first();
+                    if (! $activity) {
+                        $activity = \App\Models\Activity::find($request->input('activity_id'));
+                    }
+                    if ($activity) {
+                        $activity->append('custom_fields');
+                        $normalizeKey = function ($k) {
+                            return strtolower(trim(preg_replace('/[\s\-_]+/', '_', (string) $k)));
+                        };
+                        // Prioritas: file dari modal peserta dikirim sebagai custom_files[surat_tugas] dll (key dinormalisasi)
+                        if ($request->hasFile('custom_files')) {
+                            $customFiles = $request->file('custom_files');
+                            if (is_array($customFiles)) {
+                                foreach ($customFiles as $fieldKey => $uploaded) {
+                                    if (! $uploaded || ! $uploaded->isValid()) {
+                                        continue;
+                                    }
+                                    $keyNorm = $normalizeKey($fieldKey);
+                                    if ($keyNorm === '') {
+                                        continue;
+                                    }
+                                    $ext = $uploaded->getClientOriginalExtension();
+                                    $name = \Illuminate\Support\Str::slug($user->name ?: 'user') . '-' . time() . '-' . uniqid() . ($ext ? '.' . $ext : '');
+                                    $dest = 'activities/' . $activity->id . '/custom-data/users/' . $user->id . '/' . $name;
+                                    \Illuminate\Support\Facades\Storage::disk('public')->put($dest, file_get_contents($uploaded->getRealPath()));
+                                    $fileUploadsData[$keyNorm] = 'storage/' . $dest;
+                                }
+                            }
+                        }
+                        foreach ($activity->custom_fields ?? [] as $cf) {
+                            if (($cf['type'] ?? '') !== 'file') {
+                                continue;
+                            }
+                            $originalKey = trim((string) ($cf['key'] ?? ''));
+                            $label = trim((string) ($cf['label'] ?? ''));
+                            $fileKey = $originalKey !== '' ? strtolower($originalKey) : '';
+                            if ($fileKey === '') {
+                                $fileKey = $normalizeKey($label);
+                            }
+                            if ($fileKey === '') {
+                                continue;
+                            }
+                            // Coba key asli, label (e.g. "Surat Tugas"), dan varian huruf agar form frontend yang kirim nama "Surat Tugas" tetap terbaca
+                            $variants = array_filter(array_unique([
+                                $originalKey,
+                                $label,
+                                $fileKey,
+                                strtoupper($fileKey),
+                                ucfirst($fileKey),
+                                str_replace('_', ' ', $originalKey),
+                                str_replace('-', ' ', $originalKey),
+                            ]));
+                            $f = null;
+                            foreach ($variants as $vk) {
+                                if ($vk !== '' && $request->hasFile($vk)) {
+                                    $uploaded = $request->file($vk);
+                                    if ($uploaded && $uploaded->isValid()) {
+                                        $f = $uploaded;
+                                        break;
+                                    }
+                                }
+                            }
+                            // Fallback: cek semua file yang dikirim; jika nama input (normalized) cocok dengan field ini, pakai itu
+                            if (! $f) {
+                                foreach ($request->allFiles() as $inputName => $uploaded) {
+                                    if (! $uploaded || ! $uploaded->isValid()) {
+                                        continue;
+                                    }
+                                    if ($normalizeKey($inputName) === $normalizeKey($originalKey) || $normalizeKey($inputName) === $normalizeKey($label)) {
+                                        $f = $uploaded;
+                                        break;
+                                    }
+                                }
+                            }
+                            if ($f && $f->isValid()) {
+                                $ext = $f->getClientOriginalExtension();
+                                $name = \Illuminate\Support\Str::slug($user->name ?: 'user') . '-' . time() . '-' . uniqid() . ($ext ? '.' . $ext : '');
+                                $dest = 'activities/' . $activity->id . '/custom-data/users/' . $user->id . '/' . $name;
+                                \Illuminate\Support\Facades\Storage::disk('public')->put($dest, file_get_contents($f->getRealPath()));
+                                $fileUploadsData[$fileKey] = 'storage/' . $dest;
+                            }
+                        }
+                        // Fallback: jika ada file yang dikirim dengan nama field custom (mis. "Surat Tugas") tetapi
+                        // custom_fields tidak mendefinisikan type 'file' (hanya column_settings tanpa import_template file),
+                        // tetap simpan file tersebut agar upload dari modal peserta berfungsi
+                        $reservedFileKeys = ['foto_file', 'cover_file', 'foto', 'cover'];
+                        $customFieldKeysNormalized = array_map(function ($cf) use ($normalizeKey) {
+                            return $normalizeKey($cf['key'] ?? $cf['label'] ?? '');
+                        }, $activity->custom_fields ?? []);
+                        foreach ($request->allFiles() as $inputName => $uploaded) {
+                            if (! $uploaded || ! $uploaded->isValid()) {
+                                continue;
+                            }
+                            $inputNorm = $normalizeKey($inputName);
+                            if ($inputNorm === '' || in_array($inputName, $reservedFileKeys, true) || in_array($inputNorm, array_map($normalizeKey, $reservedFileKeys), true)) {
+                                continue;
+                            }
+                            $alreadyProcessed = false;
+                            foreach (array_keys($fileUploadsData) as $fk) {
+                                if ($normalizeKey($fk) === $inputNorm) {
+                                    $alreadyProcessed = true;
+                                    break;
+                                }
+                            }
+                            if ($alreadyProcessed || ! in_array($inputNorm, $customFieldKeysNormalized, true)) {
+                                continue;
+                            }
+                            $ext = $uploaded->getClientOriginalExtension();
+                            $name = \Illuminate\Support\Str::slug($user->name ?: 'user') . '-' . time() . '-' . uniqid() . ($ext ? '.' . $ext : '');
+                            $dest = 'activities/' . $activity->id . '/custom-data/users/' . $user->id . '/' . $name;
+                            \Illuminate\Support\Facades\Storage::disk('public')->put($dest, file_get_contents($uploaded->getRealPath()));
+                            $fileUploadsData[$inputNorm] = 'storage/' . $dest;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Profile update: custom file upload failed', ['error' => $e->getMessage()]);
+                }
+            }
+
+            if (! empty($fileUploadsData)) {
+                $additionalData = array_merge($additionalData, $fileUploadsData);
+            }
 
             if (! empty($additionalData)) {
                 $existingAdditionalData = $profile->additional_data ?? [];
                 if (! is_array($existingAdditionalData)) {
                     $existingAdditionalData = [];
                 }
+                // Buang nilai fakepath yang sudah tersimpan sebelumnya
+                $existingAdditionalData = array_filter($existingAdditionalData, function ($v) use ($isInvalidFileValue) {
+                    return ! $isInvalidFileValue($v);
+                });
                 $profileData['additional_data'] = array_merge($existingAdditionalData, $additionalData);
             }
 
@@ -334,6 +478,27 @@ class ProfileController extends Controller
 
             $profile->fill($profileData);
             $profile->save();
+
+            // Sinkronkan path file yang baru di-upload ke activity_users.custom_data agar list peserta konsisten
+            if ($request->filled('activity_id') && ! empty($fileUploadsData)) {
+                $activity = \App\Models\Activity::where('uid', $request->input('activity_id'))->first() ?? \App\Models\Activity::find($request->input('activity_id'));
+                if ($activity && \Illuminate\Support\Facades\Schema::hasColumn('activity_users', 'custom_data')) {
+                    $au = ActivityUser::where('activity_id', $activity->id)->where('user_id', $user->id)->first();
+                    if ($au) {
+                        $cd = $au->custom_data;
+                        if (is_string($cd)) {
+                            $cd = json_decode($cd, true) ?? [];
+                        }
+                        if (is_array($cd)) {
+                            foreach ($fileUploadsData as $fileKey => $path) {
+                                $cd[$fileKey] = $path;
+                            }
+                            $au->custom_data = $cd;
+                            $au->save();
+                        }
+                    }
+                }
+            }
 
             // --- SYNC UTUSAN LOGIC START ---
             // Cari value 'utusan' dari input (case-insensitive key search)

@@ -7,7 +7,7 @@ import AcaraLayout from '@/Layouts/AcaraLayout';
 import {
     Search, Filter, Download, Trash2, CheckCircle, UserPlus,
     MoreHorizontal, ChevronDown, ChevronUp, X, FileSpreadsheet,
-    Users, MapPin, Building, UserCog
+    Users, MapPin, Building, UserCog, FileText
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 import kebabCase from 'lodash/kebabCase';
@@ -47,6 +47,62 @@ const normalizeCustomKey = (raw) => {
     return key.trim();
 };
 
+// Map custom field key -> type (for file columns to show button instead of path)
+const getCustomFieldType = (rawKey, customFields = []) => {
+    const baseKey = rawKey.split('|')[0].trim().toLowerCase();
+    const cf = (customFields || []).find(f => (f.key || '').toLowerCase() === baseKey);
+    return cf?.type || null;
+};
+
+// Build viewable URL: (1) file upload = path storage, (2) link (impor Excel) = buka di tab, jangan unduh
+const getFileViewUrl = (value) => {
+    if (!value || value === '-') return null;
+    let v = String(value).trim();
+    // Pastikan nilai link tidak pernah dipakai sebagai path ke server kita (bukan unduh)
+    const looksLikeLink = /\b(https?:\/\/|drive\.google|docs\.google|www\.)/i.test(v);
+    if (looksLikeLink) {
+        let extracted = v.match(/(https?:\/\/[^\s<>"'\]]+)/i);
+        if (extracted) v = extracted[1];
+        else if (/^www\.[^\s]+/i.test(v)) v = 'https://' + v.split(/\s/)[0];
+        if (!v.startsWith('http')) v = 'https://' + v.replace(/^\/*/, '');
+        // Google Drive: wajib pakai /preview supaya buka di browser, bukan unduh
+        const driveFileMatch = v.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+        const driveOpenMatch = v.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+        if (driveFileMatch) {
+            v = 'https://drive.google.com/file/d/' + driveFileMatch[1] + '/preview';
+        } else if (driveOpenMatch) {
+            v = 'https://drive.google.com/file/d/' + driveOpenMatch[1] + '/preview';
+        } else if (/drive\.google\.com/i.test(v)) {
+            v = v.replace(/\/(view|edit)(\?.*)?$/i, '/preview$2');
+            if (!/\/preview/i.test(v)) v = v.replace(/(\/d\/[a-zA-Z0-9_-]+)(\/.*)?(\?.*)?$/, '$1/preview$3');
+        }
+        return v;
+    }
+    // Link tanpa protocol di awal
+    if (/^(www\.|drive\.google|docs\.google|bit\.ly|tinyurl\.)/i.test(v)) {
+        return v.startsWith('http') ? v : 'https://' + v.replace(/^\/*/, '');
+    }
+    if (/^[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}(\/|$)/.test(v) && !/^storage/i.test(v)) {
+        return v.startsWith('http') ? v : 'https://' + v;
+    }
+    // File di sistem (path storage)
+    if (v.toLowerCase().includes('fakepath') || /^[a-zA-Z]:\\/.test(v)) return null;
+    if (v.includes('\\')) v = v.replace(/\\/g, '/');
+    const path = v.startsWith('storage/') ? v : (v.startsWith('/') ? v.slice(1) : `storage/${v}`);
+    return window.location.origin + '/' + path.replace(/^\/+/, '');
+};
+
+// Apakah nilai berupa link (impor Excel / input link) — untuk label tombol dan tooltip
+const isFileValueLink = (value) => {
+    if (!value || typeof value !== 'string') return false;
+    const v = String(value).trim();
+    if (v.startsWith('http://') || v.startsWith('https://')) return true;
+    if (/^(www\.|drive\.google\.com|docs\.google\.com)/i.test(v)) return true;
+    if (/^[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-zA-Z]{2,}(\/|$)/.test(v) && !v.startsWith('storage')) return true;
+    if (/https?:\/\//i.test(v)) return true; // nilai mengandung URL (mis. dari Excel)
+    return false;
+};
+
 const getCustomValue = (participant, rawKey) => {
     if (!participant) return '-';
 
@@ -54,22 +110,43 @@ const getCustomValue = (participant, rawKey) => {
     const lowerKey = key.toLowerCase();
     const cleanLowerKey = lowerKey.replace(/^custom_/, '');
 
+    const variants = [
+        lowerKey,
+        cleanLowerKey,
+        cleanLowerKey.replace(/\s+/g, '_'),
+        cleanLowerKey.replace(/_/g, ' '),
+        cleanLowerKey.replace(/\s+/g, '-'),
+        cleanLowerKey.replace(/-/g, ' '),
+    ];
+
+    const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regexes = variants.map(v => new RegExp(`^${escape(v)}(?:[\\s_-]?(?:file|dokumen|document|url|path))?$`, 'i'));
+    const extractVal = (v) => {
+        if (v === null || v === undefined || v === '') return '-';
+        if (typeof v === 'object') {
+            if (v.url) return v.url;
+            if (v.path) return v.path;
+            if (v.file) return v.file;
+            return '-';
+        }
+        return v;
+    };
+
     // 1. Check ActivityUser custom_data
     if (participant.custom_data) {
-        // Direct match
         if (participant.custom_data[key] !== undefined) {
-            return participant.custom_data[key] || '-';
+            return extractVal(participant.custom_data[key]) || '-';
         }
 
-        // Advanced match (case-insensitive and prefix-robust)
-        const foundKey = Object.keys(participant.custom_data).find(k => {
-            const lk = k.toLowerCase();
-            const clk = lk.replace(/^custom_/, '');
-            return lk === lowerKey || clk === cleanLowerKey;
+        const keys = Object.keys(participant.custom_data);
+        const foundKey = keys.find(k => {
+            const lk = k.toLowerCase().replace(/^custom_/, '');
+            if (variants.includes(lk)) return true;
+            return regexes.some(r => r.test(lk));
         });
 
         if (foundKey) {
-            return participant.custom_data[foundKey] || '-';
+            return extractVal(participant.custom_data[foundKey]) || '-';
         }
     }
 
@@ -77,21 +154,90 @@ const getCustomValue = (participant, rawKey) => {
     const profileData = participant.user?.profile?.additional_data;
     if (profileData) {
         if (profileData[key] !== undefined) {
-            return profileData[key] || '-';
+            return extractVal(profileData[key]) || '-';
         }
         if (profileData[cleanLowerKey] !== undefined) {
-            return profileData[cleanLowerKey] || '-';
+            return extractVal(profileData[cleanLowerKey]) || '-';
         }
 
-        const foundProfileKey = Object.keys(profileData).find(k => {
-            const lk = k.toLowerCase();
-            const clk = lk.replace(/^custom_/, '');
-            return lk === lowerKey || clk === cleanLowerKey;
+        const keys = Object.keys(profileData);
+        let foundProfileKey = keys.find(k => {
+            const lk = k.toLowerCase().replace(/^custom_/, '');
+            if (variants.includes(lk)) return true;
+            return regexes.some(r => r.test(lk));
         });
 
         if (foundProfileKey) {
-            return profileData[foundProfileKey] || '-';
+            return extractVal(profileData[foundProfileKey]) || '-';
         }
+
+        // Heuristic fallback: try to find semantically similar fields
+        const containsTokens = (name, tokens) => {
+            const n = name.toLowerCase();
+            return tokens.every(t => n.includes(t));
+        };
+        const altProfileKey = keys.find(k => {
+            const lk = k.toLowerCase();
+            return (
+                containsTokens(lk, ['surat', 'tugas']) ||
+                containsTokens(lk, ['surat', 'penugasan']) ||
+                /^st(_|-|\s)?(tugas|penugasan)?/.test(lk)
+            );
+        });
+        if (altProfileKey) {
+            return extractVal(profileData[altProfileKey]) || '-';
+        }
+    }
+
+    // As a last resort, try scanning participant.custom_data for semantic matches
+    if (participant.custom_data) {
+        const keys = Object.keys(participant.custom_data);
+        const containsTokens = (name, tokens) => {
+            const n = name.toLowerCase();
+            return tokens.every(t => n.includes(t));
+        };
+        const altKey = keys.find(k => {
+            const lk = k.toLowerCase();
+            return (
+                containsTokens(lk, ['surat', 'tugas']) ||
+                containsTokens(lk, ['surat', 'penugasan']) ||
+                /^st(_|-|\s)?(tugas|penugasan)?/.test(lk)
+            );
+        });
+        if (altKey) {
+            return extractVal(participant.custom_data[altKey]) || '-';
+        }
+    }
+
+    // Fallback: data mungkin tersimpan dengan key salah saat impor (mis. link Surat Tugas di "Status")
+    const looksLikeFileOrUrl = (v) => {
+        if (v == null || typeof v !== 'string') return false;
+        const s = String(v).trim();
+        return s.startsWith('http://') || s.startsWith('https://') || /drive\.google\.com/i.test(s) || /\.(pdf|doc|docx|jpg|jpeg|png)(\?|$)/i.test(s);
+    };
+    const jabatanVariants = ['jabatan organisasi', 'jabatan_organisasi', 'jabatan-organisasi'];
+    const isJabatanKey = jabatanVariants.some(v => cleanLowerKey.replace(/\s+/g, '_') === v.replace(/\s+/g, '_'));
+    const isSuratTugasKey = /surat[\s_-]?tugas|st[\s_-]?tugas|penugasan/i.test(cleanLowerKey) || (cleanLowerKey.includes('surat') && cleanLowerKey.includes('tugas'));
+
+    const scanForWrongKey = (data) => {
+        if (!data || typeof data !== 'object') return null;
+        for (const [k, val] of Object.entries(data)) {
+            if (val == null || val === '') continue;
+            const kLower = k.toLowerCase();
+            const v = extractVal(val);
+            if (v === '-' || !v) continue;
+            if (isSuratTugasKey && (kLower === 'status' || kLower === 'surat' || kLower === 'tugas') && looksLikeFileOrUrl(v)) return v;
+            if (isJabatanKey && (kLower === 'status' || kLower === 'jabatan') && !looksLikeFileOrUrl(v)) return v;
+        }
+        return null;
+    };
+    const wrongKeyVal = scanForWrongKey(participant.custom_data) || scanForWrongKey(participant.user?.profile?.additional_data);
+    if (wrongKeyVal && wrongKeyVal !== '-') return wrongKeyVal;
+
+    // Kolom "Jabatan Organisasi": fallback ke profil jabatan (position) bila custom_data kosong
+    if (isJabatanKey && participant.user?.profile?.jabatan) {
+        const v = participant.user.profile.jabatan;
+        if (v && String(v).trim() !== '') return String(v).trim();
     }
 
     return '-';
@@ -234,7 +380,7 @@ export default function Index({
     }, [selectedIds, safeParticipants]);
 
     const availableCustomKeys = React.useMemo(() => {
-        const keyMap = new Map(); // baseLower -> rawFull
+        const keyMap = new Map(); // canonicalKey (kebabCase) -> rawFull
 
         const processKeys = (keys) => {
             if (!Array.isArray(keys)) return;
@@ -244,21 +390,14 @@ export default function Index({
                 const lower = base.toLowerCase();
                 if (!lower) return;
 
-                const cleanLower = lower.replace(/^custom_/, '');
+                // Canonical: normalize to kebab-case for deduplication (surat_tugas, surat-tugas, Surat Tugas -> surat-tugas)
+                const canonical = kebabCase(base);
 
-                // Find if any variant already exists
-                const existingKey = Array.from(keyMap.keys()).find(exKey =>
-                    exKey === lower ||
-                    exKey === 'custom_' + cleanLower ||
-                    exKey === cleanLower
-                );
-
-                const existing = existingKey ? keyMap.get(existingKey) : null;
+                const existing = keyMap.get(canonical);
 
                 // Prefer key with definition (|)
                 if (!existing || (!existing.includes('|') && k.includes('|'))) {
-                    if (existingKey) keyMap.delete(existingKey);
-                    keyMap.set(lower, k);
+                    keyMap.set(canonical, k);
                 }
             });
         };
@@ -412,17 +551,10 @@ export default function Index({
             const normalizedSettings = {};
             Object.keys(columnSettings).forEach(k => {
                 if (k.startsWith('col-custom-')) {
-                    // Try to find if this saved key has a definition in availableCustomKeys
-                    // If the saved key was col-custom-utusan-dropdown-..., normalize it to col-custom-utusan
+                    // Normalize to canonical: col-custom-surat_tugas -> col-custom-surat-tugas
                     const basePart = k.replace('col-custom-', '');
-                    // Find actual base name from matching raw key
-                    const rawMatch = availableCustomKeys.find(rk => kebabCase(rk) === basePart || kebabCase(rk.split('|')[0]) === basePart);
-                    if (rawMatch) {
-                        const canonical = `col-custom-${kebabCase(rawMatch.split('|')[0])}`;
-                        normalizedSettings[canonical] = columnSettings[k];
-                    } else {
-                        normalizedSettings[k] = columnSettings[k];
-                    }
+                    const canonical = `col-custom-${kebabCase(basePart)}`;
+                    normalizedSettings[canonical] = normalizedSettings[canonical] === true || columnSettings[k] === true;
                 } else {
                     normalizedSettings[k] = columnSettings[k];
                 }
@@ -439,16 +571,37 @@ export default function Index({
         return defaults;
     });
 
-    // Update columns when prop changes (e.g. after refresh)
+    // Update columns when prop changes (e.g. after refresh) - normalize custom keys to prevent duplicates
     useEffect(() => {
         if (columnSettings && Object.keys(columnSettings).length > 0) {
             setVisibleColumns(prev => {
-                const merged = { ...prev, ...columnSettings };
+                const normalized = {};
+                Object.entries(columnSettings).forEach(([k, v]) => {
+                    if (k === 'col-method') return;
+                    if (k.startsWith('col-custom-')) {
+                        // Normalize: col-custom-surat_tugas -> col-custom-surat-tugas (canonical kebab)
+                        const canonical = `col-custom-${kebabCase(k.replace('col-custom-', ''))}`;
+                        normalized[canonical] = normalized[canonical] === true || v === true;
+                    } else {
+                        normalized[k] = v;
+                    }
+                });
+                const merged = { ...prev, ...normalized };
                 delete merged['col-method'];
                 return merged;
             });
             setLocalColumnCache(prev => {
-                const merged = { ...prev, ...columnSettings };
+                const normalized = {};
+                Object.entries(columnSettings).forEach(([k, v]) => {
+                    if (k === 'col-method') return;
+                    if (k.startsWith('col-custom-')) {
+                        const canonical = `col-custom-${kebabCase(k.replace('col-custom-', ''))}`;
+                        normalized[canonical] = normalized[canonical] === true || v === true;
+                    } else {
+                        normalized[k] = v;
+                    }
+                });
+                const merged = { ...prev, ...normalized };
                 delete merged['col-method'];
                 return merged;
             });
@@ -472,6 +625,19 @@ export default function Index({
                 return changed ? next : prev;
             });
         }
+    }, [availableCustomKeys]);
+
+    // Canonical column keys for dropdown (no duplicates - one per column)
+    const canonicalColumnKeys = React.useMemo(() => {
+        const fixed = [
+            'col-index', 'col-name', 'col-email', 'col-hp', 'col-nik', 'col-instansi', 'col-pekerjaan', 'col-jabatan',
+            'col-prov', 'col-regency', 'col-district', 'col-alamat', 'col-gender', 'col-birthplace', 'col-birthdate',
+            'col-room', 'col-group', 'col-created-at', 'col-updated-at', 'col-batch', 'col-card-status', 'col-certificate-id',
+            'col-print-count', 'col-created-by', 'col-updated-by',
+            'col-status', 'col-payment-method', 'col-registration-method', 'col-action'
+        ];
+        const custom = (availableCustomKeys || []).map(k => `col-custom-${kebabCase(k.split('|')[0].trim())}`);
+        return [...fixed, ...custom];
     }, [availableCustomKeys]);
 
     const [showColumnMenu, setShowColumnMenu] = useState(false);
@@ -685,10 +851,19 @@ export default function Index({
         // Hapus blokir isSavingColumns agar UI tetap responsif
         // if (isSavingColumns) return;
 
-        const newSettings = {
-            ...visibleColumns,
-            [key]: !visibleColumns[key]
-        };
+        const next = { ...visibleColumns, [key]: !visibleColumns[key] };
+        // Normalize to canonical keys (prevents duplicate columns)
+        const cleaned = {};
+        Object.entries(next).forEach(([k, v]) => {
+            if (k === 'col-method') return;
+            if (k.startsWith('col-custom-')) {
+                const canonical = `col-custom-${kebabCase(k.replace('col-custom-', ''))}`;
+                cleaned[canonical] = cleaned[canonical] === true || v === true;
+            } else {
+                cleaned[k] = v;
+            }
+        });
+        const newSettings = cleaned;
 
         // Optimistic update
         setVisibleColumns(newSettings);
@@ -974,11 +1149,11 @@ export default function Index({
                                 {showColumnMenu && (
                                     <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 z-50 max-h-96 overflow-y-auto p-2 animate-in fade-in zoom-in-95 duration-200">
                                         <div className="space-y-0.5">
-                                            {Object.keys(visibleColumns).map(key => (
+                                            {canonicalColumnKeys.map(key => (
                                                 <label key={key} className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
                                                     <input
                                                         type="checkbox"
-                                                        checked={visibleColumns[key]}
+                                                        checked={!!visibleColumns[key]}
                                                         onChange={() => toggleColumn(key)}
                                                         className="rounded border-slate-300 text-primary focus:ring-indigo-500 w-4 h-4"
                                                     />
@@ -1089,19 +1264,44 @@ export default function Index({
                                 <span className="hidden md:inline">Input Peserta</span>
                             </button>
 
-                            <a
-                                href={route('activity.export', {
-                                    id: activity.id,
-                                    format: 'excel',
-                                    ...filters,
-                                    visible_columns: JSON.stringify(visibleColumns)
-                                })}
-                                target="_blank"
-                                className="flex items-center gap-2 px-4 py-2.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition-all shadow-sm"
-                            >
-                                <FileSpreadsheet className="w-4 h-4" />
-                                Export
-                            </a>
+                            {(() => {
+                                const exportId = activity?.id ?? activity?.uid ?? null;
+                                if (!exportId) {
+                                    return (
+                                        <button
+                                            type="button"
+                                            disabled
+                                            className="flex items-center gap-2 px-4 py-2.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-xl opacity-60 cursor-not-allowed"
+                                            title="ID kegiatan tidak tersedia"
+                                        >
+                                            <FileSpreadsheet className="w-4 h-4" />
+                                            Export
+                                        </button>
+                                    );
+                                }
+                                let href = '#';
+                                try {
+                                    href = route('activity.export', {
+                                        id: exportId,
+                                        format: 'excel',
+                                        ...filters,
+                                        visible_columns: JSON.stringify(visibleColumns)
+                                    });
+                                } catch (e) {
+                                    console.error('Failed to build export URL', e);
+                                }
+                                return (
+                                    <a
+                                        href={href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-4 py-2.5 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition-all shadow-sm"
+                                    >
+                                        <FileSpreadsheet className="w-4 h-4" />
+                                        Export
+                                    </a>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -1519,28 +1719,111 @@ export default function Index({
                                             )}
                                             {availableCustomKeys.map(key => {
                                                 const baseKey = key.split('|')[0].trim();
+                                                const val = getCustomValue(participant, key);
+                                                const fieldType = getCustomFieldType(key, activity?.custom_fields || []);
+                                                const isFileField = fieldType === 'file';
+                                                const fileUrl = isFileField && val && val !== '-' ? getFileViewUrl(val) : null;
+                                                let displayVal = val;
+                                                if (!isFileField && typeof val === 'string') {
+                                                    const lower = val.toLowerCase();
+                                                    const looksLikePath =
+                                                        lower.includes('fakepath') ||
+                                                        val.includes('\\') ||
+                                                        /[a-zA-Z]:[\\/]/.test(val) ||
+                                                        /\.(pdf|jpg|jpeg|png|gif|doc|docx|xls|xlsx|zip|rar)$/i.test(val);
+                                                    if (looksLikePath) {
+                                                        displayVal = '-';
+                                                    }
+                                                }
                                                 return visibleColumns[`col-custom-${kebabCase(baseKey)}`] && (
                                                     <td key={key} className="px-6 py-4 text-slate-600 whitespace-nowrap">
-                                                        {getCustomValue(participant, key)}
+                                                        {isFileField ? (
+                                                            fileUrl ? (
+                                                                isFileValueLink(val) ? (
+                                                                    <a
+                                                                        href={fileUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            try {
+                                                                                const isGroup = !!(participant.participantGroup);
+                                                                                console.log('[FileField Click]', {
+                                                                                    key: baseKey,
+                                                                                    raw_value: val,
+                                                                                    resolved_url: fileUrl,
+                                                                                    participant_id: participant.id,
+                                                                                    email: participant.user?.email || null,
+                                                                                    is_group_registration: isGroup
+                                                                                });
+                                                                            } catch {}
+                                                                        }}
+                                                                        className="relative z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer border-0 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 no-underline"
+                                                                        title="Buka link di tab baru (dari input/impor Excel)"
+                                                                    >
+                                                                        <FileText className="w-4 h-4 flex-shrink-0" />
+                                                                        Buka Link
+                                                                    </a>
+                                                                ) : (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            try {
+                                                                                const isGroup = !!(participant.participantGroup);
+                                                                                console.log('[FileField Click]', {
+                                                                                    key: baseKey,
+                                                                                    raw_value: val,
+                                                                                    resolved_url: fileUrl,
+                                                                                    participant_id: participant.id,
+                                                                                    email: participant.user?.email || null,
+                                                                                    is_group_registration: isGroup
+                                                                                });
+                                                                            } catch {}
+                                                                            let openUrl = fileUrl;
+                                                                            try {
+                                                                                const actId = activity?.uid || activity?.id;
+                                                                                const raw = typeof val === 'string' ? val.trim() : '';
+                                                                                const rel = raw.replace(/^\/+/, '');
+                                                                                const looksStorage = /^storage\//i.test(rel);
+                                                                                const isCustomData = /\/custom-data\//i.test(rel);
+                                                                                const userId = participant.user_id || participant.user?.id;
+                                                                                if (actId && userId && looksStorage && isCustomData) {
+                                                                                    openUrl = `/activity/${actId}/participants/${userId}/custom-file?key=${encodeURIComponent(baseKey)}`;
+                                                                                }
+                                                                            } catch {}
+                                                                            window.open(openUrl, '_blank', 'noopener,noreferrer');
+                                                                        }}
+                                                                        className="relative z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer border-0 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                                                                        title="Buka file yang diunggah di sistem"
+                                                                    >
+                                                                        <FileText className="w-4 h-4 flex-shrink-0" />
+                                                                        Lihat File
+                                                                    </button>
+                                                                )
+                                                            ) : (
+                                                                (val && typeof val === 'string') ? (
+                                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-400 cursor-not-allowed" title="File belum tersimpan di server">
+                                                                        <FileText className="w-4 h-4 flex-shrink-0" />
+                                                                        Belum Tersimpan
+                                                                    </span>
+                                                                ) : ('-')
+                                                            )
+                                                        ) : (
+                                                            displayVal
+                                                        )}
                                                     </td>
                                                 );
                                             })}
                                             {visibleColumns['col-status'] && (
                                                 <td className="px-6 py-4">
-                                                    {(() => {
-                                                        const customStatus = getCustomValue(participant, 'Status');
-                                                        if (customStatus && customStatus !== '-') {
-                                                            return <span className="text-slate-700 font-medium">{customStatus}</span>;
-                                                        }
-                                                        return (
-                                                            <button
-                                                                onClick={() => handleStatusClick(participant)}
-                                                                className="hover:opacity-80 transition-opacity text-left focus:outline-none"
-                                                            >
-                                                                <StatusBadge status={participant.status} />
-                                                            </button>
-                                                        );
-                                                    })()}
+                                                    <button
+                                                        onClick={() => handleStatusClick(participant)}
+                                                        className="hover:opacity-80 transition-opacity text-left focus:outline-none"
+                                                    >
+                                                        <StatusBadge status={participant.status} />
+                                                    </button>
                                                 </td>
                                             )}
                                             {visibleColumns['col-payment-method'] && (
@@ -1737,4 +2020,3 @@ function StatusBadge({ status }) {
         </span>
     );
 }
-

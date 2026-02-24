@@ -1359,11 +1359,11 @@ class ActivityController extends Controller
                 'province_id' => ['field' => 'province_id', 'label' => 'Provinsi', 'source' => 'profile', 'type' => 'select'],
                 'province id' => ['field' => 'province_id', 'label' => 'Provinsi', 'source' => 'profile', 'type' => 'select'],
                 'provinceid' => ['field' => 'province_id', 'label' => 'Provinsi', 'source' => 'profile', 'type' => 'select'],
-                'city' => ['field' => 'regency_id', 'label' => 'Kota/kabupaten', 'source' => 'profile', 'type' => 'select'],
-                'kota' => ['field' => 'regency_id', 'label' => 'Kota/kabupaten', 'source' => 'profile', 'type' => 'select'],
-                'kabupaten' => ['field' => 'regency_id', 'label' => 'Kota/kabupaten', 'source' => 'profile', 'type' => 'select'],
-                'regency_id' => ['field' => 'regency_id', 'label' => 'Kota/kabupaten', 'source' => 'profile', 'type' => 'select'],
-                'regency id' => ['field' => 'regency_id', 'label' => 'Kota/kabupaten', 'source' => 'profile', 'type' => 'select'],
+                'city' => ['field' => 'regency_id', 'label' => 'Kabupaten/Kota', 'source' => 'profile', 'type' => 'select'],
+                'kota' => ['field' => 'regency_id', 'label' => 'Kabupaten/Kota', 'source' => 'profile', 'type' => 'select'],
+                'kabupaten' => ['field' => 'regency_id', 'label' => 'Kabupaten/Kota', 'source' => 'profile', 'type' => 'select'],
+                'regency_id' => ['field' => 'regency_id', 'label' => 'Kabupaten/Kota', 'source' => 'profile', 'type' => 'select'],
+                'regency id' => ['field' => 'regency_id', 'label' => 'Kabupaten/Kota', 'source' => 'profile', 'type' => 'select'],
                 'district' => ['field' => 'district_id', 'label' => 'Kecamatan', 'source' => 'profile', 'type' => 'select'],
                 'kecamatan' => ['field' => 'district_id', 'label' => 'Kecamatan', 'source' => 'profile', 'type' => 'select'],
                 'district_id' => ['field' => 'district_id', 'label' => 'Kecamatan', 'source' => 'profile', 'type' => 'select'],
@@ -1425,6 +1425,18 @@ class ActivityController extends Controller
              if (!empty($requiredProfileLabels)) {
                  $hasCustomRequirements = true;
              }
+        }
+
+        // Include required custom fields (kolom tambahan wajib)
+        $activity->append('custom_fields');
+        $customFields = $activity->custom_fields ?? [];
+        if (!empty($customFields) && is_array($customFields)) {
+            foreach ($customFields as $cf) {
+                if (!empty($cf['is_required']) && !empty($cf['label'])) {
+                    $requiredProfileLabels[] = $cf['label'];
+                }
+            }
+            $requiredProfileLabels = array_unique($requiredProfileLabels);
         }
 
         if (auth()->check()) {
@@ -1949,8 +1961,20 @@ class ActivityController extends Controller
                     ->update(['status' => ActivityUser::STATUS_ACTIVE]);
             }
 
-            // Sync Custom Fields
+            // Sync Custom Fields (deduplikasi: satu kolom per label, tidak boleh ganda)
             if (isset($validated['custom_fields'])) {
+                $canonLabel = function ($f) {
+                    $l = trim((string) ($f['label'] ?? $f['key'] ?? ''));
+                    return strtolower(preg_replace('/[\s_-]+/', '_', $l));
+                };
+                $seen = [];
+                $validated['custom_fields'] = array_values(array_filter($validated['custom_fields'], function ($f) use ($canonLabel, &$seen) {
+                    $c = $canonLabel($f);
+                    if ($c === '' || isset($seen[$c])) return false;
+                    $seen[$c] = true;
+                    return true;
+                }));
+
                 $fieldIds = [];
                 $columnSettings = $activity->column_settings ?? [];
                 $customColKeys = [];
@@ -2673,8 +2697,20 @@ class ActivityController extends Controller
                 'manual_payment_details' => $validated['manual_payment_details'] ?? null,
             ]);
 
-            // Sync Custom Fields
+            // Sync Custom Fields (deduplikasi: satu kolom per label)
             if (isset($validated['custom_fields'])) {
+                $canonLabel = function ($f) {
+                    $l = trim((string) ($f['label'] ?? $f['key'] ?? ''));
+                    return strtolower(preg_replace('/[\s_-]+/', '_', $l));
+                };
+                $seen = [];
+                $validated['custom_fields'] = array_values(array_filter($validated['custom_fields'], function ($f) use ($canonLabel, &$seen) {
+                    $c = $canonLabel($f);
+                    if ($c === '' || isset($seen[$c])) return false;
+                    $seen[$c] = true;
+                    return true;
+                }));
+
                 $fieldIds = [];
                 foreach ($validated['custom_fields'] as $fieldData) {
                     $label = $fieldData['label'] ?? 'Unknown';
@@ -2998,8 +3034,51 @@ class ActivityController extends Controller
                 $this->executeParticipantDeletion($activity, $userIds, $batchId, $hasBatchId);
             }
 
-            // Delete orphaned activity_user records by their ID
+            // Delete orphaned activity_user records by their ID (dan file terkait)
             if (! empty($activityUserIds)) {
+                $orphans = ActivityUser::whereIn('id', $activityUserIds)->get();
+                foreach ($orphans as $enrollment) {
+                    if ($enrollment->image_path) {
+                        try {
+                            $pathsToCheck = [public_path($enrollment->image_path), public_path('storage/' . $enrollment->image_path), storage_path('app/public/' . $enrollment->image_path)];
+                            foreach ($pathsToCheck as $path) {
+                                if (\Illuminate\Support\Facades\File::exists($path)) {
+                                    \Illuminate\Support\Facades\File::delete($path);
+                                }
+                            }
+                        } catch (\Exception $e) {
+                        }
+                    }
+                    $customData = $enrollment->custom_data;
+                    if (is_array($customData)) {
+                        foreach ($customData as $value) {
+                            if (is_string($value) && (strpos($value, 'storage/') === 0 || strpos($value, 'uploads/') === 0 || strpos($value, '/storage/') !== false || preg_match('#^(activities/|public/)#', $value))) {
+                                try {
+                                    $path = public_path($value);
+                                    if (\Illuminate\Support\Facades\File::exists($path) && is_file($path)) {
+                                        \Illuminate\Support\Facades\File::delete($path);
+                                    } else {
+                                        $storagePath = ltrim(preg_replace('#^storage/#', '', $value), '/');
+                                        if (Storage::disk('public')->exists($storagePath)) {
+                                            Storage::disk('public')->delete($storagePath);
+                                        }
+                                    }
+                                } catch (\Exception $e) {
+                                }
+                            }
+                        }
+                    }
+                    if (! empty($enrollment->certificate_id)) {
+                        try {
+                            foreach (["certificates/{$activity->id}/{$enrollment->certificate_id}.pdf", "certificates/{$enrollment->certificate_id}.pdf"] as $p) {
+                                if (Storage::disk('public')->exists($p)) {
+                                    Storage::disk('public')->delete($p);
+                                }
+                            }
+                        } catch (\Exception $e) {
+                        }
+                    }
+                }
                 ActivityUser::whereIn('id', $activityUserIds)->delete();
             }
 
@@ -3961,26 +4040,32 @@ class ActivityController extends Controller
                             'kabupaten' => ['source' => 'profile', 'field' => 'regency_id', 'label' => 'Kota/kabupaten', 'type' => 'select'],
                             'kecamatan' => ['source' => 'profile', 'field' => 'district_id', 'label' => 'Kecamatan', 'type' => 'select'],
                             'province' => ['source' => 'profile', 'field' => 'province_id', 'label' => 'Provinsi', 'type' => 'select'],
-                            'regency' => ['source' => 'profile', 'field' => 'regency_id', 'label' => 'Kota/kabupaten', 'type' => 'select'],
+                            'regency' => ['source' => 'profile', 'field' => 'regency_id', 'label' => 'Kabupaten/Kota', 'type' => 'select'],
                             'district' => ['source' => 'profile', 'field' => 'district_id', 'label' => 'Kecamatan', 'type' => 'select'],
-                            'city' => ['source' => 'profile', 'field' => 'regency_id', 'label' => 'Kota/kabupaten', 'type' => 'select'],
+                            'city' => ['source' => 'profile', 'field' => 'regency_id', 'label' => 'Kabupaten/Kota', 'type' => 'select'],
+                            'province_id' => ['source' => 'profile', 'field' => 'province_id', 'label' => 'Provinsi', 'type' => 'select'],
+                            'regency_id' => ['source' => 'profile', 'field' => 'regency_id', 'label' => 'Kabupaten/Kota', 'type' => 'select'],
+                            'district_id' => ['source' => 'profile', 'field' => 'district_id', 'label' => 'Kecamatan', 'type' => 'select'],
                         ];
 
                         foreach ($requiredCols as $req) {
-                            $key = $req;
+                            $key = trim($req);
+                            $key = preg_replace('/^\d+\./', '', $key);
                             if (str_starts_with($key, 'user:')) {
                                 $key = substr($key, 5);
                             }
                             if (str_starts_with($key, 'profile:')) {
                                 $key = substr($key, 8);
                             }
+                            $key = trim($key);
+                            $keyNormalized = strtolower(str_replace(' ', '_', $key));
 
-                            if ($key === 'password') {
+                            if ($keyNormalized === 'password') {
                                 continue;
                             }
 
-                            if (isset($map[$key])) {
-                                $config = $map[$key];
+                            if (isset($map[$keyNormalized]) || isset($map[$key])) {
+                                $config = $map[$keyNormalized] ?? $map[$key];
                                 $val = ($config['source'] === 'user')
                                     ? $freshUser->{$config['field']}
                                     : ($freshUser->profile ? $freshUser->profile->{$config['field']} : null);
@@ -3994,21 +4079,31 @@ class ActivityController extends Controller
                                     ];
                                 }
                             } else {
-                                // Dynamic column check
+                                // Dynamic column check (profile + additional_data)
                                 $val = null;
-                                if ($freshUser->profile && isset($freshUser->profile->$key)) {
+                                if ($freshUser->profile && isset($freshUser->profile->$keyNormalized)) {
+                                    $val = $freshUser->profile->$keyNormalized;
+                                } elseif ($freshUser->profile && isset($freshUser->profile->$key)) {
                                     $val = $freshUser->profile->$key;
                                 } elseif (isset($freshUser->$key)) {
                                     $val = $freshUser->$key;
                                 }
+                                if (empty($val) && $freshUser->profile && ! empty($freshUser->profile->additional_data)) {
+                                    $ad = $freshUser->profile->additional_data;
+                                    if (isset($ad[$keyNormalized])) {
+                                        $val = $ad[$keyNormalized];
+                                    } elseif (isset($ad[$key])) {
+                                        $val = $ad[$key];
+                                    }
+                                }
 
                                 if (empty($val)) {
-                                    $label = ucwords(str_replace(['_', '-'], ' ', $key));
+                                    $label = ucwords(str_replace(['_', '-'], ' ', $keyNormalized));
                                     $customMissingFields[] = $label;
                                     $customMissingData[] = [
-                                        'key' => $key,
+                                        'key' => $keyNormalized,
                                         'label' => $label,
-                                        'type' => 'text', // Default to text for unknown columns
+                                        'type' => 'text',
                                     ];
                                 }
                             }
@@ -4051,6 +4146,39 @@ class ActivityController extends Controller
                     // Fallback default checks if no custom reqs and no mandatory fields
                     $missingProfileFields = $freshUser->getIncompleteProfileFields();
                     $missingProfileData = $freshUser->getIncompleteProfileData();
+                }
+
+                // Tambah kolom wajib dari custom_fields kegiatan (Kepengurusan, Surat Tugas, dll)
+                $activity->append('custom_fields');
+                $customFields = $activity->custom_fields ?? [];
+                if (! empty($customFields) && is_array($customFields)) {
+                    $profileAdditional = ($freshUser->profile && is_array($freshUser->profile->additional_data)) ? $freshUser->profile->additional_data : [];
+                    foreach ($customFields as $cf) {
+                        if (empty($cf['is_required']) || empty($cf['key'])) {
+                            continue;
+                        }
+                        $cfKey = $cf['key'];
+                        $val = $profileAdditional[$cfKey] ?? $profileAdditional[strtolower($cfKey)] ?? null;
+                        if ($val === null || trim((string) $val) === '') {
+                            $missingProfileFields[] = $cf['label'] ?? $cfKey;
+                            $exists = false;
+                            foreach ($missingProfileData as $existing) {
+                                if (isset($existing['key']) && strtolower((string) $existing['key']) === strtolower($cfKey)) {
+                                    $exists = true;
+                                    break;
+                                }
+                            }
+                            if (! $exists) {
+                                $missingProfileData[] = [
+                                    'key' => $cfKey,
+                                    'label' => $cf['label'] ?? ucwords(str_replace('_', ' ', $cfKey)),
+                                    'type' => $cf['type'] ?? 'text',
+                                    'options' => $cf['options'] ?? [],
+                                ];
+                            }
+                        }
+                    }
+                    $missingProfileFields = array_unique($missingProfileFields);
                 }
             }
         }
@@ -4147,6 +4275,9 @@ class ActivityController extends Controller
                 'id_provinsi' => 'Provinsi',
                 'id_kabupaten' => 'Kabupaten/Kota',
                 'id_kecamatan' => 'Kecamatan',
+                'province_id' => 'Provinsi',
+                'regency_id' => 'Kabupaten/Kota',
+                'district_id' => 'Kecamatan',
                 'Provinsi' => 'Provinsi',
                 'id kabupaten' => 'Kabupaten/Kota',
                 'Kecamantan' => 'Kecamatan',
@@ -4158,16 +4289,16 @@ class ActivityController extends Controller
                 // Region aliases
                 'province id' => 'Provinsi',
                 'province_id' => 'Provinsi',
-                'kota kabupaten id' => 'Kota/kabupaten',
-                'regency_id' => 'Kota/kabupaten',
-                'regency id' => 'Kota/kabupaten',
+                'kota kabupaten id' => 'Kabupaten/Kota',
+                'regency_id' => 'Kabupaten/Kota',
+                'regency id' => 'Kabupaten/Kota',
                 'kecamatan id' => 'Kecamatan',
                 'district_id' => 'Kecamatan',
                 'district id' => 'Kecamatan',
                 'province' => 'Provinsi',
-                'regency' => 'Kota/kabupaten',
+                'regency' => 'Kabupaten/Kota',
                 'district' => 'Kecamatan',
-                'city' => 'Kota/kabupaten',
+                'city' => 'Kabupaten/Kota',
             ];
             // Add aliases to map if needed or just handle normalization
 
@@ -4199,7 +4330,7 @@ class ActivityController extends Controller
             }
         }
 
-        // 2. From Mandatory Fields
+        // 2. From Mandatory Fields (map ke kolom profiles: province_id, regency_id, district_id)
         $mandatoryFields = $activity->mandatory_profile_fields ?? [];
         if (! empty($mandatoryFields)) {
             $fieldLabels = [
@@ -4215,10 +4346,24 @@ class ActivityController extends Controller
                 'birth_place' => 'Tempat Lahir',
                 'birth_date' => 'Tanggal Lahir',
                 'foto' => 'Foto Profil',
+                'province_id' => 'Provinsi',
+                'regency_id' => 'Kabupaten/Kota',
+                'district_id' => 'Kecamatan',
             ];
             foreach ($mandatoryFields as $field) {
                 $label = $fieldLabels[$field] ?? ucwords(str_replace('_', ' ', $field));
                 $requiredProfileLabels[] = $label;
+            }
+        }
+
+        // 3. Include required custom fields (kolom tambahan wajib)
+        $activity->append('custom_fields');
+        $customFields = $activity->custom_fields ?? [];
+        if (! empty($customFields) && is_array($customFields)) {
+            foreach ($customFields as $cf) {
+                if (! empty($cf['is_required']) && ! empty($cf['label'])) {
+                    $requiredProfileLabels[] = $cf['label'];
+                }
             }
         }
 
@@ -7256,7 +7401,7 @@ class ActivityController extends Controller
             }
         }
 
-        // Delete enrollment image files (with robust error handling)
+        // Delete enrollment image, custom_data files (e.g. Surat Tugas), and certificate files
         try {
             $enrollments = $enrollmentQuery->get();
             foreach ($enrollments as $enrollment) {
@@ -7267,7 +7412,6 @@ class ActivityController extends Controller
                             public_path('storage/' . $enrollment->image_path),
                             storage_path('app/public/' . $enrollment->image_path)
                         ];
-
                         foreach ($pathsToCheck as $path) {
                             if (\Illuminate\Support\Facades\File::exists($path)) {
                                 \Illuminate\Support\Facades\File::delete($path);
@@ -7275,6 +7419,43 @@ class ActivityController extends Controller
                         }
                     } catch (\Exception $e) {
                         \Log::warning('Failed to delete enrollment image: '.$e->getMessage());
+                    }
+                }
+                // Hapus file dari custom_data (Surat Tugas, dll.)
+                $customData = $enrollment->custom_data;
+                if (is_array($customData)) {
+                    foreach ($customData as $value) {
+                        if (is_string($value) && (strpos($value, 'storage/') === 0 || strpos($value, 'uploads/') === 0 || strpos($value, '/storage/') !== false || preg_match('#^(activities/|public/)#', $value))) {
+                            try {
+                                $path = public_path($value);
+                                if (\Illuminate\Support\Facades\File::exists($path) && is_file($path)) {
+                                    \Illuminate\Support\Facades\File::delete($path);
+                                } else {
+                                    $storagePath = ltrim(preg_replace('#^storage/#', '', $value), '/');
+                                    if (Storage::disk('public')->exists($storagePath)) {
+                                        Storage::disk('public')->delete($storagePath);
+                                    }
+                                }
+                            } catch (\Exception $e) {
+                                \Log::warning('Failed to delete custom_data file: '.$e->getMessage());
+                            }
+                        }
+                    }
+                }
+                // Hapus file sertifikat jika ada
+                if (! empty($enrollment->certificate_id)) {
+                    try {
+                        $paths = [
+                            "certificates/{$activity->id}/{$enrollment->certificate_id}.pdf",
+                            "certificates/{$enrollment->certificate_id}.pdf",
+                        ];
+                        foreach ($paths as $p) {
+                            if (Storage::disk('public')->exists($p)) {
+                                Storage::disk('public')->delete($p);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                                \Log::warning('Failed to delete certificate file: '.$e->getMessage());
                     }
                 }
             }

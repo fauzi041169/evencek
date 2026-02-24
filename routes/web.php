@@ -116,7 +116,7 @@ Route::prefix('auth')->group(function () {
     Route::controller(AuthLoginController::class)->group(function () {
         Route::get('/login', 'index')->name('login');
         Route::post('/login', 'login')->name('login.submit')->middleware('throttle:5,1');
-        Route::post('/logout', 'logout')->name('logout');
+        Route::post('/logout', 'logout')->name('auth.logout');
     });
 
     Route::name('auth.')->group(function () {
@@ -365,6 +365,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::delete('/committee-types/{typeId}', [\App\Http\Controllers\ActivityCommitteeTypeController::class, 'destroy'])->name('committee-types.destroy');
 
         Route::post('/participants/import', 'importParticipants')->name('import-participants');
+        Route::post('/participants/preview-upload', 'previewUploadParticipants')->name('preview-upload');
         Route::post('/participants/check', 'checkParticipants')->name('check-participants');
         Route::get('/participants/get-import-template', 'getImportTemplate')->name('get-import-template');
         Route::get('/participants/import', 'importParticipantsGet')->name('import-participants.get');
@@ -407,6 +408,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/', 'participants')->name('index');
         Route::post('/change-role-bulk', 'changeRoleBulk')->name('change-role-bulk');
         Route::get('/get-all-ids', 'getAllParticipantIds')->name('get-all-ids');
+        Route::get('/{userId}/custom-file', 'serveParticipantCustomFile')->name('custom-file');
         Route::post('/rooms', 'storeRoom')->name('rooms.store');
         Route::put('/rooms/{roomId}', 'updateRoom')->name('rooms.update');
         Route::delete('/rooms/batch', 'destroyRoomsBatch')->name('rooms.destroy-batch');

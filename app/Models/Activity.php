@@ -92,17 +92,21 @@ class Activity extends Model
             ];
         })->toArray();
 
+        // Normalisasi key untuk perbandingan (surat_tugas = surat-tugas = surat tugas)
+        $canonicalKey = function ($k) {
+            return strtolower(trim(preg_replace('/[\s\-]+/', '_', (string) $k)));
+        };
+        $existingKeysCanonical = array_map($canonicalKey, array_column($fields, 'key'));
+
         // Include "legacy" custom fields from column_settings if they are enabled
         // and not already present in the relationship
         if (!empty($this->column_settings) && is_array($this->column_settings)) {
-            $existingKeys = array_column($fields, 'key');
-            
             foreach ($this->column_settings as $colKey => $enabled) {
                 if ($enabled && str_starts_with($colKey, 'col-custom-')) {
                     $baseKey = str_replace('col-custom-', '', $colKey);
                     
-                    // Skip if already in modern custom_fields
-                    if (in_array($baseKey, $existingKeys)) continue;
+                    // Skip if already in modern custom_fields (bandingkan key kanonik agar tidak ganda)
+                    if (in_array($canonicalKey($baseKey), $existingKeysCanonical)) continue;
                     
                     // Guess label: utusan -> Utusan, my_field -> My Field
                     $label = ucwords(str_replace(['_', '-'], ' ', $baseKey));
@@ -147,6 +151,8 @@ class Activity extends Model
                                         $type = 'number';
                                     } elseif ($def === 'date') {
                                         $type = 'date';
+                                    } elseif ($def === 'file') {
+                                        $type = 'file';
                                     }
                                 }
                                 break;
@@ -163,9 +169,21 @@ class Activity extends Model
                         'is_required' => $isRequired,
                         'is_optional' => !$isRequired
                     ];
+                    $existingKeysCanonical[] = $canonicalKey($baseKey);
                 }
             }
         }
+
+        // Pastikan tidak ada kolom ganda: deduplikasi berdasarkan label kanonik (satu per nama kolom)
+        $seenLabel = [];
+        $fields = array_values(array_filter($fields, function ($f) use (&$seenLabel, $canonicalKey) {
+            $label = $f['label'] ?? '';
+            $canon = $canonicalKey($label);
+            if ($canon === '') return true;
+            if (isset($seenLabel[$canon])) return false;
+            $seenLabel[$canon] = true;
+            return true;
+        }));
 
         return $fields;
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import Swal from 'sweetalert2';
 
 export default function UserManagementIndex({
     users,
@@ -28,8 +29,18 @@ export default function UserManagementIndex({
     const [importProcessing, setImportProcessing] = useState(false);
 
     const currentUser = auth?.user;
-    const isSuperAdmin = currentUser?.role === 'superadmin';
-    const isAdmin = currentUser?.role === 'admin' || isSuperAdmin;
+    const currentRole = (currentUser?.role || '').toLowerCase();
+    const isSuperAdmin = currentRole === 'superadmin';
+    const isAdmin = currentRole === 'admin' || isSuperAdmin;
+
+    // Sinkronkan state usersData & pagination saat props.users berubah (misalnya setelah Inertia reload)
+    useEffect(() => {
+        const nextUsers = (users?.data || users || []);
+        const nextPagination = (users?.meta || users);
+        setUsersData(nextUsers);
+        setPagination(nextPagination);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [users]);
 
     const handleImport = (e) => {
         e.preventDefault();
@@ -99,25 +110,44 @@ export default function UserManagementIndex({
 
     const handleRoleChange = async (userId, newRole) => {
         try {
-            const response = await fetch(`/user-management/${userId}/role`, {
+            const res = await fetch(route('user-management.update-role', userId), {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
                     'Accept': 'application/json'
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({ role: newRole })
             });
-            const data = await response.json();
-            if (data.success) {
-                router.reload({ only: ['users'] });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal',
-                    text: data.message || 'Gagal mengubah role'
-                });
+            let data = null;
+            try {
+                data = await res.clone().json();
+            } catch (_) {
+                data = null;
             }
+            if (res.ok && data?.success) {
+                // Segarkan daftar sesuai filter & pagination aktif
+                fetchUsers(buildParams());
+                return;
+            }
+            let message = data?.message || '';
+            if (!message) {
+                try {
+                    const text = await res.text();
+                    const snippet = (text || '').toString().slice(0, 200).replace(/\\s+/g, ' ').trim();
+                    if (snippet) {
+                        message = `Server bukan JSON: ${snippet}`;
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+            if (!message) {
+                message = `Gagal mengubah role${res.status ? ' (HTTP ' + res.status + ')' : ''}`;
+            }
+            Swal.fire({ icon: 'error', title: 'Gagal', text: message });
         } catch (error) {
             Swal.fire({
                 icon: 'error',
@@ -437,7 +467,7 @@ export default function UserManagementIndex({
                                                 <td className="px-6 py-4">
                                                     {isAdmin && user.id !== currentUser?.id ? (
                                                         <select
-                                                            value={user.role}
+                                                            value={(user.role || '').toLowerCase()}
                                                             onChange={(e) => handleRoleChange(user.id, e.target.value)}
                                                             className={`px-2 py-1 rounded-full text-xs font-semibold border-0 cursor-pointer ${getRoleColor(user.role)}`}
                                                         >
@@ -447,7 +477,7 @@ export default function UserManagementIndex({
                                                         </select>
                                                     ) : (
                                                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${getRoleColor(user.role)}`}>
-                                                            {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
+                                                            {(user.role || '').toString().charAt(0).toUpperCase() + (user.role || '').toString().slice(1).toLowerCase()}
                                                         </span>
                                                     )}
                                                 </td>

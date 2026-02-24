@@ -18,7 +18,12 @@ export default function Create({
     // Ensure savedBankAccounts is always an array to prevent runtime errors
     const safeSavedBankAccounts = Array.isArray(savedBankAccounts) ? savedBankAccounts : [];
 
-
+    // Default waktu kegiatan: hari ini, selesai 3 hari kemudian, jam 08:00
+    const today = new Date();
+    const defaultDate = today.toISOString().split('T')[0];
+    const endDateDefault = new Date(today);
+    endDateDefault.setDate(endDateDefault.getDate() + 3);
+    const defaultEndDate = endDateDefault.toISOString().split('T')[0];
 
     const [previewImage, setPreviewImage] = useState(null);
 
@@ -26,10 +31,10 @@ export default function Create({
         name: '',
         category_id: '',
         activity_type: 'non_batch',
-        date: '',
-        start_time: '',
-        end_date: '',
-        end_time: '',
+        date: defaultDate,
+        start_time: '08:00',
+        end_date: defaultEndDate,
+        end_time: '08:00',
         location: '',
         price: 0,
         payment_method_type: 'manual',
@@ -62,15 +67,15 @@ export default function Create({
         }
 
         setData('custom_fields', [
-            ...data.custom_fields,
-            {
-                key: `custom_${Date.now()}`,
-                label: '',
-                type: 'text',
-                options: '',
-                is_required: false
-            }
-        ]);
+                    ...data.custom_fields,
+                    {
+                        key: `custom_${Date.now()}`,
+                        label: '',
+                        type: 'text',
+                        options: '',
+                        is_required: false
+                    }
+                ]);
     };
 
     const removeCustomField = (index) => {
@@ -778,7 +783,15 @@ export default function Create({
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                                         <i className="fas fa-image mr-2 text-secondary"></i>Banner / Poster
                                     </label>
-                                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors bg-gray-50">
+                                    <div
+                                        className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors bg-gray-50 cursor-pointer"
+                                        onClick={() => {
+                                            const input = document.getElementById('image');
+                                            if (input) {
+                                                input.click();
+                                            }
+                                        }}
+                                    >
                                         <div className="space-y-1 text-center">
                                             {previewImage ? (
                                                 <div className="mb-4">
@@ -798,17 +811,17 @@ export default function Create({
                                                 <i className="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
                                             )}
                                             <div className="flex text-sm text-gray-600 justify-center">
-                                                <label htmlFor="image" className="relative cursor-pointer bg-white rounded-md font-medium text-secondary hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                                                    <span>Upload file</span>
-                                                    <input
-                                                        id="image"
-                                                        name="image"
-                                                        type="file"
-                                                        className="sr-only"
-                                                        accept="image/png, image/jpeg, image/jpg"
-                                                        onChange={e => setData('image', e.target.files[0])}
-                                                    />
-                                                </label>
+                                                <span className="relative bg-white rounded-md font-medium text-secondary">
+                                                    Upload file
+                                                </span>
+                                                <input
+                                                    id="image"
+                                                    name="image"
+                                                    type="file"
+                                                    className="sr-only"
+                                                    accept="image/png, image/jpeg, image/jpg"
+                                                    onChange={e => setData('image', e.target.files[0])}
+                                                />
                                                 <p className="pl-1">atau drag and drop</p>
                                             </div>
                                             <p className="text-xs text-gray-500">PNG, JPG, JPEG hingga 5MB</p>
@@ -940,6 +953,7 @@ export default function Create({
                                                                 <option value="dropdown">Dropdown (Pilihan)</option>
                                                                 <option value="number">Angka</option>
                                                                 <option value="date">Tanggal</option>
+                                                                <option value="file">Upload File</option>
                                                             </select>
                                                         </div>
 

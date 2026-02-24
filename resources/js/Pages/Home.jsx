@@ -86,8 +86,8 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
         { container: 'items-end', text: 'text-right', cta: 'justify-end', descMargin: 'ml-auto mr-0' },
     ];
     const currentStyle = slideStyles[currentSlide % slideStyles.length];
-    const heroTitleFonts = ['font-serif', 'font-sans', 'font-mono'];
-    const heroDescFonts = ['font-sans', 'font-serif', 'font-sans'];
+    const heroTitleFonts = ['font-sans'];
+    const heroDescFonts = ['font-sans'];
     const heroTitleFont = heroTitleFonts[currentSlide % heroTitleFonts.length];
     const heroDescFont = heroDescFonts[currentSlide % heroDescFonts.length];
 
@@ -375,21 +375,23 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                         </div>
                     )}
 
-                    {/* Background Slider */}
-                    <div className="absolute inset-0 z-0">
-                        {processedSlides.map((slide, index) => (
-                            <div
-                                key={index}
-                                className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
-                            >
-                                <div
-                                    className="absolute inset-0 bg-cover bg-center animate-slow-zoom"
-                                    style={{ backgroundImage: `url('${slide.image}')` }}
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-indigo-950/70 to-slate-900/90"></div>
-                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent opacity-70"></div>
-                            </div>
-                        ))}
+                    {/* Background Slider (slide left) */}
+                    <div className="absolute inset-0 z-0 overflow-hidden">
+                        <div
+                            className="w-full h-full flex transition-transform duration-700 ease-in-out"
+                            style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                        >
+                            {processedSlides.map((slide, index) => (
+                                <div key={index} className="w-full h-full flex-none relative">
+                                    <div
+                                        className="absolute inset-0 bg-cover bg-center"
+                                        style={{ backgroundImage: `url('${slide.image}')` }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-indigo-950/70 to-slate-900/90"></div>
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent opacity-70"></div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Content */}
@@ -398,25 +400,23 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                             <div id="heroContent" className="relative z-10">
                                 {currentSlide % 3 === 1 ? (
                                     <>
-                                        <h1 className={`text-4xl sm:text-5xl md:text-6xl font-black text-white leading-tight mb-6 tracking-tight drop-shadow-xl ${heroTitleFont}`}>
+                                        <h1 className={`text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-6 ${heroTitleFont}`}>
                                             {heroTitle}
                                         </h1>
-                                        <p className={`text-base sm:text-lg md:text-xl text-white/80 mb-8 leading-relaxed max-w-2xl ${currentStyle.descMargin} ${heroDescFont}`}>
+                                        <p className={`text-lg sm:text-xl md:text-2xl text-white/90 mb-8 leading-relaxed max-w-2xl ${currentStyle.descMargin} ${heroDescFont}`}>
                                             {heroDesc}
                                         </p>
-                                        <div className={`flex gap-4 ${currentStyle.cta}`} style={{ transitionDelay: '200ms' }}>
-                                            <Link href={heroLink} className="px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-white text-slate-900 font-bold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">
-                                                Get Started
+                                        <div className={`flex gap-4 ${currentStyle.cta}`}>
+                                            <Link href={heroLink} className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-lg bg-white text-slate-900 font-semibold text-base sm:text-lg shadow-sm hover:shadow-md transition-all">
+                                                <i className="fas fa-rocket"></i>
+                                                {heroLinkText}
                                             </Link>
-                                            <a href="#video" className="px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-white/0 border border-white/30 text-white font-semibold text-base sm:text-lg hover:bg-white/10 transition-all hover:-translate-y-0.5">
-                                                Watch Video
+                                            <a href="#video" className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-lg border border-white/30 text-white font-semibold text-base sm:text-lg hover:bg-white/10 transition-all">
+                                                <i className="fas fa-play-circle"></i>
+                                                {t('home.explore_features')}
                                             </a>
                                         </div>
-                                        <div className="absolute inset-0 pointer-events-none">
-                                            <div className="absolute w-2 h-2 rounded-full bg-white/80 left-4 top-6"></div>
-                                            <div className="absolute w-3 h-3 rounded-full bg-white/70 left-10 bottom-8"></div>
-                                            <div className="absolute w-2 h-2 rounded-full bg-white/60 right-8 bottom-6"></div>
-                                        </div>
+                                        <div className="absolute inset-0 pointer-events-none"></div>
                                     </>
                                 ) : currentSlide % 3 === 2 ? (
                                     <>
@@ -427,25 +427,25 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                                         <i className="fas fa-star mr-2" style={{ color: appSettings?.colors?.secondary || '#3b82f6' }}></i>
                                                         <span className="font-semibold">{t('home.featured')}</span>
                                                     </div>
-                                                    <h1 className={`text-4xl sm:text-5xl md:text-6xl font-black text-white leading-tight mb-5 tracking-tight ${heroTitleFont}`}>{heroTitle}</h1>
-                                                    <p className={`text-base sm:text-lg md:text-xl text-white/85 leading-relaxed mb-8 max-w-2xl ${heroDescFont}`}>{heroDesc}</p>
+                                                    <h1 className={`text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-5 ${heroTitleFont}`}>{heroTitle}</h1>
+                                                    <p className={`text-lg sm:text-xl md:text-2xl text-white/90 leading-relaxed mb-8 max-w-2xl ${heroDescFont}`}>{heroDesc}</p>
                                                     <div className="flex flex-wrap gap-4 justify-start">
-                                                        <Link href={heroLink} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 font-bold shadow-lg hover:shadow-xl transition-all">
+                                                        <Link href={heroLink} className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-slate-900 font-semibold shadow-sm hover:shadow-md transition-all">
                                                             <i className="fas fa-rocket"></i>
                                                             {heroLinkText}
                                                         </Link>
-                                                        <a href="#video" className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all" style={{ backgroundColor: accent, color: '#1f2937' }}>
+                                                        <a href="#video" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold shadow-sm hover:shadow-md transition-all" style={{ backgroundColor: accent, color: '#1f2937' }}>
                                                             <i className="fas fa-play-circle"></i>
                                                             {t('home.watch_video')}
                                                         </a>
                                                     </div>
                                                     <div className="mt-8 grid grid-cols-2 gap-6 max-w-lg">
                                                         <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-white">
-                                                            <div className="text-3xl font-black">99.9%</div>
+                                                            <div className="text-3xl font-extrabold">99.9%</div>
                                                             <div className="text-xs sm:text-sm text-white/80">{t('home.uptime')}</div>
                                                         </div>
                                                         <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-white">
-                                                            <div className="text-3xl font-black">24/7</div>
+                                                            <div className="text-3xl font-extrabold">24/7</div>
                                                             <div className="text-xs sm:text-sm text-white/80">{t('home.support')}</div>
                                                         </div>
                                                     </div>
@@ -473,40 +473,36 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                     </>
                                 ) : (
                                     <>
-                                        <h1 className={`relative text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white leading-tight mb-8 tracking-tighter drop-shadow-2xl ${heroTitleFont}`}>
-                                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-indigo-200">
-                                                {heroTitle}
-                                            </span>
+                                        <h1 className={`relative text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-8 ${heroTitleFont}`}>
+                                            {heroTitle}
                                         </h1>
-                                        <p className={`relative text-lg sm:text-xl md:text-2xl text-blue-100/90 mb-10 leading-relaxed max-w-3xl ${currentStyle.descMargin} font-light tracking-wide ${heroDescFont}`}>
+                                        <p className={`relative text-lg sm:text-xl md:text-2xl text-white/90 mb-10 leading-relaxed max-w-3xl ${currentStyle.descMargin} ${heroDescFont}`}>
                                             {heroDesc}
                                         </p>
-                                        <div className={`relative flex flex-wrap gap-5 ${currentStyle.cta}`} style={{ transitionDelay: '200ms' }}>
+                                        <div className={`relative flex flex-wrap gap-5 ${currentStyle.cta}`}>
                                             <Link href={heroLink}
-                                                className="group relative px-8 py-4 rounded-full bg-white text-indigo-900 font-bold text-lg shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                                                className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-lg bg-white text-slate-900 font-semibold text-lg shadow-sm hover:shadow-md transition-all"
                                             >
-                                                <span className="relative flex items-center gap-3">
-                                                    <i className="fas fa-rocket text-indigo-600 group-hover:rotate-12 transition-transform"></i>
-                                                    {heroLinkText}
-                                                </span>
+                                                <i className="fas fa-rocket text-indigo-600"></i>
+                                                {heroLinkText}
                                             </Link>
                                             <a href="#fitur"
-                                                className="group px-8 py-4 rounded-full border border-white/30 bg-white/5 text-white backdrop-blur-md hover:bg-white/10 font-semibold text-lg transition-all duration-300 hover:-translate-y-1 flex items-center gap-3"
+                                                className="group inline-flex items-center gap-3 px-8 py-4 rounded-lg border border-white/30 bg-white/5 text-white backdrop-blur-md hover:bg-white/10 font-semibold text-lg transition-all"
                                             >
-                                                <i className="fas fa-layer-group group-hover:scale-110 transition-transform"></i>
+                                                <i className="fas fa-layer-group"></i>
                                                 {t('home.explore_features')}
                                             </a>
                                         </div>
-                                        <div className="mt-16 flex flex-wrap justify-center items-center gap-4 sm:gap-8" style={{ transitionDelay: '400ms' }}>
-                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
+                                        <div className="mt-16 flex flex-wrap justify-center items-center gap-4 sm:gap-8">
+                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-lg bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-semibold">
                                                 <i className="fas fa-check-circle text-emerald-400 text-lg"></i>
                                                 <span>{t('home.trusted')}</span>
                                             </div>
-                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
+                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-lg bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-semibold">
                                                 <i className="fas fa-shield-alt text-blue-400 text-lg"></i>
                                                 <span>{t('home.secure_data')}</span>
                                             </div>
-                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-bold tracking-wide shadow-sm hover:bg-white/10 transition-colors">
+                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-lg bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-semibold">
                                                 <i className="fas fa-bolt text-amber-400 text-lg"></i>
                                                 <span>{t('home.real_time')}</span>
                                             </div>

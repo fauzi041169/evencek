@@ -161,8 +161,20 @@ class ActivityEnrollmentController extends Controller
                     $customData = [];
                 }
 
+                if ($request->hasFile('custom_files')) {
+                    $customFiles = $request->file('custom_files');
+                    if (is_array($customFiles)) {
+                        foreach ($customFiles as $fieldKey => $file) {
+                            if ($file && $file->isValid()) {
+                                $path = $file->store('activities/'.$activity->id.'/custom-data', 'public');
+                                $customData[$fieldKey] = 'storage/'.$path;
+                            }
+                        }
+                    }
+                }
+
                 foreach ($request->all() as $key => $value) {
-                    if (in_array($key, ['_token', '_method', 'activity_id', 'custom_data', 'file', 'foto', 'foto_file'])) {
+                    if (in_array($key, ['_token', '_method', 'activity_id', 'custom_data', 'custom_files', 'file', 'foto', 'foto_file'])) {
                         continue;
                     }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useForm, usePage } from '@inertiajs/react';
+import { useForm, usePage, router } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 import Swal from 'sweetalert2';
 import {
@@ -89,7 +89,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                 district_id: targetProfile.district_id || '',
                 foto_file: null,
                 additional_data: initialAdditionalData,
-                activity_id: activity?.id || '', // Pass activity_id to backend
+                activity_id: activity?.id || activity?.uid || '', // Backend accepts id atau uid
                 _method: 'PUT'
             });
 
@@ -143,15 +143,25 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
 
         transform((data) => {
             const { additional_data, ...rest } = data;
-            // Filter out null/undefined additional data keys to avoid sending "null" string if any
             const cleanAdditional = {};
-            Object.keys(additional_data).forEach(key => {
-                cleanAdditional[key] = additional_data[key];
+            const custom_files = {};
+            const isFakepath = (v) => typeof v === 'string' && (v.toLowerCase().includes('fakepath') || /^[a-zA-Z]:\\/.test(v) || v.includes('\\'));
+            const normalizeKey = (k) => String(k).toLowerCase().trim().replace(/[\s\-]+/g, '_');
+            Object.keys(additional_data || {}).forEach(key => {
+                const value = additional_data[key];
+                if (value === undefined || value === null) return;
+                if (isFakepath(value)) return;
+                if (value instanceof File) {
+                    custom_files[normalizeKey(key)] = value;
+                } else {
+                    cleanAdditional[key] = value;
+                }
             });
 
             return {
                 ...rest,
-                ...cleanAdditional
+                ...cleanAdditional,
+                ...(Object.keys(custom_files).length ? { custom_files } : {})
             };
         });
 
@@ -159,6 +169,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
         post(route('profile.update-user', { id: targetUser.id }), {
             onSuccess: () => {
                 onClose();
+                router.reload({ only: ['participants', 'participantsStats', 'filters'] });
                 Swal.fire({
                     icon: 'success',
                     title: 'Berhasil',
@@ -328,6 +339,16 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
 
                                             let currentOptions = [];
                                             let isDropdown = false;
+                                            const isFileField = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => (f.key || '').toLowerCase() === baseKey.toLowerCase() && (f.type || '') === 'file');
+                                            const getFileUrl = (v) => {
+                                                if (!v) return null;
+                                                let s = String(v).trim();
+                                                if (s.startsWith('http://') || s.startsWith('https://')) return s;
+                                                if (s.toLowerCase().includes('fakepath') || /^[a-zA-Z]:\\/.test(s)) return null;
+                                                if (s.includes('\\')) s = s.replace(/\\/g, '/');
+                                                const path = s.startsWith('storage/') ? s : (s.startsWith('/') ? s.slice(1) : `storage/${s}`);
+                                                return window.location.origin + '/' + path.replace(/^\/+/, '');
+                                            };
 
                                             // 0. Parse complex type definition (e.g. "Dropdown:A~B~C")
                                             if (parts.length > 1) {
@@ -338,6 +359,33 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                     currentOptions = optionsStr.split(/~|,/).map(o => o.trim()).filter(o => o);
                                                     isDropdown = true;
                                                 }
+                                            }
+
+                                            if (isFileField) {
+                                                const fileUrl = getFileUrl(value);
+                                                return (
+                                                    <div key={rawKey} className="space-y-1.5">
+                                                        <label className="block text-sm font-medium text-slate-700">{label}</label>
+                                                        <input
+                                                            type="file"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                                                                const newData = { ...data.additional_data, [originalKey]: file || '' };
+                                                                setData('additional_data', newData);
+                                                            }}
+                                                            className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm"
+                                                        />
+                                                        {fileUrl ? (
+                                                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 text-xs hover:underline">
+                                                                <FileText className="w-3 h-3" /> Lihat file tersimpan
+                                                            </a>
+                                                        ) : (
+                                                            value && typeof value === 'string' ? (
+                                                                <span className="text-xs text-slate-400">Belum tersimpan di server</span>
+                                                            ) : null
+                                                        )}
+                                                    </div>
+                                                );
                                             }
 
                                             // 1. Gender check
@@ -559,31 +607,34 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
 }
 
 // Reusable Components to keep code clean
-const FormInput = ({ label, type = "text", value, onChange, error, icon, required, className }) => (
-    <div className={`space-y-1.5 ${className}`}>
-        <label className="block text-sm font-medium text-slate-700 capitalize">
-            {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        <div className="relative group">
-            {icon && (
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none">
-                    {icon}
-                </div>
-            )}
-            <input
-                type={type}
-                value={value}
-                onChange={onChange}
-                className={`w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm placeholder:text-slate-300 hover:border-slate-300`}
-                placeholder={`Masukkan ${label.toLowerCase()}...`}
-                required={required}
-            />
+const FormInput = ({ label, type = "text", value, onChange, error, icon, required, className }) => {
+    const isFile = String(type).toLowerCase() === 'file';
+    return (
+        <div className={`space-y-1.5 ${className}`}>
+            <label className="block text-sm font-medium text-slate-700 capitalize">
+                {label} {required && <span className="text-red-500">*</span>}
+            </label>
+            <div className="relative group">
+                {icon && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none">
+                        {icon}
+                    </div>
+                )}
+                <input
+                    type={type}
+                    {...(!isFile ? { value } : {})}
+                    onChange={onChange}
+                    className={`w-full ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm placeholder:text-slate-300 hover:border-slate-300`}
+                    placeholder={`Masukkan ${label.toLowerCase()}...`}
+                    required={required}
+                />
+            </div>
+            {error && <p className="text-red-500 text-xs flex items-center gap-1">
+                <span className="w-1 h-1 bg-red-500 rounded-full"></span> {error}
+            </p>}
         </div>
-        {error && <p className="text-red-500 text-xs flex items-center gap-1">
-            <span className="w-1 h-1 bg-red-500 rounded-full"></span> {error}
-        </p>}
-    </div>
-);
+    );
+};
 
 const FormSelect = ({ label, value, onChange, error, children, disabled }) => (
     <div className="space-y-1.5">

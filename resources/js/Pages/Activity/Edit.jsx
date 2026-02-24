@@ -44,16 +44,31 @@ export default function Edit({
         mandatory_profile_fields: mandatoryFields || [],
         show_price: Boolean(activity.show_price),
         manual_payment_details: activity.manual_payment_details || [],
-        custom_fields: activity.custom_fields || []
+        custom_fields: (() => {
+            const raw = activity.custom_fields || [];
+            const canon = (label) => (label || '').toString().trim().toLowerCase().replace(/[\s_-]+/g, '_');
+            const seen = new Set();
+            return raw.filter((f) => {
+                const key = canon(f.label ?? f.key ?? '');
+                if (!key || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        })()
     });
 
     // Custom Fields Helpers
     const addCustomField = (predefined = null) => {
         if (predefined) {
-            // Check if already exists in current data
-            const exists = data.custom_fields.some(f => f.key === predefined.key);
+            const canon = (v) => (v || '').toString().trim().toLowerCase().replace(/[\s_-]+/g, '_');
+            const predefinedCanon = canon(predefined.label ?? predefined.key);
+            const exists = data.custom_fields.some(f => {
+                const keyMatch = (f.key || '').toString().trim() === (predefined.key || '').toString().trim();
+                const labelMatch = predefinedCanon && canon(f.label ?? f.key) === predefinedCanon;
+                return keyMatch || labelMatch;
+            });
             if (exists) {
-                Swal.fire('Info', 'Field ini sudah ditambahkan.', 'info');
+                Swal.fire('Info', 'Kolom dengan nama ini sudah ada. Tidak boleh ada kolom ganda.', 'info');
                 return;
             }
             setData('custom_fields', [
@@ -470,22 +485,22 @@ export default function Edit({
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                     <div>
                                         <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-2">
-                                            <i className="fas fa-tag mr-2 text-secondary"></i>Harga (Rp)
+                                            <i className="fas fa-tag mr-2 text-secondary"></i>Harga
                                         </label>
-                                        <div className="relative">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <span className="text-gray-500 sm:text-sm">Rp</span>
-                                            </div>
+                                        <div className={`flex rounded-lg border overflow-hidden ${errors.price ? 'border-red-500' : 'border-gray-300'} focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500`}>
+                                            <span className="inline-flex items-center px-3 sm:px-4 bg-gray-100 text-gray-600 text-sm font-medium border-r border-gray-200">Rp</span>
                                             <input
                                                 type="number"
-                                                className={`w-full pl-10 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${errors.price ? 'border-red-500' : 'border-gray-300'}`}
+                                                className="flex-1 min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-0 focus:ring-0 focus:outline-none"
                                                 id="price"
-                                                value={data.price}
+                                                value={data.price === '' || data.price === null || data.price === undefined ? '' : (Number(data.price) % 1 === 0 ? Number(data.price) : data.price)}
                                                 onChange={e => setData('price', e.target.value)}
                                                 min="0"
+                                                step="1"
+                                                placeholder="0"
                                             />
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">*Isi 0 untuk kegiatan gratis</p>
+                                        <p className="text-xs text-gray-500 mt-1.5">Isi 0 untuk kegiatan gratis</p>
                                         {errors.price && <p className="mt-1 text-xs text-red-500">{errors.price}</p>}
 
                                         <div className="mt-2 flex items-center">
@@ -836,6 +851,7 @@ export default function Edit({
                                                                 <option value="dropdown">Dropdown (Pilihan)</option>
                                                                 <option value="number">Angka</option>
                                                                 <option value="date">Tanggal</option>
+                                                                <option value="file">Upload File</option>
                                                             </select>
                                                         </div>
 
