@@ -34,8 +34,16 @@ export default function GalleryLightbox({ isOpen, onClose, images, initialIndex 
 
     if (!images || images.length === 0) return null;
 
+    const getGalleryImageUrl = (imageRecord) => {
+        if (!imageRecord?.image) return '/assets/images/hero/defoult.webp';
+        const raw = imageRecord.image;
+        if (raw.startsWith('http')) return raw;
+        const clean = raw.replace(/^activities\/gallery\//, '').replace(/^storage\/activities\/gallery\//, '');
+        return clean ? `/storage/activities/gallery/${clean}` : '/assets/images/hero/defoult.webp';
+    };
+
     const currentImage = images[currentIndex];
-    const imageUrl = `/storage/activities/gallery/${currentImage.image}`;
+    const imageUrl = getGalleryImageUrl(currentImage);
 
     return (
         <Transition show={isOpen} as={Fragment}>
@@ -106,7 +114,7 @@ export default function GalleryLightbox({ isOpen, onClose, images, initialIndex 
                                             alt="Gallery Preview" 
                                             className="max-w-full max-h-full object-contain shadow-2xl"
                                             onClick={(e) => e.stopPropagation()}
-                                            onError={(e) => e.target.src = '/assets/images/begron/defoult.png'}
+                                            onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/hero/defoult.webp'; }}
                                         />
                                     </div>
 

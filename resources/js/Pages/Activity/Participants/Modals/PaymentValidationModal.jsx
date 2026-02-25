@@ -379,6 +379,7 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                                                                 src={localProofUrl}
                                                                 alt="Bukti Pembayaran"
                                                                 className="max-w-full max-h-full object-contain"
+                                                                onError={() => setLocalProofUrl(null)}
                                                             />
                                                             <a
                                                                 href={localProofUrl}

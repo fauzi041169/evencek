@@ -3746,35 +3746,9 @@ class ActivityController extends Controller
 
         // ... (Logic for userRating, isJoined)
 
-        // CALCULATE HERO COVER PATH
-        $heroCoverPath = null;
-        if (!empty($activity->image)) {
-            $img = $activity->image;
-            if (filter_var($img, FILTER_VALIDATE_URL)) {
-                $heroCoverPath = $img;
-            } else {
-                $img = ltrim($img, '/');
-                if (str_starts_with($img, 'storage/')) {
-                    $heroCoverPath = asset($img);
-                } elseif (str_starts_with($img, 'activities/')) {
-                    $candidate = 'storage/' . $img;
-                    if (file_exists(public_path($candidate)) || file_exists(storage_path('app/public/' . $img))) {
-                        $heroCoverPath = asset($candidate);
-                    }
-                } else {
-                    $candidate = 'storage/activities/' . $img;
-                    if (file_exists(public_path($candidate)) || file_exists(storage_path('app/public/activities/' . $img))) {
-                        $heroCoverPath = asset($candidate);
-                    } else {
-                        $altCandidate = 'assets/images/activity/' . $img;
-                        if (file_exists(public_path($altCandidate))) {
-                            $heroCoverPath = asset($altCandidate);
-                        }
-                    }
-                }
-            }
-        }
-        $heroCoverPath = $heroCoverPath ?? asset('assets/images/begron/defoult.png');
+        // Gambar cover: utamakan dari database, jika tidak ada baru pakai default
+        $defaultActivityImage = asset('assets/images/hero/defoult.webp');
+        $heroCoverPath = ImageHelper::getImageUrl($activity->image, $defaultActivityImage, 'activities');
 
 
 

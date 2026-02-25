@@ -413,6 +413,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                     src={getImageUrl(news.image)}
                                                     alt={news.title}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/news/default-news.jpg'; }}
                                                 />
                                                 <div className="absolute top-0 right-0 bg-secondary text-white text-[10px] sm:text-xs font-bold px-2 py-1 sm:px-3 sm:py-1 rounded-bl-lg">
                                                     {news.category?.name || 'Umum'}
@@ -506,6 +507,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                     src={getImageUrl(news.image)}
                                                     alt={news.title}
                                                     className="w-full h-full object-cover"
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/news/default-news.jpg'; }}
                                                 />
                                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 hidden md:block">
                                                     <span className="text-white text-xs bg-primary px-2 py-1 rounded inline-block">

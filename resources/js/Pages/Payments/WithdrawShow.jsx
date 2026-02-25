@@ -177,13 +177,14 @@ export default function WithdrawShow({ withdrawal }) {
                                     </div>
                                     <div className="p-6 flex justify-center bg-gray-50">
                                         <div className="relative group max-w-md w-full">
-                                            <img 
-                                                src={`/storage/${proofPath}`} 
-                                                alt="Bukti Transfer" 
+                                            <img
+                                                src={proofPath.startsWith('http') ? proofPath : `/storage/${proofPath.replace(/^storage\//, '')}`}
+                                                alt="Bukti Transfer"
                                                 className="w-full h-auto rounded-lg shadow-md border border-gray-200"
+                                                onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/hero/defoult.webp'; e.target.alt = 'Gambar tidak dapat dimuat'; }}
                                             />
-                                            <a 
-                                                href={`/storage/${proofPath}`} 
+                                            <a
+                                                href={proofPath.startsWith('http') ? proofPath : `/storage/${proofPath.replace(/^storage\//, '')}`} 
                                                 target="_blank" 
                                                 rel="noreferrer"
                                                 className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold gap-2 rounded-lg"

@@ -66,8 +66,9 @@ export default function List({ news }) {
                                                         <div className="h-10 w-10 flex-shrink-0">
                                                             <img
                                                                 className="h-10 w-10 rounded-lg object-cover"
-                                                                src={item.image ? (item.image.startsWith('http') ? item.image : `/storage/${item.image}`) : '/assets/images/news/default-news.jpg'}
+                                                                src={item.image ? (item.image.startsWith('http') || item.image.startsWith('/') ? item.image : `/storage/${item.image.replace(/^storage\//, '')}`) : '/assets/images/news/default-news.jpg'}
                                                                 alt=""
+                                                                onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/news/default-news.jpg'; }}
                                                             />
                                                         </div>
                                                         <div className="ml-4">

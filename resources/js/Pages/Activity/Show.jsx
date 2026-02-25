@@ -523,9 +523,13 @@ export default function Show({
     const paginationLinks = participants.links || [];
     const participantsList = participants.data || participants;
 
-    const heroCoverPath = activity.image
-        ? activity.image
-        : '/assets/images/begron/defoult.png';
+    const DEFAULT_ACTIVITY_IMAGE = '/assets/images/hero/defoult.webp';
+    const getActivityImageUrl = (img) => {
+        if (!img) return DEFAULT_ACTIVITY_IMAGE;
+        if (img.startsWith('http') || img.startsWith('/')) return img;
+        return `/storage/${img.replace(/^storage\//, '')}`;
+    };
+    const heroCoverPath = getActivityImageUrl(activity.image);
 
     const [showPrice, setShowPrice] = useState(activity.show_price);
     const [registrationTypeModalOpen, setRegistrationTypeModalOpen] = useState(false);
@@ -1540,9 +1544,14 @@ export default function Show({
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {Array.isArray(activity.galleries) && activity.galleries.length > 0 ? (
                                         activity.galleries.map((gallery) => {
-                                            const gallerySrc = gallery.image
-                                                ? `/storage/activities/gallery/${gallery.image.replace('activities/gallery/', '').replace('storage/activities/gallery/', '')}`
-                                                : '/assets/images/begron/defoult.png';
+                                            const getGalleryImageUrl = (rec) => {
+                                                if (!rec?.image) return DEFAULT_ACTIVITY_IMAGE;
+                                                const raw = rec.image;
+                                                if (raw.startsWith('http')) return raw;
+                                                const clean = raw.replace(/^activities\/gallery\//, '').replace(/^storage\/activities\/gallery\//, '');
+                                                return clean ? `/storage/activities/gallery/${clean}` : DEFAULT_ACTIVITY_IMAGE;
+                                            };
+                                            const gallerySrc = getGalleryImageUrl(gallery);
 
                                             return (
                                                 <div key={gallery.id} className="aspect-video relative group rounded-xl overflow-hidden cursor-pointer shadow-sm">
@@ -1552,7 +1561,7 @@ export default function Show({
                                                         className="w-full h-full object-cover transition transform group-hover:scale-110"
                                                         onError={(e) => {
                                                             e.target.onerror = null;
-                                                            e.target.src = '/assets/images/begron/defoult.png';
+                                                            e.target.src = DEFAULT_ACTIVITY_IMAGE;
                                                         }}
                                                     />
                                                 </div>

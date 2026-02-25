@@ -204,7 +204,12 @@ export default function Edit({ activity, eventActivity }) {
                                         <label className="block text-sm font-medium text-gray-700">Gambar Cover (Opsional)</label>
                                         {eventActivity.image && (
                                             <div className="mb-2">
-                                                <img src={`/storage/${eventActivity.image}`} alt="Current Cover" className="h-32 object-cover rounded" />
+                                                <img
+                                                    src={eventActivity.image.startsWith('http') || eventActivity.image.startsWith('/') ? eventActivity.image : `/storage/${eventActivity.image.replace(/^storage\//, '')}`}
+                                                    alt="Current Cover"
+                                                    className="h-32 object-cover rounded"
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/hero/defoult.webp'; }}
+                                                />
                                             </div>
                                         )}
                                         <input

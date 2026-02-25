@@ -738,12 +738,13 @@ export default function CreatorFinance({ entries = [], summary = {}, bankAccount
                                                     <p className="text-xs text-gray-500 uppercase font-bold mb-2">Bukti Transfer</p>
                                                     <div className="border rounded p-2 bg-gray-50">
                                                         <img
-                                                            src={`/storage/${details.proof}`}
+                                                            src={details.proof.startsWith('http') ? details.proof : `/storage/${details.proof.replace(/^storage\//, '')}`}
                                                             alt="Bukti Transfer"
                                                             className="w-full h-auto rounded max-h-80 object-contain mx-auto"
+                                                            onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/hero/defoult.webp'; e.target.alt = 'Gambar tidak dapat dimuat'; }}
                                                         />
                                                         <a
-                                                            href={`/storage/${details.proof}`}
+                                                            href={details.proof.startsWith('http') ? details.proof : `/storage/${details.proof.replace(/^storage\//, '')}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="text-center block mt-2 text-blue-600 text-sm hover:underline"

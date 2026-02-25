@@ -48,8 +48,11 @@ export default function DashboardUser({ auth, stats = {}, joinedActivityUsers = 
         }
     };
 
+    const DEFAULT_ACTIVITY_IMAGE = '/assets/images/hero/defoult.webp';
     const getActivityImage = (activity) => {
-        return activity?.image || '/assets/images/begron/defoult.png';
+        if (!activity?.image) return DEFAULT_ACTIVITY_IMAGE;
+        if (activity.image.startsWith('http') || activity.image.startsWith('/')) return activity.image;
+        return `/storage/${activity.image.replace(/^storage\//, '')}`;
     };
 
     return (
@@ -152,7 +155,7 @@ export default function DashboardUser({ auth, stats = {}, joinedActivityUsers = 
                                                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                                                     onError={(e) => {
                                                         e.target.onerror = null;
-                                                        e.target.src = '/assets/images/begron/defoult.png';
+                                                        e.target.src = DEFAULT_ACTIVITY_IMAGE;
                                                     }}
                                                 />
                                             </div>

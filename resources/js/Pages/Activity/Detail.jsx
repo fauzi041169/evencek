@@ -56,6 +56,18 @@ export default function Detail({
         return '/' + path;
     };
 
+    // Default gambar jika dari database tidak ada atau gagal load
+    const DEFAULT_ACTIVITY_IMAGE = '/assets/images/hero/defoult.webp';
+    const DEFAULT_PROFILE_IMAGE = '/assets/images/profilefoto/default-profile.png';
+
+    const getGalleryImageUrl = (imageRecord) => {
+        if (!imageRecord?.image) return DEFAULT_ACTIVITY_IMAGE;
+        const raw = imageRecord.image;
+        if (raw.startsWith('http')) return raw;
+        const clean = raw.replace(/^activities\/gallery\//, '').replace(/^storage\/activities\/gallery\//, '');
+        return clean ? `/storage/activities/gallery/${clean}` : DEFAULT_ACTIVITY_IMAGE;
+    };
+
     const heroBgUrl = heroBg1 ? getStorageUrl(heroBg1) : null;
     const heroStyle = heroAnim; // Use the resolved animation style
 
@@ -940,7 +952,7 @@ export default function Detail({
                                     loading="lazy"
                                     onError={(e) => {
                                         e.target.onerror = null;
-                                        e.target.src = '/assets/images/hero/defoult.webp';
+                                        e.target.src = DEFAULT_ACTIVITY_IMAGE;
                                         e.target.className = "relative w-full h-full object-cover z-10";
                                     }}
                                 />
@@ -1021,14 +1033,14 @@ export default function Detail({
                                         {activity.galleries.map((image, index) => (
                                             <div key={image.id} className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                                                 <img
-                                                    src={`/storage/activities/gallery/${image.image.replace('activities/gallery/', '').replace('storage/activities/gallery/', '')}`}
+                                                    src={getGalleryImageUrl(image)}
                                                     alt="Gallery"
                                                     className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-105 cursor-zoom-in"
                                                     onClick={() => {
                                                         setLightboxIndex(index);
                                                         setIsLightboxOpen(true);
                                                     }}
-                                                    onError={(e) => e.target.src = '/assets/images/begron/defoult.png'}
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ACTIVITY_IMAGE; }}
                                                 />
                                                 {canEdit && (
                                                     <button
@@ -1193,11 +1205,11 @@ export default function Detail({
                                             <div key={person.id || idx} className="flex items-center gap-3">
                                                 <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
                                                     <img
-                                                        src={person.avatar || '/assets/images/profilefoto/default-profile.png'}
+                                                        src={person.avatar || DEFAULT_PROFILE_IMAGE}
                                                         alt={person.name}
                                                         className="w-full h-full object-cover"
                                                         loading="lazy"
-                                                        onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
+                                                        onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
                                                     />
                                                 </div>
                                                 <div>
@@ -1212,11 +1224,11 @@ export default function Detail({
                                         <div className="flex items-center gap-3">
                                             <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
                                                 <img
-                                                    src={activity.user?.profile_photo_url || activity.creator?.avatar || '/assets/images/profilefoto/default-profile.png'}
+                                                    src={activity.user?.profile_photo_url || activity.creator?.avatar || DEFAULT_PROFILE_IMAGE}
                                                     alt={activity.user?.name || activity.creator?.name}
                                                     className="w-full h-full object-cover"
                                                     loading="lazy"
-                                                    onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
                                                 />
                                             </div>
                                             <div>
@@ -1242,11 +1254,11 @@ export default function Detail({
                                         <div key={speaker.id} className="flex items-center gap-3">
                                             <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
                                                 <img
-                                                    src={speaker.photo || '/assets/images/profilefoto/default-profile.png'}
+                                                    src={speaker.photo || DEFAULT_PROFILE_IMAGE}
                                                     alt={speaker.name}
                                                     className="w-full h-full object-cover"
                                                     loading="lazy"
-                                                    onError={(e) => e.target.src = '/assets/images/profilefoto/default-profile.png'}
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
                                                 />
                                             </div>
                                             <div>
@@ -1302,11 +1314,11 @@ export default function Detail({
                                                     <li key={participant.id || index} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
                                                         <div className="flex-shrink-0">
                                                             <img
-                                                                src={participant.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                                src={participant.profile_photo_url || DEFAULT_PROFILE_IMAGE}
                                                                 alt={participant.name}
                                                                 className="w-10 h-10 rounded-full object-cover"
                                                                 loading="lazy"
-                                                                onError={(e) => { e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                                                onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
                                                             />
                                                         </div>
                                                         <div className="min-w-0 flex-1">

@@ -124,9 +124,12 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
         });
     };
 
+    const DEFAULT_ACTIVITY_IMAGE = '/assets/images/hero/defoult.webp';
     const getImageUrl = (activity) => {
-        if (!activity.image) return '/assets/images/begron/defoult.png';
-        return activity.image;
+        if (!activity?.image) return DEFAULT_ACTIVITY_IMAGE;
+        if (activity.image.startsWith('http')) return activity.image;
+        if (activity.image.startsWith('/')) return activity.image;
+        return `/storage/${activity.image.replace(/^storage\//, '')}`;
     };
 
     // Helper to determine link destination
@@ -441,7 +444,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                     src={getImageUrl(activity)}
                                                                     alt={activity.name}
                                                                     className="w-full h-full object-contain transform transition-transform duration-700 group-hover:scale-105"
-                                                                    onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
+                                                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ACTIVITY_IMAGE; }}
                                                                 />
                                                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent pointer-events-none"></div>
                                                             </div>
@@ -567,7 +570,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                 src={getImageUrl(activity)}
                                                 alt={activity.name}
                                                 className="w-full h-full object-cover sm:object-cover transition-transform duration-500 group-hover:scale-110"
-                                                onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
+                                                onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ACTIVITY_IMAGE; }}
                                             />
                                             <div className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-white/90 backdrop-blur-sm px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold text-gray-800 shadow-sm hidden sm:block">
                                                 {activity.category ? activity.category.name : 'Event'}
@@ -715,7 +718,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                     src={getImageUrl(activity)}
                                                     alt={activity.name}
                                                     className="w-full h-full object-cover sm:object-cover transition-transform duration-500 group-hover:scale-110"
-                                                    onError={(e) => { e.target.src = '/assets/images/begron/defoult.png'; }}
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ACTIVITY_IMAGE; }}
                                                 />
                                                 <div className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-white/90 backdrop-blur-sm px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold text-gray-800 shadow-sm hidden sm:block">
                                                     {activity.category ? activity.category.name : 'Event'}

@@ -331,8 +331,8 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
 
             <div className="min-h-screen bg-gradient-to-br from-white via-white to-white relative overflow-hidden font-sans">
 
-                {/* Hero Section */}
-                <section className="relative min-h-[40vh] sm:min-h-[85vh] flex items-center overflow-hidden">
+                {/* Hero Section - full layar 100% viewport */}
+                <section className="relative min-h-screen h-screen flex items-center overflow-hidden">
                     {/* Dynamic Animations based on Settings */}
                     {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (
                         <>
@@ -395,7 +395,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                     </div>
 
                     {/* Content */}
-                    <div className={`relative z-10 w-full ${currentSlide % 3 === 2 ? 'max-w-none mx-0 px-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'} pt-16 sm:pt-24 lg:pt-32 pb-0 sm:pb-10 flex flex-col ${currentSlide % 3 === 2 ? 'items-center' : currentStyle.container} justify-center min-h-[60vh] sm:min-h-[85vh]`}>
+                    <div className={`relative z-10 w-full ${currentSlide % 3 === 2 ? 'max-w-none mx-0 px-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'} pt-16 sm:pt-24 lg:pt-32 pb-0 sm:pb-10 flex flex-col ${currentSlide % 3 === 2 ? 'items-center' : currentStyle.container} justify-center min-h-full`}>
                         <div className={`${currentSlide % 3 === 2 ? 'max-w-none mx-0' : 'max-w-6xl mx-auto'} ${currentSlide % 3 === 2 ? '' : currentStyle.text}`}>
                             <div id="heroContent" className="relative z-10">
                                 {currentSlide % 3 === 1 ? (
@@ -420,7 +420,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                     </>
                                 ) : currentSlide % 3 === 2 ? (
                                     <>
-                                        <div className="relative w-full max-w-none mx-0 min-h-[80vh] sm:min_h-[90vh]">
+                                        <div className="relative w-full max-w-none mx-0 min-h-full">
                                             <div className="relative z-10 grid grid-cols-12 gap-6 sm:gap-10 px-4 sm:px-8 lg:px-12 py-8 sm:py-12">
                                                 <div className="col-span-12 lg:col-span-7">
                                                     <div className="inline-flex items-center px-4 py-2 rounded-full bg-black/40 text-white border border-white/10 mb-6">

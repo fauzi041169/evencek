@@ -124,7 +124,12 @@ export default function Index({ activity, eventActivities }) {
                     <div key={item.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition border border-gray-100 flex flex-col h-full overflow-hidden">
                         {item.image && (
                             <div className="w-full h-40 overflow-hidden relative group">
-                                <img src={`/storage/${item.image}`} alt={item.title} className="w-full h-full object-cover transition transform group-hover:scale-105" />
+                                <img
+                                    src={item.image.startsWith('http') || item.image.startsWith('/') ? item.image : `/storage/${item.image.replace(/^storage\//, '')}`}
+                                    alt={item.title}
+                                    className="w-full h-full object-cover transition transform group-hover:scale-105"
+                                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/hero/defoult.webp'; }}
+                                />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition"></div>
                             </div>
                         )}

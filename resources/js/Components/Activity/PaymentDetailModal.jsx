@@ -120,7 +120,16 @@ export default function PaymentDetailModal({ show, onClose, payment, loading }) 
                                         <i className="fas fa-image mr-2 text-gray-500"></i>Bukti Pembayaran
                                     </div>
                                     <div className="group relative rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-all">
-                                        <img src={payment.proof_url} alt="Bukti Pembayaran" className="w-full h-auto object-cover" />
+                                        <img
+                                            src={payment.proof_url}
+                                            alt="Bukti Pembayaran"
+                                            className="w-full h-auto object-cover"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = '/assets/images/hero/defoult.webp';
+                                                e.target.alt = 'Gambar tidak dapat dimuat';
+                                            }}
+                                        />
                                         <a href={payment.proof_url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white font-semibold no-underline">
                                             <i className="fas fa-expand mr-2"></i> Lihat Ukuran Penuh
                                         </a>

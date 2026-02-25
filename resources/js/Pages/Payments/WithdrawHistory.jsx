@@ -154,13 +154,14 @@ const WithdrawalDetailModal = ({ withdrawal, onClose }) => {
                                         <div>
                                             <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Bukti Transfer</p>
                                             <div className="border rounded p-1 bg-gray-50">
-                                                <img 
-                                                    src={`/storage/${details.proof}`} 
-                                                    alt="Bukti Transfer" 
+                                                <img
+                                                    src={details.proof.startsWith('http') ? details.proof : `/storage/${details.proof.replace(/^storage\//, '')}`}
+                                                    alt="Bukti Transfer"
                                                     className="w-full h-auto rounded max-h-64 object-contain"
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/hero/defoult.webp'; e.target.alt = 'Gambar tidak dapat dimuat'; }}
                                                 />
-                                                <a 
-                                                    href={`/storage/${details.proof}`} 
+                                                <a
+                                                    href={details.proof.startsWith('http') ? details.proof : `/storage/${details.proof.replace(/^storage\//, '')}`} 
                                                     target="_blank" 
                                                     rel="noopener noreferrer"
                                                     className="text-xs text-blue-600 hover:underline mt-1 block text-center"
