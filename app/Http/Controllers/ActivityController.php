@@ -3767,16 +3767,32 @@ class ActivityController extends Controller
 
         // FIX: Filter out committee members from participant list
         try {
+            // Get committee members
             $committeeUserIds = ActivityCommitteeStructure::where('activity_id', $activity->id)
                 ->whereNotNull('user_id')
                 ->pluck('user_id')
                 ->toArray();
             
-            if (!empty($committeeUserIds)) {
-                $participantsQuery->whereNotIn('users.id', $committeeUserIds);
+            // Get activity owners (collaborators)
+            $ownerIds = \DB::table('activity_owners')
+                ->where('activity_id', $activity->id)
+                ->pluck('user_id')
+                ->toArray();
+                
+            // Merge all excluded IDs
+            $excludedIds = array_unique(array_merge($committeeUserIds, $ownerIds));
+            
+            // Add creator if exists
+            if ($activity->user_id) {
+                $excludedIds[] = $activity->user_id;
+            }
+            
+            if (!empty($excludedIds)) {
+                $participantsQuery->whereNotIn('users.id', $excludedIds);
             }
         } catch (\Throwable $e) {
             // Ignore error
+            \Log::error('Error filtering participants: ' . $e->getMessage());
         }
 
         // FIX: Filter only active participants (status = 1)
@@ -4359,6 +4375,10 @@ class ActivityController extends Controller
         })->filter(function ($person) {
             return stripos($person['position'], 'PIC') !== false;
         })->values();
+
+        // Rating untuk tampilan (agar setelah refresh nilai tetap sesuai yang disimpan)
+        $activity->rating_avg = $activity->averageRating();
+        $activity->rating_count = $activity->allComments()->whereNull('parent_id')->whereNotNull('rating')->count();
 
         return Inertia::render('Activity/Detail', compact(
             'activity',
@@ -5089,6 +5109,30 @@ class ActivityController extends Controller
         if ($perPage > 500) $perPage = 500;
         $query = ActivityUser::with(['user.profile.province'])
             ->where('activity_id', $id);
+
+        // Filter out committee members
+        try {
+            $committeeUserIds = ActivityCommitteeStructure::where('activity_id', $id)
+                ->whereNotNull('user_id')
+                ->pluck('user_id')
+                ->toArray();
+                
+            $ownerIds = \DB::table('activity_owners')
+                ->where('activity_id', $id)
+                ->pluck('user_id')
+                ->toArray();
+                
+            $activity = Activity::find($id);
+            $creatorId = $activity ? [$activity->user_id] : [];
+            
+            $excludedIds = array_unique(array_merge($committeeUserIds, $ownerIds, $creatorId));
+            
+            if (!empty($excludedIds)) {
+                $query->whereNotIn('user_id', $excludedIds);
+            }
+        } catch (\Throwable $e) {
+            // Ignore
+        }
 
         if ($batchId) {
             $query->where('activity_batch_id', $batchId);

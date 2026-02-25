@@ -375,6 +375,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
             if (isPreview) {
                 formData.append('preview', '1');
             }
+            formData.append('total_rows', String(previewData.length));
             // formData.append('mapping', JSON.stringify(mapping)); // Not needed as we baked it into the CSV header
 
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -636,7 +637,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                                                                         : null;
                                                                                     const showDropdown = editingColumnIndex === index || !mappedLabel;
                                                                                     return (
-                                                                                    <th key={index} className="px-3 py-2 text-left text-xs font-medium text-gray-700 whitespace-nowrap bg-gray-50 min-w-[120px]">
+                                                                                    <th key={index} className="px-3 py-2 text-left text-xs font-medium text-gray-700 whitespace-nowrap bg-gray-50 min-w-[160px]">
                                                                                         {mappedLabel && !showDropdown ? (
                                                                                             <span className="block font-semibold text-gray-800" title={`Excel: ${header}`}>
                                                                                                 {mappedLabel}
@@ -1038,20 +1039,23 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                         )}
                                     </div>
 
-                                    <div className="bg-gray-50 px-6 py-3 flex flex-row-reverse gap-2">
-                                        {!importResult && !importErrors && (
+                                    <div className="bg-gray-50 px-6 py-4 flex flex-wrap gap-3 justify-end">
+                                        {(importResult || importErrors) && (
                                             <button
                                                 type="button"
-                                                className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                                                onClick={handleImport}
-                                                disabled={previewData.length === 0 || isImporting}
+                                                className="inline-flex items-center justify-center text-center min-w-[160px] px-4 py-2.5 rounded-md bg-white text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                                                onClick={() => {
+                                                    setImportResult(null);
+                                                    setImportErrors(null);
+                                                    setStep('paste');
+                                                }}
                                             >
-                                                {isImporting ? 'Mengimpor...' : 'Impor Data'}
+                                                Kembali
                                             </button>
                                         )}
                                         <button
                                             type="button"
-                                            className={`mt-3 inline-flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold shadow-sm sm:mt-0 sm:w-auto ${importResult && importResult.bulk_payment_available ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-white text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'}`}
+                                            className={`inline-flex items-center justify-center text-center min-w-[160px] px-4 py-2.5 rounded-md text-sm font-semibold shadow-sm ${importResult && importResult.bulk_payment_available ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-white text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'}`}
                                             onClick={() => {
                                                 if (importResult && importResult.bulk_payment_available && onPaymentRequest) {
                                                     onPaymentRequest(importResult);
@@ -1066,18 +1070,14 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                         >
                                             {importResult ? (importResult.bulk_payment_available ? 'Lanjut ke Pembayaran' : 'Selesai') : 'Tutup'}
                                         </button>
-
-                                        {(importResult || importErrors) && (
+                                        {!importResult && !importErrors && (
                                             <button
                                                 type="button"
-                                                className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                                                onClick={() => {
-                                                    setImportResult(null);
-                                                    setImportErrors(null);
-                                                    setStep('paste');
-                                                }}
+                                                className="inline-flex items-center justify-center text-center min-w-[160px] px-4 py-2.5 rounded-md bg-indigo-600 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                onClick={handleImport}
+                                                disabled={previewData.length === 0 || isImporting}
                                             >
-                                                Kembali
+                                                {isImporting ? 'Mengimpor...' : 'Impor Data'}
                                             </button>
                                         )}
                                     </div>

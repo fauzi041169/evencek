@@ -1096,15 +1096,53 @@ class PaymentController extends Controller
                 session()->forget(['import_bulk_payment', 'import_bulk_payment_payload']);
             }
 
-            // Fix: Check bulk session integrity to prevent accidental self-registration
-            // If form indicates bulk but session is missing, abort.
+            // Fix: Jika is_bulk tapi session habis, cek apakah sudah ada pembayaran bulk pending — kalau ada, hanya update bukti (hindari error "sesi berakhir" saat kirim ulang).
             if ($request->boolean('is_bulk')) {
                 $bulkCheck = session('import_bulk_payment') ?? session('import_bulk_payment_payload');
+                if (! is_array($bulkCheck) && $request->hasFile('payment_proof')) {
+                    $existingBulkPayment = Payment::where('user_id', auth()->id())
+                        ->where('activity_id', $activity->id)
+                        ->where('status', 'pending')
+                        ->whereNull('midtrans_transaction_id')
+                        ->get()
+                        ->first(function ($p) {
+                            $notes = json_decode($p->notes, true);
+                            return is_array($notes) && ! empty($notes['bulk_import']);
+                        });
+                    if ($existingBulkPayment) {
+                        $validated = $request->validate([
+                            'payment_method_id' => 'required|exists:payment_methods,id',
+                            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,gif|max:51200',
+                            'sender_name' => 'nullable|string|max:255',
+                        ]);
+                        $path = $request->file('payment_proof')->storeAs('payment-proofs', time().'_'.$request->file('payment_proof')->getClientOriginalName(), 'public');
+                        $existingBulkPayment->update([
+                            'payment_method_id' => $validated['payment_method_id'],
+                            'proof_of_payment' => $path,
+                            'sender_name' => $validated['sender_name'] ?? null,
+                        ]);
+                        $returnTo = $request->input('return_to') ?? session('import_return_to');
+                        $routeTarget = route('activity.detail', $activity->id);
+                        if ($returnTo === 'participants') {
+                            $routeTarget = route('activity.participants.index', $activity->id);
+                        } elseif ($returnTo === 'show') {
+                            $routeTarget = route('activity.show', $activity->id);
+                        }
+                        return redirect($routeTarget)->with('success', 'Bukti pembayaran berhasil diperbarui. Silakan tunggu verifikasi.');
+                    }
+                }
                 if (! is_array($bulkCheck)) {
                     if ($request->expectsJson() || $request->boolean('modal')) {
                         return response()->json(['success' => false, 'message' => 'Sesi pembayaran massal telah berakhir. Silakan ulangi proses impor dari awal.'], 422);
                     }
-                    return redirect()->route('activity.participants.index', $activity->id)
+                    $returnTo = $request->input('return_to') ?? session('import_return_to');
+                    $routeTarget = route('activity.detail', $activity->id);
+                    if ($returnTo === 'participants') {
+                        $routeTarget = route('activity.participants.index', $activity->id);
+                    } elseif ($returnTo === 'show') {
+                        $routeTarget = route('activity.show', $activity->id);
+                    }
+                    return redirect($routeTarget)
                         ->with('error', 'Sesi pembayaran massal telah berakhir. Silakan ulangi proses impor dari awal.');
                 }
             }
@@ -1350,9 +1388,8 @@ class PaymentController extends Controller
                     ]);
                 }
 
-                $returnTo = $request->input('return_to');
+                $returnTo = $request->input('return_to') ?? session('import_return_to');
                 $routeTarget = route('activity.detail', $activity->id);
-                
                 if ($returnTo === 'participants') {
                     $routeTarget = route('activity.participants.index', $activity->id);
                 } elseif ($returnTo === 'show') {

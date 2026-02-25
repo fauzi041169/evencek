@@ -3083,8 +3083,10 @@ class ActivityPreparationController extends Controller
                 ];
             }
 
-            // Batch load semua user yang sudah ada sekaligus
-            $existingUsers = User::with('profile')->whereIn('email', $validEmails)->get()->keyBy('email');
+            // Batch load semua user — keyBy lowercase email agar pengecekan "sudah jadi peserta" konsisten (case-insensitive)
+            $existingUsers = User::with('profile')->whereIn('email', $validEmails)->get()->keyBy(function ($u) {
+                return strtolower(trim((string) $u->email));
+            });
 
             // Batch load semua ActivityUser yang sudah terhubung
             $existingActivityUsers = ActivityUser::where('activity_id', $activityId)
@@ -3490,16 +3492,7 @@ class ActivityPreparationController extends Controller
                             $stats['already_registered']++;
                             $successes[] = ['row' => $i, 'email' => $email, 'action' => $action];
                         }
-                        
-                        // Fix: Include existing PENDING/VERIFICATION users in the bill if re-uploading
-                        if ($isPaidEvent && ! $markPaid) {
-                            if ($activityUser->status == ActivityUser::STATUS_PENDING || $activityUser->status == ActivityUser::STATUS_VERIFICATION) {
-                                // Prevent duplicates if logic is retried
-                                if (!in_array($user->id, $pendingUserIds)) {
-                                    $pendingUserIds[] = $user->id;
-                                }
-                            }
-                        }
+                        // Sudah jadi peserta = tidak masuk perhitungan biaya (jangan tambahkan ke pendingUserIds)
 
                         continue;
                     }
@@ -3712,7 +3705,21 @@ class ActivityPreparationController extends Controller
             $message .= ' Tagihan pembayaran telah dibuat otomatis ('.($markPaid ? 'Lunas' : 'Pending').').';
         }
 
-        $stats['total_bill'] = ($isPreview ? $previewPendingCount : count($pendingUserIds)) * ($activity->price ?? 0);
+        $billableCount = $isPreview ? $previewPendingCount : count($pendingUserIds);
+        // Gunakan jumlah data yang benar-benar diproses (unik email) agar duplikat email tidak jadi "1 peserta baru"
+        $totalProcessedRows = isset($emailToRowData) && is_array($emailToRowData) ? count($emailToRowData) : 0;
+        $totalInputRows = (int) $request->input('total_rows', 0);
+        if ($totalProcessedRows > 0 && $isPaidEvent) {
+            $stats['new_participants'] = max(0, $totalProcessedRows - $stats['already_registered']);
+            $stats['total_input_rows'] = $totalProcessedRows;
+            $stats['total_raw_rows'] = $totalInputRows;
+        } elseif ($totalInputRows > 0 && $isPaidEvent) {
+            $stats['new_participants'] = max(0, $totalInputRows - $stats['already_registered']);
+            $stats['total_input_rows'] = $totalInputRows;
+        } elseif ($isPaidEvent && $billableCount > 0) {
+            $stats['new_participants'] = $billableCount;
+        }
+        $stats['total_bill'] = ($stats['new_participants'] ?? 0) * ($activity->price ?? 0);
 
         $importResult = [
             'success' => true,
@@ -3763,14 +3770,15 @@ class ActivityPreparationController extends Controller
         ]);
 
         if ($isPaidEvent && ! $markPaid && ! empty($pendingUserIds)) {
-            Log::info('Setting import_bulk_payment session', ['pending_count' => count($pendingUserIds)]);
             $unitPrice = (float) ($activity->price ?? 0);
-            $totalAmount = count($pendingUserIds) * $unitPrice;
+            $totalAmount = $stats['total_bill'];
+            $allowedCount = (int) ($stats['new_participants'] ?? count($pendingUserIds));
+            Log::info('Setting import_bulk_payment session', ['pending_count' => count($pendingUserIds), 'allowed_count' => $allowedCount]);
             session([
                 'import_bulk_payment' => [
                     'activity_id' => $activityId,
                     'pending_user_ids' => $pendingUserIds,
-                    'allowed_count' => count($pendingUserIds),
+                    'allowed_count' => $allowedCount,
                     'unit_price' => $unitPrice,
                     'gross_amount' => $totalAmount,
                     'successfully_imported_count' => $inserted + $linked,

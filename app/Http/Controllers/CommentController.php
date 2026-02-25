@@ -121,9 +121,12 @@ class CommentController extends Controller
             $activity->comments()->save($comment);
         }
 
+        $count = $activity->allComments()->whereNull('parent_id')->whereNotNull('rating')->count();
+
         return response()->json([
             'success' => true,
             'average' => $activity->averageRating(),
+            'count' => $count,
         ]);
     }
 

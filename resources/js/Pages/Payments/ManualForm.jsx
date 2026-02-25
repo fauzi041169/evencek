@@ -51,32 +51,34 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
     const totalAmount = bulk_import_payment?.gross_amount || activity?.price || 0;
 
     const content = (
-        <div className={`w-full bg-white ${is_modal ? 'p-3' : 'p-3 sm:p-6 rounded-xl shadow-sm border border-gray-100'}`}>
+        <div className={`w-full ${is_modal ? 'p-3' : 'p-3 sm:p-6 rounded-xl shadow-sm border border-gray-100'} bg-white`}>
             {flash?.error && (
-                <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">
+                <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
                     {flash.error}
                 </div>
             )}
-            <div className="mb-6 border rounded-xl p-5 bg-gray-50">
-                <div className="text-sm text-gray-500 mb-1">Kegiatan</div>
-                <div className="font-bold text-gray-900 text-lg mb-3">{activity?.name || '-'}</div>
-                <div className="text-sm text-gray-500 mb-1">Total Tagihan</div>
-                <div className="text-2xl font-bold text-secondary">
-                    Rp {Number(totalAmount || 0).toLocaleString('id-ID')}
+            <div className="mb-6 rounded-xl p-5 bg-gradient-to-br from-indigo-50 via-white to-blue-50 border border-indigo-100 shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-600 mb-1">Kegiatan</div>
+                <div className="font-bold text-gray-900 text-lg mb-4">{activity?.name || '-'}</div>
+                <div className="pt-3 border-t border-indigo-100">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-indigo-600 mb-1">Total Tagihan</div>
+                    <div className="text-2xl font-black text-indigo-700">
+                        Rp {Number(totalAmount || 0).toLocaleString('id-ID')}
+                    </div>
                 </div>
             </div>
 
             <form onSubmit={submit} className="space-y-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Metode Transfer</label>
+                    <label className="block text-sm font-semibold text-indigo-800 mb-3">Metode Transfer</label>
                     {paymentMethods.length === 0 ? (
-                        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-4">
                             Tidak ada metode pembayaran tersedia.
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {paymentMethods.map((method) => (
-                                <label key={method.id} className={`border rounded-xl p-4 flex items-start gap-3 cursor-pointer transition-all ${String(data.payment_method_id) === String(method.id) ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'hover:bg-gray-50'}`}>
+                                <label key={method.id} className={`border-2 rounded-xl p-4 flex items-start gap-3 cursor-pointer transition-all ${String(data.payment_method_id) === String(method.id) ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200 shadow-md' : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'}`}>
                                     <input
                                         type="radio"
                                         name="payment_method_id"
@@ -84,12 +86,12 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
                                         checked={String(data.payment_method_id) === String(method.id)}
                                         onChange={(e) => setData('payment_method_id', e.target.value)}
                                         required
-                                        className="mt-1 text-secondary focus:ring-blue-500"
+                                        className="mt-1 text-indigo-600 focus:ring-indigo-500"
                                     />
                                     <div>
                                         <div className="font-bold text-gray-900">{stripHtml(method.name)}</div>
                                         {(method.account_name || method.account_number) && (
-                                            <div className="text-xs text-gray-500 mt-0.5">
+                                            <div className="text-xs text-gray-600 mt-0.5">
                                                 {stripHtml(method.account_name) || '-'} • {stripHtml(method.account_number) || '-'}
                                             </div>
                                         )}
@@ -102,19 +104,19 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Nama Pengirim</label>
+                    <label className="block text-sm font-semibold text-indigo-800 mb-2">Nama Pengirim</label>
                     <input
                         type="text"
                         value={data.sender_name}
                         onChange={(e) => setData('sender_name', e.target.value)}
-                        className="w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        className="w-full rounded-xl border-2 border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 placeholder-gray-400"
                         placeholder="Nama pemilik rekening"
                     />
                     {errors.sender_name && <p className="text-xs text-red-600 mt-1">{errors.sender_name}</p>}
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Upload Bukti Pembayaran</label>
+                    <label className="block text-sm font-semibold text-indigo-800 mb-2">Upload Bukti Pembayaran</label>
                     <label
                         className={`w-full mt-1 flex flex-col items-center justify-center border-2 border-dashed rounded-xl transition-all cursor-pointer group relative overflow-hidden ${data.previewUrl
                                 ? 'border-indigo-500 bg-indigo-50 p-2'
@@ -178,7 +180,7 @@ export default function ManualForm({ activity, paymentMethods = [], bulk_import_
                 <button
                     type="submit"
                     disabled={processing || !data.payment_proof}
-                    className="w-full py-3.5 bg-secondary text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-indigo-800 shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                     {processing ? (
                         <span className="flex items-center justify-center gap-2">

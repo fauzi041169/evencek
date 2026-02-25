@@ -124,9 +124,17 @@ export default function Detail({
     const [manualPaymentData, setManualPaymentData] = useState(null);
     const [isManualPaymentLoading, setIsManualPaymentLoading] = useState(false);
 
-    // Comments & Rating State
+    // Comments & Rating State (display = nilai yang tampil, bisa update setelah user beri rating)
     const [rating, setRating] = useState(userRating || 0);
+    const [displayRatingAvg, setDisplayRatingAvg] = useState(Number(activity.rating_avg || 0));
+    const [displayRatingCount, setDisplayRatingCount] = useState(Number(activity.rating_count || 0));
     const [commentBody, setCommentBody] = useState('');
+    const [ratingSaving, setRatingSaving] = useState(false);
+
+    useEffect(() => {
+        setDisplayRatingAvg(Number(activity.rating_avg || 0));
+        setDisplayRatingCount(Number(activity.rating_count || 0));
+    }, [activity.rating_avg, activity.rating_count]);
     const [perPage, setPerPage] = useState(participants?.per_page || 20);
     const [participantSearch, setParticipantSearch] = useState('');
 
@@ -216,9 +224,16 @@ export default function Detail({
 
     const handleRating = (val) => {
         setRating(val);
-        router.post(route('activity.rate', activity.id), { rating: val }, {
-            preserveScroll: true,
-        });
+        setRatingSaving(true);
+        axios.post(route('activity.rate', activity.id), { rating: val })
+            .then((res) => {
+                if (res.data?.success && res.data?.average != null) {
+                    setDisplayRatingAvg(res.data.average);
+                    if (res.data.count != null) setDisplayRatingCount(res.data.count);
+                }
+            })
+            .catch(() => {})
+            .finally(() => setRatingSaving(false));
     };
 
     // Helper for date formatting
@@ -801,21 +816,23 @@ export default function Detail({
                                     <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
                                         <i className="fas fa-tag text-sm"></i>
                                     </div>
-                                    <div className="text-left min-w-0">
+                                    <div className="text-left min-w-0 flex-1">
                                         <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider leading-none mb-1">{t('activities.price')}</p>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             {Number(activity.price) > 0 ? (
                                                 <>
                                                     <p className="text-xs sm:text-sm font-semibold text-white">
-                                                        {(showPrice || canEdit) ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : t('activities.hidden')}
+                                                        {showPrice ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : t('activities.hidden')}
                                                     </p>
                                                     {canEdit && (
                                                         <button
+                                                            type="button"
                                                             onClick={(e) => { e.preventDefault(); togglePriceVisibility(); }}
-                                                            className="w-4 h-4 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                                                            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-medium transition-colors"
                                                             title={showPrice ? t('activities.hide') : t('activities.show')}
                                                         >
-                                                            <i className={`fas ${showPrice ? 'fa-eye' : 'fa-eye-slash'} text-[8px] text-gray-300`}></i>
+                                                            <i className={`fas ${showPrice ? 'fa-eye-slash' : 'fa-eye'} text-[10px]`}></i>
+                                                            <span>{showPrice ? t('activities.hide') : t('activities.show')}</span>
                                                         </button>
                                                     )}
                                                 </>
@@ -1097,12 +1114,12 @@ export default function Detail({
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 items-center mb-6 sm:mb-8">
                                 <div className="col-span-1 flex items-center gap-4">
                                     <div>
-                                        <div className="text-5xl font-bold text-gray-900">{Number(activity.rating_avg || 0).toFixed(1)}</div>
-                                        <div className="text-gray-500 text-sm mt-1">{t('activities.based_on_rating', { count: activity.rating_count || 0 })}</div>
+                                        <div className="text-5xl font-bold text-gray-900">{displayRatingAvg.toFixed(1)}</div>
+                                        <div className="text-gray-500 text-sm mt-1">{t('activities.based_on_rating', { count: displayRatingCount })}</div>
                                     </div>
-                                    <div className="text-amber-400 text-2xl">
+                                    <div className="inline-flex items-center gap-0.5 flex-shrink-0 text-2xl text-amber-400">
                                         {[1, 2, 3, 4, 5].map(i => (
-                                            <i key={i} className={`fas fa-star ${i <= Math.round(activity.rating_avg || 0) ? '' : 'text-gray-200'}`}></i>
+                                            <i key={i} className={`fas fa-star ${i <= Math.round(displayRatingAvg) ? 'text-amber-400' : 'text-gray-200'}`} aria-hidden></i>
                                         ))}
                                     </div>
                                 </div>
@@ -1112,18 +1129,20 @@ export default function Detail({
                                 <form onSubmit={handleCommentSubmit} className="mb-6 sm:mb-8 bg-gray-50 rounded-xl p-3 sm:p-6 border border-gray-100">
                                     <div className="mb-4">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">{t('activities.give_rating')}</label>
-                                        <div className="flex items-center gap-2">
+                                        <div className="inline-flex items-center gap-1">
                                             {[1, 2, 3, 4, 5].map((star) => (
                                                 <button
                                                     key={star}
                                                     type="button"
-                                                    onClick={() => setRating(star)}
-                                                    className={`text-2xl transition-colors ${rating >= star ? 'text-amber-400' : 'text-gray-300 hover:text-amber-200'}`}
+                                                    onClick={() => handleRating(star)}
+                                                    disabled={ratingSaving}
+                                                    className={`p-0.5 text-2xl transition-colors disabled:opacity-60 ${rating >= star ? 'text-amber-400' : 'text-gray-300 hover:text-amber-200'}`}
                                                 >
                                                     <i className="fas fa-star"></i>
                                                 </button>
                                             ))}
                                         </div>
+                                        {ratingSaving && <span className="ml-2 text-sm text-gray-500">Menyimpan...</span>}
                                     </div>
                                     <div className="mb-4">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">{t('activities.your_comment')}</label>
