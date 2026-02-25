@@ -94,6 +94,9 @@ git pull origin main
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 
+# Pastikan symlink storage ada (jika belum/binding gambar hilang)
+php artisan storage:link
+
 # Clear & rebuild cache
 php artisan config:clear
 php artisan config:cache
@@ -107,5 +110,7 @@ php artisan view:cache
 - [ ] `APP_ENV=production`
 - [ ] `APP_DEBUG=false`
 - [ ] Database credentials benar
-- [ ] `php artisan storage:link` sudah dijalankan
+- [ ] **`php artisan storage:link` sudah dijalankan** (wajib agar gambar kegiatan/berita/bukti transfer bisa tampil)
+- [ ] Permission `storage` & `bootstrap/cache` 775, ownership sesuai user web server
+- [ ] **Ingat:** File upload (gambar kegiatan, berita, dll.) tidak ikut Git; yang di-upload di local harus di-upload ulang di production atau di-sync manual ke server
 - [ ] Cron untuk `php artisan schedule:run` (jika pakai scheduler)

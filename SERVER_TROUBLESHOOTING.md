@@ -42,6 +42,79 @@ php artisan optimize:clear
 2. Di server, lakukan `git pull`.
 3. Clear cache di browser pengguna.
 
-## 4. Debugging Log
+## 4. Gambar Kegiatan / Berita / Bukti Transfer Tidak Tampil di Hosting (Di Local Normal)
+
+**Penyebab umum:** Di local gambar tampil karena symlink `public/storage` ada dan file upload ada di `storage/app/public/`. Di hosting sering terjadi:
+
+1. **Symlink storage belum dibuat**  
+   URL seperti `/storage/activities/xxx.jpg` mengarah ke `public/storage`. Folder `public/storage` **tidak** ikut Git (ada di `.gitignore`), jadi harus dibuat di server dengan perintah berikut.
+
+2. **File upload tidak ikut deploy**  
+   Gambar yang di-upload di komputer Anda disimpan di `storage/app/public/activities/` (dan folder sejenis). Isi folder `storage/` **tidak** di-push ke Git. Jadi file yang di-upload hanya ada di local, tidak otomatis ada di server.
+
+**Solusi:**
+
+```bash
+# 1. Wajib: buat symlink agar /storage/* bisa diakses browser
+php artisan storage:link
+
+# 2. Pastikan permission benar (Linux)
+chmod -R 775 storage bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache
+# (ganti www-data dengan user web server Anda jika beda)
+
+# 3. Clear cache
+php artisan config:clear
+php artisan cache:clear
+```
+
+**Cek symlink sudah ada:**
+
+```bash
+ls -la public/storage
+# Harus tampil: public/storage -> ../storage/app/public
+```
+
+**Error: "The [public/storage] link already exists"**
+
+Artisan menolak membuat link karena sudah ada yang namanya `public/storage`. Sering kali itu **bukan** symlink melainkan **folder biasa** (misalnya ikut upload dari Windows). Kalau iya, file di `storage/app/public` tidak terbaca lewat web.
+
+Perbaikan di server:
+
+```bash
+cd ~/public_html/mtkeven   # sesuaikan path project Anda
+
+# 1. Cek apakah yang ada symlink atau folder
+ls -la public/storage
+# Jika tampil "storage -> ../storage/app/public" = symlink (OK).
+# Jika tampil "drwxr-xr-x ... storage" = folder biasa (harus diganti).
+
+# 2. Hapus public/storage yang sekarang (backup dulu jika isinya penting)
+rm -rf public/storage
+
+# 3. Buat symlink yang benar
+php artisan storage:link
+
+# 4. Cek lagi
+ls -la public/storage
+# Harus: public/storage -> ../storage/app/public
+```
+
+**Jika gambar tetap tidak ada di server:**
+
+- Gambar yang di-upload **hanya di local** tidak ikut ke hosting. Pilihan:
+  - **Upload ulang** gambar kegiatan/berita/bukti transfer lewat aplikasi di situs production, atau
+  - **Salin file** dari local ke server (rsync/scp) ke folder yang sama, misalnya:
+    - `storage/app/public/activities/`
+    - `storage/app/public/news/images/`
+    - dll sesuai path yang dipakai aplikasi.
+
+**Pastikan di server (.env):**
+
+- `APP_URL` sama dengan URL asli situs (mis. `https://eventcek.com`) — tanpa slash di akhir.
+
+---
+
+## 5. Debugging Log
 Jika masih error, cek log error detail di:
 `storage/logs/laravel.log`
