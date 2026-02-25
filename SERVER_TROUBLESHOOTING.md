@@ -100,6 +100,41 @@ ls -la public/storage
 # Harus: public/storage -> ../storage/app/public
 ```
 
+**Error: "Call to undefined function ... exec()"**
+
+Hosting sering mematikan fungsi PHP `exec()` untuk keamanan. Artisan `storage:link` memakai `exec()` jadi gagal.
+
+**Solusi: buat symlink manual lewat SSH**
+
+Jalankan dari **root project** (mis. `~/public_html/mtkeven`):
+
+```bash
+cd ~/public_html/mtkeven
+ln -s ../storage/app/public public/storage
+```
+
+Lalu cek:
+
+```bash
+ls -la public/storage
+# Harus tampil: public/storage -> ../storage/app/public
+```
+
+Jika `public/storage` sudah ada (folder biasa), hapus dulu lalu buat link:
+
+```bash
+rm -rf public/storage
+ln -s ../storage/app/public public/storage
+```
+
+**Error: "bash: fork: retry: Resource temporarily unavailable"**
+
+Artinya server tidak bisa membuat proses baru (limit proses atau memori habis). Perintah di SSH bisa gagal atau tidak jalan.
+
+- **Coba lagi nanti** saat lalu lintas rendah (mis. dini hari).
+- **Buat symlink lewat File Manager** (cPanel / panel hosting): masuk ke `public_html/mtkeven/public`, hapus folder `storage` jika ada, lalu buat **Symbolic Link** dengan target `../storage/app/public` (nama link: `storage`). Cara tepat tergantung panel; jika tidak ada opsi symlink, minta bantuan support hosting.
+- **Hubungi support hosting** untuk cek limit proses/user atau agar mereka yang membuatkan symlink `public/storage` → `storage/app/public`.
+
 **Jika gambar tetap tidak ada di server:**
 
 - Gambar yang di-upload **hanya di local** tidak ikut ke hosting. Pilihan:
