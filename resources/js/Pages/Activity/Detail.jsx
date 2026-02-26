@@ -1128,6 +1128,64 @@ export default function Detail({
                             </div>
                         )}
 
+                        {/* Narahubung - di atas Komentar & Ulasan, toggle di Atur Tampilan Halaman */}
+                        {isVisible('detail_contact_person') && (
+                            <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.contact_person')}</h3>
+                                <div className="space-y-4">
+                                    {contactPersons && contactPersons.length > 0 ? (
+                                        contactPersons.map((person, idx) => (
+                                            <div key={person.id || idx} className="flex items-center gap-3">
+                                                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                                                    <img
+                                                        src={person.avatar || DEFAULT_PROFILE_IMAGE}
+                                                        alt={person.name}
+                                                        className="w-full h-full object-cover"
+                                                        loading="lazy"
+                                                        onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
+                                                    />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium text-gray-900">{person.name}</p>
+                                                    <p className="text-xs text-indigo-600 font-medium">
+                                                        {person.daerah_layanan
+                                                            ? `${person.position} : ${person.daerah_layanan}`
+                                                            : person.position}
+                                                    </p>
+                                                    <div className="mt-1 space-y-0.5 text-sm text-gray-600">
+                                                        <p className="flex items-center gap-2">
+                                                            <i className="fas fa-envelope text-gray-400 w-4"></i>
+                                                            <span>{person.email || '-'}</span>
+                                                        </p>
+                                                        <p className="flex items-center gap-2">
+                                                            <i className="fas fa-phone text-gray-400 w-4"></i>
+                                                            <span>{person.phone || '-'}</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                                                <img
+                                                    src={activity.user?.profile_photo_url || activity.creator?.avatar || DEFAULT_PROFILE_IMAGE}
+                                                    alt={activity.user?.name || activity.creator?.name}
+                                                    className="w-full h-full object-cover"
+                                                    loading="lazy"
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-gray-900">{activity.user?.name || activity.creator?.name}</p>
+                                                <p className="text-sm text-gray-500">{activity.user?.email || activity.creator?.email}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Rating & Comments */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-6 md:p-8">
                             <div className="border-b border-gray-100 pb-4 mb-4 sm:mb-6">
@@ -1234,64 +1292,6 @@ export default function Detail({
                                         ></iframe>
                                     </div>
                                 )}
-                            </div>
-                        )}
-
-                        {/* Contact Person */}
-                        {isVisible('detail_contact_person') && (
-                            <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.contact_person')}</h3>
-                                <div className="space-y-4">
-                                    {contactPersons && contactPersons.length > 0 ? (
-                                        contactPersons.map((person, idx) => (
-                                            <div key={person.id || idx} className="flex items-center gap-3">
-                                                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                                                    <img
-                                                        src={person.avatar || DEFAULT_PROFILE_IMAGE}
-                                                        alt={person.name}
-                                                        className="w-full h-full object-cover"
-                                                        loading="lazy"
-                                                        onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
-                                                    />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-gray-900">{person.name}</p>
-                                                    <p className="text-xs text-indigo-600 font-medium">
-                                                        {person.daerah_layanan
-                                                            ? `${person.position} : ${person.daerah_layanan}`
-                                                            : person.position}
-                                                    </p>
-                                                    <div className="mt-1 space-y-0.5 text-sm text-gray-600">
-                                                        <p className="flex items-center gap-2">
-                                                            <i className="fas fa-envelope text-gray-400 w-4"></i>
-                                                            <span>{person.email || '-'}</span>
-                                                        </p>
-                                                        <p className="flex items-center gap-2">
-                                                            <i className="fas fa-phone text-gray-400 w-4"></i>
-                                                            <span>{person.phone || '-'}</span>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                                                <img
-                                                    src={activity.user?.profile_photo_url || activity.creator?.avatar || DEFAULT_PROFILE_IMAGE}
-                                                    alt={activity.user?.name || activity.creator?.name}
-                                                    className="w-full h-full object-cover"
-                                                    loading="lazy"
-                                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-gray-900">{activity.user?.name || activity.creator?.name}</p>
-                                                <p className="text-sm text-gray-500">{activity.user?.email || activity.creator?.email}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
                             </div>
                         )}
 

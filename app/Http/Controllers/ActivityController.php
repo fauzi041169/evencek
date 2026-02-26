@@ -1623,6 +1623,23 @@ class ActivityController extends Controller
                 ];
             }
 
+            // Narahubung (PIC) untuk tampil di halaman Show
+            $activity->loadMissing(['committeeStructures.user.profile']);
+            $contactPersons = $activity->committeeStructures->map(function ($committee) {
+                $user = $committee->user;
+                return [
+                    'id' => $committee->id,
+                    'name' => $committee->name ?: ($user ? $user->name : 'Panitia'),
+                    'email' => $committee->email ?: ($user ? $user->email : null),
+                    'phone' => $committee->phone ?: ($user && $user->profile ? $user->profile->no_hp : null),
+                    'avatar' => $user ? $user->profile_photo_url : asset('assets/images/profilefoto/default-profile.png'),
+                    'position' => $committee->position ?: 'Panitia',
+                    'daerah_layanan' => $committee->daerah_layanan ?? null,
+                ];
+            })->filter(function ($person) {
+                return stripos($person['position'], 'PIC') !== false;
+            })->values();
+
             return Inertia::render('Activity/Show', [
                 'heroAnimationStyle' => $heroAnimationStyle,
                 'currentUser' => $currentUser,
@@ -1666,6 +1683,7 @@ class ActivityController extends Controller
                 'batches' => $batches,
                 'selectedBatchId' => $batchId,
                 'requiredProfileLabels' => $requiredProfileLabels,
+                'contactPersons' => $contactPersons,
             ]);
         }
 

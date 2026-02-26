@@ -47,7 +47,8 @@ export default function Show({
     certificateSetting,
     certificatePrintSettings,
     requiredProfileLabels, // Added this prop
-    enrollmentData
+    enrollmentData,
+    contactPersons = []
 }) {
     const { t, i18n } = useTranslation();
 
@@ -967,6 +968,7 @@ export default function Show({
                                                 { id: 'rundown', label: t('activities.rundown'), icon: 'fa-list-ol' },
                                                 { id: 'gallery', label: t('activities.gallery'), icon: 'fa-images' },
                                                 { id: 'participants', label: t('activities.participants_list'), icon: 'fa-users' },
+                                                { id: 'contact_person', label: t('activities.narahubung_label'), icon: 'fa-address-book' },
                                                 { id: 'id_card', label: t('activities.id_card'), icon: 'fa-id-card' },
                                                 { id: 'certificate', label: t('activities.certificate'), icon: 'fa-certificate' },
                                             ].map(section => (
@@ -1544,6 +1546,62 @@ export default function Show({
                                                     </div>
                                                 </div>
                                             ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Narahubung - di atas Komentar & Ulasan */}
+                                {isVisible('contact_person') && (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 mt-6">
+                                        <h3 className="text-lg font-bold text-gray-900 mb-4">{t('activities.contact_person')}</h3>
+                                        <div className="space-y-4">
+                                            {contactPersons && contactPersons.length > 0 ? (
+                                                contactPersons.map((person, idx) => (
+                                                    <div key={person.id || idx} className="flex items-center gap-3">
+                                                        <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                                                            <img
+                                                                src={person.avatar || '/assets/images/profilefoto/default-profile.png'}
+                                                                alt={person.name}
+                                                                className="w-full h-full object-cover"
+                                                                loading="lazy"
+                                                                onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="font-medium text-gray-900">{person.name}</p>
+                                                            <p className="text-xs text-indigo-600 font-medium">
+                                                                {person.daerah_layanan ? `${person.position} : ${person.daerah_layanan}` : person.position}
+                                                            </p>
+                                                            <div className="mt-1 space-y-0.5 text-sm text-gray-600">
+                                                                <p className="flex items-center gap-2">
+                                                                    <i className="fas fa-envelope text-gray-400 w-4"></i>
+                                                                    <span>{person.email || '-'}</span>
+                                                                </p>
+                                                                <p className="flex items-center gap-2">
+                                                                    <i className="fas fa-phone text-gray-400 w-4"></i>
+                                                                    <span>{person.phone || '-'}</span>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                                                        <img
+                                                            src={activity.user?.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
+                                                            alt={activity.user?.name}
+                                                            className="w-full h-full object-cover"
+                                                            loading="lazy"
+                                                            onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/profilefoto/default-profile.png'; }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">{activity.user?.name}</p>
+                                                        <p className="text-sm text-gray-500">{activity.user?.email}</p>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
