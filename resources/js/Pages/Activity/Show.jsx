@@ -1289,7 +1289,7 @@ export default function Show({
                                                                     <div className="text-gray-900 font-semibold whitespace-normal break-words sm:truncate">{participant.name}</div>
                                                                     <div className="text-xs text-gray-600 truncate flex flex-wrap gap-1">
                                                                         {participant.profile?.instansi && (
-                                                                            <span>{participant.profile.instansi} â€¢</span>
+                                                                            <span>{participant.profile.instansi} - </span>
                                                                         )}
                                                                         {participant.profile?.province?.name && (
                                                                             <span>{participant.profile.province.name}</span>

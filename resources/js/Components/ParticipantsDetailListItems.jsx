@@ -51,7 +51,7 @@ export default function ParticipantsDetailListItems({
         if (hotel || room) {
             if (room) {
                 const roomLabel = isSpecial ? room : `Kamar ${room}`;
-                roomInfo = isSpecial ? roomLabel : `${hotel ? hotel + ' • ' : ''}${roomLabel}`.trim();
+                roomInfo = isSpecial ? roomLabel : `${hotel ? hotel + ' - ' : ''}${roomLabel}`.trim();
             } else {
                 roomInfo = hotel;
             }
@@ -119,22 +119,22 @@ export default function ParticipantsDetailListItems({
                                     {batchName && (
                                         <>
                                             <span className="text-indigo-600 font-medium">{batchName}</span>
-                                            {' • '}
+                                            {' - '}
                                         </>
                                     )}
                                     {showGroupColumns && groupName && (
                                         <>
                                             <span className="text-purple-600 font-medium">{groupName}</span>
-                                            {' • '}
+                                            {' - '}
                                         </>
                                     )}
                                     {user.profile?.instansi && (
                                         <>
                                             {user.profile.instansi}
-                                            {' • '}
+                                            {' - '}
                                         </>
                                     )}
-                                    {provinceName} • {regencyName}
+                                    {provinceName} - {regencyName}
                                 </div>
                                 {showRoomColumns && roomInfo && (
                                     <div className="text-xs text-gray-500 mt-0.5">

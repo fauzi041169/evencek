@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
@@ -105,7 +105,7 @@ export default function ApiMonitorIndex({
         try {
             const resp = await fetch(url, opts);
             const t1 = performance.now();
-            setResultMeta(`Status ${resp.status} â€¢ ${Math.round(t1 - t0)} ms`);
+            setResultMeta(`Status ${resp.status} - ${Math.round(t1 - t0)} ms`);
 
             const ct = resp.headers.get('content-type') || '';
             if (ct.includes('application/json')) {

@@ -201,7 +201,7 @@ export default function Rules({ settings, financial, vouchers = [], activities =
                                     Object.entries(specialOverrides).map(([activityId, rule]) => (
                                         <div key={activityId} className="flex items-center justify-between border rounded-md px-3 py-2">
                                             <div className="text-sm text-gray-700">
-                                                Activity #{activityId} â€¢ {rule.type} â€¢ {rule.amount}
+                                                Activity #{activityId} - {rule.type} - {rule.amount}
                                             </div>
                                             <form method="post" action={route('payments.rules.auto-override.delete', activityId)}>
                                                 <input type="hidden" name="_token" value={csrfToken} />

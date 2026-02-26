@@ -243,7 +243,7 @@ export default function CommitteeIndex({ activity }) {
                                                              dangerouslySetInnerHTML={{ __html: escapeHtml(msg.message) }}>
                                                         </div>
                                                         <span className="text-xs text-gray-500 mt-1 px-1">
-                                                            {!isMe && msg.sender?.name && `${msg.sender.name} â€¢ `}{time}
+                                                            {!isMe && msg.sender?.name && `${msg.sender.name} - `}{time}
                                                         </span>
                                                     </div>
                                                 </div>

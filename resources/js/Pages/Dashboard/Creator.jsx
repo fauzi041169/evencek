@@ -86,7 +86,7 @@ export default function DashboardCreator({
                                         <div>
                                             <div className="text-white font-medium">{act.name}</div>
                                             <div className="text-xs text-gray-400">
-                                                {act.category?.name || '-'} â€¢{' '}
+                                                {act.category?.name || '-'} -{' '}
                                                 {act.date
                                                     ? new Date(act.date).toLocaleDateString('id-ID', {
                                                           day: 'numeric',
