@@ -150,6 +150,7 @@
     "location": "Location",
     "price": "Price",
     "hidden": "Hidden",
+    "cost_in_register": "Cost in register",
     "show": "Show",
     "hide": "Hide",
     "success": "Success",

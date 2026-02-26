@@ -881,7 +881,7 @@ export default function Show({
                                             <div className="flex items-center gap-2">
                                                 {Number(activity.price) > 0 ? (
                                                     <p className="text-xs sm:text-sm font-semibold text-white">
-                                                        {showPrice ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : t('activities.hidden')}
+                                                        {showPrice ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : t('activities.cost_in_register')}
                                                     </p>
                                                 ) : (
                                                     <p className="text-xs sm:text-sm font-semibold text-emerald-400">{t('activities.free')}</p>

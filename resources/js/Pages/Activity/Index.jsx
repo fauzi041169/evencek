@@ -191,7 +191,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
 
             <div className="bg-gray-50 min-h-screen pb-2 sm:pb-6">
                 {/* Hero Section */}
-                    <div className="relative overflow-hidden min-h-[300px] sm:min-h-[450px] lg:min-h-[600px] flex items-center">
+                    <div className="relative overflow-visible min-h-[300px] sm:min-h-[450px] lg:min-h-[600px] flex items-center">
                     {/* Dynamic Background Layer */}
                     <div 
                         className="absolute inset-0 z-0 transition-colors duration-300"
@@ -338,12 +338,12 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                         return (
                                             <div
                                                 key={activity.id}
-                                                className={`absolute inset-0 transition-all duration-700 ease-out ${index === currentSlide
-                                                    ? 'opacity-100 translate-x-0 z-20'
-                                                    : 'opacity-0 -translate-x-8 z-10 pointer-events-none'
+                                                className={`transition-all duration-700 ease-out ${index === currentSlide
+                                                    ? 'relative opacity-100 translate-x-0 z-20'
+                                                    : 'absolute inset-0 opacity-0 -translate-x-8 z-10 pointer-events-none'
                                                     }`}
                                             >
-                                                <div className="grid lg:grid-cols-12 gap-4 sm:gap-8 items-center h-full">
+                                                <div className="grid lg:grid-cols-12 gap-4 sm:gap-8 items-center">
                                                     {/* Text Content */}
                                                     <div className="lg:col-span-7 space-y-3 sm:space-y-6">
                                                         <div className="flex flex-wrap gap-3">
@@ -1048,4 +1048,3 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
         </WebLayout>
     );
 }
-

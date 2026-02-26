@@ -150,6 +150,7 @@
         "location": "Lokasi",
         "price": "Harga",
         "hidden": "Sembunyi",
+        "cost_in_register": "Biaya dalam register",
         "show": "Tampilkan",
         "hide": "Sembunyikan",
         "success": "Berhasil",

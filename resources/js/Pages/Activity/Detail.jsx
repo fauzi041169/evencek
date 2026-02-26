@@ -641,7 +641,7 @@ export default function Detail({
             <Head title={activity.title || activity.name} />
 
             {/* Hero Section */}
-            <div className="relative bg-slate-900 overflow-hidden min-h-[80px] sm:min-h-[480px] lg:min-h-[600px] flex items-center">
+            <div className="relative bg-slate-900 overflow-visible min-h-[80px] sm:min-h-[480px] lg:min-h-[600px] flex items-center">
                 <style>{`
                     @keyframes fade-up {
                         from { opacity: 0; transform: translateY(20px); }
@@ -845,7 +845,7 @@ export default function Detail({
                                             {Number(activity.price) > 0 ? (
                                                 <>
                                                     <p className="text-xs sm:text-sm font-semibold text-white">
-                                                        {showPrice ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : t('activities.hidden')}
+                                                        {showPrice ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : t('activities.cost_in_register')}
                                                     </p>
                                                     {canTogglePrice && (
                                                         <button

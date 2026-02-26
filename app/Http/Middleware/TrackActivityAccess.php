@@ -42,14 +42,16 @@ class TrackActivityAccess
 
                 if ($committee) {
                     $committee->jumlah_akses = ($committee->jumlah_akses ?? 0) + 1;
-                    
+
+                    // Poin Akses (lama_akses): jendela 5 menit, setiap 5 menit sekali poin +1
+                    $pointsToAdd = 1;
                     if ($committee->last_access_at) {
-                        $diffInMinutes = $committee->last_access_at->diffInMinutes($now);
-                        if ($diffInMinutes < 30 && $diffInMinutes > 0) {
-                             $committee->lama_akses = ($committee->lama_akses ?? 0) + $diffInMinutes;
+                        $diffInMinutes = (int) $committee->last_access_at->diffInMinutes($now);
+                        if ($diffInMinutes >= 5) {
+                            $pointsToAdd = 1 + (int) floor($diffInMinutes / 5); // 1 akses + 1 per 5 menit
                         }
                     }
-                    
+                    $committee->lama_akses = ($committee->lama_akses ?? 0) + $pointsToAdd;
                     $committee->last_access_at = $now;
                     $committee->save();
                 }
@@ -61,14 +63,15 @@ class TrackActivityAccess
 
                 if ($participant) {
                     $participant->jumlah_akses = ($participant->jumlah_akses ?? 0) + 1;
-                    
+
+                    $pointsToAdd = 1;
                     if ($participant->last_access_at) {
-                        $diffInMinutes = $participant->last_access_at->diffInMinutes($now);
-                        if ($diffInMinutes < 30 && $diffInMinutes > 0) {
-                             $participant->lama_akses = ($participant->lama_akses ?? 0) + $diffInMinutes;
+                        $diffInMinutes = (int) $participant->last_access_at->diffInMinutes($now);
+                        if ($diffInMinutes >= 5) {
+                            $pointsToAdd = 1 + (int) floor($diffInMinutes / 5);
                         }
                     }
-                    
+                    $participant->lama_akses = ($participant->lama_akses ?? 0) + $pointsToAdd;
                     $participant->last_access_at = $now;
                     $participant->save();
                 }
