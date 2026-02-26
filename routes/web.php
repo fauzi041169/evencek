@@ -389,6 +389,10 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::put('/vouchers/{voucherId}', 'updateVoucher')->name('vouchers.update');
         Route::delete('/vouchers/{voucherId}', 'destroyVoucher')->name('vouchers.destroy');
 
+        // Blocked regions (daerah yang tidak boleh daftar)
+        Route::post('/blocked-regions', 'storeBlockedRegion')->name('blocked-regions.store');
+        Route::delete('/blocked-regions/{blockedRegionId}', 'destroyBlockedRegion')->name('blocked-regions.destroy');
+
         Route::put('/committee/{committeeId}', 'updateCommittee')->name('update-committee');
         Route::delete('/committee/{committeeId}', 'destroyCommittee')->name('destroy-committee');
         Route::post('/rundowns', 'storeRundown')->name('store-rundown');

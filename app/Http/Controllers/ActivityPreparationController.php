@@ -300,6 +300,14 @@ class ActivityPreparationController extends Controller
                 'can_manage_registration' => $isCommittee,
             ]);
 
+            $blockedRegions = \Illuminate\Support\Facades\Schema::hasTable('activity_blocked_regions')
+                ? \App\Models\ActivityBlockedRegion::where('activity_id', $activityIdValue)
+                    ->with(['province', 'regency', 'district'])
+                    ->orderBy('province_id')
+                    ->get()
+                : collect();
+            $provinces = \App\Models\Province::orderBy('name')->get(['id', 'name']);
+
             return Inertia::render('Activity/Preparation/Index', [
                 'activity' => $activityData,
                 'divisions' => $divisions,
@@ -312,6 +320,8 @@ class ActivityPreparationController extends Controller
                 'participationTypes' => $participationTypes,
                 'committeeTypes' => $committeeTypes,
                 'vouchers' => \App\Models\ActivityVoucher::where('activity_id', $activityIdValue)->get(),
+                'blockedRegions' => $blockedRegions,
+                'provinces' => $provinces,
             ]);
         } catch (ModelNotFoundException $e) {
             abort(404, 'Aktivitas tidak ditemukan.');
@@ -7093,6 +7103,73 @@ class ActivityPreparationController extends Controller
         $voucher->delete();
 
         return redirect()->back()->with('success', 'Kode voucher berhasil dihapus.');
+    }
+
+    /**
+     * Tambah daerah yang diblokir (user dari daerah ini tidak boleh daftar kegiatan).
+     */
+    public function storeBlockedRegion(Request $request, $activityId)
+    {
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::where('id', $activityId)->firstOrFail();
+        }
+        if (! $activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Anda tidak memiliki izin.');
+        }
+
+        $request->validate([
+            'province_id' => 'required|string|exists:provinces,id',
+            'regency_id' => 'nullable|string|exists:regencies,id',
+            'district_id' => 'nullable|string|exists:districts,id',
+            'keterangan' => 'nullable|string|max:2000',
+        ]);
+
+        $regencyId = $request->regency_id ?: null;
+        $districtId = $request->district_id ?: null;
+        $exists = \App\Models\ActivityBlockedRegion::where('activity_id', $activity->id)
+            ->where('province_id', $request->province_id)
+            ->where(function ($q) use ($regencyId) {
+                $regencyId ? $q->where('regency_id', $regencyId) : $q->whereNull('regency_id');
+            })
+            ->where(function ($q) use ($districtId) {
+                $districtId ? $q->where('district_id', $districtId) : $q->whereNull('district_id');
+            })
+            ->exists();
+        if ($exists) {
+            return redirect()->back()->with('error', 'Aturan blokir untuk daerah ini sudah ada.');
+        }
+
+        \App\Models\ActivityBlockedRegion::create([
+            'activity_id' => $activity->id,
+            'province_id' => $request->province_id,
+            'regency_id' => $request->regency_id ?: null,
+            'district_id' => $request->district_id ?: null,
+            'keterangan' => $request->filled('keterangan') ? trim($request->keterangan) : null,
+        ]);
+
+        return redirect()->back()->with('success', 'Daerah blokir berhasil ditambahkan.');
+    }
+
+    /**
+     * Hapus daerah blokir.
+     */
+    public function destroyBlockedRegion($activityId, $blockedRegionId)
+    {
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::where('id', $activityId)->firstOrFail();
+        }
+        if (! $activity->canManageRegistration(auth()->id())) {
+            abort(403, 'Anda tidak memiliki izin.');
+        }
+
+        $blocked = \App\Models\ActivityBlockedRegion::where('activity_id', $activity->id)
+            ->where('id', $blockedRegionId)
+            ->firstOrFail();
+        $blocked->delete();
+
+        return redirect()->back()->with('success', 'Daerah blokir berhasil dihapus.');
     }
 }
 

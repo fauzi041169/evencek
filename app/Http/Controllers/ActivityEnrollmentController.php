@@ -100,6 +100,34 @@ class ActivityEnrollmentController extends Controller
 
             $user = auth()->user();
 
+            // Cek daerah blokir: user dari provinsi/kabupaten/kecamatan yang diblokir tidak boleh daftar
+            if (\Illuminate\Support\Facades\Schema::hasTable('activity_blocked_regions')) {
+                $profile = $user->profile;
+                $userProvinceId = $profile->province_id ?? null;
+                $userRegencyId = $profile->regency_id ?? null;
+                $userDistrictId = $profile->district_id ?? null;
+                if ($userProvinceId) {
+                    $blockedRule = \App\Models\ActivityBlockedRegion::where('activity_id', $activity->id)
+                        ->where('province_id', $userProvinceId)
+                        ->where(function ($q) use ($userRegencyId) {
+                            $q->whereNull('regency_id')->orWhere('regency_id', $userRegencyId);
+                        })
+                        ->where(function ($q) use ($userDistrictId) {
+                            $q->whereNull('district_id')->orWhere('district_id', $userDistrictId);
+                        })
+                        ->first();
+                    if ($blockedRule) {
+                        $msg = !empty(trim((string) $blockedRule->keterangan))
+                            ? trim($blockedRule->keterangan)
+                            : 'Pendaftaran dari daerah Anda tidak diizinkan untuk kegiatan ini. Silakan hubungi panitia jika ada pertanyaan.';
+                        if ($wantsJson) {
+                            return response()->json(['success' => false, 'message' => $msg], 403);
+                        }
+                        return redirect()->back()->with('error', $msg);
+                    }
+                }
+            }
+
             // Debug Validation Log
             $debugValidation = [];
             $debugValidation['user_id'] = $user->id;

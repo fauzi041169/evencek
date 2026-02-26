@@ -443,7 +443,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                 <img
                                                                     src={getImageUrl(activity)}
                                                                     alt={activity.name}
-                                                                    className="w-full h-full object-contain transform transition-transform duration-700 group-hover:scale-105"
+                                                                    className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105"
                                                                     onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ACTIVITY_IMAGE; }}
                                                                 />
                                                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent pointer-events-none"></div>

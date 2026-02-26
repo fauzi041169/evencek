@@ -1602,6 +1602,40 @@ class ActivityController extends Controller
             $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $enrollParams), 'label' => 'Pendaftaran Kegiatan'];
         }
 
+        // Client-side awareness for blocked regions (disable CTA early)
+        $isUserBlocked = false;
+        $blockedMessage = null;
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('activity_blocked_regions') && auth()->check()) {
+                $profile = auth()->user()->profile;
+                $userProvinceId = $profile->province_id ?? null;
+                $userRegencyId = $profile->regency_id ?? null;
+                $userDistrictId = $profile->district_id ?? null;
+                if ($userProvinceId) {
+                    $blockedRule = \App\Models\ActivityBlockedRegion::where('activity_id', $activity->id)
+                        ->where('province_id', $userProvinceId)
+                        ->where(function ($q) use ($userRegencyId) {
+                            $q->whereNull('regency_id')->orWhere('regency_id', $userRegencyId);
+                        })
+                        ->where(function ($q) use ($userDistrictId) {
+                            $q->whereNull('district_id')->orWhere('district_id', $userDistrictId);
+                        })
+                        ->first();
+                    if ($blockedRule) {
+                        $isUserBlocked = true;
+                        $blockedMessage = !empty(trim((string) $blockedRule->keterangan))
+                            ? trim($blockedRule->keterangan)
+                            : 'Pendaftaran dari daerah Anda tidak diizinkan untuk kegiatan ini. Silakan hubungi panitia jika ada pertanyaan.';
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silent fail for client hint; server-side enforcement remains in EnrollmentController
+        }
+        if ($isUserBlocked) {
+            $registerTarget = ['type' => 'disabled', 'url' => null, 'label' => $blockedMessage];
+        }
+
         if ($canViewDetails) {
             // Load current user with profile for ID card display
             $currentUser = auth()->user();
@@ -1684,6 +1718,9 @@ class ActivityController extends Controller
                 'selectedBatchId' => $batchId,
                 'requiredProfileLabels' => $requiredProfileLabels,
                 'contactPersons' => $contactPersons,
+                // Provide client hint for blocked regions
+                'isUserBlocked' => $isUserBlocked,
+                'blockedMessage' => $blockedMessage,
             ]);
         }
 
@@ -4220,6 +4257,40 @@ class ActivityController extends Controller
             $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $enrollParams), 'label' => 'Pendaftaran Kegiatan'];
         }
 
+        // Client-side awareness for blocked regions (disable CTA early)
+        $isUserBlocked = false;
+        $blockedMessage = null;
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('activity_blocked_regions') && auth()->check()) {
+                $profile = auth()->user()->profile;
+                $userProvinceId = $profile->province_id ?? null;
+                $userRegencyId = $profile->regency_id ?? null;
+                $userDistrictId = $profile->district_id ?? null;
+                if ($userProvinceId) {
+                    $blockedRule = \App\Models\ActivityBlockedRegion::where('activity_id', $activity->id)
+                        ->where('province_id', $userProvinceId)
+                        ->where(function ($q) use ($userRegencyId) {
+                            $q->whereNull('regency_id')->orWhere('regency_id', $userRegencyId);
+                        })
+                        ->where(function ($q) use ($userDistrictId) {
+                            $q->whereNull('district_id')->orWhere('district_id', $userDistrictId);
+                        })
+                        ->first();
+                    if ($blockedRule) {
+                        $isUserBlocked = true;
+                        $blockedMessage = !empty(trim((string) $blockedRule->keterangan))
+                            ? trim($blockedRule->keterangan)
+                            : 'Pendaftaran dari daerah Anda tidak diizinkan untuk kegiatan ini. Silakan hubungi panitia jika ada pertanyaan.';
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silent fail for client hint; server-side enforcement remains in EnrollmentController
+        }
+        if ($isUserBlocked) {
+            $registerTarget = ['type' => 'disabled', 'url' => null, 'label' => $blockedMessage];
+        }
+
         // Ambil data batch untuk keperluan display di list peserta
         $batches = ActivityBatch::where('activity_id', $activity->id)->get()->keyBy('id');
 
@@ -4418,7 +4489,10 @@ class ActivityController extends Controller
             'completePaymentUrl',
             'completePaymentLabel',
             'completePaymentInfo',
-            'contactPersons'
+            'contactPersons',
+            // Provide client hint for blocked regions
+            'isUserBlocked',
+            'blockedMessage'
         ));
     }
 

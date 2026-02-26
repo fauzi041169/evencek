@@ -4,6 +4,7 @@ import AcaraLayout from '@/Layouts/AcaraLayout';
 import DivisionSidebar from './Components/DivisionSidebar';
 import RequirementsManager from './Components/RequirementsManager';
 import CorePreparationSection from './Components/CorePreparationSection';
+import BlockedRegionsSection from './Components/BlockedRegionsSection';
 import CommitteeSection from './Components/CommitteeSection';
 import GallerySection from './Components/GallerySection';
 import MaterialsSection from './Components/MaterialsSection';
@@ -24,7 +25,9 @@ export default function PreparationIndex({
     refPositions,
     participationTypes,
     committeeTypes,
-    vouchers
+    vouchers,
+    blockedRegions = [],
+    provinces = []
 }) {
     const { auth } = usePage().props;
     const divisionsList = Array.isArray(divisions) ? divisions : (divisions ? Object.values(divisions) : []);
@@ -87,6 +90,13 @@ export default function PreparationIndex({
 
                     {/* main content sections */}
                     <div className="space-y-6 sm:space-y-10">
+                        {/* Daerah yang tidak boleh daftar (di atas Panitia) */}
+                        <BlockedRegionsSection
+                            activity={activity}
+                            blockedRegions={blockedRegions}
+                            provinces={provinces}
+                        />
+
                         {/* Committee */}
                         <CommitteeSection
                             activity={activity}

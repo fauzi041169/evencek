@@ -403,6 +403,11 @@ class Activity extends Model
         return $this->hasMany(ActivityCommitteeStructure::class);
     }
 
+    public function blockedRegions()
+    {
+        return $this->hasMany(ActivityBlockedRegion::class)->with(['province', 'regency', 'district']);
+    }
+
     public function rundowns()
     {
         return $this->hasMany(ActivityRundown::class)->orderBy('order');

@@ -202,6 +202,7 @@ export default function Detail({
     }, [flash]);
 
     const descriptionRef = useRef(null);
+    const processedPendingEnrollmentRef = useRef(false);
 
     useEffect(() => {
         if (descriptionRef.current) {
@@ -552,17 +553,14 @@ export default function Detail({
         setIsLoginModalOpen(false);
         setIsPaymentDetailModalOpen(false);
 
-        // Immediate check for pending enrollment to trigger payment modal without reload
+        // Reload activity detail so registrationTarget is recalculated (e.g. blocked region after profile update).
+        // Pending enrollment is processed on the new page load; if user is blocked, they stay on detail with block message.
         const pendingEnroll = sessionStorage.getItem('pending_enrollment');
         if (pendingEnroll) {
             try {
                 const { activityId, type } = JSON.parse(pendingEnroll);
                 if (activityId === activity.id && type === 'mandiri') {
-                    const voucherCode = JSON.parse(pendingEnroll).voucherCode; // Retrieve voucher code
-                    sessionStorage.removeItem('pending_enrollment');
-
-                    // Re-trigger enroll flow which handles price check (paid vs free)
-                    handleEnroll(type, true, voucherCode);
+                    router.visit(route('activity.detail', activity.id));
                     return;
                 }
             } catch (e) {
@@ -573,6 +571,27 @@ export default function Detail({
         // Fallback for other cases (e.g. non-mandiri or just profile update)
         window.location.reload();
     };
+
+    // After reload from profile update: if user is blocked for this activity, clear pending and stay on detail; otherwise resume enrollment.
+    useEffect(() => {
+        if (!activity?.id || !registrationTarget || processedPendingEnrollmentRef.current) return;
+        const pendingEnroll = sessionStorage.getItem('pending_enrollment');
+        if (!pendingEnroll) return;
+        let parsed;
+        try {
+            parsed = JSON.parse(pendingEnroll);
+            if (parsed.activityId !== activity.id || parsed.type !== 'mandiri') return;
+        } catch {
+            return;
+        }
+        processedPendingEnrollmentRef.current = true;
+        sessionStorage.removeItem('pending_enrollment');
+        if (registrationTarget?.type === 'disabled') {
+            // User chose a blocked region: stay on detail with block message, do not open payment.
+            return;
+        }
+        handleEnroll(parsed.type, true, parsed.voucherCode ?? null);
+    }, [activity?.id, registrationTarget]);
 
     const togglePriceVisibility = async () => {
         const result = await Swal.fire({
@@ -919,7 +938,7 @@ export default function Detail({
                                 )}
                             </button>
 
-                            {user && (
+                            {user && registrationTarget?.type !== 'disabled' && (
                                 <button
                                     onClick={() => setIsBulkImportModalOpen(true)}
                                     className={`h-14 px-6 rounded-full glass-button text-white font-medium hover:bg-white/20 inline-flex items-center gap-2 ${isJoined ? 'bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 border-none min-w-[200px] justify-center' : ''}`}
@@ -988,7 +1007,7 @@ export default function Detail({
                                 <img
                                     src={heroCoverPath}
                                     alt={activity.name}
-                                    className="relative w-full h-full object-contain z-10 transition-transform duration-500 group-hover:scale-[1.02]"
+                                    className="relative w-full h-full object-cover z-10 transition-transform duration-500 group-hover:scale-[1.02]"
                                     loading="lazy"
                                     onError={(e) => {
                                         e.target.onerror = null;
