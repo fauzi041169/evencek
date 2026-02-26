@@ -8,6 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (!Schema::hasTable('activity_blocked_regions')) {
+            return;
+        }
+        if (Schema::hasColumn('activity_blocked_regions', 'keterangan')) {
+            return;
+        }
         Schema::table('activity_blocked_regions', function (Blueprint $table) {
             $table->text('keterangan')->nullable()->after('district_id');
         });

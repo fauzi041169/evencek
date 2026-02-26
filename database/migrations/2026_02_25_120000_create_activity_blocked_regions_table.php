@@ -8,6 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('activity_blocked_regions')) {
+            return;
+        }
         Schema::create('activity_blocked_regions', function (Blueprint $table) {
             $table->id();
             $table->string('activity_id');
