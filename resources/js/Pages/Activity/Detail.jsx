@@ -394,8 +394,10 @@ export default function Detail({
             if (type === 'mandiri') {
                 const hasDefaultPhoto = auth?.user?.profile_photo_url?.includes('default-profile.png') ||
                     auth?.user?.profile_photo_url?.includes('ui-avatars.com');
+                // Jika pakai voucher panitia, tidak perlu isi profil — langsung daftar jadi panitia
+                const skipProfileCheck = Boolean(voucherCode);
 
-                if (!force && ((missingProfileFields && missingProfileFields.length > 0) || hasDefaultPhoto)) {
+                if (!skipProfileCheck && !force && ((missingProfileFields && missingProfileFields.length > 0) || hasDefaultPhoto)) {
                     // Save intent for auto-enroll after profile update
                     sessionStorage.setItem('pending_enrollment', JSON.stringify({
                         activityId: activity.id,
@@ -517,12 +519,20 @@ export default function Detail({
                                     text: error.response.data.message || t('activities.registration_failed')
                                 });
                             }
+                        } else if (error.response && error.response.status === 401) {
+                            // Sesi habis / belum login — arahkan ke login lalu kembali ke halaman ini
+                            sessionStorage.setItem('pending_enrollment', JSON.stringify({
+                                activityId: activity.id,
+                                type: type,
+                                voucherCode: voucherCode
+                            }));
+                            window.location.href = route('login') + '?return_url=' + encodeURIComponent(window.location.href);
                         } else {
                             console.error('Enroll error:', error);
                             Swal.fire({
                                 icon: 'error',
                                 title: t('activities.error'),
-                                text: t('activities.system_error')
+                                text: error.response?.data?.message || t('activities.system_error')
                             });
                         }
                     }

@@ -218,7 +218,7 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
                             leaveFrom="opacity-100 scale-100"
                             leaveTo="opacity-0 scale-95"
                         >
-                            <Dialog.Panel className="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-xl transition-all">
+                            <Dialog.Panel className="w-full max-w-3xl transform rounded-2xl bg-white text-left align-middle shadow-xl transition-all max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
                                 <div className="bg-white p-6">
                                     <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-6 -mx-6 -mt-6 px-6 pt-6 bg-slate-50/50 rounded-t-2xl">
                                         <div className="flex items-center gap-3">
@@ -518,4 +518,3 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
         </Transition>
     );
 }
-

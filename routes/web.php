@@ -222,7 +222,7 @@ Route::prefix('activity')->name('activity.')->controller(ActivityController::cla
     Route::get('/manage', [ActivityController::class, 'manage'])->name('manage')->middleware('auth');
     // Wildcard routes must be last
     // IMPORTANT: Specific routes like 'detail' must be defined BEFORE the generic '{activity}' wildcard
-    Route::match(['get', 'post'], '/{activity}/enroll', [ActivityEnrollmentController::class, 'enroll'])->name('enroll');
+    Route::match(['get', 'post'], '/{activity}/enroll', [ActivityEnrollmentController::class, 'enroll'])->name('enroll')->middleware('auth');
     Route::get('/{activity}/detail', 'detail')->name('detail');
     
     // Generic wildcard route - catches everything else, so it must be at the very bottom

@@ -278,6 +278,9 @@ export default function Show({
                         batch_id: activeBatch?.id,
                         custom_data: customData
                     };
+                    if (customData?.committee_voucher_code) {
+                        payload.committee_voucher_code = customData.committee_voucher_code;
+                    }
                 }
 
                 const response = await axios.post(registrationTarget.url, payload, config);
@@ -352,11 +355,18 @@ export default function Show({
                             text: error.response.data.message || 'Gagal memproses pendaftaran.'
                         });
                     }
+                } else if (error.response && error.response.status === 401) {
+                    sessionStorage.setItem('pending_enrollment', JSON.stringify({
+                        activityId: activity.id,
+                        type: type,
+                        voucherCode: customData?.committee_voucher_code || null
+                    }));
+                    window.location.href = route('login') + '?return_url=' + encodeURIComponent(window.location.href);
                 } else {
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
-                        text: 'Terjadi kesalahan saat memproses pendaftaran.'
+                        text: error.response?.data?.message || 'Terjadi kesalahan saat memproses pendaftaran.'
                     });
                 }
             }
@@ -370,8 +380,10 @@ export default function Show({
             if (type === 'mandiri') {
                 const hasDefaultPhoto = auth?.user?.profile_photo_url?.includes('default-profile.png') ||
                     auth?.user?.profile_photo_url?.includes('ui-avatars.com');
+                // Jika pakai voucher panitia, tidak perlu isi profil/custom field — langsung daftar jadi panitia
+                const skipProfileAndCustomCheck = Boolean(voucherCode);
 
-                if (!force && ((missingProfileFields && missingProfileFields.length > 0) || hasDefaultPhoto)) {
+                if (!skipProfileAndCustomCheck && !force && ((missingProfileFields && missingProfileFields.length > 0) || hasDefaultPhoto)) {
                     sessionStorage.setItem('pending_enrollment', JSON.stringify({
                         activityId: activity.id,
                         type: type,
@@ -382,15 +394,14 @@ export default function Show({
                     return;
                 }
 
-                // Check for Custom Fields
-                if (activity.custom_fields && Array.isArray(activity.custom_fields) && activity.custom_fields.length > 0) {
+                // Check for Custom Fields (skip jika pakai voucher panitia)
+                if (!skipProfileAndCustomCheck && activity.custom_fields && Array.isArray(activity.custom_fields) && activity.custom_fields.length > 0) {
                     setPendingEnrollmentData({ type, force, voucherCode });
                     setIsCustomFieldsModalOpen(true);
                     return;
                 }
 
-                // Proceed directly if no custom fields
-                // Pass voucherCode in customData object (will be extracted in processEnrollment)
+                // Proceed directly (atau dengan voucher)
                 processEnrollment(type, force, { committee_voucher_code: voucherCode });
             }
         }, 100);

@@ -489,7 +489,7 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                 leaveFrom="opacity-100 scale-100"
                                 leaveTo="opacity-0 scale-95"
                             >
-                                <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-xl transition-all">
+                                <Dialog.Panel className="w-full max-w-4xl transform rounded-2xl bg-white text-left align-middle shadow-xl transition-all max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
                                     <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center">
                                         <Dialog.Title as="h3" className="text-lg font-bold text-white">
                                             Tempel Data dari Excel/CSV

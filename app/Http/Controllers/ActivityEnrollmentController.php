@@ -268,6 +268,27 @@ class ActivityEnrollmentController extends Controller
                 }
             }
 
+            // Jika user pakai voucher panitia yang valid, skip validasi profil — langsung jadi panitia tanpa isi data
+            $isCommitteeVoucherValidForBypass = false;
+            $earlyVoucherCode = $request->input('committee_voucher_code');
+            if ($earlyVoucherCode) {
+                $earlyVoucher = \App\Models\ActivityVoucher::where('activity_id', $activity->id)
+                    ->where('code', $earlyVoucherCode)
+                    ->where('is_active', true)
+                    ->first();
+                if ($earlyVoucher) {
+                    if ((! $earlyVoucher->valid_until || ! now()->gt($earlyVoucher->valid_until))
+                        && ($earlyVoucher->usage_limit === null || $earlyVoucher->usage_count < $earlyVoucher->usage_limit)) {
+                        $isCommitteeVoucherValidForBypass = true;
+                    }
+                } elseif (! empty($activity->committee_voucher_code) && $earlyVoucherCode === $activity->committee_voucher_code) {
+                    if ((! $activity->committee_voucher_valid_until || ! now()->gt($activity->committee_voucher_valid_until))
+                        && ($activity->committee_voucher_usage_limit === null || $activity->committee_voucher_usage_count < $activity->committee_voucher_usage_limit)) {
+                        $isCommitteeVoucherValidForBypass = true;
+                    }
+                }
+            }
+
             // Unified Profile Validation
             $missingFields = [];
             $mandatoryFields = $activity->mandatory_profile_fields ?? [];
@@ -463,7 +484,7 @@ class ActivityEnrollmentController extends Controller
                 }
             }
 
-            if (! empty($uniqueMissingData)) {
+            if (! $isCommitteeVoucherValidForBypass && ! empty($uniqueMissingData)) {
                 $debugValidation['missing_fields_final'] = $allMissingFields;
                 Log::info('Validation Failed: Missing fields (Aggregated)', $debugValidation);
                 
@@ -494,8 +515,8 @@ class ActivityEnrollmentController extends Controller
                     ], 403);
                 }
 
-                // If user is already in committee, prevent enrollment to avoid conflict
-                if ($activity->committeeStructures()->where('user_id', $user->id)->exists()) {
+                // Jika sudah panitia: blokir hanya bila bukan daftar pakai voucher panitia (voucher = daftar sebagai panitia, boleh lanjut)
+                if ($activity->committeeStructures()->where('user_id', $user->id)->exists() && ! $isCommitteeVoucherValidForBypass) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Anda masuk dalam struktur panitia kegiatan ini. Tidak dapat mendaftar sebagai peserta.',

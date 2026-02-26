@@ -18,7 +18,7 @@ export default function RegistrationTypeModal({ isOpen, onClose, onSelectType, r
                 ></div>
 
                 {/* Modal Panel */}
-                <div className="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:w-full sm:max-w-lg">
+                <div className="relative transform rounded-2xl bg-white text-left shadow-2xl transition-all sm:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
                     {/* Decorative Top Bar */}
                     <div className="h-2 w-full bg-gradient-to-r from-indigo-500 to-purple-600"></div>
 
