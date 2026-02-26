@@ -4371,6 +4371,7 @@ class ActivityController extends Controller
                 'phone' => $committee->phone ?: ($user && $user->profile ? $user->profile->no_hp : null),
                 'avatar' => $user ? $user->profile_photo_url : asset('assets/images/profilefoto/default-profile.png'),
                 'position' => $committee->position ?: 'Panitia',
+                'daerah_layanan' => $committee->daerah_layanan ?? null,
             ];
         })->filter(function ($person) {
             return stripos($person['position'], 'PIC') !== false;

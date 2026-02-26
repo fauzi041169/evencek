@@ -425,21 +425,23 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
                                                     </div>
                                                 </div>
 
-                                                {/* Mode Edit Toggle in Header */}
-                                                <button
-                                                    onClick={toggleEditMode}
-                                                    className={`
-                                                        flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all duration-300 border border-white/20
-                                                        ${editMode
-                                                            ? 'bg-red-500 text-white animate-pulse'
-                                                            : 'bg-white/20 text-white hover:bg-white/30'
-                                                        }
-                                                    `}
-                                                    title={editMode ? 'Matikan Mode Edit' : 'Aktifkan Mode Edit'}
-                                                >
-                                                    <i className={`fas ${editMode ? 'fa-times' : 'fa-edit'}`}></i>
-                                                    <span>{editMode ? 'Stop' : 'Edit'}</span>
-                                                </button>
+                                                {/* Mode Edit Toggle in Header: hanya untuk superadmin */}
+                                                {(auth?.user?.role === 'superadmin' || auth?.user?.is_super_admin) && (
+                                                    <button
+                                                        onClick={toggleEditMode}
+                                                        className={`
+                                                            flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all duration-300 border border-white/20
+                                                            ${editMode
+                                                                ? 'bg-red-500 text-white animate-pulse'
+                                                                : 'bg-white/20 text-white hover:bg-white/30'
+                                                            }
+                                                        `}
+                                                        title={editMode ? 'Matikan Mode Edit' : 'Aktifkan Mode Edit'}
+                                                    >
+                                                        <i className={`fas ${editMode ? 'fa-times' : 'fa-edit'}`}></i>
+                                                        <span>{editMode ? 'Stop' : 'Edit'}</span>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
 

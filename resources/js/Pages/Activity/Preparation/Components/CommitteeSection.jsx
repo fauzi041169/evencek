@@ -7,7 +7,8 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
     const [editingMember, setEditingMember] = useState(null);
     const [data, setData] = useState({
         position: '',
-        user_id: ''
+        user_id: '',
+        daerah_layanan: ''
     });
     const [processing, setProcessing] = useState(false);
 
@@ -87,18 +88,22 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
         });
     };
 
+    const isPicPosition = (position) => (position || '').toString().toLowerCase().includes('pic');
+
     const openModal = (member = null) => {
         if (member) {
             setEditingMember(member);
             setData({
                 position: member.position,
-                user_id: member.user_id
+                user_id: member.user_id,
+                daerah_layanan: member.daerah_layanan || ''
             });
         } else {
             setEditingMember(null);
             setData({
                 position: '',
-                user_id: ''
+                user_id: '',
+                daerah_layanan: ''
             });
         }
         setIsModalOpen(true);
@@ -118,7 +123,7 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                 onSuccess: () => {
                     setIsModalOpen(false);
                     setEditingMember(null);
-                    setData({ position: '', user_id: '' });
+                    setData({ position: '', user_id: '', daerah_layanan: '' });
                     setProcessing(false);
                     Swal.fire({
                         title: 'Berhasil',
@@ -138,7 +143,7 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
             router.post(route('activity.preparation.store-committee', activity.uid || activity.id), data, {
                 onSuccess: () => {
                     setIsModalOpen(false);
-                    setData({ position: '', user_id: '' });
+                    setData({ position: '', user_id: '', daerah_layanan: '' });
                     setProcessing(false);
                     Swal.fire({
                         title: 'Berhasil',
@@ -284,8 +289,10 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {committeeStructure.map((member) => (
+                {(() => {
+                    const picMembers = (committeeStructure || []).filter((m) => isPicPosition(m.position));
+                    const otherMembers = (committeeStructure || []).filter((m) => !isPicPosition(m.position));
+                    const renderMemberCard = (member) => (
                         <div key={member.id} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow transition-all group relative overflow-hidden">
                             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                 <button
@@ -320,6 +327,12 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                             {member.position}
                                         </span>
                                     </div>
+                                    {isPicPosition(member.position) && member.daerah_layanan && (
+                                        <p className="text-xs text-gray-500 mt-1 truncate" title={member.daerah_layanan}>
+                                            <i className="fas fa-map-marker-alt text-primary/70 mr-1"></i>
+                                            {member.daerah_layanan}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
@@ -333,17 +346,46 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                 </a>
                             </div>
                         </div>
-                    ))}
-                    {committeeStructure.length === 0 && (
-                        <div className="col-span-full flex flex-col items-center justify-center py-2 sm:py-6 bg-gray-50 rounded-xl border border-gray-300 border-dashed">
-                            <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center mb-4 text-gray-200 shadow-sm">
-                                <i className="fas fa-users text-3xl"></i>
+                    );
+                    return (
+                        <>
+                            {picMembers.length > 0 && (
+                                <div className="mb-6">
+                                    <h4 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                        <i className="fas fa-user-check text-primary"></i>
+                                        PIC &amp; Daerah Layanan
+                                    </h4>
+                                    <p className="text-xs text-gray-500 mb-3">Person in charge beserta daerah tugas/layanan.</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                        {picMembers.map(renderMemberCard)}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className={picMembers.length > 0 ? '' : ''}>
+                                {picMembers.length > 0 && (
+                                    <h4 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                        <i className="fas fa-users text-gray-500"></i>
+                                        Panitia Lainnya
+                                    </h4>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                                    {otherMembers.map(renderMemberCard)}
+                                </div>
                             </div>
-                            <p className="text-sm text-gray-400 font-bold">Belum ada susunan panitia</p>
-                            <p className="text-xs text-gray-400 mt-1">Klik tombol di atas untuk mulai menyusun kepanitiaan Anda</p>
-                        </div>
-                    )}
-                </div>
+
+                            {committeeStructure.length === 0 && (
+                                <div className="col-span-full flex flex-col items-center justify-center py-2 sm:py-6 bg-gray-50 rounded-xl border border-gray-300 border-dashed">
+                                    <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center mb-4 text-gray-200 shadow-sm">
+                                        <i className="fas fa-users text-3xl"></i>
+                                    </div>
+                                    <p className="text-sm text-gray-400 font-bold">Belum ada susunan panitia</p>
+                                    <p className="text-xs text-gray-400 mt-1">Klik tombol di atas untuk mulai menyusun kepanitiaan Anda</p>
+                                </div>
+                            )}
+                        </>
+                    );
+                })()}
             </div>
 
             {/* Modal Tambah Panitia - Professional Rewrite */}
@@ -415,6 +457,23 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                             )}
                                         </div>
                                     </div>
+
+                                    {isPicPosition(data.position) && (
+                                        <div className="relative group">
+                                            <label htmlFor="daerah_layanan" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Daerah Tugas / Layanan</label>
+                                            <div className="relative">
+                                                <i className="fas fa-map-marker-alt absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
+                                                <input
+                                                    id="daerah_layanan"
+                                                    type="text"
+                                                    placeholder="Contoh: Jakarta Barat, Bandung, dll."
+                                                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-primary shadow-inner font-medium"
+                                                    value={data.daerah_layanan}
+                                                    onChange={(e) => setData({ ...data, daerah_layanan: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-100 flex gap-3">
                                         <i className="fas fa-info-circle text-yellow-500 mt-1"></i>

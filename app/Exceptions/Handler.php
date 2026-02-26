@@ -6,6 +6,7 @@ use Illuminate\Database\ConnectionException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
@@ -43,6 +44,15 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
+        // 419 Page Expired (CSRF/session): redirect back dengan pesan agar Inertia dapat respon valid
+        // sehingga tidak muncul modal error; setelah redirect halaman punya token baru.
+        if ($e instanceof TokenMismatchException) {
+            if ($request->expectsJson() || $request->header('X-Inertia')) {
+                return redirect()->back()->with('error', 'Sesi berakhir. Silakan muat ulang halaman dan coba lagi.');
+            }
+            return redirect()->back()->with('error', 'Sesi berakhir. Silakan muat ulang halaman dan coba lagi.');
+        }
+
         if ($e instanceof ModelNotFoundException) {
             return response()->view('errors.404', [], 404);
         }

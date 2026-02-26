@@ -76,8 +76,9 @@ export default function Show({
     const [isCustomFieldsModalOpen, setIsCustomFieldsModalOpen] = useState(false);
     const [pendingEnrollmentData, setPendingEnrollmentData] = useState(null);
 
-    // Visibility Logic
+    // Visibility & Edit Mode Logic
     const [visibleSections, setVisibleSections] = useState(activity.visible_sections || {});
+    const [editMode, setEditMode] = useState(false);
     const isVisible = (section) => {
         // Default visible if not explicitly set to false
         return visibleSections[section] !== false;
@@ -96,6 +97,17 @@ export default function Show({
             // Revert local state on error if needed, but for now let's keep it optimistic
         });
     };
+
+    useEffect(() => {
+        const stored = localStorage.getItem('editMode');
+        if (stored != null) setEditMode(stored === 'true');
+        const handler = () => {
+            const s = localStorage.getItem('editMode');
+            setEditMode(s === 'true');
+        };
+        window.addEventListener('editModeChanged', handler);
+        return () => window.removeEventListener('editModeChanged', handler);
+    }, []);
 
     const handleMandiriAttendance = (attendanceId) => {
         if (!auth.user) {

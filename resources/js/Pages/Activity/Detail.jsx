@@ -77,6 +77,7 @@ export default function Detail({
         : (participants?.data || []);
 
     const [showPrice, setShowPrice] = useState(activity.show_price);
+    const [editMode, setEditMode] = useState(false);
     const [visibleSections, setVisibleSections] = useState(activity.visible_sections || {});
     const isVisible = (section) => {
         return visibleSections[section] !== false;
@@ -97,6 +98,17 @@ export default function Detail({
 
     // Fix: Use local state for missing data to allow updates without reload
     const [localMissingProfileData, setLocalMissingProfileData] = useState(missingProfileData || []);
+
+    useEffect(() => {
+        const stored = localStorage.getItem('editMode');
+        if (stored != null) setEditMode(stored === 'true');
+        const handler = () => {
+            const s = localStorage.getItem('editMode');
+            setEditMode(s === 'true');
+        };
+        window.addEventListener('editModeChanged', handler);
+        return () => window.removeEventListener('editModeChanged', handler);
+    }, []);
 
     // Sync props to state if props change (e.g. after reload)
     useEffect(() => {
@@ -609,6 +621,7 @@ export default function Detail({
     };
 
     const canEdit = user && (user.is_super_admin || user.id === activity.user_id);
+    const canTogglePrice = !!user && (user.is_super_admin || user.role === 'superadmin') && editMode;
     // Modified: Admin should not see the big box if hidden, to keep layout clean.
     // We will show a small toggle button instead.
     const shouldShowPrice = showPrice;
@@ -824,7 +837,7 @@ export default function Detail({
                                                     <p className="text-xs sm:text-sm font-semibold text-white">
                                                         {showPrice ? `Rp ${new Intl.NumberFormat('id-ID').format(activity.price)}` : t('activities.hidden')}
                                                     </p>
-                                                    {canEdit && (
+                                                    {canTogglePrice && (
                                                         <button
                                                             type="button"
                                                             onClick={(e) => { e.preventDefault(); togglePriceVisibility(); }}
@@ -1231,11 +1244,23 @@ export default function Detail({
                                                         onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
                                                     />
                                                 </div>
-                                                <div>
+                                                <div className="flex-1 min-w-0">
                                                     <p className="font-medium text-gray-900">{person.name}</p>
-                                                    <p className="text-xs text-indigo-600 font-medium">{person.position}</p>
-                                                    {person.email && <p className="text-sm text-gray-500">{person.email}</p>}
-                                                    {person.phone && <p className="text-sm text-gray-500">{person.phone}</p>}
+                                                    <p className="text-xs text-indigo-600 font-medium">
+                                                        {person.daerah_layanan
+                                                            ? `${person.position} : ${person.daerah_layanan}`
+                                                            : person.position}
+                                                    </p>
+                                                    <div className="mt-1 space-y-0.5 text-sm text-gray-600">
+                                                        <p className="flex items-center gap-2">
+                                                            <i className="fas fa-envelope text-gray-400 w-4"></i>
+                                                            <span>{person.email || '-'}</span>
+                                                        </p>
+                                                        <p className="flex items-center gap-2">
+                                                            <i className="fas fa-phone text-gray-400 w-4"></i>
+                                                            <span>{person.phone || '-'}</span>
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))

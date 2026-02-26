@@ -24,6 +24,7 @@ class ActivityCommitteeStructure extends Model
         'phone',
         'email',
         'order',
+        'daerah_layanan',
         'jumlah_akses',
         'lama_akses',
         'last_access_at',

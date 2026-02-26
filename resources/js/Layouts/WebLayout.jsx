@@ -372,21 +372,23 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                                             </div>
                                                         </div>
 
-                                                        {/* Mode Edit Toggle in Header */}
-                                                        <button
-                                                            onClick={toggleEditMode}
-                                                            className={`
-                                                            flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all duration-300 border border-white/20
-                                                            ${editMode
-                                                                    ? 'bg-danger text-white animate-pulse'
-                                                                    : 'bg-white/20 text-white hover:bg-white/30'
-                                                                }
-                                                        `}
-                                                            title={editMode ? t('nav.stop') : t('nav.edit')}
-                                                        >
-                                                            <i className={`fas ${editMode ? 'fa-times' : 'fa-edit'}`}></i>
-                                                            <span>{editMode ? t('nav.stop') : t('nav.edit')}</span>
-                                                        </button>
+                                                        {/* Mode Edit Toggle in Header: hanya untuk superadmin */}
+                                                        {(auth?.user?.role === 'superadmin' || auth?.user?.is_super_admin) && (
+                                                            <button
+                                                                onClick={toggleEditMode}
+                                                                className={`
+                                                                flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-lg transition-all duration-300 border border-white/20
+                                                                ${editMode
+                                                                        ? 'bg-danger text-white animate-pulse'
+                                                                        : 'bg-white/20 text-white hover:bg-white/30'
+                                                                    }
+                                                            `}
+                                                                title={editMode ? t('nav.stop') : t('nav.edit')}
+                                                            >
+                                                                <i className={`fas ${editMode ? 'fa-times' : 'fa-edit'}`}></i>
+                                                                <span>{editMode ? t('nav.stop') : t('nav.edit')}</span>
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
 

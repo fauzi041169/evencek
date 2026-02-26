@@ -5338,6 +5338,7 @@ class ActivityPreparationController extends Controller
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'position' => 'required|string|max:255',
+            'daerah_layanan' => 'nullable|string|max:255',
         ]);
 
         // Check for duplicates
@@ -5407,6 +5408,7 @@ class ActivityPreparationController extends Controller
             'phone' => $user->profile->no_hp ?? null,
             'email' => $user->email,
             'order' => $maxOrder + 1,
+            'daerah_layanan' => $request->filled('daerah_layanan') ? $request->daerah_layanan : null,
         ]);
 
         return redirect()->back()->with('success', 'Anggota kepanitiaan berhasil ditambahkan.');
@@ -5432,6 +5434,7 @@ class ActivityPreparationController extends Controller
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'position' => 'required|string|max:255',
+            'daerah_layanan' => 'nullable|string|max:255',
         ]);
 
         // Check for duplicates (excluding current record)
@@ -5474,6 +5477,7 @@ class ActivityPreparationController extends Controller
             'user_id' => $request->user_id,
             'phone' => $user->profile->no_hp ?? null,
             'email' => $user->email,
+            'daerah_layanan' => $request->filled('daerah_layanan') ? $request->daerah_layanan : null,
         ]);
 
         return redirect()->back()->with('success', 'Anggota kepanitiaan berhasil diperbarui.');
