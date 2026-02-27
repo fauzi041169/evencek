@@ -1967,7 +1967,7 @@ class ActivityController extends Controller
             }
         }
 
-        // Clean HTML content to prevent base64 images
+        // Clean HTML content but tetap izinkan embed YouTube
         $validated['description'] = $this->cleanHtmlContent($validated['description']);
 
         try {
@@ -2816,7 +2816,15 @@ class ActivityController extends Controller
      */
     private function cleanHtmlContent($content)
     {
-        $cleaned = Purifier::clean($content, 'default');
+        // Hilangkan atribut 'allow' di iframe untuk mencegah warning HTMLPurifier
+        $content = preg_replace('/(<iframe\b[^>]*?)\s+allow="[^"]*"/i', '$1', $content);
+
+        $config = [
+            'HTML.SafeIframe' => true,
+            'URI.SafeIframeRegexp' => '%^(https?:)?//(www\\.youtube\\.com/embed/|youtu\\.be/|youtube-nocookie\\.com/embed/)%',
+            'HTML.Allowed' => 'p,b,strong,i,em,u,ul,ol,li,a[href|title|target],br,span,div,iframe[width|height|src|frameborder|allowfullscreen],h1,h2,h3,h4,h5,h6',
+        ];
+        $cleaned = Purifier::clean($content, $config);
         $cleaned = preg_replace('/<img[^>]*src="data:[^"]*"[^>]*>/i', '', $cleaned);
         $cleaned = preg_replace('/<video[^>]*src="data:[^"]*"[^>]*>/i', '', $cleaned);
         $cleaned = preg_replace('/<\?(?:php)?[\s\S]*?\?>/i', '', $cleaned);

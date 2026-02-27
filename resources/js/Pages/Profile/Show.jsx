@@ -188,10 +188,10 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
     // Password Update Form
     const { data: passData, setData: setPassData, put: putPass, processing: passProcessing, errors: passErrors, reset: resetPass } = useForm({
         user_id: user.id,
-        current_password: '',
         new_password: '',
         new_password_confirmation: '',
     });
+    const [showPass, setShowPass] = useState({ new: false, confirm: false });
 
     // Handle Profile Update
     const submitProfile = (e) => {
@@ -724,29 +724,25 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                 </div>
 
                                 <div className="space-y-6 max-w-xl">
-                                    {isOwnProfile && (
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Password Saat Ini</label>
-                                            <input
-                                                type="password"
-                                                value={passData.current_password}
-                                                onChange={(e) => setPassData('current_password', e.target.value)}
-                                                className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
-                                                placeholder="••••••••"
-                                            />
-                                            {passErrors.current_password && <div className="text-red-500 text-xs mt-1">{passErrors.current_password}</div>}
-                                        </div>
-                                    )}
-
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Password Baru</label>
-                                        <input
-                                            type="password"
-                                            value={passData.new_password}
-                                            onChange={(e) => setPassData('new_password', e.target.value)}
-                                            className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
-                                            placeholder="••••••••"
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type={showPass.new ? 'text' : 'password'}
+                                                value={passData.new_password}
+                                                onChange={(e) => setPassData('new_password', e.target.value)}
+                                                className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition pr-12"
+                                                placeholder="••••••••"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPass(s => ({ ...s, new: !s.new }))}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                                                aria-label="Toggle password visibility"
+                                            >
+                                                <i className={`fas ${showPass.new ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                            </button>
+                                        </div>
                                         <p className="text-xs text-gray-500 mt-1">
                                             Minimal 8 karakter. Disarankan menggunakan kombinasi huruf besar, huruf kecil, angka, dan simbol.
                                         </p>
@@ -755,13 +751,23 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
 
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2">Konfirmasi Password Baru</label>
-                                        <input
-                                            type="password"
-                                            value={passData.new_password_confirmation}
-                                            onChange={(e) => setPassData('new_password_confirmation', e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition"
-                                            placeholder="••••••••"
-                                        />
+                                        <div className="relative">
+                                            <input
+                                                type={showPass.confirm ? 'text' : 'password'}
+                                                value={passData.new_password_confirmation}
+                                                onChange={(e) => setPassData('new_password_confirmation', e.target.value)}
+                                                className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition pr-12"
+                                                placeholder="••••••••"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPass(s => ({ ...s, confirm: !s.confirm }))}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                                                aria-label="Toggle password confirm visibility"
+                                            >
+                                                <i className={`fas ${showPass.confirm ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                            </button>
+                                        </div>
                                         {passErrors.new_password_confirmation && <div className="text-red-500 text-xs mt-1">{passErrors.new_password_confirmation}</div>}
                                     </div>
                                 </div>

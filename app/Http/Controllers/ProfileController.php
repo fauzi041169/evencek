@@ -812,9 +812,8 @@ class ProfileController extends Controller
                 'new_password' => ['required', 'min:8', 'confirmed'],
             ]);
         } else {
-            // Ganti password sendiri butuh current_password
+            // Ganti password sendiri tanpa current_password
             $request->validate([
-                'current_password' => ['required', 'current_password'],
                 'new_password' => ['required', 'min:8', 'confirmed'],
             ]);
         }
