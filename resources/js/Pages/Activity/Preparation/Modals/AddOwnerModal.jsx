@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { router } from '@inertiajs/react';
+import { X, Search, PlusCircle, Loader2 } from 'lucide-react';
 
 export default function AddOwnerModal({ activity }) {
     const [searchTerm, setSearchTerm] = useState('');
