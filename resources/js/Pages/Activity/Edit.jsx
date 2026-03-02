@@ -268,14 +268,19 @@ export default function Edit({
         }
     };
 
-    // Handle image preview
+    // Handle image preview: tampilkan file baru jika ada, else gambar yang sudah ada
     useEffect(() => {
         if (data.image) {
             const objectUrl = URL.createObjectURL(data.image);
             setPreviewImage(objectUrl);
             return () => URL.revokeObjectURL(objectUrl);
         }
-    }, [data.image]);
+        if (activity?.image) {
+            setPreviewImage(`/storage/activities/${activity.image}`);
+        } else {
+            setPreviewImage(null);
+        }
+    }, [data.image, activity?.image]);
 
     // Handle subscription limit checks
     const manualParticipantCap = subscriptionLimits?.max_participants_per_activity ?? null;

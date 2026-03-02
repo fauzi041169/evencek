@@ -1828,8 +1828,13 @@ class ActivityController extends Controller
         $profileFields = $this->getProfileFields();
         $mandatoryFields = $activity->mandatory_profile_fields ?? [];
 
+        // Kirim waktu sebagai H:i agar tidak berubah karena timezone (kolom DB adalah TIME)
+        $activityForForm = $activity->toArray();
+        $activityForForm['start_time'] = $activity->start_time ? \Carbon\Carbon::parse($activity->start_time)->format('H:i') : '';
+        $activityForForm['end_time'] = $activity->end_time ? \Carbon\Carbon::parse($activity->end_time)->format('H:i') : '';
+
         return Inertia::render('Activity/Edit', [
-            'activity' => $activity,
+            'activity' => $activityForForm,
             'title' => $title,
             'titlepage' => $titlepage,
             'categories' => $categories,
@@ -1912,6 +1917,11 @@ class ActivityController extends Controller
             'column_settings' => 'nullable|array',
             'custom_fields' => 'nullable|array',
         ]);
+
+        // Jangan timpa gambar yang sudah ada jika user tidak upload file baru
+        if (! $request->hasFile('image')) {
+            unset($validated['image']);
+        }
 
         // Custom validation for end_time
         // If end_date is not set, use date for comparison

@@ -4485,7 +4485,7 @@ class ActivityPreparationController extends Controller
             $colIndex++;
         }
 
-        // add an example row below header to guide users
+        // add an example row below header to guide users (semua kolom dapat contoh)
         $sampleMap = [
             'email' => 'isi_email@domainanda.com',
             'name' => 'Nama Lengkap',
@@ -4512,9 +4512,30 @@ class ActivityPreparationController extends Controller
             'address' => 'Alamat Lengkap',
         ];
 
+        // Map label/key -> type untuk kolom custom (agar kolom upload dokumen dapat contoh link)
+        $customFieldTypeByLabel = [];
+        if ($activity->custom_fields && is_array($activity->custom_fields)) {
+            foreach ($activity->custom_fields as $field) {
+                $type = $field['type'] ?? 'text';
+                $label = trim((string) ($field['label'] ?? ''));
+                $key = trim((string) ($field['key'] ?? ''));
+                if ($label !== '') {
+                    $customFieldTypeByLabel[$label] = $type;
+                    $customFieldTypeByLabel[strtolower($label)] = $type;
+                }
+                if ($key !== '') {
+                    $customFieldTypeByLabel[$key] = $type;
+                    $customFieldTypeByLabel[strtolower($key)] = $type;
+                }
+            }
+        }
+
         $provinceColumnLetter = null;
         $regencyColumnLetter = null;
         $districtColumnLetter = null;
+
+        // Contoh link untuk kolom tipe file/upload dokumen (supaya user tahu isinya link)
+        $contohLinkDokumen = 'https://example.com/contoh-dokumen.pdf';
 
         if (! empty($columns)) {
             $rowNum = 2;
@@ -4534,22 +4555,40 @@ class ActivityPreparationController extends Controller
                 // Remove prefix user: or profile: to match keys in sampleMap
                 $key = str_replace(['user:', 'profile:'], '', $key);
                 // Remove required asterisk for sample data lookup
-                if (str_ends_with($key, '*')) {
-                    $key = substr($key, 0, -1);
+                $keyTrim = $key;
+                if (str_ends_with($keyTrim, '*')) {
+                    $keyTrim = substr($keyTrim, 0, -1);
                 }
 
                 $columnLetter = $this->columnLetter($colIndex);
 
-                if ($key === 'province_id' || $key === 'Provinsi') {
+                if ($keyTrim === 'province_id' || $keyTrim === 'Provinsi') {
                     $provinceColumnLetter = $columnLetter;
-                } elseif ($key === 'regency_id' || $key === 'Kabupaten/Kota') {
+                } elseif ($keyTrim === 'regency_id' || $keyTrim === 'Kabupaten/Kota') {
                     $regencyColumnLetter = $columnLetter;
-                } elseif ($key === 'district_id' || $key === 'Kecamatan') {
+                } elseif ($keyTrim === 'district_id' || $keyTrim === 'Kecamatan') {
                     $districtColumnLetter = $columnLetter;
                 }
 
                 $cell = $columnLetter.$rowNum;
-                $sheet->setCellValue($cell, $sampleMap[$key] ?? '');
+                $exampleValue = $sampleMap[$keyTrim] ?? null;
+
+                if ($exampleValue === null && ! empty($customFieldTypeByLabel)) {
+                    $customType = $customFieldTypeByLabel[$keyTrim] ?? $customFieldTypeByLabel[strtolower(trim($keyTrim))] ?? null;
+                    if ($customType === 'file') {
+                        $exampleValue = $contohLinkDokumen;
+                    } elseif ($customType === 'number') {
+                        $exampleValue = '0';
+                    } elseif ($customType === 'date') {
+                        $exampleValue = '2024-01-01';
+                    } elseif ($customType === 'textarea') {
+                        $exampleValue = 'Contoh isian panjang';
+                    } else {
+                        $exampleValue = 'Contoh isian';
+                    }
+                }
+
+                $sheet->setCellValue($cell, $exampleValue ?? 'Contoh isian');
                 $colIndex++;
             }
         }
