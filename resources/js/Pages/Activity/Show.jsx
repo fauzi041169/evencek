@@ -379,8 +379,8 @@ export default function Show({
 
         setTimeout(async () => {
             if (type === 'mandiri') {
-                const hasDefaultPhoto = auth?.user?.profile_photo_url?.includes('default-profile.png') ||
-                    auth?.user?.profile_photo_url?.includes('ui-avatars.com');
+                const photoUrl = (auth?.user?.profile_photo_url || '').toLowerCase();
+                const hasDefaultPhoto = !photoUrl || photoUrl.includes('default-profile.png') || photoUrl.includes('ui-avatars.com');
                 // Jika pakai voucher panitia, tidak perlu isi profil/custom field — langsung daftar jadi panitia
                 const skipProfileAndCustomCheck = Boolean(voucherCode);
 

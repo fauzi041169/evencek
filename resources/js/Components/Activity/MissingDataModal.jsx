@@ -56,22 +56,22 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
         // Dynamic fields will be added here
     });
 
-    // Check for default photo indicators
+    // Hanya placeholder yang wajib diganti. Foto dari Google, Gravatar, email, dll dianggap valid.
     const hasDefaultPhoto = useMemo(() => {
-        const photoUrl = auth?.user?.profile_photo_url || '';
-        return photoUrl.includes('default-profile.png') ||
-            photoUrl.includes('ui-avatars.com') ||
-            photoUrl.includes('default') ||
-            !photoUrl;
+        const photoUrl = (auth?.user?.profile_photo_url || '').toLowerCase();
+        if (!photoUrl) return true;
+        if (photoUrl.includes('default-profile.png')) return true;
+        if (photoUrl.includes('ui-avatars.com')) return true;
+        return false;
     }, [auth?.user?.profile_photo_url]);
 
-    // Calculate effective missing data (always include photo for visibility)
+    // Calculate effective missing data
     const effectiveMissingData = useMemo(() => {
         let newData = [...missingData];
         const hasFoto = newData.some(f => f.key === 'foto' || f.key === 'photo');
 
-        // Always add foto if not present in the list from backend
-        if (!hasFoto) {
+        // Tambah foto hanya jika belum ada DAN user perlu upload (placeholder). Foto Google/email sudah dianggap valid.
+        if (!hasFoto && hasDefaultPhoto) {
             newData = [{ key: 'foto', label: 'Foto Profil', type: 'file' }, ...newData];
         }
 
@@ -111,7 +111,7 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
         });
 
         return newData;
-    }, [missingData]);
+    }, [missingData, hasDefaultPhoto]);
 
     // Initialize form data based on missing fields
     useEffect(() => {

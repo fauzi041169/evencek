@@ -6839,8 +6839,7 @@ class ActivityController extends Controller
                 }
             }
 
-            // Tambahkan data dari hasil import (manual registration)
-            // Cek ActivityUser yang memiliki custom_data.importer_id
+            // Tambahkan data dari hasil import (custom_data.importer_id)
             if (Schema::hasTable('activity_users')) {
                 $importedUsers = \App\Models\ActivityUser::where('activity_id', $activityId)
                     ->where('custom_data', 'like', '%"importer_id"%')
@@ -6850,12 +6849,29 @@ class ActivityController extends Controller
                 foreach ($importedUsers as $u) {
                     $data = is_string($u->custom_data) ? json_decode($u->custom_data, true) : $u->custom_data;
                     $importerId = $data['importer_id'] ?? null;
-                    
+
                     if ($importerId && in_array($importerId, $committeeIdsArray)) {
                         if (!isset($committeeCreditedUsers[$importerId])) {
                             $committeeCreditedUsers[$importerId] = [];
                         }
                         $committeeCreditedUsers[$importerId][$u->user_id] = true;
+                    }
+                }
+
+                // Tambahkan data dari created_by (pendaftaran/input manual oleh panitia)
+                if (Schema::hasColumn('activity_users', 'created_by')) {
+                    $createdByRecords = DB::table('activity_users')
+                        ->where('activity_id', $activityId)
+                        ->whereIn('created_by', $committeeIdsArray)
+                        ->select('created_by', 'user_id')
+                        ->get();
+
+                    foreach ($createdByRecords as $r) {
+                        $creatorId = $r->created_by;
+                        if (!isset($committeeCreditedUsers[$creatorId])) {
+                            $committeeCreditedUsers[$creatorId] = [];
+                        }
+                        $committeeCreditedUsers[$creatorId][$r->user_id] = true;
                     }
                 }
             }
@@ -6865,21 +6881,36 @@ class ActivityController extends Controller
                 $registrations[$uid] = isset($committeeCreditedUsers[$uid]) ? count($committeeCreditedUsers[$uid]) : 0;
             }
 
-            // Count registrations by payment sender_name (NEW LOGIC)
+            // Count registrations by payment sender_name (nama sekarang + nama di struktur, untuk akun yang ganti nama)
             $paymentCounts = [];
             if (Schema::hasTable('payments') && Schema::hasColumn('payments', 'sender_name')) {
-                $committeeNames = $committees->map(function($member) {
-                    return strtolower(trim((string)($member->user ? $member->user->name : $member->name)));
-                })->filter()->unique()->values();
-
-                $paymentCounts = DB::table('payments')
+                $userIdToNames = [];
+                foreach ($committees as $member) {
+                    $uid = $member->user_id;
+                    if (!$uid) continue;
+                    $userName = $member->user ? trim((string)$member->user->name) : '';
+                    $structName = trim((string)($member->name ?? ''));
+                    $toAdd = array_filter(array_unique(array_map('strtolower', array_filter([$userName, $structName]))));
+                    if (!empty($toAdd)) {
+                        $userIdToNames[$uid] = array_values(array_unique(array_merge($userIdToNames[$uid] ?? [], $toAdd)));
+                    }
+                }
+                $allNames = array_values(array_unique(array_merge(...array_values($userIdToNames))));
+                $rawCounts = empty($allNames) ? [] : DB::table('payments')
                     ->where('activity_id', $activityId)
                     ->where('status', 'success')
-                    ->whereIn(DB::raw('LOWER(sender_name)'), $committeeNames)
-                    ->select(DB::raw('LOWER(sender_name) as name'), DB::raw('count(*) as total'))
-                    ->groupBy(DB::raw('LOWER(sender_name)'))
+                    ->whereIn(DB::raw('LOWER(TRIM(sender_name))'), $allNames)
+                    ->select(DB::raw('LOWER(TRIM(sender_name)) as name'), DB::raw('count(*) as total'))
+                    ->groupBy(DB::raw('LOWER(TRIM(sender_name))'))
                     ->pluck('total', 'name')
                     ->toArray();
+
+                foreach ($userIdToNames as $uid => $names) {
+                    $paymentCounts[$uid] = 0;
+                    foreach ($names as $n) {
+                        $paymentCounts[$uid] += $rawCounts[$n] ?? 0;
+                    }
+                }
             }
 
             // Count validations by user (verified_by from payments table)
@@ -6899,28 +6930,15 @@ class ActivityController extends Controller
             $mappedCommittees = $committees->map(function ($member) use ($registrations, $validations, $paymentCounts) {
                 $userId = $member->user_id;
                 $name = $member->user ? $member->user->name : $member->name;
-                $normalizedName = strtolower(trim((string)$name));
-                
+
                 $regCount = ($registrations[$userId] ?? 0);
-                $payCount = ($paymentCounts[$normalizedName] ?? 0);
+                $payCount = ($paymentCounts[$userId] ?? 0);
                 $totalReg = $regCount + $payCount;
                 $valCount = $validations[$userId] ?? 0;
                 $aksesCount = $member->lama_akses ?? 0; // Using lama_akses as the value for AKSES
 
-                // Determine profile photo URL
-                $profilePhotoUrl = null;
-                if ($member->user) {
-                    if ($member->user->profile && $member->user->profile->foto_url) {
-                        $profilePhotoUrl = $member->user->profile->foto_url;
-                    } elseif ($member->user->avatar) {
-                        $profilePhotoUrl = $member->user->avatar;
-                    } else {
-                         // Default avatar or null
-                         $profilePhotoUrl = 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
-                    }
-                } else {
-                     $profilePhotoUrl = 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
-                }
+                // Gunakan profile_photo_url User (mencakup foto upload, Google, avatar, dll)
+                $profilePhotoUrl = $member->user ? $member->user->profile_photo_url : 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
 
                 return [
                     'id' => $member->id,
@@ -6951,7 +6969,11 @@ class ActivityController extends Controller
                         'registrations' => $first['registrations'],
                         'validations' => $first['validations'],
                         'akses' => $sumAkses,
-                        'total_actions' => $first['registrations'] + $first['validations'] + $sumAkses,
+                        'total_actions' => (int) round(
+                            ($first['validations'] * 0.5) +      // 50% validasi
+                            ($first['registrations'] * 0.3) +    // 30% pendaftaran
+                            ($sumAkses * 0.2)                    // 20% akses
+                        ),
                         'profile_photo_url' => $first['profile_photo_url'],
                     ];
                 })

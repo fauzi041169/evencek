@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 import {
@@ -119,10 +119,94 @@ export default function Dashboard({
     // Preload images for chart
     const [chartImages, setChartImages] = useState({});
 
+    const committeeChartContainerRef = useRef(null);
+    const committeeTooltipRef = useRef(null);
+
     // Handle image load from hidden img tags
     const handleImageLoad = (id, img) => {
         if (img && img.complete) {
             setChartImages(prev => ({ ...prev, [id]: img }));
+        }
+    };
+
+    const hideDefaultTooltipPlugin = {
+        id: 'hideDefaultTooltip',
+        afterDraw: (chart) => {
+            const wrapper = chart.canvas?.parentNode;
+            if (!wrapper?.children) return;
+            for (const child of wrapper.children) {
+                if (child === chart.canvas) continue;
+                if (child.nodeType !== 1 || child.tagName !== 'DIV') continue;
+                const style = window.getComputedStyle(child);
+                if (style.position === 'absolute' || child.className?.toString().includes('chartjs') || child.id?.includes('chartjs')) {
+                    child.style.setProperty('display', 'none', 'important');
+                }
+            }
+        }
+    };
+
+    // Strip tooltip: show only in the strip below the chart (no tooltip on the bar)
+    const committeeStripTooltipPlugin = {
+        id: 'committeeStripTooltip',
+        afterInit(chart) {
+            const canvas = chart.canvas;
+            if (!canvas) return;
+            const onMove = (e) => {
+                const el = committeeTooltipRef.current;
+                const container = committeeChartContainerRef.current;
+                if (!el || !container || !committee_stats?.length) return;
+                const els = chart.getElementsAtEventForMode(e, 'index', { intersect: false });
+                if (els.length === 0) {
+                    el.style.visibility = 'hidden';
+                    return;
+                }
+                const dataIndex = els[0].index;
+                const top10 = committee_stats.slice(0, 10);
+                const member = top10[dataIndex];
+                if (!member) {
+                    el.style.visibility = 'hidden';
+                    return;
+                }
+                const bar = chart.getDatasetMeta(0)?.data?.[dataIndex];
+                if (!bar) {
+                    el.style.visibility = 'hidden';
+                    return;
+                }
+                const canvasRect = canvas.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                const barX = canvasRect.left - containerRect.left + bar.x;
+                el.style.left = barX + 'px';
+                el.style.transform = 'translateX(-50%)';
+                el.style.top = '0';
+                el.style.visibility = 'visible';
+                const title = member.name || '';
+                const pend = (member.registrations ?? 0);
+                const val = (member.validations ?? 0);
+                const aks = (member.akses ?? 0);
+                const safe = (s) => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                el.innerHTML =
+                    '<div class="font-bold text-sm text-slate-800 mb-1">' + safe(title) + '</div>' +
+                    '<div class="text-xs text-slate-600 flex flex-wrap items-center gap-x-3 gap-y-1">' +
+                    '<span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-sm shrink-0" style="background:#696cff"></span>Pendaftaran: ' + pend + '</span>' +
+                    '<span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-sm shrink-0" style="background:#ffab00"></span>Validasi: ' + val + '</span>' +
+                    '<span class="inline-flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-sm shrink-0" style="background:#10B981"></span>Akses: ' + aks + '</span>' +
+                    '</div>';
+            };
+            const onOut = () => {
+                const el = committeeTooltipRef.current;
+                if (el) el.style.visibility = 'hidden';
+            };
+            canvas.addEventListener('mousemove', onMove);
+            canvas.addEventListener('mouseout', onOut);
+            chart._committeeStripTooltipCleanup = () => {
+                canvas.removeEventListener('mousemove', onMove);
+                canvas.removeEventListener('mouseout', onOut);
+            };
+        },
+        beforeDestroy(chart) {
+            if (chart._committeeStripTooltipCleanup) {
+                chart._committeeStripTooltipCleanup();
+            }
         }
     };
 
@@ -148,19 +232,17 @@ export default function Dashboard({
                 const bar = lastMeta.data[index];
                 if (!bar) return;
 
-                // For stacked charts, bar.y is the top of THIS segment. 
-                // However, we want the TOTAL height.
-                // We can use y.getPixelForValue(total_actions) which translates the value to Y position.
-                // This relies on the scale being correct.
-
+                // Posisi avatar & angka di ATAS batang (bukan di dalam).
+                // Tinggi batang = registrations + validations + akses (stacked), bukan total_actions (poin tertimbang).
+                const barHeight = (member.registrations || 0) + (member.validations || 0) + (member.akses || 0);
                 const xPos = bar.x;
-                const total = member.total_actions;
-                const yPos = y.getPixelForValue(total);
+                const yPos = y.getPixelForValue(barHeight); // Puncak batang
+                const poinLabel = member.total_actions; // Angka yang ditampilkan = poin tertimbang
 
                 // Ensure we don't draw out of bounds (though clip usually handles it)
                 if (yPos < 0) return;
 
-                // Draw Total Text
+                // Draw Total Text (poin tertimbang)
                 ctx.save();
                 ctx.font = 'bold 12px "Inter", sans-serif';
                 ctx.fillStyle = '#64748b';
@@ -169,8 +251,8 @@ export default function Dashboard({
                 // Add white outline for readability
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = '#ffffff';
-                ctx.strokeText(total, xPos, yPos - 40);
-                ctx.fillText(total, xPos, yPos - 40);
+                ctx.strokeText(poinLabel, xPos, yPos - 40);
+                ctx.fillText(poinLabel, xPos, yPos - 40);
                 ctx.restore();
 
                 // Draw Image
@@ -242,20 +324,48 @@ export default function Dashboard({
                 }
             },
             tooltip: {
+                enabled: false,
                 mode: 'index',
                 intersect: false,
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                position: 'nearest',
+                yAlign: 'bottom',
+                xAlign: 'center',
+                backgroundColor: 'rgba(255, 255, 255, 0.98)',
                 titleColor: '#1e293b',
                 bodyColor: '#475569',
                 borderColor: '#e2e8f0',
                 borderWidth: 1,
-                padding: 10,
+                padding: 12,
                 titleFont: { size: 13, weight: 'bold' },
                 bodyFont: { size: 12 },
                 cornerRadius: 8,
                 displayColors: true,
+                boxPadding: 6,
                 callbacks: {
                     labelTextColor: () => '#475569'
+                },
+                external: (context) => {
+                    const el = committeeTooltipRef.current;
+                    const container = committeeChartContainerRef.current;
+                    if (!el || !container) return;
+                    const { tooltip } = context;
+                    if (tooltip.opacity === 0 || !tooltip.body?.length) {
+                        el.style.visibility = 'hidden';
+                        return;
+                    }
+                    const chart = context.chart;
+                    const canvas = chart.canvas;
+                    const rect = canvas.getBoundingClientRect();
+                    const containerRect = container.getBoundingClientRect();
+                    const scaleX = rect.width / chart.width;
+                    const barX = rect.left - containerRect.left + tooltip.x * scaleX;
+                    el.style.transform = 'translateX(-50%)';
+                    el.style.left = barX + 'px';
+                    el.style.top = '0';
+                    el.style.visibility = 'visible';
+                    const title = tooltip.title?.[0] || '';
+                    const body = (tooltip.body || []).map(b => (b.lines || []).join(', ')).filter(Boolean).join(' | ');
+                    el.innerHTML = '<div class="font-bold text-sm text-slate-800 mb-1">' + (title || '').replace(/</g, '&lt;') + '</div><div class="text-xs text-slate-600">' + (body || '').replace(/</g, '&lt;') + '</div>';
                 }
             }
         },
@@ -1190,11 +1300,11 @@ export default function Dashboard({
                                 ))}
                             </div>
 
-                            {/* Chart Section */}
-                            <div className="mb-8">
-                                <div className="bg-gray-50 rounded-lg p-4 h-80 relative">
+                            {/* Chart: grafik + profil di atas; popup hanya di strip bawah, tidak nutupi profil */}
+                            <div ref={committeeChartContainerRef} className="mb-8 [&_.chartjs-tooltip]:!hidden">
+                                <div className="bg-gray-50 rounded-t-lg p-4 h-80">
                                     <Bar
-                                        key={Object.keys(chartImages).length} // Force re-render when images load
+                                        key={Object.keys(chartImages).length}
                                         data={committeeActionChartData}
                                         options={{
                                             ...committeeActionChartOptions,
@@ -1207,11 +1317,18 @@ export default function Dashboard({
                                                 ...committeeActionChartOptions.scales,
                                                 y: {
                                                     ...committeeActionChartOptions.scales.y,
-                                                    grace: '20%' // Add grace to ensure space for images
+                                                    grace: '20%'
                                                 }
                                             }
                                         }}
-                                        plugins={[avatarPlugin]}
+                                        plugins={[hideDefaultTooltipPlugin, committeeStripTooltipPlugin, avatarPlugin]}
+                                    />
+                                </div>
+                                <div className="bg-gray-50 rounded-b-lg border-t border-gray-200 min-h-[52px] relative px-2 py-2">
+                                    <div
+                                        ref={committeeTooltipRef}
+                                        className="absolute pointer-events-none px-3 py-2 rounded-lg border border-slate-200 bg-white shadow-lg text-left min-w-[180px]"
+                                        style={{ visibility: 'hidden', top: 4, left: 0 }}
                                     />
                                 </div>
                             </div>

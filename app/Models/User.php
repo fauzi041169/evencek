@@ -125,14 +125,11 @@ class User extends Authenticatable
                     }
                     break;
                 case 'foto':
-                    if (! $profile) {
-                        $isMissing = true;
-                        break;
-                    }
-                    $foto = trim((string) $profile->foto);
-                    // Only mark absolute missing if empty/null
-                    // Frontend has stricter logic to force update if default-profile
-                    if ($foto === '') {
+                    $foto = ($profile && $profile->foto) ? trim((string) $profile->foto) : '';
+                    $avatar = trim((string) ($this->avatar ?? ''));
+                    // Dianggap lengkap jika punya foto dari: upload (profile), OAuth (Google/email), atau storage
+                    $hasValidPhoto = $foto !== '' || ($avatar !== '' && (str_starts_with($avatar, 'http') || str_contains($avatar, 'storage')));
+                    if (! $hasValidPhoto) {
                         $isMissing = true;
                     }
                     break;

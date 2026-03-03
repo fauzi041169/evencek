@@ -393,8 +393,8 @@ export default function Detail({
 
         setTimeout(async () => {
             if (type === 'mandiri') {
-                const hasDefaultPhoto = auth?.user?.profile_photo_url?.includes('default-profile.png') ||
-                    auth?.user?.profile_photo_url?.includes('ui-avatars.com');
+                const photoUrl = (auth?.user?.profile_photo_url || '').toLowerCase();
+                const hasDefaultPhoto = !photoUrl || photoUrl.includes('default-profile.png') || photoUrl.includes('ui-avatars.com');
                 // Jika pakai voucher panitia, tidak perlu isi profil — langsung daftar jadi panitia
                 const skipProfileCheck = Boolean(voucherCode);
 
@@ -553,14 +553,20 @@ export default function Detail({
         setIsLoginModalOpen(false);
         setIsPaymentDetailModalOpen(false);
 
-        // Reload activity detail so registrationTarget is recalculated (e.g. blocked region after profile update).
-        // Pending enrollment is processed on the new page load; if user is blocked, they stay on detail with block message.
+        // Langsung lanjut enrollment: pembayaran (berbayar) atau show (gratis)
         const pendingEnroll = sessionStorage.getItem('pending_enrollment');
         if (pendingEnroll) {
             try {
-                const { activityId, type } = JSON.parse(pendingEnroll);
-                if (activityId === activity.id && type === 'mandiri') {
-                    router.visit(route('activity.detail', activity.id));
+                const parsed = JSON.parse(pendingEnroll);
+                const activityMatch = (parsed.activityId === activity?.id || parsed.activityId === activity?.uid);
+                if (activityMatch && parsed.type === 'mandiri') {
+                    sessionStorage.removeItem('pending_enrollment');
+                    processedPendingEnrollmentRef.current = true;
+                    if (registrationTarget?.type === 'disabled') {
+                        return; // User di region diblokir, tetap di detail
+                    }
+                    // Langsung ke pembayaran atau show sesuai kegiatan
+                    handleEnroll(parsed.type, true, parsed.voucherCode ?? null);
                     return;
                 }
             } catch (e) {
@@ -568,7 +574,7 @@ export default function Detail({
             }
         }
 
-        // Fallback for other cases (e.g. non-mandiri or just profile update)
+        // Fallback: reload agar data profil terbaru terlihat
         window.location.reload();
     };
 

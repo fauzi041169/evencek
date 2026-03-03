@@ -161,6 +161,13 @@ class DashboardController extends Controller
                 $valCount = $validations[$userId] ?? 0;
                 $aksesCount = $member->lama_akses ?? 0; // Menggunakan lama_akses sebagai nilai AKSES
 
+                // Poin tertimbang: 50% validasi, 30% pendaftaran, 20% akses (tampil sebagai poin)
+                $weightedPoin = (int) round(
+                    ($valCount * 0.5) +      // 50% validasi
+                    ($totalReg * 0.3) +      // 30% pendaftaran
+                    ($aksesCount * 0.2)      // 20% akses
+                );
+
                 return [
                     'id' => $member->id,
                     'user_id' => $userId,
@@ -169,7 +176,7 @@ class DashboardController extends Controller
                     'registrations' => $totalReg,
                     'validations' => $valCount,
                     'akses' => $aksesCount,
-                    'total_actions' => $totalReg + $valCount + $aksesCount,
+                    'total_actions' => $weightedPoin,
                 ];
             })->sortByDesc('total_actions')->values();
         }
