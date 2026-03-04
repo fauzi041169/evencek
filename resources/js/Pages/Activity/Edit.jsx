@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { INDONESIAN_BANKS } from '../../Constants/BankList';
 import RichTextEditor from '@/Components/RichTextEditor';
 
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB, harus sinkron dengan backend
+const MAX_IMAGE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB, harus sinkron dengan backend
 
 export default function Edit({
     activity,
