@@ -45,12 +45,27 @@ class ProfileController extends Controller
         if ($user) {
             $user = User::with(['profile.province', 'profile.regency', 'profile.district', 'subscription.plan'])->findOrFail($user);
 
-            // Perbaiki otorisasi: izinkan admin, superadmin, dan creator melihat profil siapa pun
-            if (! auth()->check() || (auth()->id() !== $user->id && 
-                ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && 
-                ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()) &&
-                ! (method_exists(auth()->user(), 'isCreator') && auth()->user()->isCreator())
-            )) {
+            $auth = auth()->user();
+            $isSelf = auth()->check() && auth()->id() === $user->id;
+            $isStaff = $auth && (
+                (method_exists($auth, 'isAdmin') && $auth->isAdmin()) ||
+                (method_exists($auth, 'isSuperAdmin') && $auth->isSuperAdmin()) ||
+                (method_exists($auth, 'isCreator') && $auth->isCreator())
+            );
+            // Izinkan panitia/owner acara tempat target user terdaftar melihat profil peserta
+            $isCommitteeOfParticipant = false;
+            if ($auth) {
+                $managedActivityIds = collect(DB::table('activities')->where('user_id', $auth->id)->pluck('id'))
+                    ->concat(DB::table('activity_owners')->where('user_id', $auth->id)->pluck('activity_id'))
+                    ->concat(DB::table('activity_committee_structures')->where('user_id', $auth->id)->pluck('activity_id'))
+                    ->unique()
+                    ->values();
+                $isCommitteeOfParticipant = ActivityUser::where('user_id', $user->id)
+                    ->whereIn('activity_id', $managedActivityIds)
+                    ->exists();
+            }
+
+            if (! auth()->check() || (! $isSelf && ! $isStaff && ! $isCommitteeOfParticipant)) {
                 abort(403, 'Unauthorized action.');
             }
         } else {

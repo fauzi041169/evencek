@@ -454,7 +454,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                                     <div className="relative w-full h-[320px] sm:h-[380px] lg:h-[460px] rounded-2xl overflow-hidden border border-white/10 shadow-xl bg-white/5">
                                                         {appSettings?.hero_slide3_right_image && (
                                                             <img
-                                                                src={getStorageUrl(appSettings.hero_slide3_right_image)}
+                                                                src={getStorageUrl(appSettings?.hero_slide3_right_image)}
                                                                 alt="Preview"
                                                                 className="absolute inset-0 w-full h-full object-cover"
                                                                 onError={(e) => { e.currentTarget.style.display = 'none'; }}

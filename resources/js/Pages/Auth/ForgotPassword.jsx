@@ -25,7 +25,8 @@ export default function ForgotPassword({ status, hp_time }) {
                         onError={(e) => {
                             e.target.onerror = null;
                             e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
+                            const next = e.target.nextElementSibling;
+                            if (next) next.style.display = 'flex';
                         }}
                     />
 

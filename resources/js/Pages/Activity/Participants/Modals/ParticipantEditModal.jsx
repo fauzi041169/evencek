@@ -9,6 +9,20 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
+// Normalize date to yyyy-MM-dd for <input type="date"> (backend may send ISO string)
+function toDateOnly(value) {
+    if (value == null || value === '') return '';
+    if (typeof value !== 'string') value = String(value);
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 export default function ParticipantEditModal({ show, onClose, user, provinces, activity, customKeys = [], customOptions = {} }) {
     // 'user' prop here is likely the 'ActivityUser' object (pivot context) from the parent component
     // we need to extract the actual User model and Profile model from it.
@@ -79,7 +93,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                 nik: targetUser.nik || targetProfile.nik || '',
                 jenis_kelamin: targetUser.gender || targetUser.jenis_kelamin || targetProfile.jenis_kelamin || '',
                 birth_place: targetUser.birth_place || targetProfile.birth_place || '',
-                birth_date: targetUser.birthday || targetUser.birth_date || targetProfile.birth_date || '',
+                birth_date: toDateOnly(targetUser.birthday || targetUser.birth_date || targetProfile.birth_date || ''),
                 alamat: targetUser.address || targetUser.alamat || targetProfile.alamat || '',
                 instansi: targetUser.institution || targetUser.instansi || targetProfile.instansi || '',
                 jabatan: targetUser.job_title || targetUser.jabatan || targetProfile.jabatan || '',

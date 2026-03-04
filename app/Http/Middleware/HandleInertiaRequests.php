@@ -52,19 +52,37 @@ class HandleInertiaRequests extends Middleware
                 'message' => fn () => $request->session()->get('message'),
                 'show_import_bulk_payment_once' => fn () => $request->session()->get('show_import_bulk_payment_once'),
             ],
-            'appSettings' => [
-                'app_name' => \App\Models\Setting::get('app_name') ?? config('app.name', 'EVENTCEK'),
-                'app_logo' => self::formatAssetUrl(\App\Models\Setting::get('app_logo') ?? '/assets/images/logo.png'),
-                'hero_animation_style' => \App\Models\Setting::get('hero_animation_style', 'circles'),
-                'hero_background_1' => self::formatAssetUrl(\App\Models\Setting::get('home_hero_background_1') ?? \App\Models\Setting::get('home_hero_background')),
-                'hero_background_2' => self::formatAssetUrl(\App\Models\Setting::get('home_hero_background_2')),
-                'hero_background_3' => self::formatAssetUrl(\App\Models\Setting::get('home_hero_background_3')),
-                'hero_slide3_right_image' => self::formatAssetUrl(\App\Models\Setting::get('home_hero_slide3_right_image')),
-                'navbar_opacity' => \App\Models\Setting::get('navbar_opacity', '1'),
-                'subscription_service_enabled' => \App\Models\Setting::get('subscription_service_enabled', '0') === '1',
-                'colors' => \App\Models\Setting::getColors(),
-                'isLocal' => app()->environment(['local', 'development']),
-            ],
+            'appSettings' => function () {
+                try {
+                    return [
+                        'app_name' => \App\Models\Setting::get('app_name') ?? config('app.name', 'EVENTCEK'),
+                        'app_logo' => self::formatAssetUrl(\App\Models\Setting::get('app_logo') ?? '/assets/images/logo.png'),
+                        'hero_animation_style' => \App\Models\Setting::get('hero_animation_style', 'circles'),
+                        'hero_background_1' => self::formatAssetUrl(\App\Models\Setting::get('home_hero_background_1') ?? \App\Models\Setting::get('home_hero_background')),
+                        'hero_background_2' => self::formatAssetUrl(\App\Models\Setting::get('home_hero_background_2')),
+                        'hero_background_3' => self::formatAssetUrl(\App\Models\Setting::get('home_hero_background_3')),
+                        'hero_slide3_right_image' => self::formatAssetUrl(\App\Models\Setting::get('home_hero_slide3_right_image')),
+                        'navbar_opacity' => \App\Models\Setting::get('navbar_opacity', '1'),
+                        'subscription_service_enabled' => \App\Models\Setting::get('subscription_service_enabled', '0') === '1',
+                        'colors' => \App\Models\Setting::getColors(),
+                        'isLocal' => app()->environment(['local', 'development']),
+                    ];
+                } catch (\Throwable $e) {
+                    return [
+                        'app_name' => config('app.name', 'EVENTCEK'),
+                        'app_logo' => '/assets/images/logo.png',
+                        'hero_animation_style' => 'circles',
+                        'hero_background_1' => null,
+                        'hero_background_2' => null,
+                        'hero_background_3' => null,
+                        'hero_slide3_right_image' => null,
+                        'navbar_opacity' => '1',
+                        'subscription_service_enabled' => false,
+                        'colors' => [],
+                        'isLocal' => app()->environment(['local', 'development']),
+                    ];
+                }
+            },
         ]);
 
 

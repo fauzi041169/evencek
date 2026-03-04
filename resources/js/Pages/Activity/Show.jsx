@@ -25,7 +25,7 @@ export default function Show({
     currentStatus,
     canAccessManagement,
     materials,
-    participants,
+    participants = {},
     roomMap,
     groupMap,
     batches,
@@ -543,9 +543,9 @@ export default function Show({
         );
     };
 
-    // Helper for pagination
-    const paginationLinks = participants.links || [];
-    const participantsList = participants.data || participants;
+    // Helper for pagination (participants may be {} if not passed)
+    const paginationLinks = participants?.links || [];
+    const participantsList = Array.isArray(participants?.data) ? participants.data : (Array.isArray(participants) ? participants : []);
 
     const DEFAULT_ACTIVITY_IMAGE = '/assets/images/hero/defoult.webp';
     const getActivityImageUrl = (img) => {

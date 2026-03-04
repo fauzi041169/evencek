@@ -2,6 +2,16 @@ import React, { useEffect } from 'react';
 import { useForm, usePage } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 
+function toDateOnly(value) {
+    if (value == null || value === '') return '';
+    if (typeof value !== 'string') value = String(value);
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 export default function ProfileEditModal({ show, onClose }) {
     const { auth } = usePage().props;
     const user = auth?.user || {};
@@ -11,7 +21,7 @@ export default function ProfileEditModal({ show, onClose }) {
         email: user.email || '',
         no_hp: user.phone || user.no_hp || user.profile?.no_hp || '',
         jenis_kelamin: user.gender || user.jenis_kelamin || user.profile?.jenis_kelamin || '',
-        birth_date: user.birthday || user.birth_date || user.profile?.birth_date || '',
+        birth_date: toDateOnly(user.birthday || user.birth_date || user.profile?.birth_date || ''),
         alamat: user.address || user.alamat || user.profile?.alamat || '',
         instansi: user.institution || user.instansi || user.profile?.instansi || '',
         jabatan: user.job_title || user.jabatan || user.profile?.jabatan || '',
@@ -26,7 +36,7 @@ export default function ProfileEditModal({ show, onClose }) {
                 email: user.email || '',
                 no_hp: user.phone || user.no_hp || user.profile?.no_hp || '',
                 jenis_kelamin: user.gender || user.jenis_kelamin || user.profile?.jenis_kelamin || '',
-                birth_date: user.birthday || user.birth_date || user.profile?.birth_date || '',
+                birth_date: toDateOnly(user.birthday || user.birth_date || user.profile?.birth_date || ''),
                 alamat: user.address || user.alamat || user.profile?.alamat || '',
                 instansi: user.institution || user.instansi || user.profile?.instansi || '',
                 jabatan: user.job_title || user.jabatan || user.profile?.jabatan || '',

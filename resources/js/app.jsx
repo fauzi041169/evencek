@@ -26,8 +26,22 @@ createInertiaApp({
         });
         router.on('error', (event) => {
             const status = event.detail.page?.status ?? event.detail.response?.status;
+            const response = event.detail?.response;
             if (status === 419) {
                 window.location.reload();
+                return;
+            }
+            // Jaringan putus / connection reset / timeout – tampilkan pesan dan tawarkan reload
+            const isNetworkFailure = !response || status === 0 || (response && response.status === 0);
+            if (isNetworkFailure && window.Swal) {
+                window.Swal.fire({
+                    icon: 'warning',
+                    title: 'Gagal memuat halaman',
+                    text: 'Koneksi terputus atau server tidak merespons. Coba refresh halaman atau periksa koneksi internet.',
+                    confirmButtonText: 'Refresh halaman'
+                }).then((result) => {
+                    if (result.isConfirmed) window.location.reload();
+                });
             }
         });
 
