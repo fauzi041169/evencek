@@ -142,7 +142,8 @@ class ActivityController extends Controller
             'page_description' => 'nullable|string',
             'logo_size' => 'nullable|integer|min:20|max:200',
             'hero_opacity' => 'nullable|integer|min:0|max:100',
-            'hero_background' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            // Naikkan batas ukuran gambar hero menjadi 10MB
+            'hero_background' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'subdomain_logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'hero_text_color' => ['nullable', 'string', 'max:16', 'regex:/^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/'],
             'hero_title_color' => ['nullable', 'string', 'max:16', 'regex:/^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/'],
@@ -1934,7 +1935,8 @@ class ActivityController extends Controller
             'payment_method_type' => 'required|in:manual,automatic',
             'status' => 'required|in:public,private',
             'pendaftaran' => 'nullable|integer|in:0,1,2',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
+            // Naikkan batas ukuran gambar kegiatan menjadi 10MB
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:10240',
             'mandatory_profile_fields' => 'nullable|array',
             'manual_payment_details' => 'nullable|array',
             'visible_sections' => 'nullable|array',
@@ -2349,7 +2351,8 @@ class ActivityController extends Controller
     public function uploadDescriptionImage(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+            // Naikkan batas ukuran upload gambar deskripsi menjadi 10MB
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB max
         ]);
 
         try {
@@ -2682,7 +2685,8 @@ class ActivityController extends Controller
                 'price' => 'nullable|numeric|min:0',
                 'payment_method_type' => 'nullable|in:manual,automatic',
                 'status' => 'required|string|in:public,private',
-                'image' => 'nullable|image|max:5120',
+                // Naikkan batas ukuran gambar saat duplikasi menjadi 10MB
+                'image' => 'nullable|image|max:10240',
                 'mandatory_profile_fields' => 'nullable|array',
                 'manual_payment_details' => 'nullable|array',
                 'custom_fields' => 'nullable|array',
