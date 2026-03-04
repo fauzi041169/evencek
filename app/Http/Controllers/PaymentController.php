@@ -2744,14 +2744,20 @@ class PaymentController extends Controller
                 $userProfile = $currentUser->profile;
                 $query->whereHas('activity', function ($aq) use ($currentUser, $userProfile) {
                     $aq->where('user_id', $currentUser->id)
+                        // PIC / Panitia (committeeStructures)
                         ->orWhereHas('committeeStructures', function ($cq) use ($currentUser) {
                             $cq->where('user_id', $currentUser->id);
                         })
+                        // Ketua divisi
                         ->orWhereHas('divisions', function ($dq) use ($currentUser, $userProfile) {
                             $dq->where('leader_name', $currentUser->name);
                             if ($userProfile && $userProfile->no_hp) {
                                 $dq->orWhere('leader_phone', $userProfile->no_hp);
                             }
+                        })
+                        // Penanggung jawab / owner tambahan
+                        ->orWhereHas('owners', function ($oq) use ($currentUser) {
+                            $oq->where('users.id', $currentUser->id);
                         });
                 });
             }
@@ -2816,6 +2822,9 @@ class PaymentController extends Controller
                             if ($userProfile && $userProfile->no_hp) {
                                 $dq->orWhere('leader_phone', $userProfile->no_hp);
                             }
+                        })
+                        ->orWhereHas('owners', function ($oq) use ($currentUser) {
+                            $oq->where('users.id', $currentUser->id);
                         });
                 });
             }
@@ -2834,17 +2843,20 @@ class PaymentController extends Controller
             if ($currentUser->hasRole('admin') || $currentUser->hasRole('superadmin')) {
                 $stats['total_activities'] = \App\Models\Activity::count();
             } else {
-                $stats['total_activities'] = \App\Models\Activity::where(function($q) use ($currentUser, $userProfile) {
+                $stats['total_activities'] = \App\Models\Activity::where(function ($q) use ($currentUser, $userProfile) {
                     $q->where('user_id', $currentUser->id)
-                      ->orWhereHas('committeeStructures', function ($cq) use ($currentUser) {
-                          $cq->where('user_id', $currentUser->id);
-                      })
-                      ->orWhereHas('divisions', function ($dq) use ($currentUser, $userProfile) {
-                          $dq->where('leader_name', $currentUser->name);
-                          if ($userProfile && $userProfile->no_hp) {
-                              $dq->orWhere('leader_phone', $userProfile->no_hp);
-                          }
-                      });
+                        ->orWhereHas('committeeStructures', function ($cq) use ($currentUser) {
+                            $cq->where('user_id', $currentUser->id);
+                        })
+                        ->orWhereHas('divisions', function ($dq) use ($currentUser, $userProfile) {
+                            $dq->where('leader_name', $currentUser->name);
+                            if ($userProfile && $userProfile->no_hp) {
+                                $dq->orWhere('leader_phone', $userProfile->no_hp);
+                            }
+                        })
+                        ->orWhereHas('owners', function ($oq) use ($currentUser) {
+                            $oq->where('users.id', $currentUser->id);
+                        });
                 })->count();
             }
 
@@ -3592,7 +3604,7 @@ class PaymentController extends Controller
             // ->where('status', 'approved'); // Removed specific status filter
 
         if (! $user->isAdmin() && ! $user->isSuperAdmin()) {
-            // Creator hanya melihat pembayaran dari kegiatan miliknya/diampunya
+            // Creator/owner/panitia hanya melihat pembayaran dari kegiatan yang mereka pegang
             $userProfile = $user->profile;
             $paymentsQuery->whereHas('activity', function ($aq) use ($user, $userProfile) {
                 $aq->where('user_id', $user->id)
@@ -3604,6 +3616,9 @@ class PaymentController extends Controller
                         if ($userProfile && $userProfile->no_hp) {
                             $dq->orWhere('leader_phone', $userProfile->no_hp);
                         }
+                    })
+                    ->orWhereHas('owners', function ($oq) use ($user) {
+                        $oq->where('users.id', $user->id);
                     });
             });
         }
@@ -3772,6 +3787,9 @@ class PaymentController extends Controller
                         if ($userProfile && $userProfile->no_hp) {
                             $dq->orWhere('leader_phone', $userProfile->no_hp);
                         }
+                    })
+                    ->orWhereHas('owners', function ($oq) use ($user) {
+                        $oq->where('users.id', $user->id);
                     });
             });
         }

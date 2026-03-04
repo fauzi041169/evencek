@@ -1,15 +1,30 @@
-import React, { useState } from 'react';
-import { usePage } from '@inertiajs/react';
-import { Users, Plus } from 'lucide-react';
+import React from 'react';
+import { usePage, router } from '@inertiajs/react';
+import { Users, Plus, Trash2 } from 'lucide-react';
 
 export default function OwnerSection({ owners, activity, isEmbedded = false }) {
     const { auth } = usePage().props;
 
-    const canAddOwner = auth.user && (
+    const isSuperAdminOrAdmin = auth.user && (
         auth.user.role === 'superadmin' ||
         auth.user.is_super_admin ||
         auth.user.roles?.some(r => r.name === 'SuperAdmin' || r.name === 'Admin')
     );
+
+    // Hanya admin/superadmin (atau nanti jika ingin: owner utama) yang bisa tambah/hapus owner
+    const canManageOwners = !!isSuperAdminOrAdmin;
+
+    const handleRemoveOwner = (owner) => {
+        if (!canManageOwners) return;
+        if (!window.confirm(`Hapus penanggung jawab "${owner.name}" dari kegiatan ini?`)) {
+            return;
+        }
+
+        const activityId = activity.uid || activity.id;
+        router.delete(route('activity.preparation.destroy-owner', { activityId, userId: owner.id }), {
+            preserveScroll: true,
+        });
+    };
 
     const content = (
         <div className="p-8">
@@ -23,7 +38,7 @@ export default function OwnerSection({ owners, activity, isEmbedded = false }) {
                         <p className="text-xs text-slate-500 font-medium pt-1">Person in Charge (PIC)</p>
                     </div>
                 </div>
-                {canAddOwner && (
+                {canManageOwners && (
                     <button
                         onClick={() => window.dispatchEvent(new CustomEvent('open-add-owner-modal'))}
                         className="group flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100/50 hover:shadow-blue-200 hover:shadow-lg"
@@ -50,6 +65,16 @@ export default function OwnerSection({ owners, activity, isEmbedded = false }) {
                             <div className="text-sm font-bold text-slate-900 truncate group-hover:text-blue-700 transition-colors">{owner.name}</div>
                             <div className="text-xs text-slate-400 truncate font-medium">{owner.email}</div>
                         </div>
+                        {canManageOwners && (
+                            <button
+                                type="button"
+                                onClick={() => handleRemoveOwner(owner)}
+                                className="ml-3 inline-flex items-center justify-center w-8 h-8 rounded-full text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                title="Hapus Penanggung Jawab"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        )}
                     </div>
                 ))}
             </div>

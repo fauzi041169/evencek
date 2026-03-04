@@ -1845,6 +1845,19 @@ class ActivityController extends Controller
         $activityForForm['start_time'] = $activity->start_time ? \Carbon\Carbon::parse($activity->start_time)->format('H:i') : '';
         $activityForForm['end_time'] = $activity->end_time ? \Carbon\Carbon::parse($activity->end_time)->format('H:i') : '';
 
+        // Global custom fields (aman jika tabel belum dimigrasi di production)
+        $globalCustomFields = [];
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('custom_fields')) {
+                $globalCustomFields = \App\Models\CustomField::orderBy('label')->get();
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to load global custom_fields on activity.edit', [
+                'activity_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return Inertia::render('Activity/Edit', [
             'activity' => $activityForForm,
             'title' => $title,
@@ -1863,7 +1876,7 @@ class ActivityController extends Controller
             'currentAutomaticTotalCount' => $currentAutomaticTotalCount,
             'manualLimit' => $manualLimit,
             'manualLimitExceeded' => $manualLimitExceeded,
-            'globalCustomFields' => \App\Models\CustomField::orderBy('label')->get(),
+            'globalCustomFields' => $globalCustomFields,
         ]);
     }
 
