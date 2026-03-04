@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import Sidebar from '../Components/Sidebar';
 import Alerts from '../Components/Alerts';
 import Swal from 'sweetalert2';
 import Modal from '../Components/Modal';
 import { useTranslation } from 'react-i18next';
-import FloatingAI from '../Components/FloatingAI';
+
+const FloatingAI = lazy(() => import('../Components/FloatingAI'));
 
 
 export default function MainLayout({ children, title = 'Dashboard', fluid = false, noPadding = false }) {
@@ -27,6 +28,38 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
     const t = tOrig || ((key) => key);
 
     const settings = appSettings || {};
+
+    const dynamicStyles = useMemo(() => {
+        const p = settings.colors?.primary || '#7c3aed';
+        const sec = settings.colors?.secondary || '#db2777';
+        const acc = settings.colors?.accent || '#f59e0b';
+        return `
+            :root {
+                --color-primary: ${p};
+                --color-secondary: ${sec};
+                --color-accent: ${acc};
+            }
+            .bg-gradient-custom {
+                background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
+            }
+            .text-primary { color: var(--color-primary) !important; }
+            .bg-primary { background-color: var(--color-primary) !important; }
+            .text-secondary { color: var(--color-secondary) !important; }
+            .bg-secondary { background-color: var(--color-secondary) !important; }
+            .border-primary { border-color: var(--color-primary) !important; }
+            .ring-primary { --tw-ring-color: var(--color-primary) !important; }
+            .hover\\:bg-primary:hover { background-color: var(--color-primary) !important; }
+            .hover\\:text-primary:hover { color: var(--color-primary) !important; }
+            aside, aside > div, .sidebar-container {
+                background-color: #1e293b !important;
+                color: #f1f5f9 !important;
+            }
+            .sidebar-link-active {
+                background-color: rgba(255, 255, 255, 0.1) !important;
+                color: white !important;
+            }
+        `;
+    }, [settings.colors?.primary, settings.colors?.secondary, settings.colors?.accent]);
 
     const fetchNotifications = async () => {
         try {
@@ -136,35 +169,7 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                :root {
-                    --color-primary: ${settings.colors?.primary || '#7c3aed'};
-                    --color-secondary: ${settings.colors?.secondary || '#db2777'};
-                    --color-accent: ${settings.colors?.accent || '#f59e0b'};
-                }
-                .bg-gradient-custom {
-                    background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
-                }
-                .text-primary { color: var(--color-primary) !important; }
-                .bg-primary { background-color: var(--color-primary) !important; }
-                .text-secondary { color: var(--color-secondary) !important; }
-                .bg-secondary { background-color: var(--color-secondary) !important; }
-                .border-primary { border-color: var(--color-primary) !important; }
-                .ring-primary { --tw-ring-color: var(--color-primary) !important; }
-                .hover\\:bg-primary:hover { background-color: var(--color-primary) !important; }
-                .hover\\:text-primary:hover { color: var(--color-primary) !important; }
-                
-                /* Force sidebar styles to be Dark Grey and Compact */
-                aside, aside > div, .sidebar-container {
-                    background-color: #1e293b !important;
-                    color: #f1f5f9 !important;
-                }
-                .sidebar-link-active {
-                    background-color: rgba(255, 255, 255, 0.1) !important;
-                    color: white !important;
-                }
-            `}} />
+            <style dangerouslySetInnerHTML={{ __html: dynamicStyles }} />
             <Head title={title} />
 
             {/* Mobile Sidebar Modal - Now opened from Bottom Nav "Menu" */}
@@ -624,8 +629,10 @@ export default function MainLayout({ children, title = 'Dashboard', fluid = fals
                 {/* Safe Area Fill */}
                 <div className="h-safe bg-white"></div>
             </div>
-            {/* Floating AI Robot */}
-            <FloatingAI />
+            {/* Floating AI Robot - lazy loaded untuk mengurangi initial bundle */}
+            <Suspense fallback={null}>
+                <FloatingAI />
+            </Suspense>
         </div>
     );
 }

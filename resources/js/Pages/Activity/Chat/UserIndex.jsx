@@ -13,7 +13,7 @@ export default function UserIndex({ activity }) {
 
     useEffect(() => {
         loadMessages(false);
-        const interval = setInterval(() => loadMessages(true), 3000);
+        const interval = setInterval(() => loadMessages(true), 10000); // 10s kurangi load
         return () => clearInterval(interval);
     }, []);
 

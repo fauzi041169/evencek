@@ -1021,6 +1021,7 @@ export default function Show({
                                                                     <img
                                                                         src={route('activity.speakers.photo', speaker.id)}
                                                                         alt={speaker.name}
+                                                                        loading="lazy"
                                                                         className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-500"
                                                                         onError={(e) => {
                                                                             e.target.onerror = null;
@@ -1278,6 +1279,7 @@ export default function Show({
                                                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                                                 <img
                                                                     src={fotoUrl}
+                                                                    loading="lazy"
                                                                     className="flex-shrink-0 rounded-full w-9 h-9 object-cover border border-gray-200"
                                                                     alt={participant.name}
                                                                     onError={(e) => {
@@ -1639,6 +1641,7 @@ export default function Show({
                                                     <img
                                                         src={gallerySrc}
                                                         alt="Galeri"
+                                                        loading="lazy"
                                                         className="w-full h-full object-cover transition transform group-hover:scale-110"
                                                         onError={(e) => {
                                                             e.target.onerror = null;

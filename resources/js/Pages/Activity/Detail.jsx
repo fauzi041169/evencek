@@ -1100,6 +1100,7 @@ export default function Detail({
                                                 <img
                                                     src={getGalleryImageUrl(image)}
                                                     alt="Gallery"
+                                                    loading="lazy"
                                                     className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-105 cursor-zoom-in"
                                                     onClick={() => {
                                                         setLightboxIndex(index);

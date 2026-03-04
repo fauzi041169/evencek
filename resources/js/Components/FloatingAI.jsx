@@ -31,68 +31,71 @@ const FloatingAI = () => {
     const isSpeakingRef = useRef(false);
     const silenceTimerRef = useRef(null);
     const finalTranscriptRef = useRef('');
+    const aiModeRef = useRef(aiMode);
+    const isContinuousRef = useRef(isContinuous);
+    const isLoadingRef = useRef(isLoading);
+    const handleSubmitMessageRef = useRef(null);
 
-    // Initial Recognition Setup
+    aiModeRef.current = aiMode;
+    isContinuousRef.current = isContinuous;
+    isLoadingRef.current = isLoading;
+
+    // Initial Recognition Setup - create ONCE on mount to avoid memory leak & performance hit
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                const rec = new SpeechRecognition();
-                rec.continuous = true; // Use true for manual control with silence timer
-                rec.lang = 'id-ID';
-                rec.interimResults = true;
+        if (typeof window === 'undefined') return;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return;
 
-                rec.onresult = (event) => {
-                    let interimTranscript = '';
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            finalTranscriptRef.current += event.results[i][0].transcript;
-                        } else {
-                            interimTranscript += event.results[i][0].transcript;
-                        }
-                    }
+        const rec = new SpeechRecognition();
+        rec.continuous = true;
+        rec.lang = 'id-ID';
+        rec.interimResults = true;
 
-                    const currentLiveMessage = finalTranscriptRef.current + interimTranscript;
-                    setMessage(currentLiveMessage);
-
-                    // Reset 3-second silence timer every time user speaks
-                    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-
-                    if (currentLiveMessage.trim().length > 0) {
-                        silenceTimerRef.current = setTimeout(() => {
-                            if (finalTranscriptRef.current.trim() || interimTranscript.trim()) {
-                                console.log('3 Seconds silence detected. Processing...');
-                                rec.stop();
-                                handleSubmitMessage(currentLiveMessage);
-                            }
-                        }, 3000); // 3 Seconds silence detection
-                    }
-                };
-
-                rec.onerror = (event) => {
-                    console.error('Speech Recognition Error:', event.error);
-                    if (event.error === 'not-allowed') setPermError('permission_blocked');
-                    setIsListening(false);
-                    setIsContinuous(false);
-                };
-
-                rec.onend = () => {
-                    setIsListening(false);
-                    finalTranscriptRef.current = ''; // Reset for next turn
-                    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-
-                    // Restart listening if in talk mode and AI is NOT speaking and user hasn't stopped
-                    if (isContinuous && aiMode === 'talk' && !isSpeakingRef.current && !isLoading) {
-                        setTimeout(() => {
-                            try { rec.start(); setIsListening(true); } catch (e) { }
-                        }, 300);
-                    }
-                };
-
-                setRecognition(rec);
+        rec.onresult = (event) => {
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscriptRef.current += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
             }
-        }
-    }, [aiMode, isContinuous, isLoading]);
+            const currentLiveMessage = finalTranscriptRef.current + interimTranscript;
+            setMessage(currentLiveMessage);
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            if (currentLiveMessage.trim().length > 0) {
+                silenceTimerRef.current = setTimeout(() => {
+                    if (finalTranscriptRef.current.trim() || interimTranscript.trim()) {
+                        rec.stop();
+                        handleSubmitMessageRef.current?.(currentLiveMessage);
+                    }
+                }, 3000);
+            }
+        };
+
+        rec.onerror = (event) => {
+            if (event.error === 'not-allowed') setPermError('permission_blocked');
+            setIsListening(false);
+            setIsContinuous(false);
+        };
+
+        rec.onend = () => {
+            setIsListening(false);
+            finalTranscriptRef.current = '';
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            if (isContinuousRef.current && aiModeRef.current === 'talk' && !isSpeakingRef.current && !isLoadingRef.current) {
+                setTimeout(() => {
+                    try { rec.start(); setIsListening(true); } catch (e) { }
+                }, 300);
+            }
+        };
+
+        setRecognition(rec);
+        return () => {
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            rec.abort?.();
+        };
+    }, []);
 
     const scrollToBottom = () => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -205,6 +208,8 @@ const FloatingAI = () => {
     const fixUrl = () => {
         window.location.replace('http://localhost:8000');
     };
+
+    handleSubmitMessageRef.current = handleSubmitMessage;
 
     if (!isOpen) {
         return (

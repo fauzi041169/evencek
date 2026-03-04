@@ -102,7 +102,7 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
             if (isOwner) {
                 if (activeConversation) {
                     fetchMessages(false);
-                    const interval = setInterval(() => fetchMessages(true), 10000);
+                    const interval = setInterval(() => fetchMessages(true), 15000); // 15s kurangi load
                     return () => clearInterval(interval);
                 } else {
                     fetchConversations(false);
@@ -111,7 +111,7 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
                 }
             } else {
                 fetchMessages(false);
-                const interval = setInterval(() => fetchMessages(true), 10000);
+                const interval = setInterval(() => fetchMessages(true), 15000);
                 return () => clearInterval(interval);
             }
         }

@@ -30,26 +30,30 @@ export default function Edit({ user, provinces, regencies: initialRegencies, dis
         _method: 'PUT'
     });
 
-    // Effect for cascading dropdowns
+    // Effect for cascading dropdowns - dengan AbortController untuk hindari race condition
     useEffect(() => {
-        if (data.province_id && data.province_id !== user.profile?.province_id) {
-            axios.get(`/profile/ajax/regencies/${data.province_id}`)
-                .then(res => {
-                    setRegencies(res.data);
-                    setDistricts([]);
-                    setData(prev => ({ ...prev, regency_id: '', district_id: '' }));
-                });
-        }
+        if (!data.province_id || data.province_id === user.profile?.province_id) return;
+        const ac = new AbortController();
+        axios.get(`/profile/ajax/regencies/${data.province_id}`, { signal: ac.signal })
+            .then(res => {
+                setRegencies(res.data);
+                setDistricts([]);
+                setData(prev => ({ ...prev, regency_id: '', district_id: '' }));
+            })
+            .catch(err => { if (err.name !== 'CanceledError') console.error(err); });
+        return () => ac.abort();
     }, [data.province_id]);
 
     useEffect(() => {
-        if (data.regency_id && data.regency_id !== user.profile?.regency_id) {
-            axios.get(`/profile/ajax/districts/${data.regency_id}`)
-                .then(res => {
-                    setDistricts(res.data);
-                    setData(prev => ({ ...prev, district_id: '' }));
-                });
-        }
+        if (!data.regency_id || data.regency_id === user.profile?.regency_id) return;
+        const ac = new AbortController();
+        axios.get(`/profile/ajax/districts/${data.regency_id}`, { signal: ac.signal })
+            .then(res => {
+                setDistricts(res.data);
+                setData(prev => ({ ...prev, district_id: '' }));
+            })
+            .catch(err => { if (err.name !== 'CanceledError') console.error(err); });
+        return () => ac.abort();
     }, [data.regency_id]);
 
     const handlePhotoChange = (e) => {

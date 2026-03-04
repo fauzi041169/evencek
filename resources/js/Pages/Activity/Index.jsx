@@ -569,6 +569,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                             <img
                                                 src={getImageUrl(activity)}
                                                 alt={activity.name}
+                                                loading="lazy"
                                                 className="w-full h-full object-cover sm:object-cover transition-transform duration-500 group-hover:scale-110"
                                                 onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ACTIVITY_IMAGE; }}
                                             />
@@ -717,6 +718,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                 <img
                                                     src={getImageUrl(activity)}
                                                     alt={activity.name}
+                                                    loading="lazy"
                                                     className="w-full h-full object-cover sm:object-cover transition-transform duration-500 group-hover:scale-110"
                                                     onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ACTIVITY_IMAGE; }}
                                                 />

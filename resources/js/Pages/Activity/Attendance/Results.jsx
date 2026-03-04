@@ -9,9 +9,8 @@ export default function Results({ activity, attendance, participants }) {
     const [backgroundImages, setBackgroundImages] = useState([]);
 
     useEffect(() => {
-        // Load attendance records
         fetchAttendances(false);
-        const interval = setInterval(() => fetchAttendances(true), 5000);
+        const interval = setInterval(() => fetchAttendances(true), 15000); // 15s untuk kurangi load server
         return () => clearInterval(interval);
     }, []);
 
@@ -115,7 +114,8 @@ export default function Results({ activity, attendance, participants }) {
                                     <div className="p-5 text-center border-b border-gray-100">
                                         <img 
                                             src={record.user?.profile?.foto_url || '/assets/images/profilefoto/default-profile.png'}
-                                            alt="Profile" 
+                                            alt="Profile"
+                                            loading="lazy"
                                             className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover mx-auto mb-3 border-4 border-blue-500 p-0.5"
                                             onError={(e) => {
                                                 e.target.src = '/assets/images/profilefoto/default-profile.png';

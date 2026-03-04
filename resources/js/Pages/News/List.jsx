@@ -68,6 +68,7 @@ export default function List({ news }) {
                                                                 className="h-10 w-10 rounded-lg object-cover"
                                                                 src={item.image ? (item.image.startsWith('http') || item.image.startsWith('/') ? item.image : `/storage/${item.image.replace(/^storage\//, '')}`) : '/assets/images/news/default-news.jpg'}
                                                                 alt=""
+                                                                loading="lazy"
                                                                 onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/news/default-news.jpg'; }}
                                                             />
                                                         </div>

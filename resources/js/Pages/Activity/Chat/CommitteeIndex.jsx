@@ -13,14 +13,13 @@ export default function CommitteeIndex({ activity }) {
 
     useEffect(() => {
         loadConversations(false);
-        const interval = setInterval(() => loadConversations(true), 5000);
-        return () => clearInterval(interval);
+        const interval = setInterval(() => loadConversations(true), 15000); // 15s kurangi load
     }, []);
 
     useEffect(() => {
         if (selectedUser) {
             loadMessages(selectedUser.id, false);
-            const interval = setInterval(() => loadMessages(selectedUser.id, true), 3000);
+            const interval = setInterval(() => loadMessages(selectedUser.id, true), 10000); // 10s kurangi load
             return () => clearInterval(interval);
         }
     }, [selectedUser]);

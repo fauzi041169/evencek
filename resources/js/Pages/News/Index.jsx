@@ -412,6 +412,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                 <img
                                                     src={getImageUrl(news.image)}
                                                     alt={news.title}
+                                                    loading={index === 0 ? 'eager' : 'lazy'}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                     onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/news/default-news.jpg'; }}
                                                 />
@@ -506,6 +507,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                 <img
                                                     src={getImageUrl(news.image)}
                                                     alt={news.title}
+                                                    loading="lazy"
                                                     className="w-full h-full object-cover"
                                                     onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/news/default-news.jpg'; }}
                                                 />
