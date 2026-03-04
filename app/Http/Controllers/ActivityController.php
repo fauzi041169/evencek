@@ -1734,7 +1734,19 @@ class ActivityController extends Controller
         $title = 'Edit Aktivitas';
         $titlepage = 'Edit Aktivitas';
         $activity = Activity::findOrFail($id);
-        $activity->append('custom_fields');
+
+        // Safely append custom_fields (hindari error jika tabel belum dimigrasi di production)
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('custom_fields')
+                && \Illuminate\Support\Facades\Schema::hasTable('activity_custom_field')) {
+                $activity->append('custom_fields');
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to append custom_fields on activity.edit', [
+                'activity_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Batasi hanya untuk creator murni; admin/superadmin bebas edit
         // Cast to int to avoid strict-type mismatch between string/int ids in production
