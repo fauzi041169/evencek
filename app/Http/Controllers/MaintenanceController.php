@@ -728,6 +728,11 @@ class MaintenanceController extends Controller
                 'column' => 'image'
             ],
             [
+                'folder' => 'activities/gallery',
+                'model' => \App\Models\Gallery::class,
+                'column' => 'image'
+            ],
+            [
                 'folder' => 'partners',
                 'model' => \App\Models\Partner::class,
                 'column' => 'logo'
@@ -761,6 +766,11 @@ class MaintenanceController extends Controller
                 'folder' => 'activity_materials',
                 'model' => \App\Models\ActivityMaterial::class,
                 'column' => 'file_path'
+            ],
+            [
+                'folder' => 'pengurus',
+                'model' => \App\Models\Pengurus::class,
+                'column' => 'foto'
             ],
         ];
 
