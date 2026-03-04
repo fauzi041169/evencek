@@ -127,13 +127,31 @@ class ProfileController extends Controller
         $id = $id ?? Auth::id();
         $user = User::findOrFail($id);
 
-        if (! auth()->check() || (auth()->id() !== $user->id && 
-            ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && 
-            ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()) &&
-            ! (method_exists(auth()->user(), 'isCreator') && auth()->user()->isCreator())
-        )) {
+        $auth = auth()->user();
+        $isSelf = auth()->check() && auth()->id() === $user->id;
+        $isStaff = $auth && (
+            (method_exists($auth, 'isAdmin') && $auth->isAdmin()) ||
+            (method_exists($auth, 'isSuperAdmin') && $auth->isSuperAdmin()) ||
+            (method_exists($auth, 'isCreator') && $auth->isCreator())
+        );
+        $isCommitteeOfParticipant = false;
+        if ($auth && ! $isSelf) {
+            $managedActivityIds = collect(DB::table('activities')->where('user_id', $auth->id)->pluck('id'))
+                ->concat(DB::table('activity_owners')->where('user_id', $auth->id)->pluck('activity_id'))
+                ->concat(DB::table('activity_committee_structures')->where('user_id', $auth->id)->pluck('activity_id'))
+                ->unique()
+                ->values();
+            $isCommitteeOfParticipant = ActivityUser::where('user_id', $user->id)
+                ->whereIn('activity_id', $managedActivityIds)
+                ->exists();
+        }
+
+        if (! auth()->check() || (! $isSelf && ! $isStaff && ! $isCommitteeOfParticipant)) {
             abort(403, 'Unauthorized action.');
         }
+
+        // Edit Profil Peserta: isi sebagian / edit sebagian, tanpa isian wajib
+        $isParticipantEdit = ! $isSelf && ($isStaff || $isCommitteeOfParticipant);
 
         try {
             // Sanitize region inputs to ensures they are null if empty/invalid string
@@ -151,9 +169,14 @@ class ProfileController extends Controller
                 $request->merge($cleanRegions);
             }
 
-            $request->validate([
-                'name' => 'sometimes|required|string|max:255',
-                'email' => 'sometimes|required|email|unique:users,email,'.$user->id,
+            $nameRule = $isParticipantEdit ? 'nullable|string|max:255' : 'sometimes|required|string|max:255';
+            $emailRule = $isParticipantEdit
+                ? 'nullable|email|unique:users,email,' . $user->id
+                : 'sometimes|required|email|unique:users,email,' . $user->id;
+
+            $rules = [
+                'name' => $nameRule,
+                'email' => $emailRule,
                 'no_hp' => 'nullable|string|max:20',
                 'nik' => 'nullable|string|max:20',
                 'pekerjaan' => 'nullable|string|max:100',
@@ -169,7 +192,8 @@ class ProfileController extends Controller
                 'jenis_kelamin' => 'nullable|string',
                 'birth_place' => 'nullable|string|max:100',
                 'birth_date' => 'nullable|date',
-            ], [
+            ];
+            $messages = [
                 'name.required' => 'Nama harus diisi',
                 'name.max' => 'Nama tidak boleh lebih dari 255 karakter',
                 'email.required' => 'Email harus diisi',
@@ -190,7 +214,8 @@ class ProfileController extends Controller
                 'cover_file.mimes' => 'Format sampul harus jpeg, png, atau jpg',
                 'cover_file.max' => 'Ukuran sampul maksimal 20MB',
                 'birth_date.date' => 'Format tanggal lahir tidak valid',
-            ]);
+            ];
+            $request->validate($rules, $messages);
 
             $profile = $user->profile;
             $requiresPhoto = $request->boolean('require_photo');
@@ -219,11 +244,20 @@ class ProfileController extends Controller
 
             // Update user data including email if present
             $userData = [];
-            if ($request->has('name')) {
-                $userData['name'] = $request->name;
-            }
-            if ($request->has('email')) {
-                $userData['email'] = $request->email;
+            if ($isParticipantEdit) {
+                if ($request->filled('name')) {
+                    $userData['name'] = $request->name;
+                }
+                if ($request->filled('email')) {
+                    $userData['email'] = $request->email;
+                }
+            } else {
+                if ($request->has('name')) {
+                    $userData['name'] = $request->name;
+                }
+                if ($request->has('email')) {
+                    $userData['email'] = $request->email;
+                }
             }
 
             if ($request->hasFile('cover_file')) {

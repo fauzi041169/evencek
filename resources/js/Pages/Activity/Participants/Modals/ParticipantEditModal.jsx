@@ -265,7 +265,6 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('name', e.target.value)}
                                         error={errors.name}
                                         icon={<User className="w-4 h-4" />}
-                                        required
                                     />
                                 </div>
                                 <div className="col-span-2 md:col-span-1">
@@ -276,7 +275,6 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('email', e.target.value)}
                                         error={errors.email}
                                         icon={<Mail className="w-4 h-4" />}
-                                        required
                                     />
                                 </div>
                                 <div className="col-span-2 md:col-span-1">
