@@ -144,10 +144,6 @@ class LoginController extends Controller
         return back()->withErrors([
             'login' => 'Email atau Password salah.',
         ])->onlyInput('login');
-
-        // Tambahkan jeda kecil untuk memperlambat brute force tanpa mengganggu UX
-        // Catatan: baris ini dieksekusi saat login gagal, sebelum response dikirim
-        usleep(500000); // 500ms
     }
 
     // Tambahkan method berikut untuk Google OAuth

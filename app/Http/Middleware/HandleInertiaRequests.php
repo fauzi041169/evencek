@@ -36,15 +36,20 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        if ($user) {
+            $user->loadMissing('profile'); // Hindari lazy-load terpisah saat akses profile_photo_url
+        }
+
         return array_merge(parent::share($request), [
             'csrf_token' => fn () => csrf_token(),
             'auth' => [
-                'user' => $request->user() ? [
-                    'id' => $request->user()->id,
-                    'name' => $request->user()->name,
-                    'email' => $request->user()->email,
-                    'role' => $request->user()->role ?? 'user',
-                    'profile_photo_url' => $request->user()->profile_photo_url ?? null,
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role ?? 'user',
+                    'profile_photo_url' => $user->profile_photo_url ?? null,
                 ] : null,
             ],
             'flash' => [

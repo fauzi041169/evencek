@@ -1170,16 +1170,14 @@ class DashboardController extends Controller
             return $results;
         });
 
-        // Status langganan (unused in current view but kept for safety/layout)
-        $subscription = $user->activeSubscription ?? $user->subscriptions()->latest()->first();
-        
-        // Remove unused queries (upcomingActivities, recentActivities, subscriptions list, activityUserMap)
-        // to improve performance.
+        // Status langganan (cache 5 menit agar tidak query tiap buka dashboard)
+        $subscription = Cache::remember('user_dashboard_subscription_' . $userId, 300, function () use ($user) {
+            return $user->activeSubscription ?? $user->subscriptions()->latest()->first();
+        });
 
         return Inertia::render('Dashboard/User', [
             'stats' => $stats,
             'joinedActivityUsers' => $joinedActivityUsers,
-            // 'subscription' might be used in layout header? passing it just in case
             'subscription' => $subscription,
         ]);
     }

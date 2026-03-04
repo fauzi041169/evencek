@@ -246,9 +246,8 @@ class User extends Authenticatable
             if (str_starts_with($this->avatar, 'http')) {
                 return $this->avatar;
             }
-            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($this->avatar)) {
-                return \Illuminate\Support\Facades\Storage::url($this->avatar);
-            }
+            // Hindari Storage::exists() tiap request (I/O lambat); pakai URL saja
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($this->avatar);
         }
 
         return asset('assets/images/profilefoto/default-profile.png');

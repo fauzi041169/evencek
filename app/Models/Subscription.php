@@ -6,11 +6,18 @@ use App\Traits\HasCustomUid;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class Subscription extends Model
 {
     use HasCustomUid;
     use HasFactory;
+
+    protected static function booted()
+    {
+        static::saved(fn (Subscription $s) => Cache::forget('user_dashboard_subscription_' . $s->user_id));
+        static::deleted(fn (Subscription $s) => Cache::forget('user_dashboard_subscription_' . $s->user_id));
+    }
 
     protected $fillable = [
         'user_id',
