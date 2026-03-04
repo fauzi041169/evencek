@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasCustomUid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class Setting extends Model
 {
@@ -43,7 +44,7 @@ class Setting extends Model
      */
     public static function set($key, $value, $type = 'string', $group = 'general', $description = null)
     {
-        return static::updateOrCreate(
+        $result = static::updateOrCreate(
             ['key' => $key],
             [
                 'value' => $value,
@@ -52,6 +53,8 @@ class Setting extends Model
                 'description' => $description,
             ]
         );
+        Cache::forget('inertia_app_settings');
+        return $result;
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasCustomUid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class MaintenanceSetting extends Model
 {
@@ -25,17 +26,24 @@ class MaintenanceSetting extends Model
         'maintenance_end' => 'datetime',
     ];
 
+    public const MAINTENANCE_CACHE_KEY = 'maintenance_setting_current';
+
+    public const MAINTENANCE_CACHE_TTL_SECONDS = 30;
+
     /**
-     * Get the current maintenance setting
+     * Get the current maintenance setting (cached 30s to reduce DB hits per request)
      */
     public static function getCurrent()
     {
         try {
-            return static::first() ?? static::create([
-                'is_maintenance_mode' => false,
-                'maintenance_message' => 'Sistem sedang dalam pemeliharaan. Silakan coba lagi nanti.',
-            ]);
+            return Cache::remember(static::MAINTENANCE_CACHE_KEY, static::MAINTENANCE_CACHE_TTL_SECONDS, function () {
+                return static::first() ?? static::create([
+                    'is_maintenance_mode' => false,
+                    'maintenance_message' => 'Sistem sedang dalam pemeliharaan. Silakan coba lagi nanti.',
+                ]);
+            });
         } catch (\Exception $e) {
+            Cache::forget(static::MAINTENANCE_CACHE_KEY);
             // Jika database tidak tersedia, return default setting object
             return new static([
                 'is_maintenance_mode' => false,
@@ -83,6 +91,8 @@ class MaintenanceSetting extends Model
                 ]);
             }
 
+            Cache::forget(static::MAINTENANCE_CACHE_KEY);
+
             return $setting;
         } catch (\Exception $e) {
             // Log error jika mungkin (jika database tersedia untuk logging)
@@ -115,6 +125,8 @@ class MaintenanceSetting extends Model
                     'maintenance_end' => null,
                 ]);
             }
+
+            Cache::forget(static::MAINTENANCE_CACHE_KEY);
 
             return $setting;
         } catch (\Exception $e) {

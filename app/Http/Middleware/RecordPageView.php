@@ -18,17 +18,21 @@ class RecordPageView
     {
         $response = $next($request);
 
-        // Record the page view
-        try {
-            View::create([
-                'page_id' => $request->path(),
-                'user_id' => auth()->id(),
-                'ip_address' => $request->ip(),
-            ]);
-        } catch (\Throwable $e) {
-            // Jangan gagalkan request jika tabel belum ada selama pengujian
-            // atau jika terjadi masalah database lainnya; cukup lanjutkan tanpa logging.
-        }
+        // Catat page view setelah response dikirim (kurangi latency yang dirasakan user)
+        $path = $request->path();
+        $userId = auth()->id();
+        $ip = $request->ip();
+        app()->terminating(function () use ($path, $userId, $ip) {
+            try {
+                View::create([
+                    'page_id' => $path,
+                    'user_id' => $userId,
+                    'ip_address' => $ip,
+                ]);
+            } catch (\Throwable $e) {
+                // Jangan gagalkan request jika tabel belum ada atau error DB
+            }
+        });
 
         return $response;
     }

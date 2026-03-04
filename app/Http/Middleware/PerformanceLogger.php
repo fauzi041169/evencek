@@ -20,15 +20,18 @@ class PerformanceLogger
             return $next($request);
         }
 
+        // Di production nonaktifkan agar tidak menambah query + INSERT tiap request (bikin lemot)
+        if (! config('app.debug') && ! config('logging.performance_logging', false)) {
+            return $next($request);
+        }
+
         $start = microtime(true);
-        // Enable query log for this request only
         DB::connection()->enableQueryLog();
 
         $response = $next($request);
 
         $durationMs = (microtime(true) - $start) * 1000;
         $queries = DB::connection()->getQueryLog();
-        // Disable before saving to avoid counting insert below
         DB::connection()->disableQueryLog();
 
         $queryCount = is_array($queries) ? count($queries) : 0;
