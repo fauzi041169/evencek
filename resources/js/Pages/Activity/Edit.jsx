@@ -6,6 +6,8 @@ import Swal from 'sweetalert2';
 import { INDONESIAN_BANKS } from '../../Constants/BankList';
 import RichTextEditor from '@/Components/RichTextEditor';
 
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB, harus sinkron dengan backend
+
 export default function Edit({
     activity,
     categories,
@@ -288,6 +290,17 @@ export default function Edit({
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // Validasi ukuran file gambar di sisi frontend supaya tidak langsung kirim dan meledak 500
+        if (data.image && data.image.size > MAX_IMAGE_SIZE_BYTES) {
+            const sizeMb = (data.image.size / (1024 * 1024)).toFixed(1);
+            Swal.fire({
+                title: 'Gambar Terlalu Besar',
+                text: `Ukuran file gambar ${sizeMb} MB. Batas maksimal adalah 10 MB. Silakan kompres atau pilih gambar lain yang lebih kecil.`,
+                icon: 'error',
+            });
+            return;
+        }
 
         // Check for custom field errors
         const hasCustomFieldErrors = data.custom_fields.some(f => f.error_label);
