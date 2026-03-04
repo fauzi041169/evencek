@@ -701,9 +701,15 @@ class MaintenanceController extends Controller
         ]);
     }
 
+    /**
+     * Hanya menghapus file yang TIDAK direferensi di database.
+     * Semua path dari model (avatar, foto, image, logo, dll.) dinormalisasi (dengan/tanpa prefix storage/)
+     * dan dibandingkan; file yang cocok dengan salah satu path dipakai TIDAK dihapus.
+     * Jika query ke model gagal, folder terkait tidak dihapus sama sekali.
+     */
     public function cleanupUnusedFiles()
     {
-        // Define targets: [folder => relative to public disk, model => Eloquent Class, column => field name]
+        // Define targets: folder di disk, model & kolom yang menyimpan path
         $targets = [
             [
                 'folder' => 'profile-photos',
@@ -762,31 +768,57 @@ class MaintenanceController extends Controller
         $totalDeleted = 0;
         $activeFiles = []; // Cache active files to avoid repeated DB queries if multiple folders map to same table
 
-        // Pre-fetch all active files first to ensure we have a complete picture
-        // Iterate targets to build a massive list of "Preserved Files"
+        // Helper: normalisasi path dari DB menjadi bentuk yang bisa dibandingkan dengan path di disk.
+        // DB bisa menyimpan "activities/x.jpg", "storage/activities/x.jpg", atau hanya "x.jpg" (Activity dll.).
+        $normalizeUsedPaths = function ($path, $folder = null) {
+            if (empty($path) || is_string($path) && (str_starts_with($path, 'http://') || str_starts_with($path, 'https://'))) {
+                return [];
+            }
+            $p = str_replace('\\', '/', trim((string) $path));
+            $variants = [$p];
+            $p = ltrim($p, '/');
+            $variants[] = $p;
+            if (str_starts_with($p, 'storage/')) {
+                $variants[] = substr($p, 8);
+            }
+            // Penting: Activity (dan beberapa model) menyimpan HANYA nama file (mis. "abc.jpg").
+            // Di disk path-nya "activities/abc.jpg". Tambahkan folder/path agar tidak terhapus.
+            if ($folder && $p && ! str_contains($p, '/')) {
+                $variants[] = $folder . '/' . $p;
+            }
+            return array_unique($variants);
+        };
+
+        // Pre-fetch all active files: hanya file yang TIDAK ada di daftar ini yang boleh dihapus.
+        $queryFailedKeys = [];
         $allUsedFiles = [];
         foreach ($targets as $target) {
             $key = $target['model'] . '_' . $target['column'];
-            if (!isset($activeFiles[$key])) {
+            if (! isset($activeFiles[$key])) {
                 try {
-                    $activeFiles[$key] = $target['model']::whereNotNull($target['column'])
-                        ->pluck($target['column'])
-                        ->map(function($path) {
-                            return str_replace('\\', '/', $path); // Normalize slashes
-                        })
-                        ->toArray();
+                    $folder = $target['folder'];
+                    $rows = $target['model']::whereNotNull($target['column'])->pluck($target['column']);
+                    $activeFiles[$key] = $rows->flatMap(function ($path) use ($normalizeUsedPaths, $folder) {
+                        return $normalizeUsedPaths($path, $folder);
+                    })->unique()->values()->toArray();
                 } catch (\Exception $e) {
                     $summary[] = "Error querying " . $target['model'] . ": " . $e->getMessage();
                     $activeFiles[$key] = [];
+                    $queryFailedKeys[$key] = true;
                 }
             }
             $allUsedFiles = array_merge($allUsedFiles, $activeFiles[$key]);
         }
-        $allUsedFiles = array_unique($allUsedFiles);
+        $allUsedFiles = array_unique(array_filter($allUsedFiles));
 
         foreach ($targets as $target) {
             $folder = $target['folder'];
             $type = $target['type'] ?? 'storage';
+            $key = $target['model'] . '_' . $target['column'];
+            if (! empty($queryFailedKeys[$key])) {
+                $summary[] = "Folder '$folder' dilewati (query " . $target['model'] . " gagal, tidak menghapus apa pun).";
+                continue;
+            }
 
             if ($type === 'legacy_public') {
                 $fullPath = public_path($folder);
