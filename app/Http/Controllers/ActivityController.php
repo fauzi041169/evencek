@@ -2052,7 +2052,19 @@ class ActivityController extends Controller
             }
 
             // Sync Custom Fields (deduplikasi: satu kolom per label, tidak boleh ganda)
-            if (isset($validated['custom_fields'])) {
+            $canUseCustomFields = false;
+            try {
+                $canUseCustomFields = \Illuminate\Support\Facades\Schema::hasTable('custom_fields')
+                    && \Illuminate\Support\Facades\Schema::hasTable('activity_custom_field');
+            } catch (\Throwable $e) {
+                \Log::warning('custom_fields tables missing or not accessible on activity.update', [
+                    'activity_id' => $activity->id,
+                    'error' => $e->getMessage(),
+                ]);
+                $canUseCustomFields = false;
+            }
+
+            if ($canUseCustomFields && isset($validated['custom_fields'])) {
                 $canonLabel = function ($f) {
                     $l = trim((string) ($f['label'] ?? $f['key'] ?? ''));
                     return strtolower(preg_replace('/[\s_-]+/', '_', $l));
@@ -2115,8 +2127,8 @@ class ActivityController extends Controller
                 $activity->save();
 
                 $activity->customFields()->sync($fieldIds);
-            } else {
-                // Clear custom fields and their column settings
+            } elseif ($canUseCustomFields) {
+                // Clear custom fields dan column_settings hanya jika tabel tersedia
                 $columnSettings = $activity->column_settings ?? [];
                 $changed = false;
                 foreach (array_keys($columnSettings) as $ck) {
