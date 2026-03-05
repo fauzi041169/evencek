@@ -315,7 +315,6 @@ class LoginController extends Controller
                     $user->profile()->create([]);
                 }
             } else {
-                // Update google_id dan avatar jika belum ada atau berbeda
                 $updateData = [];
 
                 if (! $user->google_id) {
@@ -326,10 +325,7 @@ class LoginController extends Controller
                     $updateData['avatar'] = $googleUser->getAvatar();
                 }
 
-                // Update name jika berbeda
-                if ($googleUser->getName() && $user->name !== $googleUser->getName()) {
-                    $updateData['name'] = $googleUser->getName();
-                }
+                // Jangan timpa nama lokal dengan nama dari Google
 
                 if (! empty($updateData)) {
                     $user->update($updateData);

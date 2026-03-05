@@ -34,7 +34,7 @@ export default function LoginModal({ isOpen, onClose }) {
 
                 <span className="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
 
-                <div className="inline-block w-full max-w-md transform overflow-hidden rounded-lg bg-white text-left align-middle shadow-xl transition-all sm:my-8 sm:align-middle relative z-[100000]">
+                <div className="inline-block w-full max-w-[95vw] sm:max-w-md transform overflow-hidden rounded-lg bg-white text-left align-middle shadow-xl transition-all sm:my-8 sm:align-middle relative z-[100000] max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
                     <div className="bg-indigo-600 px-4 py-3 sm:px-6 flex justify-between items-center">
                         <h3 className="text-lg font-bold text-white" id="login-modal-title">Masuk ke Akun</h3>
                         <button onClick={onClose} className="text-indigo-100 hover:text-white focus:outline-none">

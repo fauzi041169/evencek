@@ -51,7 +51,7 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
     };
 
     const { data, setData, post, processing, errors, reset } = useForm({
-        _method: 'POST',
+        _method: 'PUT',
         foto_file: null,
         // Dynamic fields will be added here
     });
@@ -228,11 +228,24 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                 return out;
             },
             onSuccess: () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Profil berhasil diperbarui.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
                 try { onClose && onClose(); } catch (e) {}
                 try { onSuccess && onSuccess(); } catch (e) {}
             },
             onError: (err) => {
                 console.error('Profile update failed', err);
+                const firstError = err && typeof err === 'object' ? Object.values(err)[0] : null;
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal menyimpan',
+                    text: firstError ? String(firstError) : 'Terjadi kesalahan saat menyimpan data. Coba lagi.',
+                });
             },
             preserveScroll: true,
             forceFormData: true,

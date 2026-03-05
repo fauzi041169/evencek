@@ -1998,6 +1998,7 @@ export default function Index({
                 provinces={safeProvinces}
                 customKeys={availableCustomKeys}
                 customOptions={customOptions}
+                requiredProfileFields={activity?.mandatory_profile_fields || []}
             />
         </AcaraLayout>
     );

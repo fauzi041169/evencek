@@ -1,6 +1,6 @@
 import { Head, usePage, Link, router } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { format } from 'date-fns';
 import { id, enUS } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
@@ -167,6 +167,25 @@ export default function Show({
 
     const heroBgUrl = heroBg1 ? getStorageUrl(heroBg1) : null;
     const heroStyle = heroAnim;
+
+    const rainLines = useMemo(() => {
+        return Array.from({ length: 30 }, () => ({
+            left: Math.random() * 100,
+            delay: Math.random(),
+            duration: 0.5 + Math.random(),
+            opacity: 0.3 + Math.random() * 0.5
+        }));
+    }, [heroStyle]);
+
+    const particleDots = useMemo(() => {
+        return Array.from({ length: 30 }, () => ({
+            left: Math.random() * 100,
+            size: 2 + Math.random() * 4,
+            delay: Math.random() * 5,
+            duration: 5 + Math.random() * 10,
+            opacity: 0.2 + Math.random() * 0.6
+        }));
+    }, [heroStyle]);
 
     // Batch Logic
     const activeBatch = batches?.find(b => b.id == (filterBatch || selectedBatchId));
@@ -790,12 +809,12 @@ export default function Show({
 
                         {heroStyle === 'rain' && (
                             <div className="absolute inset-0 z-10 overflow-hidden opacity-40">
-                                {[...Array(30)].map((_, i) => (
+                                {rainLines.map((rl, i) => (
                                     <div key={i} className="rain-line" style={{
-                                        left: `${Math.random() * 100}%`,
-                                        animationDelay: `${Math.random()}s`,
-                                        animationDuration: `${0.5 + Math.random()}s`,
-                                        opacity: 0.3 + Math.random() * 0.5
+                                        left: `${rl.left}%`,
+                                        animationDelay: `${rl.delay}s`,
+                                        animationDuration: `${rl.duration}s`,
+                                        opacity: rl.opacity
                                     }}></div>
                                 ))}
                             </div>
@@ -803,14 +822,14 @@ export default function Show({
 
                         {heroStyle === 'particles' && (
                             <div className="absolute inset-0 z-10 overflow-hidden opacity-40">
-                                {[...Array(30)].map((_, i) => (
+                                {particleDots.map((pd, i) => (
                                     <div key={i} className="particle-dot" style={{
-                                        left: `${Math.random() * 100}%`,
-                                        width: `${2 + Math.random() * 4}px`,
-                                        height: `${2 + Math.random() * 4}px`,
-                                        animationDelay: `${Math.random() * 5}s`,
-                                        animationDuration: `${5 + Math.random() * 10}s`,
-                                        opacity: 0.2 + Math.random() * 0.6
+                                        left: `${pd.left}%`,
+                                        width: `${pd.size}px`,
+                                        height: `${pd.size}px`,
+                                        animationDelay: `${pd.delay}s`,
+                                        animationDuration: `${pd.duration}s`,
+                                        opacity: pd.opacity
                                     }}></div>
                                 ))}
                             </div>
@@ -1730,7 +1749,13 @@ export default function Show({
                     missingData={missingProfileData}
                     onSuccess={() => {
                         setIsMissingDataModalOpen(false);
-                        window.location.reload();
+                        try { sessionStorage.removeItem('pending_enrollment'); } catch (e) {}
+                        const price = Number(activity?.price || 0);
+                        if (price > 0) {
+                            openManualPaymentModal();
+                        } else {
+                            handleEnroll('mandiri', true);
+                        }
                     }}
                 />
 

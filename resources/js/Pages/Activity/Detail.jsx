@@ -553,29 +553,16 @@ export default function Detail({
         setIsLoginModalOpen(false);
         setIsPaymentDetailModalOpen(false);
 
-        // Langsung lanjut enrollment: pembayaran (berbayar) atau show (gratis)
-        const pendingEnroll = sessionStorage.getItem('pending_enrollment');
-        if (pendingEnroll) {
-            try {
-                const parsed = JSON.parse(pendingEnroll);
-                const activityMatch = (parsed.activityId === activity?.id || parsed.activityId === activity?.uid);
-                if (activityMatch && parsed.type === 'mandiri') {
-                    sessionStorage.removeItem('pending_enrollment');
-                    processedPendingEnrollmentRef.current = true;
-                    if (registrationTarget?.type === 'disabled') {
-                        return; // User di region diblokir, tetap di detail
-                    }
-                    // Langsung ke pembayaran atau show sesuai kegiatan
-                    handleEnroll(parsed.type, true, parsed.voucherCode ?? null);
-                    return;
-                }
-            } catch (e) {
-                console.error('Error parsing pending enrollment', e);
-            }
+        try { sessionStorage.removeItem('pending_enrollment'); } catch (e) {}
+        if (registrationTarget?.type === 'disabled') {
+            return; // Diblokir oleh setting kegiatan
         }
-
-        // Fallback: reload agar data profil terbaru terlihat
-        window.location.reload();
+        const price = Number(activity?.price || 0);
+        if (price > 0) {
+            openManualPaymentModal();
+        } else {
+            handleEnroll('mandiri', true);
+        }
     };
 
     // After reload from profile update: if user is blocked for this activity, clear pending and stay on detail; otherwise resume enrollment.

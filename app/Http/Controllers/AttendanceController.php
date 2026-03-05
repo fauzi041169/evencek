@@ -318,7 +318,6 @@ class AttendanceController extends Controller
         $activity = $attendance->activity;
         $this->authorizeActivityAccess($activity->id);
 
-        // Get recent attendance records
         $attendances = ActivityRecord::where([
             'activity_id' => $activity->id,
             'attendance_id' => $attendance->id,
@@ -328,9 +327,10 @@ class AttendanceController extends Controller
             ->limit(9)
             ->get();
 
-        // Get participant data with user info for each record
-        $participants = $attendances->map(function ($record) {
-            $user = User::with('profile')->find($record->user_id);
+        $userIds = $attendances->pluck('user_id')->unique()->values();
+        $users = User::with('profile')->whereIn('id', $userIds)->get()->keyBy('id');
+        $participants = $attendances->map(function ($record) use ($users) {
+            $user = $users->get($record->user_id);
             return [
                 'id' => $record->id,
                 'user_id' => $record->user_id,
@@ -346,7 +346,6 @@ class AttendanceController extends Controller
             ];
         });
 
-        // Return JSON for AJAX requests
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([
                 'attendances' => $participants,
@@ -769,13 +768,10 @@ class AttendanceController extends Controller
         $attendanceTable = 'activity_records';
         $attendanceTableExists = Schema::hasTable($attendanceTable);
 
-        // Load attendance records for each participant
         if ($selectedAttendanceId && $participants) {
-            $participants->getCollection()->transform(function ($participant) use ($selectedActivity, $selectedAttendanceId) {
-                $participant->attendance_records = ActivityRecord::where('activity_id', $selectedActivity->id)
-                    ->where('user_id', $participant->user_id)
-                    ->where('attendance_id', $selectedAttendanceId)
-                    ->get();
+            $participants->getCollection()->transform(function ($participant) use ($selectedAttendanceId) {
+                $records = optional($participant->user)->attendanceRecords;
+                $participant->attendance_records = $records ? $records->where('attendance_id', $selectedAttendanceId)->values() : collect();
                 return $participant;
             });
         }
@@ -1840,4 +1836,3 @@ class AttendanceController extends Controller
         }
     }
 }
-

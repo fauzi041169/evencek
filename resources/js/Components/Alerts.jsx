@@ -65,7 +65,7 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
             </div>
             <div className="flex-1 mr-8">
                 <h4 className={`font-bold text-sm ${colorClass} mb-1`}>{title}</h4>
-                <p className={`text-sm ${type === 'error' ? 'text-red-700' : (type === 'success' ? 'text-green-700' : (type === 'warning' ? 'text-yellow-800' : 'text-blue-700'))} leading-relaxed`}>{message}</p>
+                <div className={`text-sm ${type === 'error' ? 'text-red-700' : (type === 'success' ? 'text-green-700' : (type === 'warning' ? 'text-yellow-800' : 'text-blue-700'))} leading-relaxed`}>{message}</div>
             </div>
             <button
                 onClick={() => dismissAlert(type)}

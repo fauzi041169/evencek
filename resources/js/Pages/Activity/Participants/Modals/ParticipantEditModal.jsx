@@ -23,7 +23,7 @@ function toDateOnly(value) {
     return `${y}-${m}-${day}`;
 }
 
-export default function ParticipantEditModal({ show, onClose, user, provinces, activity, customKeys = [], customOptions = {} }) {
+export default function ParticipantEditModal({ show, onClose, user, provinces, activity, customKeys = [], customOptions = {}, requiredProfileFields = [] }) {
     // 'user' prop here is likely the 'ActivityUser' object (pivot context) from the parent component
     // we need to extract the actual User model and Profile model from it.
 
@@ -54,6 +54,12 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
         additional_data: {},
         _method: 'PUT'
     });
+
+    // Helper: apakah field profil wajib untuk kegiatan ini
+    const isRequired = (key) => {
+        const k = String(key || '').toLowerCase();
+        return Array.isArray(requiredProfileFields) && requiredProfileFields.map(s => String(s).toLowerCase()).includes(k);
+    };
 
     useEffect(() => {
         if (show && targetUser && targetUser.id) {
@@ -265,6 +271,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('name', e.target.value)}
                                         error={errors.name}
                                         icon={<User className="w-4 h-4" />}
+                                required={isRequired('name')}
                                     />
                                 </div>
                                 <div className="col-span-2 md:col-span-1">
@@ -275,6 +282,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('email', e.target.value)}
                                         error={errors.email}
                                         icon={<Mail className="w-4 h-4" />}
+                                required={isRequired('email')}
                                     />
                                 </div>
                                 <div className="col-span-2 md:col-span-1">
@@ -284,6 +292,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('no_hp', e.target.value)}
                                         error={errors.no_hp}
                                         icon={<Phone className="w-4 h-4" />}
+                                required={isRequired('no_hp')}
                                     />
                                 </div>
                                 <div className="col-span-2 md:col-span-1">
@@ -293,6 +302,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('nik', e.target.value)}
                                         error={errors.nik}
                                         icon={<Hash className="w-4 h-4" />}
+                                required={isRequired('nik')}
                                     />
                                 </div>
 
@@ -302,6 +312,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         value={data.jenis_kelamin}
                                         onChange={e => setData('jenis_kelamin', e.target.value)}
                                         error={errors.jenis_kelamin}
+                                required={isRequired('jenis_kelamin') || isRequired('gender')}
                                     >
                                         <option value="">Pilih Jenis Kelamin</option>
                                         <option value="L">Laki-laki</option>
@@ -316,6 +327,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('birth_place', e.target.value)}
                                         error={errors.birth_place}
                                         icon={<MapPin className="w-4 h-4" />}
+                                required={isRequired('birth_place')}
                                     />
                                     <FormInput
                                         label="Tanggal Lahir"
@@ -324,8 +336,22 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('birth_date', e.target.value)}
                                         error={errors.birth_date}
                                         icon={<Calendar className="w-4 h-4" />}
+                                required={isRequired('birth_date')}
                                     />
                                 </div>
+
+                        {/* Foto Profil (opsional, tampil jika diwajibkan) */}
+                        {(isRequired('foto') || isRequired('photo')) && (
+                            <div className="col-span-2">
+                                <FormInput
+                                    label="Foto Profil"
+                                    type="file"
+                                    onChange={(e) => setData('foto_file', e.target.files?.[0] || null)}
+                                    error={errors.foto_file}
+                                    required
+                                />
+                            </div>
+                        )}
                             </div>
                         </div>
 
@@ -352,6 +378,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                             let currentOptions = [];
                                             let isDropdown = false;
                                             const isFileField = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => (f.key || '').toLowerCase() === baseKey.toLowerCase() && (f.type || '') === 'file');
+                                            const isRequiredCustom = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => (f.key || '').toLowerCase() === baseKey.toLowerCase() && (f.required === true || f.required === 1));
                                             const getFileUrl = (v) => {
                                                 if (!v) return null;
                                                 let s = String(v).trim();
@@ -377,7 +404,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                 const fileUrl = getFileUrl(value);
                                                 return (
                                                     <div key={rawKey} className="space-y-1.5">
-                                                        <label className="block text-sm font-medium text-slate-700">{label}</label>
+                                                        <label className="block text-sm font-medium text-slate-700">{label} {isRequiredCustom && <span className="text-red-500">*</span>}</label>
                                                         <input
                                                             type="file"
                                                             onChange={(e) => {
@@ -386,6 +413,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                                 setData('additional_data', newData);
                                                             }}
                                                             className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm"
+                                                            required={isRequiredCustom}
                                                         />
                                                         {fileUrl ? (
                                                             <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 text-xs hover:underline">
@@ -412,6 +440,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                                 setData('additional_data', newData);
                                                             }}
                                                             className="capitalize-label"
+                                                            required={isRequiredCustom}
                                                         >
                                                             <option value="">Pilih {label}...</option>
                                                             <option value="L">Laki-laki</option>
@@ -444,14 +473,17 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                                 setData('additional_data', newData);
                                                             }}
                                                             className="capitalize-label"
+                                                            required={isRequiredCustom}
                                                         >
                                                             <option value="">Pilih {label}...</option>
-                                                            {uniqueOptions.map((opt, idx) => (
-                                                                <option key={idx} value={opt}>{opt}</option>
-                                                            ))}
+                                                            {uniqueOptions.map((opt, idx) => {
+                                                                const val = (opt && typeof opt === 'object') ? (opt.value ?? opt.id ?? JSON.stringify(opt)) : String(opt);
+                                                                const labelText = (opt && typeof opt === 'object') ? (opt.label ?? opt.name ?? val) : String(opt);
+                                                                return <option key={idx} value={val}>{labelText}</option>;
+                                                            })}
                                                             {/* If current value is not in options, add it temporarily so details are preserved */}
-                                                            {value && !uniqueOptions.includes(value) && (
-                                                                <option value={value}>{value}</option>
+                                                            {value && !uniqueOptions.some(o => (typeof o === 'object' ? (o.value ?? o.id) : String(o)) === String(value)) && (
+                                                                <option value={String(value)}>{String(value)}</option>
                                                             )}
                                                         </FormSelect>
                                                     </div>
@@ -469,6 +501,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                             setData('additional_data', newData);
                                                         }}
                                                         className="capitalize-label"
+                                                        required={isRequiredCustom}
                                                     />
                                                 </div>
                                             );
@@ -496,6 +529,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('instansi', e.target.value)}
                                         error={errors.instansi}
                                         icon={<Building className="w-4 h-4" />}
+                                    required={isRequired('instansi')}
                                     />
                                 </div>
                                 <div>
@@ -505,6 +539,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('pekerjaan', e.target.value)}
                                         error={errors.pekerjaan}
                                         icon={<Briefcase className="w-4 h-4" />}
+                                    required={isRequired('pekerjaan')}
                                     />
                                 </div>
                                 <div>
@@ -514,6 +549,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('jabatan', e.target.value)}
                                         error={errors.jabatan}
                                         icon={<CreditCard className="w-4 h-4" />}
+                                    required={isRequired('jabatan')}
                                     />
                                 </div>
                             </div>
@@ -532,6 +568,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         value={data.province_id}
                                         onChange={handleProvinceChange}
                                         error={errors.province_id}
+                                    required={isRequired('province_id') || isRequired('provinsi')}
                                     >
                                         <option value="">Pilih Provinsi...</option>
                                         {provinces && provinces.map(prov => (
@@ -546,6 +583,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={handleRegencyChange}
                                         disabled={!data.province_id}
                                         error={errors.regency_id}
+                                    required={isRequired('regency_id') || isRequired('kabupaten') || isRequired('kota') || isRequired('city')}
                                     >
                                         <option value="">Pilih Kota/Kab...</option>
                                         {regencies && regencies.map(reg => (
@@ -560,6 +598,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                         onChange={e => setData('district_id', e.target.value)}
                                         disabled={!data.regency_id}
                                         error={errors.district_id}
+                                    required={isRequired('district_id') || isRequired('kecamatan')}
                                     >
                                         <option value="">Pilih Kecamatan...</option>
                                         {districts && districts.map(dist => (
@@ -576,6 +615,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                             className="w-full border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500/20 text-sm min-h-[80px]"
                                             rows="2"
                                             placeholder="Nama jalan, RT/RW, nomor rumah, kode pos, dll."
+                                        required={isRequired('alamat') || isRequired('address')}
                                         ></textarea>
                                         {errors.alamat && <p className="text-red-500 text-xs">{errors.alamat}</p>}
                                     </div>
@@ -648,7 +688,7 @@ const FormInput = ({ label, type = "text", value, onChange, error, icon, require
     );
 };
 
-const FormSelect = ({ label, value, onChange, error, children, disabled }) => (
+const FormSelect = ({ label, value, onChange, error, children, disabled, required }) => (
     <div className="space-y-1.5">
         <label className="block text-sm font-medium text-slate-700">{label}</label>
         <div className="relative">
@@ -656,6 +696,7 @@ const FormSelect = ({ label, value, onChange, error, children, disabled }) => (
                 value={value}
                 onChange={onChange}
                 disabled={disabled}
+                required={required}
                 className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer appearance-none"
             >
                 {children}

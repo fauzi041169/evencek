@@ -139,7 +139,7 @@ export default function ManualPaymentModal({ show, onClose, activity, paymentMet
 
     return (
         <Modal show={show} onClose={onClose} maxWidth="2xl">
-            <div className="w-full bg-white p-6">
+            <div className="w-full bg-white p-6 pb-8">
                 <div className="flex justify-between items-center mb-6 border-b pb-4">
                     <h3 className="text-xl font-bold text-gray-900">Selesaikan Pembayaran</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
