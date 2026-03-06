@@ -69,6 +69,19 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
         .trim()
         .replace(/[\s\-]+/g, '_');
 
+    const hasExplicitFileField = (keyNorm) => {
+        const list = Array.isArray(activity?.custom_fields) ? activity.custom_fields : [];
+        return !!list.find(f => normalizeKey(f.key || '') === keyNorm && (f.type || '') === 'file');
+    };
+
+    const shouldHideCustomKey = (baseKey) => {
+        const k = normalizeKey(baseKey);
+        if (['file', 'files', 'custom_file', 'custom_files', 'customfile', 'customfiles'].includes(k)) {
+            return !hasExplicitFileField(k);
+        }
+        return false;
+    };
+
     // Deduplicate customKeys by canonical key (strip custom_ and normalize)
     const dedupedCustomKeys = React.useMemo(() => {
         const pickPreferFile = (rawA, rawB) => {
@@ -91,6 +104,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
             const base = String(rk || '').split('|')[0].trim();
             const keyNorm = normalizeKey(base);
             if (!keyNorm) return;
+            if (shouldHideCustomKey(base)) return;
             if (!map.has(keyNorm)) {
                 map.set(keyNorm, rk);
             } else {
@@ -119,6 +133,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
             if (Array.isArray(dedupedCustomKeys)) {
                 dedupedCustomKeys.forEach(rawKey => {
                     const baseKey = rawKey.split('|')[0].trim();
+                    if (shouldHideCustomKey(baseKey)) return;
                     const lowerKey = baseKey.toLowerCase();
                     const existingKey = Object.keys(initialAdditionalData).find(k => k.toLowerCase() === lowerKey);
 
@@ -426,6 +441,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                 : (rawKey && (rawKey.key ?? rawKey.label ?? rawKey.name)) || String(rawKey || '');
                                             const parts = String(rawKeyStr).split('|');
                                             const baseKey = (parts[0] || '').trim();
+                                            if (shouldHideCustomKey(baseKey)) return null;
                                             const label = baseKey.replace(/^custom_/, '').replace(/_/g, ' ').trim();
 
                                             const value = data.additional_data[baseKey];
