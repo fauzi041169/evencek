@@ -6648,12 +6648,15 @@ class ActivityPreparationController extends Controller
         // URL bisa pakai uid (LD3D53) atau id numerik; resolve dulu supaya ActivityUser yang benar terbaca
         $activity = Activity::where('uid', $activityId)->first();
         if (! $activity) {
-            $activity = Activity::findOrFail($activityId);
+            $activity = Activity::find($activityId);
+        }
+        if (! $activity) {
+            abort(404, 'Kegiatan tidak ditemukan');
         }
         $user = auth()->user();
         if (! $user->isAdmin() && ! $user->isSuperAdmin()) {
             $isManager = $activity->canManageRegistration($user->id);
-            $isEnrolled = ActivityUser::where('activity_id', $activityId)
+            $isEnrolled = ActivityUser::where('activity_id', $activity->id)
                 ->where('user_id', $user->id)
                 ->where('status', ActivityUser::STATUS_ACTIVE)
                 ->exists();
@@ -6662,7 +6665,20 @@ class ActivityPreparationController extends Controller
             }
         }
 
-        $au = ActivityUser::where('activity_id', $activity->id)->where('user_id', $userId)->firstOrFail();
+        // Resolve ActivityUser: support activity id/uid dan user id (string UID)
+        $au = ActivityUser::where('activity_id', $activity->id)->where('user_id', $userId)->first();
+        if (! $au && $activity->uid && (string) $activity->uid !== (string) $activity->id) {
+            $au = ActivityUser::where('activity_id', $activity->uid)->where('user_id', $userId)->first();
+        }
+        if (! $au) {
+            $targetUser = User::find($userId);
+            if ($targetUser) {
+                $au = ActivityUser::where('activity_id', $activity->id)->where('user_id', $targetUser->id)->first();
+            }
+        }
+        if (! $au) {
+            return $this->customFileNotFoundResponse('Data peserta tidak ditemukan untuk kegiatan ini.');
+        }
         $key = trim((string) $request->query('key', ''));
         if ($key === '') {
             abort(400, 'Parameter key wajib diisi');
@@ -6687,7 +6703,7 @@ class ActivityPreparationController extends Controller
             }
         }
         if (! is_string($value) || trim($value) === '') {
-            abort(404, 'File tidak tersedia');
+            return $this->customFileNotFoundResponse('Data atau file ('.$key.') belum ada untuk peserta ini.');
         }
         $val = trim($value);
         if (\Illuminate\Support\Str::startsWith($val, ['http://', 'https://'])) {
@@ -6698,7 +6714,13 @@ class ActivityPreparationController extends Controller
             $relative = substr($relative, strlen('storage/'));
         }
         if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($relative)) {
-            abort(404, 'File tidak ditemukan');
+            \Illuminate\Support\Facades\Log::warning('Participant custom file missing on disk', [
+                'activity_id' => $activity->id,
+                'user_id' => $userId,
+                'key' => $key,
+                'path' => $relative,
+            ]);
+            return $this->customFileNotFoundResponse('File tidak ditemukan di server.');
         }
         $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($relative) ?: 'application/octet-stream';
         $filename = basename($relative);
@@ -6710,6 +6732,17 @@ class ActivityPreparationController extends Controller
             'Expires' => '0',
             'X-Content-Type-Options' => 'nosniff',
         ]);
+    }
+
+    /**
+     * Response info ketika data/file tidak ada; mengarahkan user ke Edit Profil Peserta
+     */
+    private function customFileNotFoundResponse(string $message)
+    {
+        $msg = htmlspecialchars($message);
+        $hint = 'Anda dapat memperbarui dari tombol <strong>Edit Profil Peserta</strong> pada halaman Data Peserta kegiatan.';
+        $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Data / file tidak ada</title><style>body{font-family:system-ui,sans-serif;background:#1e293b;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.box{background:#334155;padding:2rem;border-radius:12px;max-width:420px;text-align:center}.box h1{font-size:1.125rem;margin:0 0 0.75rem;color:#f1f5f9}.box p{margin:0 0 0.5rem;font-size:0.875rem;color:#94a3b8}.box .hint{margin-top:1rem;padding-top:1rem;border-top:1px solid #475569;font-size:0.8125rem;color:#64748b}</style></head><body><div class="box"><h1>Data atau file tidak ada</h1><p>'.$msg.'</p><p class="hint">'.$hint.'</p></div></body></html>';
+        return response($html, 200)->header('Content-Type', 'text/html; charset=utf-8');
     }
 
     /**
