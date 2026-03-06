@@ -605,9 +605,10 @@ class ProfileController extends Controller
             $profile->fill($profileData);
             $profile->save();
 
-            // Sinkronkan path file yang baru di-upload ke activity_users.custom_data agar "Lihat file tersimpan" dan tampilan peserta menampilkan dokumen terbaru
-            if ($request->filled('activity_id') && ! empty($fileUploadsData)) {
-                $activity = \App\Models\Activity::where('uid', $request->input('activity_id'))->first() ?? \App\Models\Activity::find($request->input('activity_id'));
+            // Sinkronkan path file yang baru di-upload ke activity_users.custom_data agar "Lihat file tersimpan" menampilkan dokumen terbaru
+            if ($request->filled('activity_id') && (! empty($fileUploadsData) || ! empty($additionalData))) {
+                $activity = \App\Models\Activity::where('uid', $request->input('activity_id'))->first()
+                    ?? \App\Models\Activity::find($request->input('activity_id'));
                 if ($activity && \Illuminate\Support\Facades\Schema::hasColumn('activity_users', 'custom_data')) {
                     $au = ActivityUser::where('activity_id', $activity->id)->where('user_id', $user->id)->first();
                     if ($au) {
@@ -615,18 +616,54 @@ class ProfileController extends Controller
                         if (is_string($cd)) {
                             $cd = json_decode($cd, true) ?? [];
                         }
-                        if (is_array($cd)) {
-                            foreach ($fileUploadsData as $fileKey => $path) {
-                                $cd[$fileKey] = $path;
-                            }
-                            $au->custom_data = $cd;
-                            $au->save();
-                            \Illuminate\Support\Facades\Log::info('Profile update: synced custom file paths to activity_users', [
-                                'activity_id' => $activity->id,
-                                'user_id' => $user->id,
-                                'keys' => array_keys($fileUploadsData),
-                            ]);
+                        if (! is_array($cd)) {
+                            $cd = [];
                         }
+                        // Buat varian key untuk kompatibilitas tampilan (spasi vs underscore, huruf besar-kecil)
+                        $makeKeyVariants = function (string $k) {
+                            $base = trim($k);
+                            $norm = strtolower(preg_replace('/[\s\-_]+/', '_', $base));
+                            $clean = strtolower(str_replace('_', ' ', $norm));
+                            $variants = array_unique(array_filter([
+                                $base,
+                                strtolower($base),
+                                ucfirst(strtolower($base)),
+                                $norm,
+                                strtoupper($norm),
+                                $clean,
+                                'custom_'.$norm,
+                            ]));
+                            return $variants;
+                        };
+                        // 1) Prioritas: data file yang baru diunggah
+                        foreach ($fileUploadsData as $fileKey => $path) {
+                            foreach ($makeKeyVariants($fileKey) as $vk) {
+                                $cd[$vk] = $path;
+                            }
+                        }
+                        // 2) Fallback: jika tidak ada fileUploadsData (kasus hosting tertentu), sinkronkan nilai additionalData yang tampak seperti path/link file
+                        if (empty($fileUploadsData)) {
+                            foreach ($additionalData as $k => $v) {
+                                if (! is_string($k)) continue;
+                                if (! is_string($v)) continue;
+                                $val = trim($v);
+                                if ($val === '' ) continue;
+                                $isUrl = str_starts_with($val, 'http://') || str_starts_with($val, 'https://') || \Illuminate\Support\Str::contains($val, ['drive.google.com', 'docs.google.com']);
+                                $looksStorage = preg_match('#(^|/)storage/#i', $val) || preg_match('#activities/\\d+/custom-data/users/#i', $val);
+                                if ($isUrl || $looksStorage) {
+                                    foreach ($makeKeyVariants($k) as $vk) {
+                                        $cd[$vk] = $val;
+                                    }
+                                }
+                            }
+                        }
+                        $au->custom_data = $cd;
+                        $au->save();
+                        \Illuminate\Support\Facades\Log::info('Profile update: synced custom data to activity_users', [
+                            'activity_id' => $activity->id,
+                            'user_id' => $user->id,
+                            'keys' => array_keys($fileUploadsData ?: $additionalData),
+                        ]);
                     }
                 }
             }
