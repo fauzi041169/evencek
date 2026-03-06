@@ -713,11 +713,8 @@ class ActivityPreparationController extends Controller
                 abort(403, 'Silakan login untuk mengakses halaman ini.');
             }
 
-            if (! $actor->isAdmin() && ! $actor->isSuperAdmin() && $activity->user_id !== $actor->id) {
-                if (! $activity->canManageRegistration($actor->id)) {
-                    abort(403, 'Anda tidak memiliki izin untuk mengakses halaman ini.');
-                }
-            }
+            // Semua user yang sudah login boleh akses halaman peserta (untuk pendaftaran mandiri/kelompok dan import peserta)
+            // Tidak ada batasan role; cukup auth.
 
             // Get batches
             $batches = collect();
@@ -3858,10 +3855,9 @@ class ActivityPreparationController extends Controller
         }
         $activityId = $activity->id;
 
-        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && $activity->user_id !== auth()->id()) {
-            if (! $activity->canManageRegistration(auth()->id())) {
-                abort(403, 'Anda tidak memiliki izin untuk melakukan pengecekan ini.');
-            }
+        // Semua user yang login boleh cek peserta (untuk alur import); tidak ada batasan role.
+        if (! auth()->check()) {
+            abort(403, 'Silakan login terlebih dahulu.');
         }
 
         $data = $request->validate([
@@ -6649,7 +6645,11 @@ class ActivityPreparationController extends Controller
         if (! auth()->check()) {
             abort(401, 'Silakan login terlebih dahulu');
         }
-        $activity = Activity::findOrFail($activityId);
+        // URL bisa pakai uid (LD3D53) atau id numerik; resolve dulu supaya ActivityUser yang benar terbaca
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
         $user = auth()->user();
         if (! $user->isAdmin() && ! $user->isSuperAdmin()) {
             $isManager = $activity->canManageRegistration($user->id);
@@ -6705,7 +6705,9 @@ class ActivityPreparationController extends Controller
         return \Illuminate\Support\Facades\Storage::disk('public')->response($relative, $filename, [
             'Content-Type' => $mime,
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
-            'Cache-Control' => 'public, max-age=3600',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }

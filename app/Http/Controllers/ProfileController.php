@@ -446,6 +446,44 @@ class ProfileController extends Controller
                             \Illuminate\Support\Facades\Storage::disk('public')->put($dest, file_get_contents($uploaded->getRealPath()));
                             $fileUploadsData[$inputNorm] = 'storage/' . $dest;
                         }
+
+                        // Ganti file lama: hapus file dari storage untuk key yang di-upload ulang
+                        if (! empty($fileUploadsData)) {
+                            $existingFilePaths = [];
+                            $profileAdd = ($profile && is_array($profile->additional_data)) ? $profile->additional_data : [];
+                            foreach (array_keys($fileUploadsData) as $fileKey) {
+                                foreach ($profileAdd as $k => $v) {
+                                    if (is_string($v) && $normalizeKey($k) === $fileKey && ! $isInvalidFileValue($v)) {
+                                        $existingFilePaths[$fileKey] = $v;
+                                        break;
+                                    }
+                                }
+                            }
+                            $au = ActivityUser::where('activity_id', $activity->id)->where('user_id', $user->id)->first();
+                            if ($au && is_array($au->custom_data ?? null)) {
+                                foreach (array_keys($fileUploadsData) as $fileKey) {
+                                    if (isset($existingFilePaths[$fileKey])) {
+                                        continue;
+                                    }
+                                    foreach ($au->custom_data as $k => $v) {
+                                        if (is_string($v) && $normalizeKey($k) === $fileKey && ! $isInvalidFileValue($v)) {
+                                            $existingFilePaths[$fileKey] = $v;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            foreach ($existingFilePaths as $path) {
+                                $diskPath = str_starts_with($path, 'storage/') ? substr($path, 8) : $path;
+                                if ($diskPath && \Illuminate\Support\Facades\Storage::disk('public')->exists($diskPath)) {
+                                    try {
+                                        \Illuminate\Support\Facades\Storage::disk('public')->delete($diskPath);
+                                    } catch (\Throwable $e) {
+                                        \Illuminate\Support\Facades\Log::warning('Profile update: could not delete old file', ['path' => $diskPath, 'error' => $e->getMessage()]);
+                                    }
+                                }
+                            }
+                        }
                     }
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning('Profile update: custom file upload failed', ['error' => $e->getMessage()]);

@@ -27,10 +27,12 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
     // 'user' prop here is likely the 'ActivityUser' object (pivot context) from the parent component
     // we need to extract the actual User model and Profile model from it.
 
-    // Fallback: checks if 'user' property exists (ActivityUser structure) or if it's the User itself
+    // 'user' prop can be full participant (ActivityUser with .user and .custom_data) or User
     const activityUser = user || {};
     const targetUser = activityUser.user || activityUser;
     const targetProfile = targetUser.profile || {};
+    // custom_data for this activity is on the participant (ActivityUser), not on User
+    const participantCustomData = activityUser.custom_data;
 
     const [regencies, setRegencies] = useState([]);
     const [districts, setDistricts] = useState([]);
@@ -64,9 +66,11 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
     useEffect(() => {
         if (show && targetUser && targetUser.id) {
             // Prepare Additional Data (Custom Fields)
-            // Merge profile existing data with activity's custom keys AND existing activity custom_data
+            // Merge profile existing data with activity's custom_data (from participant pivot)
             const profileAdditionalData = targetProfile.additional_data || {};
-            const activityCustomData = targetUser.custom_data || {};
+            const activityCustomData = (participantCustomData != null && typeof participantCustomData === 'object')
+                ? participantCustomData
+                : (targetUser.custom_data || {});
 
             const initialAdditionalData = {
                 ...profileAdditionalData,
@@ -342,7 +346,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
 
                         {/* Foto Profil (opsional, tampil jika diwajibkan) */}
                         {(isRequired('foto') || isRequired('photo')) && (
-                            <div className="col-span-2">
+                            <div className="col-span-2 space-y-1.5">
                                 <FormInput
                                     label="Foto Profil"
                                     type="file"
@@ -350,6 +354,17 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                     error={errors.foto_file}
                                     required
                                 />
+                                <p className="text-xs text-slate-500">Pilih file baru akan menggantikan foto yang sudah tersimpan.</p>
+                                {(targetUser?.profile_photo_url || targetProfile?.foto_url) && (
+                                    <a
+                                        href={targetUser?.profile_photo_url || targetProfile?.foto_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-indigo-600 text-xs hover:underline"
+                                    >
+                                        <FileText className="w-3 h-3" /> Lihat foto tersimpan
+                                    </a>
+                                )}
                             </div>
                         )}
                             </div>
@@ -380,13 +395,37 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                             const isFileField = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => (f.key || '').toLowerCase() === baseKey.toLowerCase() && (f.type || '') === 'file');
                                             const isRequiredCustom = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => (f.key || '').toLowerCase() === baseKey.toLowerCase() && (f.required === true || f.required === 1));
                                             const getFileUrl = (v) => {
-                                                if (!v) return null;
-                                                let s = String(v).trim();
+                                                const pathStr = toFilePathString(v);
+                                                if (!pathStr) return null;
+                                                let s = String(pathStr).trim();
                                                 if (s.startsWith('http://') || s.startsWith('https://')) return s;
                                                 if (s.toLowerCase().includes('fakepath') || /^[a-zA-Z]:\\/.test(s)) return null;
                                                 if (s.includes('\\')) s = s.replace(/\\/g, '/');
                                                 const path = s.startsWith('storage/') ? s : (s.startsWith('/') ? s.slice(1) : `storage/${s}`);
                                                 return window.location.origin + '/' + path.replace(/^\/+/, '');
+                                            };
+                                            // Normalize value: if object/array, extract path or first item for display/URL
+                                            const toFilePathString = (v) => {
+                                                if (v == null) return '';
+                                                if (typeof v === 'string') return v;
+                                                if (typeof v === 'object' && v !== null) {
+                                                    if (v.path) return v.path;
+                                                    if (v.url) return v.url;
+                                                    if (Array.isArray(v) && v.length > 0) return toFilePathString(v[0]);
+                                                }
+                                                return '';
+                                            };
+                                            const toDisplayValue = (v) => {
+                                                if (v == null) return '';
+                                                if (typeof v === 'string') return v;
+                                                if (typeof v === 'object' && v !== null) {
+                                                    if (v.label) return v.label;
+                                                    if (v.name) return v.name;
+                                                    if (v.path) return v.path;
+                                                    if (v.url) return v.url;
+                                                    if (Array.isArray(v) && v.length > 0) return toDisplayValue(v[0]);
+                                                }
+                                                return String(v);
                                             };
 
                                             // 0. Parse complex type definition (e.g. "Dropdown:A~B~C")
@@ -415,12 +454,13 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                             className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm"
                                                             required={isRequiredCustom}
                                                         />
+                                                        <p className="text-xs text-slate-500">Pilih file baru akan menggantikan dokumen yang sudah tersimpan.</p>
                                                         {fileUrl ? (
                                                             <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 text-xs hover:underline">
                                                                 <FileText className="w-3 h-3" /> Lihat file tersimpan
                                                             </a>
                                                         ) : (
-                                                            value && typeof value === 'string' ? (
+                                                            value != null && value !== '' ? (
                                                                 <span className="text-xs text-slate-400">Belum tersimpan di server</span>
                                                             ) : null
                                                         )}
@@ -462,12 +502,16 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                             if (isDropdown || (currentOptions && currentOptions.length > 0) || ['province', 'provinsi', 'regency', 'kabupaten', 'kota', 'city', 'district', 'kecamatan', 'village', 'desa', 'kelurahan'].includes(cleanKey)) {
                                                 // Sort options unique
                                                 const uniqueOptions = [...new Set(currentOptions || [])].filter(o => o);
+                                                const valueStr = value != null && typeof value === 'object'
+                                                    ? toDisplayValue(value)
+                                                    : String(value ?? '');
+                                                const valueInOptions = uniqueOptions.some(o => (typeof o === 'object' ? (o.value ?? o.id) : String(o)) === valueStr);
 
                                                 return (
                                                     <div key={rawKey}>
                                                         <FormSelect
                                                             label={label}
-                                                            value={value || ''}
+                                                            value={valueStr}
                                                             onChange={(e) => {
                                                                 const newData = { ...data.additional_data, [originalKey]: e.target.value };
                                                                 setData('additional_data', newData);
@@ -481,9 +525,9 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                                 const labelText = (opt && typeof opt === 'object') ? (opt.label ?? opt.name ?? val) : String(opt);
                                                                 return <option key={idx} value={val}>{labelText}</option>;
                                                             })}
-                                                            {/* If current value is not in options, add it temporarily so details are preserved */}
-                                                            {value && !uniqueOptions.some(o => (typeof o === 'object' ? (o.value ?? o.id) : String(o)) === String(value)) && (
-                                                                <option value={String(value)}>{String(value)}</option>
+                                                            {/* If current value is not in options, add it so it displays correctly (no [object Object]) */}
+                                                            {valueStr && !valueInOptions && (
+                                                                <option value={valueStr}>{valueStr}</option>
                                                             )}
                                                         </FormSelect>
                                                     </div>

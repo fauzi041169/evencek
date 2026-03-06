@@ -660,7 +660,8 @@ export default function Index({
     }, []);
 
     const openEditModal = (participant) => {
-        setEditingParticipant(participant.user);
+        // Pass full participant so modal can use participant.custom_data (file links, dll.)
+        setEditingParticipant(participant);
         setShowEditModal(true);
     };
 
