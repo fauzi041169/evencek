@@ -385,8 +385,11 @@ export default function Index({
         const processKeys = (keys) => {
             if (!Array.isArray(keys)) return;
             keys.forEach(k => {
-                if (!k) return;
-                const base = k.split('|')[0].trim();
+                if (k == null) return;
+                // Pastikan selalu string (hindari [object Object] dari backend/column_settings)
+                const kStr = typeof k === 'string' ? k : (k && (k.key ?? k.label ?? k.name)) || String(k);
+                if (!kStr) return;
+                const base = kStr.split('|')[0].trim();
                 const lower = base.toLowerCase();
                 if (!lower) return;
 
@@ -396,8 +399,8 @@ export default function Index({
                 const existing = keyMap.get(canonical);
 
                 // Prefer key with definition (|)
-                if (!existing || (!existing.includes('|') && k.includes('|'))) {
-                    keyMap.set(canonical, k);
+                if (!existing || (!existing.includes('|') && kStr.includes('|'))) {
+                    keyMap.set(canonical, kStr);
                 }
             });
         };

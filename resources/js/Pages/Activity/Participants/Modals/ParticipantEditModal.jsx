@@ -382,10 +382,13 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {customKeys && customKeys.length > 0 ? (
                                         customKeys.map((rawKey) => {
-                                            // Handle potential prefix difference used in state initialization
-                                            const parts = rawKey.split('|');
-                                            const label = parts[0].replace(/^custom_/, '').replace(/_/g, ' ').trim();
-                                            const baseKey = parts[0].trim();
+                                            // Pastikan rawKey selalu string (hindari [object Object] dari backend/column_settings)
+                                            const rawKeyStr = typeof rawKey === 'string'
+                                                ? rawKey
+                                                : (rawKey && (rawKey.key ?? rawKey.label ?? rawKey.name)) || String(rawKey || '');
+                                            const parts = String(rawKeyStr).split('|');
+                                            const baseKey = (parts[0] || '').trim();
+                                            const label = baseKey.replace(/^custom_/, '').replace(/_/g, ' ').trim();
 
                                             const value = data.additional_data[baseKey];
 
@@ -451,7 +454,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                         : getFileUrl(value))
                                                     : getFileUrl(value);
                                                 return (
-                                                    <div key={rawKey} className="space-y-1.5">
+                                                    <div key={rawKeyStr} className="space-y-1.5">
                                                         <label className="block text-sm font-medium text-slate-700">{label} {isRequiredCustom && <span className="text-red-500">*</span>}</label>
                                                         <input
                                                             type="file"
@@ -480,7 +483,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                             // 1. Gender check
                                             if (['gender', 'jenis kelamin', 'sex'].includes(cleanKey)) {
                                                 return (
-                                                    <div key={rawKey}>
+                                                    <div key={rawKeyStr}>
                                                         <FormSelect
                                                             label={label}
                                                             value={value || ''}
@@ -501,7 +504,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
 
                                             // 2. Options check (discovered customOptions from table data if not explicitly defined)
                                             if (!isDropdown && !currentOptions.length) {
-                                                const optionKey = Object.keys(customOptions || {}).find(k => k.toLowerCase() === rawKey.toLowerCase() || k.toLowerCase().replace(/_/g, ' ') === cleanKey);
+                                                const optionKey = Object.keys(customOptions || {}).find(k => k.toLowerCase() === rawKeyStr.toLowerCase() || k.toLowerCase().replace(/_/g, ' ') === cleanKey);
                                                 if (optionKey && customOptions[optionKey]) {
                                                     currentOptions = customOptions[optionKey];
                                                 }
@@ -516,9 +519,9 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                     : String(value ?? '');
                                                 const valueInOptions = uniqueOptions.some(o => (typeof o === 'object' ? (o.value ?? o.id) : String(o)) === valueStr);
 
-                                                return (
-                                                    <div key={rawKey}>
-                                                        <FormSelect
+return (
+                                                    <div key={rawKeyStr}>
+                                                    <FormSelect
                                                             label={label}
                                                             value={valueStr}
                                                             onChange={(e) => {
@@ -543,12 +546,19 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                                 );
                                             }
 
-                                            // 3. Fallback to Input
+                                            // 3. Fallback to Input (tampilkan nilai sebagai string; hindari [object Object])
+                                            const displayValue = (v) => {
+                                                if (v == null || v === '') return '';
+                                                if (typeof v === 'string') return v;
+                                                if (v instanceof File) return v.name || '';
+                                                if (typeof v === 'object') return v.path ?? v.label ?? v.name ?? '';
+                                                return String(v);
+                                            };
                                             return (
-                                                <div key={rawKey}>
+                                                <div key={rawKeyStr}>
                                                     <FormInput
                                                         label={label}
-                                                        value={value || ''}
+                                                        value={displayValue(value) || ''}
                                                         onChange={(e) => {
                                                             const newData = { ...data.additional_data, [originalKey]: e.target.value };
                                                             setData('additional_data', newData);
