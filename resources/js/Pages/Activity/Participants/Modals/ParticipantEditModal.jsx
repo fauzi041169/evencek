@@ -63,6 +63,44 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
         return Array.isArray(requiredProfileFields) && requiredProfileFields.map(s => String(s).toLowerCase()).includes(k);
     };
 
+    const normalizeKey = (k) => String(k || '')
+        .toLowerCase()
+        .replace(/^custom_/, '')
+        .trim()
+        .replace(/[\s\-]+/g, '_');
+
+    // Deduplicate customKeys by canonical key (strip custom_ and normalize)
+    const dedupedCustomKeys = React.useMemo(() => {
+        const pickPreferFile = (rawA, rawB) => {
+            const isFileDef = (rk) => {
+                const parts = String(rk || '').split('|');
+                if (parts.length > 1) {
+                    const typeDef = parts[1] || '';
+                    if (typeDef.toLowerCase().startsWith('file')) return true;
+                    if (typeDef.toLowerCase().startsWith('dropdown:')) return false;
+                }
+                const label = (parts[0] || '').toLowerCase();
+                return /surat[\s_-]?tugas|penugasan|dokumen|document|file/.test(label);
+            };
+            const aFile = isFileDef(rawA);
+            const bFile = isFileDef(rawB);
+            return aFile && !bFile ? rawA : (!aFile && bFile ? rawB : rawA);
+        };
+        const map = new Map();
+        (customKeys || []).forEach((rk) => {
+            const base = String(rk || '').split('|')[0].trim();
+            const keyNorm = normalizeKey(base);
+            if (!keyNorm) return;
+            if (!map.has(keyNorm)) {
+                map.set(keyNorm, rk);
+            } else {
+                const cur = map.get(keyNorm);
+                map.set(keyNorm, pickPreferFile(cur, rk));
+            }
+        });
+        return Array.from(map.values());
+    }, [customKeys]);
+
     useEffect(() => {
         if (show && targetUser && targetUser.id) {
             // Prepare Additional Data (Custom Fields)
@@ -78,8 +116,8 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
             };
 
             // Ensure all configured columns (customKeys) are initialized and canonicalized
-            if (Array.isArray(customKeys)) {
-                customKeys.forEach(rawKey => {
+            if (Array.isArray(dedupedCustomKeys)) {
+                dedupedCustomKeys.forEach(rawKey => {
                     const baseKey = rawKey.split('|')[0].trim();
                     const lowerKey = baseKey.toLowerCase();
                     const existingKey = Object.keys(initialAdditionalData).find(k => k.toLowerCase() === lowerKey);
@@ -125,7 +163,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                 fetchDistricts(targetProfile.regency_id);
             }
         }
-    }, [show, user, activity]); // Dependency on 'user' (the prop), not derived state
+    }, [show, user, activity, dedupedCustomKeys]); // include dedupedCustomKeys
 
     const fetchRegencies = (provinceId) => {
         if (!provinceId) {
@@ -380,8 +418,8 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                     <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Data Kegiatan & Lainnya</h3>
                                 </div>
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {customKeys && customKeys.length > 0 ? (
-                                        customKeys.map((rawKey) => {
+                                    {dedupedCustomKeys && dedupedCustomKeys.length > 0 ? (
+                                        dedupedCustomKeys.map((rawKey) => {
                                             // Pastikan rawKey selalu string (hindari [object Object] dari backend/column_settings)
                                             const rawKeyStr = typeof rawKey === 'string'
                                                 ? rawKey
