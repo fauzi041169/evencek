@@ -165,14 +165,15 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
         e.preventDefault();
         if (!targetUser?.id) return;
 
+        const hasFileUpload = Object.values(data.additional_data || {}).some(v => v instanceof File);
         transform((data) => {
-            const { additional_data, ...rest } = data;
+            const { additional_data: adj, ...rest } = data;
             const cleanAdditional = {};
             const custom_files = {};
             const isFakepath = (v) => typeof v === 'string' && (v.toLowerCase().includes('fakepath') || /^[a-zA-Z]:\\/.test(v) || v.includes('\\'));
             const normalizeKey = (k) => String(k).toLowerCase().trim().replace(/[\s\-]+/g, '_');
-            Object.keys(additional_data || {}).forEach(key => {
-                const value = additional_data[key];
+            Object.keys(adj || {}).forEach(key => {
+                const value = adj[key];
                 if (value === undefined || value === null) return;
                 if (isFakepath(value)) return;
                 if (value instanceof File) {
@@ -189,8 +190,9 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
             };
         });
 
-        // Use the profile update route (targeting the User ID)
+        // Saat ada file (surat tugas dll), paksa FormData agar file terkirim ke server (penting di hosting)
         post(route('profile.update-user', { id: targetUser.id }), {
+            forceFormData: hasFileUpload,
             onSuccess: () => {
                 onClose();
                 router.reload({ only: ['participants', 'participantsStats', 'filters'] });
@@ -440,7 +442,14 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                             }
 
                                             if (isFileField) {
-                                                const fileUrl = getFileUrl(value);
+                                                // Gunakan route backend (custom-file) agar selalu baca file terbaru dari server; menghindari cache/symlink di hosting
+                                                const pathStr = toFilePathString(value);
+                                                const isStoredPath = pathStr && typeof value !== 'object' && !(value instanceof File);
+                                                const fileUrl = (activity && targetUser?.id && isStoredPath && pathStr && !pathStr.startsWith('http'))
+                                                    ? (typeof route !== 'undefined'
+                                                        ? `${route('activity.participants.custom-file', { activityId: activity.uid || activity.id, userId: targetUser.id })}?key=${encodeURIComponent(baseKey)}`
+                                                        : getFileUrl(value))
+                                                    : getFileUrl(value);
                                                 return (
                                                     <div key={rawKey} className="space-y-1.5">
                                                         <label className="block text-sm font-medium text-slate-700">{label} {isRequiredCustom && <span className="text-red-500">*</span>}</label>

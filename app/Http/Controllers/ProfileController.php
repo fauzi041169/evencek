@@ -356,11 +356,26 @@ class ProfileController extends Controller
                                     }
                                     $ext = $uploaded->getClientOriginalExtension();
                                     $name = \Illuminate\Support\Str::slug($user->name ?: 'user') . '-' . time() . '-' . uniqid() . ($ext ? '.' . $ext : '');
-                                    $dest = 'activities/' . $activity->id . '/custom-data/users/' . $user->id . '/' . $name;
-                                    \Illuminate\Support\Facades\Storage::disk('public')->put($dest, file_get_contents($uploaded->getRealPath()));
-                                    $fileUploadsData[$keyNorm] = 'storage/' . $dest;
+                                    $dir = 'activities/' . $activity->id . '/custom-data/users/' . $user->id;
+                                    $dest = $dir . '/' . $name;
+                                    try {
+                                        \Illuminate\Support\Facades\Storage::disk('public')->putFileAs($dir, $uploaded, $name);
+                                        $fileUploadsData[$keyNorm] = 'storage/' . $dest;
+                                    } catch (\Throwable $e) {
+                                        \Illuminate\Support\Facades\Log::warning('Profile update: custom file upload failed (surat tugas dll)', [
+                                            'field' => $fieldKey,
+                                            'activity_id' => $activity->id,
+                                            'user_id' => $user->id,
+                                            'error' => $e->getMessage(),
+                                        ]);
+                                    }
                                 }
                             }
+                        } elseif ($request->filled('activity_id')) {
+                            \Illuminate\Support\Facades\Log::info('Profile update: no custom_files in request (activity_id present)', [
+                                'user_id' => $user->id,
+                                'activity_id' => $request->input('activity_id'),
+                            ]);
                         }
                         foreach ($activity->custom_fields ?? [] as $cf) {
                             if (($cf['type'] ?? '') !== 'file') {
@@ -410,9 +425,14 @@ class ProfileController extends Controller
                             if ($f && $f->isValid()) {
                                 $ext = $f->getClientOriginalExtension();
                                 $name = \Illuminate\Support\Str::slug($user->name ?: 'user') . '-' . time() . '-' . uniqid() . ($ext ? '.' . $ext : '');
-                                $dest = 'activities/' . $activity->id . '/custom-data/users/' . $user->id . '/' . $name;
-                                \Illuminate\Support\Facades\Storage::disk('public')->put($dest, file_get_contents($f->getRealPath()));
-                                $fileUploadsData[$fileKey] = 'storage/' . $dest;
+                                $dir = 'activities/' . $activity->id . '/custom-data/users/' . $user->id;
+                                $dest = $dir . '/' . $name;
+                                try {
+                                    \Illuminate\Support\Facades\Storage::disk('public')->putFileAs($dir, $f, $name);
+                                    $fileUploadsData[$fileKey] = 'storage/' . $dest;
+                                } catch (\Throwable $e) {
+                                    \Illuminate\Support\Facades\Log::warning('Profile update: custom_fields file upload failed', ['field' => $fileKey, 'error' => $e->getMessage()]);
+                                }
                             }
                         }
                         // Fallback: jika ada file yang dikirim dengan nama field custom (mis. "Surat Tugas") tetapi
@@ -442,9 +462,14 @@ class ProfileController extends Controller
                             }
                             $ext = $uploaded->getClientOriginalExtension();
                             $name = \Illuminate\Support\Str::slug($user->name ?: 'user') . '-' . time() . '-' . uniqid() . ($ext ? '.' . $ext : '');
-                            $dest = 'activities/' . $activity->id . '/custom-data/users/' . $user->id . '/' . $name;
-                            \Illuminate\Support\Facades\Storage::disk('public')->put($dest, file_get_contents($uploaded->getRealPath()));
-                            $fileUploadsData[$inputNorm] = 'storage/' . $dest;
+                            $dir = 'activities/' . $activity->id . '/custom-data/users/' . $user->id;
+                            $dest = $dir . '/' . $name;
+                            try {
+                                \Illuminate\Support\Facades\Storage::disk('public')->putFileAs($dir, $uploaded, $name);
+                                $fileUploadsData[$inputNorm] = 'storage/' . $dest;
+                            } catch (\Throwable $e) {
+                                \Illuminate\Support\Facades\Log::warning('Profile update: allFiles fallback upload failed', ['input' => $inputName, 'error' => $e->getMessage()]);
+                            }
                         }
 
                         // Ganti file lama: hapus file dari storage untuk key yang di-upload ulang
@@ -566,7 +591,7 @@ class ProfileController extends Controller
             $profile->fill($profileData);
             $profile->save();
 
-            // Sinkronkan path file yang baru di-upload ke activity_users.custom_data agar list peserta konsisten
+            // Sinkronkan path file yang baru di-upload ke activity_users.custom_data agar "Lihat file tersimpan" dan tampilan peserta menampilkan dokumen terbaru
             if ($request->filled('activity_id') && ! empty($fileUploadsData)) {
                 $activity = \App\Models\Activity::where('uid', $request->input('activity_id'))->first() ?? \App\Models\Activity::find($request->input('activity_id'));
                 if ($activity && \Illuminate\Support\Facades\Schema::hasColumn('activity_users', 'custom_data')) {
@@ -582,6 +607,11 @@ class ProfileController extends Controller
                             }
                             $au->custom_data = $cd;
                             $au->save();
+                            \Illuminate\Support\Facades\Log::info('Profile update: synced custom file paths to activity_users', [
+                                'activity_id' => $activity->id,
+                                'user_id' => $user->id,
+                                'keys' => array_keys($fileUploadsData),
+                            ]);
                         }
                     }
                 }
