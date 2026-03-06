@@ -1727,6 +1727,15 @@ export default function Index({
                                                 const fieldType = getCustomFieldType(key, activity?.custom_fields || []);
                                                 const isFileField = fieldType === 'file';
                                                 const fileUrl = isFileField && val && val !== '-' ? getFileViewUrl(val) : null;
+                                                // Untuk path storage kita selalu buka lewat route backend agar file diambil dari server (symlink/cache aman)
+                                                const actId = activity?.uid || activity?.id;
+                                                const userId = participant?.user_id || participant?.user?.id;
+                                                const raw = typeof val === 'string' ? val.trim() : '';
+                                                const looksOurStorage = /\/custom-data\//i.test(raw) && (/^storage\//i.test(raw.replace(/^\/+/, '')) || /storage\/activities\//i.test(raw));
+                                                const fileOpenUrl = (fileUrl && actId && userId && looksOurStorage)
+                                                    ? `/activity/${actId}/participants/${userId}/custom-file?key=${encodeURIComponent(baseKey)}`
+                                                    : fileUrl;
+                                                const isExternalLink = isFileValueLink(val);
                                                 let displayVal = val;
                                                 if (!isFileField && typeof val === 'string') {
                                                     const lower = val.toLowerCase();
@@ -1742,26 +1751,13 @@ export default function Index({
                                                 return visibleColumns[`col-custom-${kebabCase(baseKey)}`] && (
                                                     <td key={key} className="px-6 py-4 text-slate-600 whitespace-nowrap">
                                                         {isFileField ? (
-                                                            fileUrl ? (
-                                                                isFileValueLink(val) ? (
+                                                            fileOpenUrl ? (
+                                                                isExternalLink && !looksOurStorage ? (
                                                                     <a
-                                                                        href={fileUrl}
+                                                                        href={fileOpenUrl}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            try {
-                                                                                const isGroup = !!(participant.participantGroup);
-                                                                                console.log('[FileField Click]', {
-                                                                                    key: baseKey,
-                                                                                    raw_value: val,
-                                                                                    resolved_url: fileUrl,
-                                                                                    participant_id: participant.id,
-                                                                                    email: participant.user?.email || null,
-                                                                                    is_group_registration: isGroup
-                                                                                });
-                                                                            } catch {}
-                                                                        }}
+                                                                        onClick={(e) => e.stopPropagation()}
                                                                         className="relative z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer border-0 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 no-underline"
                                                                         title="Buka link di tab baru (dari input/impor Excel)"
                                                                     >
@@ -1769,42 +1765,17 @@ export default function Index({
                                                                         Buka Link
                                                                     </a>
                                                                 ) : (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            e.stopPropagation();
-                                                                            try {
-                                                                                const isGroup = !!(participant.participantGroup);
-                                                                                console.log('[FileField Click]', {
-                                                                                    key: baseKey,
-                                                                                    raw_value: val,
-                                                                                    resolved_url: fileUrl,
-                                                                                    participant_id: participant.id,
-                                                                                    email: participant.user?.email || null,
-                                                                                    is_group_registration: isGroup
-                                                                                });
-                                                                            } catch {}
-                                                                            let openUrl = fileUrl;
-                                                                            try {
-                                                                                const actId = activity?.uid || activity?.id;
-                                                                                const raw = typeof val === 'string' ? val.trim() : '';
-                                                                                const rel = raw.replace(/^\/+/, '');
-                                                                                const looksStorage = /^storage\//i.test(rel);
-                                                                                const isCustomData = /\/custom-data\//i.test(rel);
-                                                                                const userId = participant.user_id || participant.user?.id;
-                                                                                if (actId && userId && looksStorage && isCustomData) {
-                                                                                    openUrl = `/activity/${actId}/participants/${userId}/custom-file?key=${encodeURIComponent(baseKey)}`;
-                                                                                }
-                                                                            } catch {}
-                                                                            window.open(openUrl, '_blank', 'noopener,noreferrer');
-                                                                        }}
-                                                                        className="relative z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer border-0 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                                                                    <a
+                                                                        href={fileOpenUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="relative z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer border-0 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 no-underline"
                                                                         title="Buka file yang diunggah di sistem"
                                                                     >
                                                                         <FileText className="w-4 h-4 flex-shrink-0" />
-                                                                        Lihat File
-                                                                    </button>
+                                                                        {looksOurStorage ? 'Lihat File' : 'Buka Link'}
+                                                                    </a>
                                                                 )
                                                             ) : (
                                                                 (val && typeof val === 'string') ? (

@@ -6714,13 +6714,20 @@ class ActivityPreparationController extends Controller
             $relative = substr($relative, strlen('storage/'));
         }
         if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($relative)) {
-            \Illuminate\Support\Facades\Log::warning('Participant custom file missing on disk', [
-                'activity_id' => $activity->id,
-                'user_id' => $userId,
-                'key' => $key,
-                'path' => $relative,
-            ]);
-            return $this->customFileNotFoundResponse('File tidak ditemukan di server.');
+            // Fallback: path di DB bisa dari activity lain (salah id); coba path dengan activity + user saat ini
+            $filename = basename($relative);
+            $fallbackRelative = 'activities/' . $activity->id . '/custom-data/users/' . $au->user_id . '/' . $filename;
+            if ($fallbackRelative !== $relative && \Illuminate\Support\Facades\Storage::disk('public')->exists($fallbackRelative)) {
+                $relative = $fallbackRelative;
+            } else {
+                \Illuminate\Support\Facades\Log::warning('Participant custom file missing on disk', [
+                    'activity_id' => $activity->id,
+                    'user_id' => $userId,
+                    'key' => $key,
+                    'path' => $relative,
+                ]);
+                return $this->customFileNotFoundResponse('File tidak ditemukan di server.');
+            }
         }
         $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($relative) ?: 'application/octet-stream';
         $filename = basename($relative);

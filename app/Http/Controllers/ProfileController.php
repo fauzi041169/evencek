@@ -360,7 +360,13 @@ class ProfileController extends Controller
                                     $dest = $dir . '/' . $name;
                                     try {
                                         \Illuminate\Support\Facades\Storage::disk('public')->putFileAs($dir, $uploaded, $name);
-                                        $fileUploadsData[$keyNorm] = 'storage/' . $dest;
+                                        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($dest)) {
+                                            $fileUploadsData[$keyNorm] = 'storage/' . $dest;
+                                        } else {
+                                            \Illuminate\Support\Facades\Log::warning('Profile update: file written but not found on disk', [
+                                                'field' => $fieldKey, 'path' => $dest, 'activity_id' => $activity->id, 'user_id' => $user->id,
+                                            ]);
+                                        }
                                     } catch (\Throwable $e) {
                                         \Illuminate\Support\Facades\Log::warning('Profile update: custom file upload failed (surat tugas dll)', [
                                             'field' => $fieldKey,
@@ -429,7 +435,11 @@ class ProfileController extends Controller
                                 $dest = $dir . '/' . $name;
                                 try {
                                     \Illuminate\Support\Facades\Storage::disk('public')->putFileAs($dir, $f, $name);
-                                    $fileUploadsData[$fileKey] = 'storage/' . $dest;
+                                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($dest)) {
+                                        $fileUploadsData[$fileKey] = 'storage/' . $dest;
+                                    } else {
+                                        \Illuminate\Support\Facades\Log::warning('Profile update: custom_fields file written but not found', ['field' => $fileKey, 'path' => $dest]);
+                                    }
                                 } catch (\Throwable $e) {
                                     \Illuminate\Support\Facades\Log::warning('Profile update: custom_fields file upload failed', ['field' => $fileKey, 'error' => $e->getMessage()]);
                                 }
@@ -466,7 +476,11 @@ class ProfileController extends Controller
                             $dest = $dir . '/' . $name;
                             try {
                                 \Illuminate\Support\Facades\Storage::disk('public')->putFileAs($dir, $uploaded, $name);
-                                $fileUploadsData[$inputNorm] = 'storage/' . $dest;
+                                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($dest)) {
+                                    $fileUploadsData[$inputNorm] = 'storage/' . $dest;
+                                } else {
+                                    \Illuminate\Support\Facades\Log::warning('Profile update: allFiles fallback file written but not found', ['input' => $inputName, 'path' => $dest]);
+                                }
                             } catch (\Throwable $e) {
                                 \Illuminate\Support\Facades\Log::warning('Profile update: allFiles fallback upload failed', ['input' => $inputName, 'error' => $e->getMessage()]);
                             }
