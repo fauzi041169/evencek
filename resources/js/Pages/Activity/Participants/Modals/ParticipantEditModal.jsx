@@ -397,7 +397,23 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
 
                                             let currentOptions = [];
                                             let isDropdown = false;
-                                            const isFileField = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => (f.key || '').toLowerCase() === baseKey.toLowerCase() && (f.type || '') === 'file');
+                                            const isFileFieldConfigured = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => (f.key || '').toLowerCase() === baseKey.toLowerCase() && (f.type || '') === 'file');
+                                            const looksLikeFileValue = (() => {
+                                                const toStr = (x) => {
+                                                    if (x == null) return '';
+                                                    if (typeof x === 'string') return x;
+                                                    if (x instanceof File) return x.name || '';
+                                                    if (typeof x === 'object') return x.path || x.url || x.name || '';
+                                                    return String(x);
+                                                };
+                                                const s = toStr(value);
+                                                if (!s) return false;
+                                                const lower = s.toLowerCase();
+                                                if (lower.includes('storage/activities/') || lower.includes('/custom-data/')) return true;
+                                                return /\.(pdf|jpg|jpeg|png|gif|doc|docx|xls|xlsx|zip|rar)(\?|$)/i.test(s) || /^https?:\/\/(drive\.google|docs\.google)/i.test(s);
+                                            })();
+                                            const keySuggestsFile = /surat[\s_-]?tugas|penugasan|dokumen|document|file/i.test(label) || /surat[\s_-]?tugas|penugasan/i.test(originalKey);
+                                            const isFileField = isFileFieldConfigured || looksLikeFileValue || keySuggestsFile;
                                             const isRequiredCustom = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => (f.key || '').toLowerCase() === baseKey.toLowerCase() && (f.required === true || f.required === 1));
                                             const getFileUrl = (v) => {
                                                 const pathStr = toFilePathString(v);
