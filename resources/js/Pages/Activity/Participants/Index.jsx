@@ -1724,9 +1724,15 @@ export default function Index({
                                             {availableCustomKeys.map(key => {
                                                 const baseKey = key.split('|')[0].trim();
                                                 const val = getCustomValue(participant, key);
-                                                const fieldType = getCustomFieldType(key, activity?.custom_fields || []);
-                                                const isFileField = fieldType === 'file';
-                                                const fileUrl = isFileField && val && val !== '-' ? getFileViewUrl(val) : null;
+                                            const fieldType = getCustomFieldType(key, activity?.custom_fields || []);
+                                            const looksLikeFilePath = (() => {
+                                                if (!val || typeof val !== 'string') return false;
+                                                const raw = val.trim();
+                                                if (/\/custom-data\//i.test(raw) && (/^storage\//i.test(raw.replace(/^\/+/, '')) || /storage\/activities\//i.test(raw))) return true;
+                                                return /\.(pdf|jpg|jpeg|png|gif|doc|docx|xls|xlsx|zip|rar)(\?|$)/i.test(raw);
+                                            })();
+                                            const isFileField = fieldType === 'file' || looksLikeFilePath || isFileValueLink(val);
+                                            const fileUrl = isFileField && val && val !== '-' ? getFileViewUrl(val) : null;
                                                 // Untuk path storage kita selalu buka lewat route backend agar file diambil dari server (symlink/cache aman)
                                                 const actId = activity?.uid || activity?.id;
                                                 const userId = participant?.user_id || participant?.user?.id;
