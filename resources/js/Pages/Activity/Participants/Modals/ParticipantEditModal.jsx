@@ -445,13 +445,11 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                             }
 
                                             if (isFileField) {
-                                                // Gunakan route backend (custom-file) agar selalu baca file terbaru dari server; menghindari cache/symlink di hosting
-                                                const pathStr = toFilePathString(value);
-                                                const isStoredPath = pathStr && typeof value !== 'object' && !(value instanceof File);
-                                                const fileUrl = (activity && targetUser?.id && isStoredPath && pathStr && !pathStr.startsWith('http'))
-                                                    ? (typeof route !== 'undefined'
-                                                        ? `${route('activity.participants.custom-file', { activityId: activity.uid || activity.id, userId: targetUser.id })}?key=${encodeURIComponent(baseKey)}`
-                                                        : getFileUrl(value))
+                                                // Tampilkan link file tersimpan hanya jika value terlihat seperti path storage sistem kita
+                                                const pathStr = toFilePathString(value) || '';
+                                                const looksOurStorage = /\/custom-data\//i.test(pathStr) && (/^storage\//i.test(pathStr.replace(/^\/+/, '')) || /storage\/activities\//i.test(pathStr));
+                                                const fileUrl = (activity && targetUser?.id && looksOurStorage)
+                                                    ? `${route('activity.participants.custom-file', { activityId: activity.uid || activity.id, userId: targetUser.id })}?key=${encodeURIComponent(baseKey)}`
                                                     : getFileUrl(value);
                                                 return (
                                                     <div key={rawKeyStr} className="space-y-1.5">
