@@ -929,14 +929,52 @@ class PaymentController extends Controller
                     }
                 }
 
-                // REMOVED: merging mandatory_profile_fields to strictly follow template as requested
-                
-                $validationKeys = array_unique($validationKeys);
+                // Align with activity settings: merge mandatory_profile_fields and required custom_fields
+                $mandatory = is_array($activity->mandatory_profile_fields) ? $activity->mandatory_profile_fields : [];
+                $validationKeys = array_unique(array_merge($validationKeys, $mandatory));
 
-                // Perform Unified Validation
+                // Perform Unified Validation for standard/known profile keys
                 $missingProfileData = $user->getIncompleteProfileData($validationKeys);
                 $missingFields = array_column($missingProfileData, 'label');
                 $missingFieldKeys = array_column($missingProfileData, 'key');
+
+                // Merge required custom fields (activity.custom_fields with is_required)
+                $activity->append('custom_fields');
+                $customFields = $activity->custom_fields ?? [];
+                if (is_array($customFields) && !empty($customFields)) {
+                    $additional = ($user->profile && is_array($user->profile->additional_data)) ? $user->profile->additional_data : [];
+                    foreach ($customFields as $cf) {
+                        if (empty($cf['is_required']) || empty($cf['key'])) {
+                            continue;
+                        }
+                        $key = $cf['key'];
+                        $val = $additional[$key] ?? $additional[strtolower($key)] ?? null;
+                        if ($val === null || trim((string) $val) === '') {
+                            $label = $cf['label'] ?? ucwords(str_replace('_', ' ', $key));
+                            $type = $cf['type'] ?? 'text';
+                            if (!in_array($label, $missingFields, true)) {
+                                $missingFields[] = $label;
+                            }
+                            if (!in_array($key, $missingFieldKeys, true)) {
+                                $missingFieldKeys[] = $key;
+                            }
+                            $exists = false;
+                            foreach ($missingProfileData as $md) {
+                                if (isset($md['key']) && strtolower($md['key']) === strtolower($key)) {
+                                    $exists = true; break;
+                                }
+                            }
+                            if (!$exists) {
+                                $missingProfileData[] = [
+                                    'key' => $key,
+                                    'label' => $label,
+                                    'type' => $type,
+                                    'options' => $cf['options'] ?? [],
+                                ];
+                            }
+                        }
+                    }
+                }
 
                 if (! empty($missingFields)) {
                     $errorMsg = 'Profil Anda belum lengkap. Lengkapi data berikut: '.implode(', ', array_unique($missingFields));
@@ -945,7 +983,7 @@ class PaymentController extends Controller
                         return response()->json([
                             'success' => false,
                             'message' => $errorMsg,
-                            'missing_fields' => $missingFields,
+                            'missing_fields' => array_values(array_unique($missingFields)),
                             'missing_keys' => $missingFieldKeys
                         ], 422);
                     }
