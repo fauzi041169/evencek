@@ -1685,7 +1685,8 @@ class ActivityPreparationController extends Controller
                 }
             }
 
-            if (Schema::hasTable($activityUserTable) && Schema::hasColumn($activityUserTable, 'custom_data')) {
+            // Only infer keys from existing participant data if there are no configured keys
+            if (empty($baseKeys) && Schema::hasTable($activityUserTable) && Schema::hasColumn($activityUserTable, 'custom_data')) {
                 try {
                     ActivityUser::query()
                         ->from($activityUserTable)
@@ -7253,4 +7254,3 @@ class ActivityPreparationController extends Controller
         return redirect()->back()->with('success', 'Daerah blokir berhasil dihapus.');
     }
 }
-

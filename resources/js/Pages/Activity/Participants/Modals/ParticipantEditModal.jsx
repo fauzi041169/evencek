@@ -118,16 +118,24 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
     useEffect(() => {
         if (show && targetUser && targetUser.id) {
             // Prepare Additional Data (Custom Fields)
-            // Merge profile existing data with activity's custom_data (from participant pivot)
-            const profileAdditionalData = targetProfile.additional_data || {};
+            // Only use activity-specific custom_data stored on the participant pivot
             const activityCustomData = (participantCustomData != null && typeof participantCustomData === 'object')
                 ? participantCustomData
-                : (targetUser.custom_data || {});
+                : {};
 
-            const initialAdditionalData = {
-                ...profileAdditionalData,
-                ...activityCustomData
-            };
+            // Build allowed keys strictly from activity settings (dedupedCustomKeys)
+            const allowedKeys = Array.isArray(dedupedCustomKeys)
+                ? dedupedCustomKeys.map(raw => String(raw).split('|')[0].trim().toLowerCase())
+                : [];
+
+            // Start with filtered existing values for allowed keys only
+            const initialAdditionalData = {};
+            allowedKeys.forEach((lowerKey) => {
+                const existingKey = Object.keys(activityCustomData || {}).find(k => k.toLowerCase() === lowerKey);
+                if (existingKey) {
+                    initialAdditionalData[existingKey] = activityCustomData[existingKey];
+                }
+            });
 
             // Ensure all configured columns (customKeys) are initialized and canonicalized
             if (Array.isArray(dedupedCustomKeys)) {

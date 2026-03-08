@@ -44,7 +44,7 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
     };
 
     const getImageUrl = (image) => {
-        if (!image) return '/assets/images/news/default-news.jpg';
+        if (!image) return '/assets/images/hero/default.webp';
         if (image.startsWith('http')) return image;
         return `/storage/${image}`;
     };
@@ -74,7 +74,7 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                     e.target.onerror = null;
-                                    e.target.src = '/assets/images/news/default-news.jpg';
+                                    e.target.src = '/assets/images/hero/default.webp';
                                 }}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
@@ -258,4 +258,3 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
         </WebLayout>
     );
 }
-

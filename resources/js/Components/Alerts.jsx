@@ -4,7 +4,7 @@ import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 export default function Alerts({ flash: propFlash, errors: propErrors }) {
     const { flash: pageFlash, errors: pageErrors } = usePage().props;
-    const flash = propFlash || pageFlash || {};
+    const rawFlash = propFlash || pageFlash || {};
     const errors = propErrors || pageErrors || {};
 
     const [visibleAlerts, setVisibleAlerts] = useState({
@@ -14,6 +14,32 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
         warning: true,
         errors: true
     });
+
+    const extractMessage = (val) => {
+        if (!val) return null;
+        if (typeof val === 'string') return val;
+        if (Array.isArray(val)) return val.filter(Boolean).join(', ');
+        if (typeof val === 'object') {
+            if (typeof val.message === 'string') return val.message;
+            if (typeof val.text === 'string') return val.text;
+        }
+        return null;
+    };
+
+    const flash = useMemo(() => {
+        const f = { ...rawFlash };
+        const genericMsg = extractMessage(f.message);
+        const genericType = typeof f.type === 'string' ? f.type : (typeof f.status === 'string' ? f.status : null);
+        if (genericMsg && !f.success && !f.error && !f.info && !f.warning) {
+            const t = ['success', 'error', 'info', 'warning'].includes(genericType) ? genericType : 'info';
+            f[t] = genericMsg;
+        }
+        f.success = extractMessage(f.success) || null;
+        f.error = extractMessage(f.error) || null;
+        f.info = extractMessage(f.info) || null;
+        f.warning = extractMessage(f.warning) || null;
+        return f;
+    }, [rawFlash]);
 
     const ignoredErrorKeys = ['login', 'email', 'password', 'name', 'password_confirmation', 'current_password'];
     const errorList = useMemo(() => {
@@ -26,7 +52,6 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
     const errorSignature = useMemo(() => errorList.join('|'), [errorList]);
 
     useEffect(() => {
-        // Reset visibility when flash messages change
         setVisibleAlerts({
             success: true,
             error: true,
@@ -35,18 +60,13 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
             errors: true
         });
 
-        // Auto dismiss after 5 seconds
-        const timer = setTimeout(() => {
-            setVisibleAlerts({
-                success: false,
-                error: false,
-                info: false,
-                warning: false,
-                errors: false
-            });
-        }, 5000);
+        const timeouts = [];
+        timeouts.push(setTimeout(() => setVisibleAlerts(prev => ({ ...prev, success: false, info: false, warning: false })), 4000));
+        timeouts.push(setTimeout(() => setVisibleAlerts(prev => ({ ...prev, error: false, errors: false })), 7000));
 
-        return () => clearTimeout(timer);
+        return () => {
+            timeouts.forEach(t => clearTimeout(t));
+        };
     }, [flash?.success, flash?.error, flash?.info, flash?.warning, errorSignature]);
 
     const dismissAlert = (type) => {
@@ -57,7 +77,6 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
 
     const Toast = ({ type, title, message, icon, colorClass, borderClass, bgClass, containerClass }) => (
         <div className={`mb-4 w-full ${containerClass} border-l-4 ${borderClass} rounded-r-xl shadow-lg transform transition-all duration-300 hover:scale-[1.02] flex items-start p-4 relative overflow-hidden`}>
-            {/* Background decoration */}
             <div className={`absolute -right-6 -top-6 w-16 h-16 rounded-full ${bgClass} opacity-20`}></div>
 
             <div className="flex-shrink-0 mr-4">
@@ -79,7 +98,6 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
     return (
         <div className="fixed top-24 right-5 z-[9999] flex flex-col items-end space-y-4 min-w-[320px] max-w-sm pointer-events-none">
             <div className="pointer-events-auto w-full">
-                {/* Success Alert */}
                 {flash.success && visibleAlerts.success && (
                     <Toast
                         type="success"
@@ -93,7 +111,6 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
                     />
                 )}
 
-                {/* Error Alert */}
                 {flash.error && visibleAlerts.error && (
                     <Toast
                         type="error"
@@ -107,7 +124,6 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
                     />
                 )}
 
-                {/* Info Alert */}
                 {flash.info && visibleAlerts.info && (
                     <Toast
                         type="info"
@@ -121,7 +137,6 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
                     />
                 )}
 
-                {/* Warning Alert */}
                 {flash.warning && visibleAlerts.warning && (
                     <Toast
                         type="warning"
@@ -135,7 +150,6 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
                     />
                 )}
 
-                {/* Validation Errors */}
                 {errorList.length > 0 && visibleAlerts.errors && (
                     <Toast
                         type="errors"

@@ -129,7 +129,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
     };
 
     const getImageUrl = (image) => {
-        if (!image) return '/assets/images/hero/defoult.webp';
+        if (!image) return '/assets/images/hero/default.webp';
         if (image.startsWith('http')) return image;
 
         let cleanPath = image.startsWith('/') ? image.substring(1) : image;
@@ -414,7 +414,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                     alt={news.title}
                                                     loading={index === 0 ? 'eager' : 'lazy'}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/news/default-news.jpg'; }}
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/hero/default.webp'; }}
                                                 />
                                                 <div className="absolute top-0 right-0 bg-secondary text-white text-[10px] sm:text-xs font-bold px-2 py-1 sm:px-3 sm:py-1 rounded-bl-lg">
                                                     {news.category?.name || 'Umum'}
@@ -509,7 +509,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                     alt={news.title}
                                                     loading="lazy"
                                                     className="w-full h-full object-cover"
-                                                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/news/default-news.jpg'; }}
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/hero/default.webp'; }}
                                                 />
                                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 hidden md:block">
                                                     <span className="text-white text-xs bg-primary px-2 py-1 rounded inline-block">
@@ -621,4 +621,3 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
         </WebLayout>
     );
 }
-
