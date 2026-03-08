@@ -374,15 +374,27 @@ export default function Detail({
                 setManualPaymentData(response.data);
             }
         } catch (error) {
-            console.error('Error fetching payment data:', error);
-            // Handle specific error messages if available
-            const msg = error.response?.data?.message || 'Gagal memuat data pembayaran. Silakan coba lagi.';
-            Swal.fire({
-                icon: 'error',
-                title: 'Oops...',
-                text: msg
-            });
-            setIsManualPaymentModalOpen(false);
+            // Intercept validation for incomplete profile to show MissingDataModal instead of payment form
+            if (error?.response?.status === 422 && (error.response.data?.missing_fields || error.response.data?.missing_keys)) {
+                const keys = error.response.data.missing_keys || [];
+                const labels = error.response.data.missing_fields || [];
+                const combined = (keys.length || labels.length) ? (keys.map((k, i) => ({
+                    key: k,
+                    label: labels[i] || (k ? k.replace(/_/g, ' ') : 'Data wajib'),
+                    type: 'text'
+                }))) : [];
+                setLocalMissingProfileData(combined);
+                setIsManualPaymentModalOpen(false);
+                setIsMissingDataModalOpen(true);
+            } else {
+                const msg = error.response?.data?.message || 'Gagal memuat data pembayaran. Silakan coba lagi.';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: msg
+                });
+                setIsManualPaymentModalOpen(false);
+            }
         } finally {
             setIsManualPaymentLoading(false);
         }
@@ -394,7 +406,7 @@ export default function Detail({
         setTimeout(async () => {
             if (type === 'mandiri') {
                 const photoUrl = (auth?.user?.profile_photo_url || '').toLowerCase();
-                const hasDefaultPhoto = !photoUrl || photoUrl.includes('default-profile.png') || photoUrl.includes('ui-avatars.com');
+                const hasDefaultPhoto = !photoUrl || photoUrl.includes('default-profile.png') || photoUrl.includes('ui-avatars.com') || !auth?.user?.profile_photo_path;
                 // Jika pakai voucher panitia, tidak perlu isi profil — langsung daftar jadi panitia
                 const skipProfileCheck = Boolean(voucherCode);
 
