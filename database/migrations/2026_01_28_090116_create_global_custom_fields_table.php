@@ -27,7 +27,7 @@ return new class extends Migration
         if (!Schema::hasTable('activity_custom_field')) {
             Schema::create('activity_custom_field', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('activity_id')->constrained('activities')->onDelete('cascade');
+                $table->foreignCustomUid('activity_id')->constrained('activities')->onDelete('cascade');
                 $table->foreignId('custom_field_id')->constrained('custom_fields')->onDelete('cascade');
                 $table->boolean('is_required')->default(false);
                 $table->timestamps();

@@ -8,6 +8,21 @@ use App\Models\Regency;
 
 class RegionMatcher
 {
+    protected static function detectRegencyType($name)
+    {
+        $n = strtolower(trim((string) $name));
+        $n = preg_replace('/\s+/', ' ', $n);
+
+        if (str_starts_with($n, 'kabupaten ') || str_starts_with($n, 'kab ')) {
+            return 'kabupaten';
+        }
+        if (str_starts_with($n, 'kota administrasi ') || str_starts_with($n, 'kota adm ') || str_starts_with($n, 'kota ')) {
+            return 'kota';
+        }
+
+        return null;
+    }
+
     /**
      * Fuzzy match province by name with similarity threshold
      *
@@ -54,6 +69,7 @@ class RegionMatcher
             return null;
         }
 
+        $desiredType = self::detectRegencyType($name);
         $name = self::normalizeName($name);
         $query = Regency::query();
 
@@ -69,6 +85,18 @@ class RegionMatcher
         foreach ($regencies as $regency) {
             $regencyName = self::normalizeName($regency->name);
             $similarity = self::similarity($name, $regencyName);
+
+            if ($desiredType) {
+                $candidateType = self::detectRegencyType($regency->name);
+                if ($candidateType === $desiredType) {
+                    $similarity += 0.15;
+                } else {
+                    $similarity -= 0.15;
+                }
+                if ($similarity < 0) {
+                    $similarity = 0;
+                }
+            }
 
             if ($similarity > $bestSimilarity) {
                 $bestSimilarity = $similarity;

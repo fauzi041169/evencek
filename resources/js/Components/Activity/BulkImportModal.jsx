@@ -405,10 +405,8 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                         setImportErrors(result.failures);
                     }
                     const finalResult = result.stats ? result : (result.data || result);
-                    if (finalResult && (finalResult.bulk_payment_available || (finalResult.stats && finalResult.stats.total_bill > 0))) {
-                        if (onPaymentRequest) {
-                            onPaymentRequest(finalResult);
-                        }
+                    if (finalResult?.bulk_payment_available && onPaymentRequest) {
+                        onPaymentRequest(finalResult);
                     }
                 }
             } else {

@@ -2954,22 +2954,24 @@ class ActivityPreparationController extends Controller
                     }
                 }
 
-                $email = $emailKey !== false ? trim((string) ($row[$emailKey] ?? '')) : '';
-                $email = strtolower($email);
+                $emailRaw = $emailKey !== false ? (string) ($row[$emailKey] ?? '') : '';
+                $email = strtolower(trim($emailRaw));
+                $email = preg_replace('/[\x00-\x1F\x7F\x{00A0}\x{200B}-\x{200D}\x{FEFF}]/u', '', $email);
+                $email = trim($email);
                 $name = $nameKey !== false ? trim((string) ($row[$nameKey] ?? '')) : '';
                 $passwordPlain = $passwordKey !== false ? trim((string) ($row[$passwordKey] ?? '')) : '';
 
                 if (! $email) {
                     $skipped++;
                     $stats['invalid']++;
-                    $failures[] = ['row' => $i, 'email' => '', 'error' => 'Email kosong'];
+                    $failures[] = ['row' => $i, 'email' => trim($emailRaw), 'error' => 'Email kosong'];
 
                     continue;
                 }
                 if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     $skipped++;
                     $stats['invalid']++;
-                    $failures[] = ['row' => $i, 'email' => $email, 'error' => 'Format email tidak valid (RFC)'];
+                    $failures[] = ['row' => $i, 'email' => trim($emailRaw), 'error' => 'Format email tidak valid (RFC)'];
 
                     continue;
                 }
@@ -3714,20 +3716,39 @@ class ActivityPreparationController extends Controller
         }
 
         $billableCount = $isPreview ? $previewPendingCount : count($pendingUserIds);
-        // Gunakan jumlah data yang benar-benar diproses (unik email) agar duplikat email tidak jadi "1 peserta baru"
         $totalProcessedRows = isset($emailToRowData) && is_array($emailToRowData) ? count($emailToRowData) : 0;
         $totalInputRows = (int) $request->input('total_rows', 0);
-        if ($totalProcessedRows > 0 && $isPaidEvent) {
-            $stats['new_participants'] = max(0, $totalProcessedRows - $stats['already_registered']);
+
+        Log::info('Import Participants summary', [
+            'activity_id' => $activityId,
+            'is_paid_event' => $isPaidEvent,
+            'is_preview' => $isPreview,
+            'mark_paid' => $markPaid,
+            'inserted' => $inserted,
+            'linked' => $linked,
+            'already_linked' => $alreadyLinked,
+            'updated' => $updated,
+            'skipped' => $skipped,
+            'valid_emails_count' => isset($validEmails) && is_array($validEmails) ? count($validEmails) : null,
+            'total_processed_rows' => $totalProcessedRows,
+            'billable_count' => $billableCount,
+            'failures_sample' => array_slice($failures ?? [], 0, 5),
+        ]);
+
+        if ($isPaidEvent) {
             $stats['total_input_rows'] = $totalProcessedRows;
             $stats['total_raw_rows'] = $totalInputRows;
-        } elseif ($totalInputRows > 0 && $isPaidEvent) {
-            $stats['new_participants'] = max(0, $totalInputRows - $stats['already_registered']);
-            $stats['total_input_rows'] = $totalInputRows;
-        } elseif ($isPaidEvent && $billableCount > 0) {
-            $stats['new_participants'] = $billableCount;
+
+            if ($markPaid) {
+                $stats['new_participants'] = (int) ($linked ?? 0);
+                $stats['total_bill'] = 0;
+            } else {
+                $stats['new_participants'] = (int) $billableCount;
+                $stats['total_bill'] = (int) (($stats['new_participants'] ?? 0) * ($activity->price ?? 0));
+            }
+        } else {
+            $stats['total_bill'] = 0;
         }
-        $stats['total_bill'] = ($stats['new_participants'] ?? 0) * ($activity->price ?? 0);
 
         $importResult = [
             'success' => true,

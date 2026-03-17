@@ -12,29 +12,23 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('activity_owners', function (Blueprint $table) {
-            // If table still has an 'id' primary column created by previous migration,
-            // drop that primary and the column, then set composite primary.
-            // Note: dropping primary key may fail on some DBs if foreign keys reference it.
-            try {
-                $table->dropPrimary();
-            } catch (\Throwable $e) {
-                // ignore if primary can't be dropped directly
+            if (! Schema::hasColumn('activity_owners', 'id')) {
+                return;
             }
 
-            if (Schema::hasColumn('activity_owners', 'id')) {
-                try {
-                    $table->dropColumn('id');
-                } catch (\Throwable $e) {
-                    // ignore; some DB engines may require raw statements
-                }
+            try {
+                $table->index('activity_id');
+            } catch (\Throwable $e) {
             }
 
-            // Ensure composite primary exists
             try {
-                $table->primary(['activity_id', 'user_id']);
+                $table->index('user_id');
             } catch (\Throwable $e) {
-                // ignore if already primary
             }
+
+            $table->dropPrimary();
+            $table->dropColumn('id');
+            $table->primary(['activity_id', 'user_id']);
         });
     }
 
@@ -46,9 +40,16 @@ return new class extends Migration
         Schema::table('activity_owners', function (Blueprint $table) {
             // Revert: remove composite primary and add back id char primary.
             try {
-                $table->dropPrimary();
+                $table->index('activity_id');
             } catch (\Throwable $e) {
             }
+
+            try {
+                $table->index('user_id');
+            } catch (\Throwable $e) {
+            }
+
+            $table->dropPrimary();
 
             if (! Schema::hasColumn('activity_owners', 'id')) {
                 $table->char('id', 6)->primary();
