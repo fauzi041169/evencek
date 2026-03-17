@@ -160,10 +160,19 @@ class Profile extends Model
             return $default;
         }
 
+        $publicStorage = public_path('storage');
+        $hasPublicStorage = is_dir($publicStorage);
+
+        if (str_starts_with($this->foto, 'http://') || str_starts_with($this->foto, 'https://')) {
+            return $this->foto;
+        }
+
         // 1. If it's a modern storage path (starts with profile-photos/)
         if (str_starts_with($this->foto, 'profile-photos/')) {
             if (\Illuminate\Support\Facades\Storage::disk('public')->exists($this->foto)) {
-                return \Illuminate\Support\Facades\Storage::url($this->foto);
+                return $hasPublicStorage
+                    ? \Illuminate\Support\Facades\Storage::url($this->foto)
+                    : route('profile.photo', $this->user_id);
             }
             // If it's supposed to be in storage but isn't there, DON'T check assets.
             return $default;
@@ -173,7 +182,9 @@ class Profile extends Model
         if (!str_contains($this->foto, '/') && strlen($this->foto) > 30) {
             $storagePath = 'profile-photos/' . $this->foto;
             if (\Illuminate\Support\Facades\Storage::disk('public')->exists($storagePath)) {
-                return \Illuminate\Support\Facades\Storage::url($storagePath);
+                return $hasPublicStorage
+                    ? \Illuminate\Support\Facades\Storage::url($storagePath)
+                    : route('profile.photo', $this->user_id);
             }
         }
 
@@ -187,7 +198,9 @@ class Profile extends Model
 
         // 4. Final attempt: any other string that might be a storage path
         if (str_contains($this->foto, '/') && \Illuminate\Support\Facades\Storage::disk('public')->exists($this->foto)) {
-            return \Illuminate\Support\Facades\Storage::url($this->foto);
+            return $hasPublicStorage
+                ? \Illuminate\Support\Facades\Storage::url($this->foto)
+                : route('profile.photo', $this->user_id);
         }
 
         return $default;

@@ -246,8 +246,11 @@ class User extends Authenticatable
             if (str_starts_with($this->avatar, 'http')) {
                 return $this->avatar;
             }
-            // Hindari Storage::exists() tiap request (I/O lambat); pakai URL saja
-            return \Illuminate\Support\Facades\Storage::disk('public')->url($this->avatar);
+            $publicStorage = public_path('storage');
+            $hasPublicStorage = is_dir($publicStorage);
+            return $hasPublicStorage
+                ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->avatar)
+                : route('profile.photo', $this->id);
         }
 
         return asset('assets/images/profilefoto/default-profile.png');

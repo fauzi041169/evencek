@@ -67,7 +67,7 @@ export default function DashboardUser({ auth, stats = {}, joinedActivityUsers = 
                     {canUpgrade && (
                         <div className="relative overflow-hidden rounded-2xl shadow-lg mb-8 animate-fadeInUp">
                             <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-700"></div>
-                            <div className="absolute inset-0 bg-[url('/assets/images/pattern.png')] opacity-10"></div>
+                            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 40%)' }}></div>
 
                             {/* Decorative circles */}
                             <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white opacity-10 blur-3xl"></div>
@@ -182,7 +182,7 @@ export default function DashboardUser({ auth, stats = {}, joinedActivityUsers = 
                                                 <div className="mt-2">
                                                     {activity && (
                                                         <Link
-                                                            href={`${route('activity.show', activity.id)}${batch ? `?batch_id=${batch.id}` : ''}`}
+                                                            href={`${route('activity.detail', activity.id)}${batch ? `?batch_id=${batch.id}` : ''}`}
                                                             className="inline-flex items-center px-3 py-1.5 bg-secondary hover:bg-blue-700 text-white text-xs rounded transition"
                                                         >
                                                             Detail
@@ -222,4 +222,3 @@ export default function DashboardUser({ auth, stats = {}, joinedActivityUsers = 
         </MainLayout>
     );
 }
-

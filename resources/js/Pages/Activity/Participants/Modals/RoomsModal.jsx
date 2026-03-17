@@ -172,7 +172,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
             if (result.isConfirmed) {
                 if (action === 'delete') {
                     router.delete(route(routeName, { activityId: activity.uid || activity.id }), {
-                        data: { ids: selectedRooms },
+                        data: { room_ids: selectedRooms },
                         onSuccess: () => {
                             setSelectedRooms([]);
                             Swal.fire('Berhasil', 'Kamar terpilih telah dihapus.', 'success');
@@ -180,7 +180,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                     });
                 } else {
                     router.post(route(routeName, { activityId: activity.uid || activity.id }), {
-                        ids: selectedRooms
+                        room_ids: selectedRooms
                     }, {
                         onSuccess: () => {
                             setSelectedRooms([]);
@@ -231,6 +231,29 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                     user_id: userId
                 }, {
                     preserveScroll: true
+                });
+            }
+        });
+    };
+
+    const handleDeleteRoom = (room) => {
+        Swal.fire({
+            title: 'Hapus Kamar?',
+            text: `Kamar "${room.room_number || room.id}" beserta penugasan pesertanya akan dihapus.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.delete(route('activity.participants.rooms.destroy', { activityId: activity.uid || activity.id, roomId: room.id }), {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        setSelectedRooms(prev => prev.filter(id => id !== room.id));
+                        Swal.fire('Berhasil', 'Kamar telah dihapus.', 'success');
+                    }
                 });
             }
         });
@@ -522,6 +545,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Terisi</th>
                                             <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">Catatan</th>
                                             <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-4 py-3 text-right font-medium text-gray-500 uppercase tracking-wider w-20">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
@@ -577,12 +601,22 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                                                 {room.is_active ? 'Aktif' : 'Tidak Aktif'}
                                                             </span>
                                                         </td>
+                                                        <td className="px-4 py-2 whitespace-nowrap text-right">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteRoom(room)}
+                                                                className="inline-flex items-center justify-center p-1.5 rounded text-red-600 hover:bg-red-50 hover:text-red-700"
+                                                                title="Hapus kamar"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 );
                                             })
                                         ) : (
                                             <tr>
-                                                <td colSpan="7" className="px-4 py-8 text-center text-gray-500 italic">
+                                                <td colSpan="8" className="px-4 py-8 text-center text-gray-500 italic">
                                                     {rooms.length > 0 ? 'Tidak ada kamar yang sesuai pencarian.' : 'Belum ada kamar.'}
                                                 </td>
                                             </tr>

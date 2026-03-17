@@ -3786,34 +3786,10 @@ class ActivityController extends Controller
 
         if (auth()->check()) {
             try {
-                $enrollments = ActivityUser::where('activity_id', $activity->id)
+                ActivityUser::where('activity_id', $activity->id)
                     ->where('user_id', auth()->id())
                     ->orderBy('created_at', 'desc')
-                    ->get();
-
-                $activeEnrollment = $enrollments->first(function ($enrollment) {
-                    return (int) $enrollment->status === ActivityUser::STATUS_ACTIVE;
-                });
-
-                if ($activeEnrollment) {
-                    $mandatoryFields = $activity->mandatory_profile_fields ?? [];
-                    if (! empty($mandatoryFields) && auth()->user()) {
-                        try {
-                            $missing = auth()->user()->getIncompleteProfileData($mandatoryFields);
-                            if (! empty($missing)) {
-                                $activeEnrollment = null;
-                            }
-                        } catch (\Throwable $e) {
-                        }
-                    }
-                }
-
-                if ($activeEnrollment) {
-                    return redirect()->route('activity.show', array_filter([
-                        'activity' => $activity->id,
-                        'batch_id' => $activeEnrollment->activity_batch_id ?? null,
-                    ]));
-                }
+                    ->first();
             } catch (\Throwable $e) {
             }
         }
@@ -4259,10 +4235,6 @@ class ActivityController extends Controller
                         }
                     }
 
-                } elseif (! $hasCustomRequirements) {
-                    // Fallback default checks if no custom reqs and no mandatory fields
-                    $missingProfileFields = $freshUser->getIncompleteProfileFields();
-                    $missingProfileData = $freshUser->getIncompleteProfileData();
                 }
 
                 // Tambah kolom wajib dari custom_fields kegiatan (Kepengurusan, Surat Tugas, dll)
@@ -6828,7 +6800,31 @@ class ActivityController extends Controller
             // dan dihitung berdasarkan jumlah orang dalam kelompok tersebut (dari bukti transfer)
             $registrations = [];
             $committeeCreditedUsers = []; // [committee_id => [user_id => true]]
-            $committeeIdsArray = $userIds->toArray();
+            $actorIdsArray = $userIds->toArray();
+
+            if (Schema::hasTable('payments') && Schema::hasColumn('payments', 'verified_by')) {
+                $validatorIds = DB::table('payments')
+                    ->where('activity_id', $activityId)
+                    ->whereNotNull('verified_by')
+                    ->pluck('verified_by')
+                    ->unique()
+                    ->toArray();
+                if (! empty($validatorIds)) {
+                    $actorIdsArray = array_values(array_unique(array_merge($actorIdsArray, $validatorIds)));
+                }
+            }
+
+            if (Schema::hasTable('activity_users') && Schema::hasColumn('activity_users', 'created_by')) {
+                $creatorIds = DB::table('activity_users')
+                    ->where('activity_id', $activityId)
+                    ->whereNotNull('created_by')
+                    ->pluck('created_by')
+                    ->unique()
+                    ->toArray();
+                if (! empty($creatorIds)) {
+                    $actorIdsArray = array_values(array_unique(array_merge($actorIdsArray, $creatorIds)));
+                }
+            }
 
             if (Schema::hasTable('payments')) {
                 // Get all payments with notes for this activity
@@ -6874,8 +6870,16 @@ class ActivityController extends Controller
                         }
                     }
 
-                    // If we found a committee ID and it's one of our target committee members
-                    if ($committeeId && in_array($committeeId, $committeeIdsArray)) {
+                    if (! $committeeId) {
+                        $decoded2 = $decoded ?? null;
+                        if (is_array($decoded2) && ! empty($decoded2['bulk_import']) && ! empty($decoded2['user_ids']) && is_array($decoded2['user_ids'])) {
+                            $committeeId = $payment->user_id;
+                            $participantIds = $decoded2['user_ids'];
+                        }
+                    }
+
+                    // If we found a committee/uploader ID and it's one of our target actors
+                    if ($committeeId && in_array($committeeId, $actorIdsArray)) {
                         if (!isset($committeeCreditedUsers[$committeeId])) {
                             $committeeCreditedUsers[$committeeId] = [];
                         }
@@ -6904,7 +6908,11 @@ class ActivityController extends Controller
                     $data = is_string($u->custom_data) ? json_decode($u->custom_data, true) : $u->custom_data;
                     $importerId = $data['importer_id'] ?? null;
 
-                    if ($importerId && in_array($importerId, $committeeIdsArray)) {
+                    if ($importerId) {
+                        $actorIdsArray = array_values(array_unique(array_merge($actorIdsArray, [(string) $importerId])));
+                    }
+
+                    if ($importerId && in_array($importerId, $actorIdsArray)) {
                         if (!isset($committeeCreditedUsers[$importerId])) {
                             $committeeCreditedUsers[$importerId] = [];
                         }
@@ -6916,7 +6924,7 @@ class ActivityController extends Controller
                 if (Schema::hasColumn('activity_users', 'created_by')) {
                     $createdByRecords = DB::table('activity_users')
                         ->where('activity_id', $activityId)
-                        ->whereIn('created_by', $committeeIdsArray)
+                        ->whereIn('created_by', $actorIdsArray)
                         ->select('created_by', 'user_id')
                         ->get();
 
@@ -6931,7 +6939,7 @@ class ActivityController extends Controller
             }
 
             // Calculate final registration counts
-            foreach ($committeeIdsArray as $uid) {
+            foreach ($actorIdsArray as $uid) {
                 $registrations[$uid] = isset($committeeCreditedUsers[$uid]) ? count($committeeCreditedUsers[$uid]) : 0;
             }
 
@@ -6973,63 +6981,73 @@ class ActivityController extends Controller
             if (Schema::hasTable('payments')) {
                 $validations = DB::table('payments')
                     ->where('activity_id', $activityId)
-                    ->whereIn('verified_by', $userIds)
+                    ->where('status', 'approved')
+                    ->whereIn('verified_by', $actorIdsArray)
                     ->select('verified_by', DB::raw('count(*) as total'))
                     ->groupBy('verified_by')
                     ->pluck('total', 'verified_by')
                     ->toArray();
             }
 
-            // Map to committee members
-            $mappedCommittees = $committees->map(function ($member) use ($registrations, $validations, $paymentCounts) {
-                $userId = $member->user_id;
-                $name = $member->user ? $member->user->name : $member->name;
-
-                $regCount = ($registrations[$userId] ?? 0);
-                $payCount = ($paymentCounts[$userId] ?? 0);
-                $totalReg = $regCount + $payCount;
-                $valCount = $validations[$userId] ?? 0;
-                $aksesCount = $member->lama_akses ?? 0; // Using lama_akses as the value for AKSES
-
-                // Gunakan profile_photo_url User (mencakup foto upload, Google, avatar, dll)
-                $profilePhotoUrl = $member->user ? $member->user->profile_photo_url : 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
-
-                return [
-                    'id' => $member->id,
-                    'user_id' => $userId,
-                    'name' => $name,
-                    'position' => $member->position,
-                    'registrations' => $totalReg, // User-level stat
-                    'validations' => $valCount, // User-level stat
-                    'akses' => $aksesCount, // Entry-level stat
-                    'profile_photo_url' => $profilePhotoUrl,
-                ];
-            });
-
-            // Group by user and aggregate stats
-            $committee_stats = $mappedCommittees
-                ->groupBy(function ($item) {
-                     return $item['user_id'] ? 'u_'.$item['user_id'] : 'n_'.$item['name'];
+            $committeeMeta = $committees
+                ->groupBy(function ($m) {
+                    return (string) $m->user_id;
                 })
                 ->map(function ($group) {
                     $first = $group->first();
-                    $sumAkses = $group->sum('akses'); // Sum access from all positions
-                    
+                    $name = $first->user ? $first->user->name : $first->name;
+                    $profilePhotoUrl = $first->user ? $first->user->profile_photo_url : 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
                     return [
-                        'id' => $first['id'],
-                        'user_id' => $first['user_id'],
-                        'name' => $first['name'],
-                        'position' => $group->pluck('position')->unique()->implode(', '), // Merge positions
-                        'registrations' => $first['registrations'],
-                        'validations' => $first['validations'],
-                        'akses' => $sumAkses,
-                        'total_actions' => (int) round(
-                            ($first['validations'] * 0.5) +      // 50% validasi
-                            ($first['registrations'] * 0.3) +    // 30% pendaftaran
-                            ($sumAkses * 0.2)                    // 20% akses
-                        ),
-                        'profile_photo_url' => $first['profile_photo_url'],
+                        'id' => $first->id,
+                        'user_id' => $first->user_id,
+                        'name' => $name,
+                        'position' => $group->pluck('position')->filter()->unique()->implode(', '),
+                        'akses' => (int) $group->sum('lama_akses'),
+                        'profile_photo_url' => $profilePhotoUrl,
                     ];
+                })
+                ->toArray();
+
+            $extraActorIds = array_values(array_diff($actorIdsArray, array_keys($committeeMeta)));
+            $extraUsers = empty($extraActorIds)
+                ? collect()
+                : User::whereIn('id', $extraActorIds)->with('profile')->get()->keyBy('id');
+
+            $committee_stats = collect($actorIdsArray)
+                ->map(function ($uid) use ($committeeMeta, $extraUsers, $registrations, $validations, $paymentCounts) {
+                    $uid = (string) $uid;
+
+                    $meta = $committeeMeta[$uid] ?? null;
+                    if (! $meta) {
+                        $u = $extraUsers->get($uid);
+                        $name = $u ? $u->name : $uid;
+                        $role = $u ? strtolower((string) ($u->role ?? '')) : '';
+                        $pos = $role ? ucfirst($role) : 'Panitia';
+                        $photo = $u ? $u->profile_photo_url : 'https://ui-avatars.com/api/?name='.urlencode($name).'&color=7F9CF5&background=EBF4FF';
+                        $meta = [
+                            'id' => null,
+                            'user_id' => $uid,
+                            'name' => $name,
+                            'position' => $pos,
+                            'akses' => 0,
+                            'profile_photo_url' => $photo,
+                        ];
+                    }
+
+                    $regCount = (int) ($registrations[$uid] ?? 0);
+                    $payCount = (int) ($paymentCounts[$uid] ?? 0);
+                    $totalReg = $regCount + $payCount;
+                    $valCount = (int) ($validations[$uid] ?? 0);
+                    $aksesCount = (int) ($meta['akses'] ?? 0);
+
+                    $meta['registrations'] = $totalReg;
+                    $meta['validations'] = $valCount;
+                    $meta['akses'] = $aksesCount;
+                    $meta['total_actions'] = (int) round(($totalReg * 0.4) + ($valCount * 0.4) + ($aksesCount * 0.2));
+                    return $meta;
+                })
+                ->filter(function ($row) {
+                    return (int) ($row['total_actions'] ?? 0) > 0;
                 })
                 ->sortByDesc('total_actions')
                 ->values()

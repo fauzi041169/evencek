@@ -68,12 +68,6 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
     // Calculate effective missing data
     const effectiveMissingData = useMemo(() => {
         let newData = [...missingData];
-        const hasFoto = newData.some(f => f.key === 'foto' || f.key === 'photo');
-
-        // Tambah foto hanya jika belum ada DAN user perlu upload (placeholder). Foto Google/email sudah dianggap valid.
-        if (!hasFoto && hasDefaultPhoto) {
-            newData = [{ key: 'foto', label: 'Foto Profil', type: 'file' }, ...newData];
-        }
 
         // Define logical sort order
         const sortOrder = [
@@ -111,7 +105,7 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
         });
 
         return newData;
-    }, [missingData, hasDefaultPhoto]);
+    }, [missingData]);
 
     // Initialize form data based on missing fields
     useEffect(() => {
@@ -204,10 +198,14 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                 const val = data[field.key];
                 return val === null || val === undefined || String(val).trim() === '';
             }).map(f => f.label || f.key.replace(/_/g, ' '));
+            const onlyFoto = missing.length === 1 && (missing[0] === 'Foto Profil' || missing[0].toLowerCase().includes('foto'));
             Swal.fire({
-                title: 'Lengkapi Data',
-                html: `Mohon isi: <br/><strong>${missing.join(', ')}</strong>`,
-                icon: 'warning',
+                title: onlyFoto ? 'Lengkapi Foto Profil' : 'Lengkapi Data',
+                html: onlyFoto
+                    ? 'Foto profil wajib dilengkapi untuk persyaratan kegiatan ini. Silakan unggah foto Anda di atas.'
+                    : `Mohon lengkapi: <br/><strong>${missing.join(', ')}</strong>`,
+                icon: 'info',
+                confirmButtonText: 'Mengerti',
                 confirmButtonColor: '#4F46E5'
             });
             return;
@@ -241,11 +239,23 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
             onError: (err) => {
                 console.error('Profile update failed', err);
                 const firstError = err && typeof err === 'object' ? Object.values(err)[0] : null;
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal menyimpan',
-                    text: firstError ? String(firstError) : 'Terjadi kesalahan saat menyimpan data. Coba lagi.',
-                });
+                const msg = firstError ? String(firstError) : '';
+                const isFotoRequired = /foto.*wajib|wajib.*foto|foto.*diunggah|foto.*dilengkapi/i.test(msg);
+                if (isFotoRequired) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Lengkapi Foto Profil',
+                        text: 'Foto profil wajib dilengkapi untuk persyaratan kegiatan ini. Silakan unggah foto Anda.',
+                        confirmButtonText: 'Mengerti',
+                        confirmButtonColor: '#4F46E5',
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal menyimpan',
+                        text: msg || 'Terjadi kesalahan saat menyimpan data. Coba lagi.',
+                    });
+                }
             },
             preserveScroll: true,
             forceFormData: true,
@@ -381,16 +391,16 @@ export default function MissingDataModal({ show, onClose, missingData = [], onSu
                         </div>
                     )}
                     {/* Modern Alert Box */}
-                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 p-4 mb-6 shadow-sm">
-                        <div className="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 bg-amber-100 rounded-full opacity-50 blur-xl"></div>
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-indigo-100 p-4 mb-6 shadow-sm">
+                        <div className="absolute top-0 right-0 -mt-2 -mr-2 w-16 h-16 bg-indigo-100 rounded-full opacity-50 blur-xl"></div>
                         <div className="flex items-start gap-4 relative z-10">
-                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shadow-sm">
-                                <i className="fas fa-info text-lg"></i>
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-sm">
+                                <i className="fas fa-info-circle text-lg"></i>
                             </div>
                             <div>
-                                <h4 className="text-sm font-bold text-gray-900 mb-1">Perhatian</h4>
+                                <h4 className="text-sm font-bold text-gray-900 mb-1">Persyaratan Kegiatan</h4>
                                 <p className="text-sm text-gray-600 leading-relaxed">
-                                    Untuk kebutuhan ID Card acara, Anda harus melengkapi profil untuk dapat mengikuti kegiatan ini.
+                                    Untuk kebutuhan ID Card acara, lengkapi profil Anda termasuk <strong>foto profil</strong> agar dapat mengikuti kegiatan ini.
                                 </p>
                             </div>
                         </div>

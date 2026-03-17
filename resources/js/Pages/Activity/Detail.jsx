@@ -201,6 +201,14 @@ export default function Detail({
         }
     }, [flash]);
 
+    // Buka modal Lengkapi Data wajib (termasuk foto profil) saat halaman Detail dibuka dan profil belum lengkap
+    useEffect(() => {
+        if (missingProfileData && missingProfileData.length > 0) {
+            setLocalMissingProfileData(missingProfileData);
+            setIsMissingDataModalOpen(true);
+        }
+    }, [missingProfileData]);
+
     const descriptionRef = useRef(null);
     const processedPendingEnrollmentRef = useRef(false);
 
@@ -516,15 +524,14 @@ export default function Detail({
                                 return;
                             }
 
-                            // Jika error validasi (misal data belum lengkap yang terlewat), refresh atau tampilkan pesan
+                            // Jika error validasi (misal data belum lengkap yang terlewat), tampilkan info persyaratan
                             if (error.response.data.missing_fields) {
-                                // Harusnya sudah dicek di awal, tapi untuk jaga-jaga
                                 await Swal.fire({
-                                    icon: 'warning',
-                                    title: t('activities.complete_profile_warning'),
-                                    text: t('activities.complete_profile_warning')
+                                    icon: 'info',
+                                    title: 'Lengkapi Profil',
+                                    text: 'Foto profil dan data lainnya wajib dilengkapi untuk persyaratan kegiatan ini. Silakan lengkapi di form yang muncul.'
                                 });
-                                window.location.reload();
+                                return;
                             } else {
                                 Swal.fire({
                                     icon: 'error',

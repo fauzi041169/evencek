@@ -227,17 +227,17 @@ class ProfileController extends Controller
             if ($requiresPhoto) {
                 if ($incomingDeletesPhoto) {
                     return response()->json([
-                        'status' => 'error',
-                        'message' => 'Foto Profil wajib diunggah.',
-                        'errors' => ['foto_file' => ['Foto Profil wajib diunggah.']],
+                        'status' => 'validation',
+                        'message' => 'Foto profil wajib dilengkapi untuk persyaratan kegiatan ini.',
+                        'errors' => ['foto_file' => ['Foto profil wajib dilengkapi untuk persyaratan kegiatan ini.']],
                     ], 422);
                 }
 
                 if (! $hasExistingPhoto && ! $incomingHasPhoto) {
                     return response()->json([
-                        'status' => 'error',
-                        'message' => 'Foto Profil wajib diunggah.',
-                        'errors' => ['foto_file' => ['Foto Profil wajib diunggah.']],
+                        'status' => 'validation',
+                        'message' => 'Foto profil wajib dilengkapi untuk persyaratan kegiatan ini.',
+                        'errors' => ['foto_file' => ['Foto profil wajib dilengkapi untuk persyaratan kegiatan ini.']],
                     ], 422);
                 }
             }
@@ -949,12 +949,32 @@ class ProfileController extends Controller
     public function getProfilePhoto($userId)
     {
         $profile = Profile::where('user_id', $userId)->first();
+        $user = User::find($userId);
 
         if ($profile && $profile->foto) {
-            $path = storage_path('app/public/'.$profile->foto);
+            $foto = (string) $profile->foto;
+            if (! str_contains($foto, '..')) {
+                $storagePath = storage_path('app/public/'.$foto);
+                if (file_exists($storagePath) && ! is_dir($storagePath)) {
+                    return response()->file($storagePath);
+                }
 
-            if (file_exists($path)) {
-                return response()->file($path);
+                if (! str_contains($foto, '/')) {
+                    $legacyPath = public_path('assets/images/profilefoto/'.$foto);
+                    if (file_exists($legacyPath) && ! is_dir($legacyPath)) {
+                        return response()->file($legacyPath);
+                    }
+                }
+            }
+        }
+
+        if ($user && $user->avatar) {
+            $avatar = (string) $user->avatar;
+            if (! str_contains($avatar, '..') && ! str_starts_with($avatar, 'http://') && ! str_starts_with($avatar, 'https://')) {
+                $storagePath = storage_path('app/public/'.$avatar);
+                if (file_exists($storagePath) && ! is_dir($storagePath)) {
+                    return response()->file($storagePath);
+                }
             }
         }
 

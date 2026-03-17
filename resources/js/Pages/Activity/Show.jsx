@@ -363,16 +363,18 @@ export default function Show({
 
                     if (error.response.data.missing_fields) {
                         await Swal.fire({
-                            icon: 'warning',
-                            title: 'Profil Belum Lengkap',
-                            text: 'Mohon lengkapi data profil Anda terlebih dahulu.'
+                            icon: 'info',
+                            title: 'Lengkapi Profil',
+                            text: 'Foto profil dan data lainnya wajib dilengkapi untuk persyaratan kegiatan ini. Silakan lengkapi di form yang muncul.'
                         });
-                        window.location.reload();
+                        return;
                     } else {
+                        const msg = error.response.data.message || 'Gagal memproses pendaftaran.';
+                        const isFotoRequired = /foto.*wajib|wajib.*foto|foto.*dilengkapi/i.test(msg);
                         Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal',
-                            text: error.response.data.message || 'Gagal memproses pendaftaran.'
+                            icon: isFotoRequired ? 'info' : 'error',
+                            title: isFotoRequired ? 'Lengkapi Foto Profil' : 'Gagal',
+                            text: msg
                         });
                     }
                 } else if (error.response && error.response.status === 401) {

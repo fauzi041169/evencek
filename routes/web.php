@@ -264,6 +264,8 @@ Route::get('/activity/{id}/download-certificate', [ActivityController::class, 'd
 Route::get('/activity/{id}/verify-certificate', [ActivityController::class, 'verifyCertificate'])->name('activity.verify-certificate');
 Route::get('/c/{id}', [ActivityController::class, 'verifyCertificate'])->name('certificate.verify.short');
 
+Route::get('/profile/photo/{userId}', [ProfileController::class, 'getProfilePhoto'])->name('profile.photo');
+
 // ============================================================================
 // PROTECTED ROUTES (AUTH REQUIRED)
 // ============================================================================

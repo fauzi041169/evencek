@@ -428,7 +428,9 @@ class PaymentController extends Controller
                         return redirect()->route('activity.participants.index', $activity->id)
                             ->with('error', 'Tidak ada peserta baru yang perlu ditagih.');
                     }
-                    $uidsRaw = array_filter(array_unique(array_map('intval', $uidsRaw)));
+                    $uidsRaw = array_values(array_filter(array_unique(array_map('strval', $uidsRaw)), function ($v) {
+                        return trim((string) $v) !== '';
+                    }));
                     $validUids = User::whereIn('id', $uidsRaw)->pluck('id')->toArray();
                     if (empty($validUids)) {
                         $validUids = $uidsRaw;
@@ -440,6 +442,7 @@ class PaymentController extends Controller
                         'bulk_import' => true,
                         'allowed_count' => $limit,
                         'user_ids' => $validUids,
+                        'uploaded_by' => auth()->id(),
                         'successfully_imported_count' => (int) data_get($bulk, 'successfully_imported_count', count($validUids)),
                     ]);
                     $existingPayment->save();
@@ -449,7 +452,7 @@ class PaymentController extends Controller
                             break;
                         }
                         try {
-                            if ((int) $uid <= 0) {
+                            if (! $uid) {
                                 continue;
                             }
 
@@ -463,7 +466,7 @@ class PaymentController extends Controller
                             }
 
                             $bulkMatch = [
-                                'user_id' => (int) $uid,
+                                'user_id' => $uid,
                                 'activity_id' => $activity->id,
                             ];
                             if (isset($bulk['activity_batch_id'])) {
@@ -1202,6 +1205,7 @@ class PaymentController extends Controller
                         'bulk_import' => true,
                         'allowed_count' => (int) data_get($bulk, 'allowed_count', 0),
                         'user_ids' => (array) data_get($bulk, 'pending_user_ids', []),
+                        'uploaded_by' => auth()->id(),
                         'successfully_imported_count' => (int) data_get($bulk, 'successfully_imported_count', 0),
                     ]);
                 }

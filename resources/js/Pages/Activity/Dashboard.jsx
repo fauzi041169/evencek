@@ -79,39 +79,42 @@ export default function Dashboard({
 
     // --- Chart Configurations ---
 
-    // Committee Action Chart
+    // Committee Action Chart (stacked bars: pendaftaran + validasi + akses)
     const committeeActionChartData = {
         labels: committee_stats ? committee_stats.slice(0, 10).map(c => c.name) : [],
         datasets: [
             {
                 label: 'Pendaftaran',
                 data: committee_stats ? committee_stats.slice(0, 10).map(c => c.registrations) : [],
-                backgroundColor: 'rgba(105, 108, 255, 0.85)',
+                backgroundColor: 'rgba(105, 108, 255, 0.9)',
                 borderColor: '#696cff',
                 borderWidth: 1,
                 borderRadius: 4,
-                barPercentage: 0.5,
-                categoryPercentage: 0.8
+                barPercentage: 0.7,
+                categoryPercentage: 0.9,
+                stack: 'total'
             },
             {
                 label: 'Validasi',
                 data: committee_stats ? committee_stats.slice(0, 10).map(c => c.validations) : [],
-                backgroundColor: 'rgba(255, 171, 0, 0.85)',
+                backgroundColor: 'rgba(255, 171, 0, 0.9)',
                 borderColor: '#ffab00',
                 borderWidth: 1,
                 borderRadius: 4,
-                barPercentage: 0.5,
-                categoryPercentage: 0.8
+                barPercentage: 0.7,
+                categoryPercentage: 0.9,
+                stack: 'total'
             },
             {
                 label: 'Akses',
                 data: committee_stats ? committee_stats.slice(0, 10).map(c => c.akses) : [],
-                backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                backgroundColor: 'rgba(16, 185, 129, 0.9)',
                 borderColor: '#10B981',
                 borderWidth: 1,
                 borderRadius: 4,
-                barPercentage: 0.5,
-                categoryPercentage: 0.8
+                barPercentage: 0.7,
+                categoryPercentage: 0.9,
+                stack: 'total'
             }
         ]
     };
@@ -225,7 +228,8 @@ export default function Dashboard({
                 const reg = (member.registrations || 0);
                 const val = (member.validations || 0);
                 const aks = (member.akses || 0);
-                const barHeight = Math.max(reg, val, aks);
+                // Karena batang dibuat stacked, tinggi total = reg + val + akses
+                const barHeight = reg + val + aks;
                 const xPos = xScale.getPixelForTick(index);
                 const yPos = yScale.getPixelForValue(barHeight);
                 const poinLabel = member.total_actions; // Angka yang ditampilkan = poin tertimbang
@@ -362,7 +366,7 @@ export default function Dashboard({
         },
         scales: {
             x: {
-                stacked: false,
+                stacked: true,
                 grid: { display: false },
                 ticks: {
                     font: { size: 10, family: "'Inter', sans-serif", weight: '500' },
@@ -378,7 +382,7 @@ export default function Dashboard({
                 }
             },
             y: {
-                stacked: false,
+                stacked: true,
                 beginAtZero: true,
                 grid: {
                     color: '#f1f5f9',
@@ -710,6 +714,44 @@ export default function Dashboard({
         }
 
     }, [regionLevel, topProvinceStats, topRegencyStats, districtStats]);
+
+    // Plugin sederhana untuk menampilkan nilai di atas batang chart wilayah
+    const regionBarValuePlugin = {
+        id: 'regionBarValuePlugin',
+        afterDatasetsDraw(chart) {
+            const { ctx } = chart;
+            const yScale = chart.scales?.y;
+            const xScale = chart.scales?.x;
+            if (!yScale || !xScale) return;
+
+            const dataset = chart.data.datasets?.[0];
+            const data = dataset?.data || [];
+
+            ctx.save();
+            ctx.font = 'bold 11px "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+
+            data.forEach((value, index) => {
+                if (value == null) return;
+                const x = xScale.getPixelForTick(index);
+                const y = yScale.getPixelForValue(value);
+
+                // Sedikit buffer di atas batang
+                const textY = y - 4;
+
+                // Outline putih tipis agar terbaca di atas grid
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#ffffff';
+                ctx.fillStyle = '#4b5563';
+                const text = value.toString();
+                ctx.strokeText(text, x, textY);
+                ctx.fillText(text, x, textY);
+            });
+
+            ctx.restore();
+        }
+    };
 
     const regionChartOptions = {
         responsive: true,
@@ -1176,7 +1218,11 @@ export default function Dashboard({
                             </div>
                         </div>
                         <div className="relative h-80">
-                            <Bar data={regionChartDataState} options={regionChartOptions} />
+                            <Bar
+                                data={regionChartDataState}
+                                options={regionChartOptions}
+                                plugins={[regionBarValuePlugin]}
+                            />
                         </div>
                     </div>
                 </div>
