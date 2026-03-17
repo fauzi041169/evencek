@@ -4,6 +4,14 @@ import { createInertiaApp, router } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { route } from 'ziggy-js';
+import { Ziggy } from './ziggy';
+
+if (typeof window !== 'undefined') {
+    window.Ziggy = window.Ziggy || Ziggy;
+    if (window.Ziggy) {
+        window.Ziggy.url = window.location.origin;
+    }
+}
 
 window.route = route;
 

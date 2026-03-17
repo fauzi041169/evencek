@@ -35,3 +35,5 @@ prepare_production_zip.ps1
 /error_log
 **/error_log
 activity_check_result.txt
+/public/assets/images/profilefoto/*
+/public/assets/images/profilecover/*

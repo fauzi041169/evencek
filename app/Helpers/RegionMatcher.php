@@ -37,6 +37,10 @@ class RegionMatcher
         }
 
         $name = self::normalizeName($name);
+        $compact = str_replace(' ', '', $name);
+        if ($compact === 'sulsel') {
+            $name = 'sulawesi selatan';
+        }
         $provinces = Province::all(['id', 'name']);
 
         $bestMatch = null;
@@ -71,6 +75,10 @@ class RegionMatcher
 
         $desiredType = self::detectRegencyType($name);
         $name = self::normalizeName($name);
+        $compact = str_replace(' ', '', $name);
+        if ($compact === 'pangkep') {
+            $name = 'pangkajene dan kepulauan';
+        }
         $query = Regency::query();
 
         if ($provinceId) {
@@ -180,6 +188,7 @@ class RegionMatcher
     {
         $name = strtolower(trim($name));
         $name = str_replace(['.', ','], ' ', $name);
+        $name = preg_replace('/\bkep\b/u', 'kepulauan', $name);
 
         $prefixes = [
             'kabupaten',

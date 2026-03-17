@@ -3246,6 +3246,15 @@ class ActivityPreparationController extends Controller
                     if (!$districtMatch) {
                         $districtMatch = RegionMatcher::matchDistrict($districtRaw, $regencyId, 0.7);
                     }
+                    if (!$districtMatch && $provinceId) {
+                        $fallbackDistrict = RegionMatcher::matchDistrict($districtRaw, null, 0.85);
+                        if ($fallbackDistrict) {
+                            $fallbackRegency = Regency::find($fallbackDistrict->regency_id);
+                            if ($fallbackRegency && $fallbackRegency->province_id === $provinceId) {
+                                $districtMatch = $fallbackDistrict;
+                            }
+                        }
+                    }
 
                     if ($districtMatch) {
                         $districtId = $districtMatch->id;
@@ -3255,6 +3264,8 @@ class ActivityPreparationController extends Controller
                                 $reg = Regency::find($regencyId);
                                 if ($reg) $provinceId = $reg->province_id;
                             }
+                        } else {
+                            $regencyId = $districtMatch->regency_id;
                         }
                     } else {
                         $regName = $regencyId ? Regency::find($regencyId)->name : 'Kabupaten terpilih';

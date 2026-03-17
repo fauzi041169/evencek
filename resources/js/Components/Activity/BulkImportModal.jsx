@@ -405,9 +405,6 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                         setImportErrors(result.failures);
                     }
                     const finalResult = result.stats ? result : (result.data || result);
-                    if (finalResult?.bulk_payment_available && onPaymentRequest) {
-                        onPaymentRequest(finalResult);
-                    }
                 }
             } else {
                 console.error('Import Failed:', result);
@@ -1051,11 +1048,19 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                                 Kembali
                                             </button>
                                         )}
+                                        {importResult && importResult.bulk_payment_available && Array.isArray(importResult.failures) && importResult.failures.length > 0 && (
+                                            <div className="flex-1 text-left text-xs text-red-600 px-2 py-2">
+                                                Ada {importResult.failures.length} baris gagal. Perbaiki data dulu, lalu impor ulang. Pembayaran hanya bisa dibuat jika tidak ada baris gagal.
+                                            </div>
+                                        )}
                                         <button
                                             type="button"
                                             className={`inline-flex items-center justify-center text-center min-w-[160px] px-4 py-2.5 rounded-md text-sm font-semibold shadow-sm ${importResult && importResult.bulk_payment_available ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-white text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'}`}
                                             onClick={() => {
                                                 if (importResult && importResult.bulk_payment_available && onPaymentRequest) {
+                                                    if (Array.isArray(importResult.failures) && importResult.failures.length > 0) {
+                                                        return;
+                                                    }
                                                     onPaymentRequest(importResult);
                                                 } else if (importResult && importResult.redirect_url) {
                                                     window.location.href = importResult.redirect_url;
@@ -1066,7 +1071,13 @@ export default function BulkImportModal({ isOpen, onClose, activityId, activity,
                                                 }
                                             }}
                                         >
-                                            {importResult ? (importResult.bulk_payment_available ? 'Lanjut ke Pembayaran' : 'Selesai') : 'Tutup'}
+                                            {importResult
+                                                ? (importResult.bulk_payment_available
+                                                    ? ((Array.isArray(importResult.failures) && importResult.failures.length > 0)
+                                                        ? 'Perbaiki Data (Ada yang Gagal)'
+                                                        : 'Lanjut ke Pembayaran')
+                                                    : 'Selesai')
+                                                : 'Tutup'}
                                         </button>
                                         {!importResult && !importErrors && (
                                             <button

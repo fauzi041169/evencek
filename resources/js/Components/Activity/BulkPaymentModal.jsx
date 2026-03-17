@@ -17,16 +17,30 @@ export default function BulkPaymentModal({ show, onClose, activity, importResult
     const [midtransChannels, setMidtransChannels] = useState([]);
     const [selectedChannel, setSelectedChannel] = useState(null);
 
+    const failures = Array.isArray(importResult?.failures) ? importResult.failures : [];
+    const hasFailures = failures.length > 0;
+    const skippedCount = Number.isFinite(Number(importResult?.skipped)) ? Number(importResult?.skipped) : failures.length;
+
+    const newUsers = importResult?.stats?.new_users ?? 0;
+    const billableParticipants = importResult?.stats?.new_participants ?? importResult?.debug_info?.pending_count ?? 0;
+    const alreadyRegistered = importResult?.stats?.already_registered ?? 0;
+    const totalInputRows = importResult?.stats?.total_input_rows;
+    const totalRawRows = importResult?.stats?.total_raw_rows;
+    const pricePerPerson = Number(activity?.price ?? 0);
+    const grossAmount = Number(billableParticipants) * pricePerPerson;
+
     useEffect(() => {
         if (show && activity?.id) {
             setPaymentMode('selection');
-            fetchUnifiedMethods();
+            if (!hasFailures && Number(billableParticipants) > 0) {
+                fetchUnifiedMethods();
+            }
         } else {
             setPaymentMode(null);
             setSnapToken(null);
             setSelectedChannel(null);
         }
-    }, [show, activity?.id]);
+    }, [show, activity?.id, hasFailures, billableParticipants]);
 
     const fetchUnifiedMethods = async () => {
         setLoading(true);
@@ -149,16 +163,6 @@ export default function BulkPaymentModal({ show, onClose, activity, importResult
 
     if (!show) return null;
 
-    const newUsers = importResult?.stats?.new_users ?? 0;
-    const newParticipants = importResult?.stats?.new_participants ?? 0;
-    const alreadyRegistered = importResult?.stats?.already_registered ?? 0;
-    const totalInputRows = importResult?.stats?.total_input_rows;
-    const totalRawRows = importResult?.stats?.total_raw_rows;
-    const pricePerPerson = Number(activity?.price ?? 0);
-    // Peserta baru = total data − sudah jadi peserta (pakai rumus agar 10−1=9, bukan nilai salah dari backend)
-    const pesertaBaruCount = totalInputRows != null ? Math.max(0, totalInputRows - alreadyRegistered) : newParticipants;
-    const grossAmount = pesertaBaruCount * pricePerPerson;
-
     return (
         <Modal show={show} onClose={onClose} maxWidth="2xl">
             <div className="bg-white rounded-xl overflow-hidden max-h-[95vh] flex flex-col shadow-2xl">
@@ -185,6 +189,53 @@ export default function BulkPaymentModal({ show, onClose, activity, importResult
                         </div>
                     ) : paymentMode === 'selection' ? (
                         <>
+                            {hasFailures && (
+                                <div className="bg-white rounded-xl border border-red-200 shadow-md overflow-hidden">
+                                    <div className="px-5 py-4 border-b border-red-100 bg-gradient-to-r from-red-50 to-white">
+                                        <h4 className="text-sm font-bold text-red-900 flex items-center gap-2">
+                                            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600"><i className="fas fa-triangle-exclamation"></i></span>
+                                            Ada data yang gagal saat impor
+                                        </h4>
+                                        <p className="text-xs text-red-700 mt-1">
+                                            Perbaiki baris yang gagal dulu, lalu impor ulang. Pembayaran tidak dapat dilanjutkan sebelum semua baris valid.
+                                        </p>
+                                    </div>
+                                    <div className="p-5">
+                                        <div className="overflow-hidden border border-red-100 rounded-xl bg-red-50/30">
+                                            <div className="max-h-64 overflow-y-auto">
+                                                <table className="min-w-full divide-y divide-red-100">
+                                                    <thead className="bg-red-50/50 sticky top-0 backdrop-blur-sm">
+                                                        <tr>
+                                                            <th className="px-4 py-2 text-left text-[10px] font-bold text-red-800 uppercase tracking-widest">Baris</th>
+                                                            <th className="px-4 py-2 text-left text-[10px] font-bold text-red-800 uppercase tracking-widest">Email</th>
+                                                            <th className="px-4 py-2 text-left text-[10px] font-bold text-red-800 uppercase tracking-widest">Alasan</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-red-100">
+                                                        {failures.map((err, i) => (
+                                                            <tr key={i} className="hover:bg-red-50/50 transition-colors">
+                                                                <td className="px-4 py-2.5 text-xs font-mono text-red-900 leading-relaxed font-bold">{err.row || i + 1}</td>
+                                                                <td className="px-4 py-2.5 text-xs text-red-700 leading-relaxed truncate max-w-[170px]" title={err.email}>{err.email || '-'}</td>
+                                                                <td className="px-4 py-2.5 text-xs text-red-600 leading-relaxed font-medium">
+                                                                    {err.error || err.reason || (typeof err === 'string' ? err : 'Terjadi kesalahan tidak diketahui')}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 text-xs text-gray-600">
+                                            {totalInputRows != null && (
+                                                <div>
+                                                    Diproses: <span className="font-semibold">{totalInputRows}</span>{totalRawRows != null && totalRawRows !== totalInputRows ? ` (dari ${totalRawRows})` : ''} · Sudah jadi peserta: <span className="font-semibold">{alreadyRegistered}</span> · Gagal: <span className="font-semibold text-red-700">{skippedCount}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* BLOK 1: Perhitungan dari data impor — paling atas */}
                             <div className="bg-white rounded-xl border border-indigo-100 shadow-md overflow-hidden">
                                 <div className="px-5 py-4 border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-white">
@@ -206,13 +257,13 @@ export default function BulkPaymentModal({ show, onClose, activity, importResult
                                         </div>
                                         <div className="flex items-center justify-between sm:flex-col sm:items-start sm:justify-start gap-1 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
                                             <span className="text-xs font-medium text-emerald-700">Peserta baru</span>
-                                            <span className="text-2xl font-bold text-emerald-700">{pesertaBaruCount}</span>
-                                            <p className="text-[10px] text-emerald-600 mt-1 sm:mt-0.5">Total data − sudah jadi peserta (termasuk user baru)</p>
+                                            <span className="text-2xl font-bold text-emerald-700">{billableParticipants}</span>
+                                            <p className="text-[10px] text-emerald-600 mt-1 sm:mt-0.5">Yang akan dibuatkan tagihan</p>
                                         </div>
                                     </div>
                                     {totalInputRows != null && (
                                         <p className="text-xs text-gray-500 -mt-1">
-                                            Data diproses: <strong>{totalInputRows}</strong> baris{totalRawRows != null && totalRawRows !== totalInputRows ? ` (dari ${totalRawRows} baris; email sama dihitung sekali)` : ''} → Peserta baru = {totalInputRows} − {alreadyRegistered} = <strong>{totalInputRows - alreadyRegistered}</strong>
+                                            Data diproses: <strong>{totalInputRows}</strong> baris{totalRawRows != null && totalRawRows !== totalInputRows ? ` (dari ${totalRawRows} baris; email sama dihitung sekali)` : ''}{skippedCount ? ` · Gagal: ${skippedCount}` : ''}
                                         </p>
                                     )}
                                     <div className="pt-3 border-t border-gray-100 space-y-2">
@@ -237,13 +288,19 @@ export default function BulkPaymentModal({ show, onClose, activity, importResult
                                     </h4>
                                 </div>
                                 <div className="p-5">
-                                    <ChannelList
-                                        channels={midtransChannels}
-                                        manualMethods={paymentMethods}
-                                        isSelectionMode={true}
-                                        onSelect={handleChannelSelect}
-                                        selectedId={selectedChannel}
-                                    />
+                                    {hasFailures || Number(billableParticipants) <= 0 ? (
+                                        <div className="text-sm text-gray-600">
+                                            {hasFailures ? 'Perbaiki data yang gagal terlebih dahulu untuk melanjutkan pembayaran.' : 'Tidak ada peserta baru yang perlu dibayar.'}
+                                        </div>
+                                    ) : (
+                                        <ChannelList
+                                            channels={midtransChannels}
+                                            manualMethods={paymentMethods}
+                                            isSelectionMode={true}
+                                            onSelect={handleChannelSelect}
+                                            selectedId={selectedChannel}
+                                        />
+                                    )}
                                 </div>
                             </div>
                         </>

@@ -85,6 +85,8 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
     const [selectedRooms, setSelectedRooms] = useState([]);
     const [activeTab, setActiveTab] = useState('manual');
+    const [roomSearch, setRoomSearch] = useState('');
+    const [roomFilter, setRoomFilter] = useState('all');
 
     // Import form
     const importForm = useForm({
@@ -124,10 +126,11 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     };
 
     const toggleSelectAll = (e) => {
+        const visibleIds = filteredRooms.map(r => r.id);
         if (e.target.checked) {
-            setSelectedRooms(rooms.map(r => r.id));
+            setSelectedRooms(prev => Array.from(new Set([...prev, ...visibleIds])));
         } else {
-            setSelectedRooms([]);
+            setSelectedRooms(prev => prev.filter(id => !visibleIds.includes(id)));
         }
     };
 
@@ -254,6 +257,47 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
             }
         });
     };
+
+    const roomSearchTerm = (roomSearch || '').trim().toLowerCase();
+    const roomSearchTokens = roomSearchTerm
+        ? roomSearchTerm.split(/[\s/_,.-]+/).map(t => t.trim()).filter(Boolean)
+        : [];
+    const filteredRooms = rooms.filter((room) => {
+        const occupants = roomOccupants[room.id] || [];
+        const isFull = room.capacity > 0 && occupants.length >= room.capacity;
+        const isEmpty = occupants.length === 0;
+        const isAvailable = !isFull;
+
+        if (roomFilter === 'empty' && !isEmpty) return false;
+        if (roomFilter === 'available' && !isAvailable) return false;
+
+        const hotelName = (room.hotel_name || '').toString().toLowerCase();
+        const roomNumber = (room.room_number || '').toString().toLowerCase();
+        const notes = (room.notes || '').toString().toLowerCase();
+        const statusLabel = room.is_active ? 'aktif' : 'tidak aktif';
+        const occupantsText = occupants.map(o => (o?.name || '').toString().toLowerCase()).join(' ');
+        const capacityText = room.capacity > 0 ? String(room.capacity) : 'tak terbatas';
+        const occupancyText = String(occupants.length);
+        const fullText = isFull ? 'penuh' : 'tersedia';
+
+        if (roomSearchTokens.length === 0) return true;
+
+        const searchable = [
+            hotelName,
+            roomNumber,
+            notes,
+            statusLabel,
+            occupantsText,
+            capacityText,
+            occupancyText,
+            fullText,
+        ].join(' ');
+
+        return roomSearchTokens.every(token => searchable.includes(token));
+    });
+
+    const visibleRoomIds = filteredRooms.map(r => r.id);
+    const allVisibleSelected = visibleRoomIds.length > 0 && visibleRoomIds.every(id => selectedRooms.includes(id));
 
     return createPortal(
         <div className="relative z-[100]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -415,6 +459,32 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                 )}
                             </div>
 
+                            <div className="flex items-center gap-2 mb-2 flex-nowrap">
+                                <div className="flex-1 min-w-0">
+                                    <input
+                                        type="text"
+                                        value={roomSearch}
+                                        onChange={(e) => setRoomSearch(e.target.value)}
+                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Cari: hotel / nomor / peserta (contoh: GOLDEN 1)"
+                                    />
+                                </div>
+                                <div className="w-[220px] shrink-0">
+                                    <select
+                                        value={roomFilter}
+                                        onChange={(e) => setRoomFilter(e.target.value)}
+                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                    >
+                                        <option value="all">Semua Kamar</option>
+                                        <option value="empty">Kamar Kosong</option>
+                                        <option value="available">Masih Bisa Terisi</option>
+                                    </select>
+                                </div>
+                                <div className="text-xs text-gray-500 shrink-0 whitespace-nowrap">
+                                    Menampilkan {filteredRooms.length} dari {rooms.length}
+                                </div>
+                            </div>
+
                             {/* Bulk Actions */}
                             {selectedRooms.length > 0 && (
                                 <div className="px-4 py-2 border rounded-t-lg flex justify-between items-center mb-2 bg-red-50 border-red-200">
@@ -442,7 +512,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                                 <input
                                                     type="checkbox"
                                                     onChange={toggleSelectAll}
-                                                    checked={rooms.length > 0 && selectedRooms.length === rooms.length}
+                                                    checked={allVisibleSelected}
                                                     className="rounded border-gray-300 text-primary focus:ring-indigo-500"
                                                 />
                                             </th>
@@ -455,8 +525,8 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {rooms.length > 0 ? (
-                                            rooms.map((room) => {
+                                        {filteredRooms.length > 0 ? (
+                                            filteredRooms.map((room) => {
                                                 const occupants = roomOccupants[room.id] || [];
                                                 const isFull = room.capacity > 0 && occupants.length >= room.capacity;
 
@@ -513,7 +583,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                         ) : (
                                             <tr>
                                                 <td colSpan="7" className="px-4 py-8 text-center text-gray-500 italic">
-                                                    Belum ada kamar.
+                                                    {rooms.length > 0 ? 'Tidak ada kamar yang sesuai pencarian.' : 'Belum ada kamar.'}
                                                 </td>
                                             </tr>
                                         )}

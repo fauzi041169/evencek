@@ -7106,20 +7106,35 @@ class ActivityController extends Controller
         // Statistik Kamar (Hotel Rooms)
         $roomStats = null;
         if (Schema::hasTable('activity_hotel_rooms')) {
-            $rooms = \DB::table('activity_hotel_rooms')
+            $roomsAll = \DB::table('activity_hotel_rooms')
                 ->where('activity_id', $activityId)
                 ->get();
+            $rooms = $roomsAll->where('is_active', 1)->values();
+
+            $totalRoomsAll = $roomsAll->count();
             $totalRooms = $rooms->count();
             if ($totalRooms > 0) {
-                $totalCapacity = (int) $rooms->sum('capacity');
+                $hasUnlimited = $rooms->contains(function ($r) {
+                    return (int) ($r->capacity ?? 0) <= 0;
+                });
+                $totalCapacity = (int) $rooms->sum(function ($r) {
+                    $cap = (int) ($r->capacity ?? 0);
+
+                    return $cap > 0 ? $cap : 0;
+                });
                 $assignedCount = 0;
                 if (Schema::hasTable('activity_hotel_room_assignments')) {
                     $assignedCount = \DB::table('activity_hotel_room_assignments as a')
+                        ->join('activity_hotel_rooms as r', function ($join) {
+                            $join->on('r.id', '=', 'a.room_id')
+                                ->on('r.activity_id', '=', 'a.activity_id');
+                        })
                         ->join($tableName.' as au', function ($join) {
                             $join->on('au.user_id', '=', 'a.user_id')
                                 ->on('au.activity_id', '=', 'a.activity_id');
                         })
                         ->where('a.activity_id', $activityId)
+                        ->where('r.is_active', 1)
                         ->where('au.status', 1)
                         ->whereNotIn('au.user_id', $committeeUserIds)
                         ->distinct()
@@ -7132,6 +7147,7 @@ class ActivityController extends Controller
                             ->on('au.activity_id', '=', 'a.activity_id');
                     })
                     ->where('r.activity_id', $activityId)
+                    ->where('r.is_active', 1)
                     ->where(function($q) use ($committeeUserIds) {
                         $q->whereNotIn('a.user_id', $committeeUserIds)->orWhereNull('a.user_id');
                     })
@@ -7147,7 +7163,9 @@ class ActivityController extends Controller
                     ->get();
                 $roomStats = [
                     'total_rooms' => $totalRooms,
+                    'total_rooms_all' => $totalRoomsAll,
                     'total_capacity' => $totalCapacity,
+                    'has_unlimited' => $hasUnlimited,
                     'assigned' => (int) $assignedCount,
                     'unassigned' => max(0, (int) $pesertaAktif - (int) $assignedCount),
                     'rooms' => $roomRows->map(function ($r) {

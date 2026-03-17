@@ -167,14 +167,14 @@ export default function Dashboard({
                     el.style.visibility = 'hidden';
                     return;
                 }
-                const bar = chart.getDatasetMeta(0)?.data?.[dataIndex];
-                if (!bar) {
+                const canvasRect = canvas.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                const xScale = chart.scales?.x;
+                if (!xScale) {
                     el.style.visibility = 'hidden';
                     return;
                 }
-                const canvasRect = canvas.getBoundingClientRect();
-                const containerRect = container.getBoundingClientRect();
-                const barX = canvasRect.left - containerRect.left + bar.x;
+                const barX = canvasRect.left - containerRect.left + xScale.getPixelForTick(dataIndex);
                 el.style.left = barX + 'px';
                 el.style.transform = 'translateX(-50%)';
                 el.style.top = '0';
@@ -214,29 +214,20 @@ export default function Dashboard({
         id: 'avatarPlugin',
         afterDraw: (chart) => {
             const { ctx, scales: { x, y } } = chart;
-            // Use the last visible dataset to find the top of the stack
+            const xScale = x;
+            const yScale = y;
             const visibleDatasets = chart.getVisibleDatasetCount();
             if (visibleDatasets === 0 || !committee_stats) return;
-
-            // We need to find the specific dataset that represents the "top" for each bar
-            // In a stacked chart, we can usually use the meta of the last dataset,
-            // but we must check if the bar exists
-
-            const metas = chart.getSortedVisibleDatasetMetas();
-            if (metas.length === 0) return;
-            const lastMeta = metas[metas.length - 1]; // Top-most visible dataset
 
             const top10 = committee_stats.slice(0, 10);
 
             top10.forEach((member, index) => {
-                const bar = lastMeta.data[index];
-                if (!bar) return;
-
-                // Posisi avatar & angka di ATAS batang (bukan di dalam).
-                // Tinggi batang = registrations + validations + akses (stacked), bukan total_actions (poin tertimbang).
-                const barHeight = (member.registrations || 0) + (member.validations || 0) + (member.akses || 0);
-                const xPos = bar.x;
-                const yPos = y.getPixelForValue(barHeight); // Puncak batang
+                const reg = (member.registrations || 0);
+                const val = (member.validations || 0);
+                const aks = (member.akses || 0);
+                const barHeight = Math.max(reg, val, aks);
+                const xPos = xScale.getPixelForTick(index);
+                const yPos = yScale.getPixelForValue(barHeight);
                 const poinLabel = member.total_actions; // Angka yang ditampilkan = poin tertimbang
 
                 // Ensure we don't draw out of bounds (though clip usually handles it)
@@ -371,7 +362,7 @@ export default function Dashboard({
         },
         scales: {
             x: {
-                stacked: true,
+                stacked: false,
                 grid: { display: false },
                 ticks: {
                     font: { size: 10, family: "'Inter', sans-serif", weight: '500' },
@@ -387,7 +378,7 @@ export default function Dashboard({
                 }
             },
             y: {
-                stacked: true,
+                stacked: false,
                 beginAtZero: true,
                 grid: {
                     color: '#f1f5f9',
@@ -1233,12 +1224,18 @@ export default function Dashboard({
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
                                 <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kamar</div>
+                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kamar Aktif</div>
                                     <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.total_rooms?.toLocaleString() || 0}</div>
+                                    {roomStats.total_rooms_all != null && roomStats.total_rooms_all !== roomStats.total_rooms && (
+                                        <div className="text-[10px] text-gray-400 mt-1">Total semua kamar: {roomStats.total_rooms_all?.toLocaleString()}</div>
+                                    )}
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kapasitas</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.total_capacity?.toLocaleString() || 0}</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.has_unlimited ? '∞' : (roomStats.total_capacity?.toLocaleString() || 0)}</div>
+                                    {roomStats.has_unlimited && (
+                                        <div className="text-[10px] text-gray-400 mt-1">Ada kamar kapasitas tak terbatas</div>
+                                    )}
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Terisi</div>

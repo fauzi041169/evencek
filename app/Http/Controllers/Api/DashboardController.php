@@ -107,7 +107,7 @@ class DashboardController extends Controller
                 
             $userIds = $committees->pluck('user_id')->filter()->unique();
             
-            // Count registrations by user (created_by)
+            // Count registrations by user (created_by), fallback to payment sender_name
             $registrations = [];
             if (Schema::hasColumn($tableName, 'created_by')) {
                 $registrations = DB::table($tableName)
@@ -136,7 +136,7 @@ class DashboardController extends Controller
                     ->toArray();
             }
                 
-            // Count validations by user (updated_by)
+            // Count validations by user (updated_by), fallback: payments approved verified_by
             $validations = [];
             if (Schema::hasColumn($tableName, 'updated_by')) {
                 $validations = DB::table($tableName)
@@ -148,6 +148,20 @@ class DashboardController extends Controller
                     ->pluck('total', 'updated_by')
                     ->toArray();
             }
+            // Fallback validations via payments.verified_by (approved)
+            if (Schema::hasTable('payments') && Schema::hasColumn('payments', 'verified_by')) {
+                $paymentsApprovedBy = DB::table('payments')
+                    ->where('activity_id', $activityId)
+                    ->where('status', 'approved')
+                    ->whereIn('verified_by', $userIds)
+                    ->select('verified_by', DB::raw('count(*) as total'))
+                    ->groupBy('verified_by')
+                    ->pluck('total', 'verified_by')
+                    ->toArray();
+                foreach ($paymentsApprovedBy as $uid => $cnt) {
+                    $validations[$uid] = ($validations[$uid] ?? 0) + (int) $cnt;
+                }
+            }
             
             // Map to committee members
             $committeeStats = $committees->map(function ($member) use ($registrations, $validations, $paymentCounts) {
@@ -155,10 +169,10 @@ class DashboardController extends Controller
                 $name = $member->user ? $member->user->name : $member->name;
                 $normalizedName = strtolower(trim((string)$name));
                 
-                $regCount = ($registrations[$userId] ?? 0);
-                $payCount = ($paymentCounts[$normalizedName] ?? 0);
+                $regCount = (int) ($registrations[$userId] ?? 0);
+                $payCount = (int) ($paymentCounts[$normalizedName] ?? 0);
                 $totalReg = $regCount + $payCount;
-                $valCount = $validations[$userId] ?? 0;
+                $valCount = (int) ($validations[$userId] ?? 0);
                 $aksesCount = $member->lama_akses ?? 0; // Menggunakan lama_akses sebagai nilai AKSES
 
                 // Poin tertimbang: 50% validasi, 30% pendaftaran, 20% akses (tampil sebagai poin)
@@ -321,4 +335,3 @@ class DashboardController extends Controller
         ], 200);
     }
 }
-
