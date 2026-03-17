@@ -3786,10 +3786,29 @@ class ActivityController extends Controller
 
         if (auth()->check()) {
             try {
-                ActivityUser::where('activity_id', $activity->id)
+                $enrollments = ActivityUser::where('activity_id', $activity->id)
                     ->where('user_id', auth()->id())
                     ->orderBy('created_at', 'desc')
-                    ->first();
+                    ->get();
+
+                $activeEnrollment = $enrollments->first(function ($enrollment) {
+                    return (int) $enrollment->status === ActivityUser::STATUS_ACTIVE;
+                });
+
+                if ($activeEnrollment) {
+                    $mandatoryFields = $activity->mandatory_profile_fields ?? [];
+                    $missingMandatory = [];
+                    if (! empty($mandatoryFields) && auth()->user()) {
+                        $missingMandatory = auth()->user()->getIncompleteProfileData($mandatoryFields);
+                    }
+
+                    if (empty($missingMandatory)) {
+                        return redirect()->route('activity.show', array_filter([
+                            'activity' => $activity->id,
+                            'batch_id' => $activeEnrollment->activity_batch_id ?? null,
+                        ]));
+                    }
+                }
             } catch (\Throwable $e) {
             }
         }
