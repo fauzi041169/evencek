@@ -3796,6 +3796,19 @@ class ActivityController extends Controller
                 });
 
                 if ($activeEnrollment) {
+                    $mandatoryFields = $activity->mandatory_profile_fields ?? [];
+                    if (! empty($mandatoryFields) && auth()->user()) {
+                        try {
+                            $missing = auth()->user()->getIncompleteProfileData($mandatoryFields);
+                            if (! empty($missing)) {
+                                $activeEnrollment = null;
+                            }
+                        } catch (\Throwable $e) {
+                        }
+                    }
+                }
+
+                if ($activeEnrollment) {
                     return redirect()->route('activity.show', array_filter([
                         'activity' => $activity->id,
                         'batch_id' => $activeEnrollment->activity_batch_id ?? null,
