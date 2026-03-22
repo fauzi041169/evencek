@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -235,17 +236,12 @@ class SettingController extends Controller
             // Handle logo upload
             if ($request->hasFile('logo')) {
                 $logo = $request->file('logo');
-                $logoName = 'logo_'.time().'.'.$logo->getClientOriginalExtension();
-                $logoPath = 'assets/images/'.$logoName;
-
-                // Create directory if not exists
-                $logoDir = public_path('assets/images');
-                if (! File::exists($logoDir)) {
-                    File::makeDirectory($logoDir, 0755, true);
-                }
-
-                // Move uploaded file
-                $logo->move($logoDir, $logoName);
+                $logoPath = ImageHelper::saveCompressedPublicImage($logo, 'assets/images', 'logo', [
+                    'max_width' => 800,
+                    'max_height' => 800,
+                    'quality' => 85,
+                    'format' => 'webp',
+                ]);
 
                 // Delete old logo if exists and different
                 $oldLogo = Setting::get('app_logo');
@@ -294,7 +290,12 @@ class SettingController extends Controller
             foreach ($heroFields as $inputName => $settingKey) {
                 if ($request->hasFile($inputName)) {
                     $hero = $request->file($inputName);
-                    $path = $hero->store('settings/hero', 'public');
+                    $path = ImageHelper::storeCompressedUploadedImage($hero, 'settings/hero', 'public', [
+                        'max_width' => 2500,
+                        'max_height' => 2500,
+                        'quality' => 80,
+                        'format' => 'webp',
+                    ]);
                     $heroPath = $path; // Save without storage/ prefix
 
                     // Delete old file if exists and different

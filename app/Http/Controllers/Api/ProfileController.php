@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Profile;
 use App\Models\User;
@@ -133,7 +134,12 @@ class ProfileController extends Controller
             if ($request->hasFile('foto_file') || $request->hasFile('foto')) {
                 $file = $request->file('foto_file') ?? $request->file('foto');
                 if ($file && $file->isValid()) {
-                    $path = $file->store('profile-photos', 'public');
+                    $path = ImageHelper::storeCompressedUploadedImage($file, 'profile-photos', 'public', [
+                        'max_width' => 1200,
+                        'max_height' => 1200,
+                        'quality' => 82,
+                        'format' => 'webp',
+                    ]);
                     $profile->foto = $path;
                 }
             }

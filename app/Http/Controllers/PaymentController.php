@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\ActivityUser;
 use App\Models\FinancialSetting;
@@ -1156,7 +1157,12 @@ class PaymentController extends Controller
                             'payment_proof' => 'required|image|mimes:jpeg,png,jpg,gif|max:51200',
                             'sender_name' => 'nullable|string|max:255',
                         ]);
-                        $path = $request->file('payment_proof')->storeAs('payment-proofs', time().'_'.$request->file('payment_proof')->getClientOriginalName(), 'public');
+                        $path = ImageHelper::storeCompressedUploadedImage($request->file('payment_proof'), 'payment-proofs', 'public', [
+                            'max_width' => 2500,
+                            'max_height' => 2500,
+                            'quality' => 80,
+                            'format' => 'webp',
+                        ]);
                         $existingBulkPayment->update([
                             'payment_method_id' => $validated['payment_method_id'],
                             'proof_of_payment' => $path,
@@ -1191,10 +1197,12 @@ class PaymentController extends Controller
             // Handle file upload
             if ($request->hasFile('payment_proof')) {
                 $file = $request->file('payment_proof');
-                $filename = time().'_'.$file->getClientOriginalName();
-
-                // Store in the payment-proofs directory using Storage facade
-                $path = $file->storeAs('payment-proofs', $filename, 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($file, 'payment-proofs', 'public', [
+                    'max_width' => 2500,
+                    'max_height' => 2500,
+                    'quality' => 80,
+                    'format' => 'webp',
+                ]);
 
                 $bulk = session('import_bulk_payment') ?? session('import_bulk_payment_payload');
                 $amount = (int) $activity->price;
@@ -1864,8 +1872,12 @@ class PaymentController extends Controller
         if ($request->hasFile('proof_file')) {
             try {
                 $file = $request->file('proof_file');
-                $filename = 'proof_' . time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('payment-proofs', $filename, 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($file, 'payment-proofs', 'public', [
+                    'max_width' => 2500,
+                    'max_height' => 2500,
+                    'quality' => 80,
+                    'format' => 'webp',
+                ]);
                 
                 // Delete old file if exists and not imported
                 if ($payment->proof_of_payment && $payment->proof_of_payment !== 'imported') {
@@ -2011,8 +2023,12 @@ class PaymentController extends Controller
             // Handle Proof File
             if ($request->hasFile('proof_file')) {
                 $file = $request->file('proof_file');
-                $filename = 'proof_' . time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('payment-proofs', $filename, 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($file, 'payment-proofs', 'public', [
+                    'max_width' => 2500,
+                    'max_height' => 2500,
+                    'quality' => 80,
+                    'format' => 'webp',
+                ]);
                 
                 // Delete old file if exists and not imported
                 if ($payment->proof_of_payment && $payment->proof_of_payment !== 'imported') {
@@ -3555,37 +3571,18 @@ class PaymentController extends Controller
             if ($request->hasFile('proof')) {
                 $file = $request->file('proof');
                 $filename = time().'_'.preg_replace('/[^A-Za-z0-9_\-.]/', '_', $file->getClientOriginalName());
-                $storagePath = 'withdrawals/proofs/'.$withdrawal->id.'/'.$filename;
-                
-                // Cek jika ukuran file > 20MB (20 * 1024 * 1024 bytes) dan tipe gambar
-                if ($file->getSize() > 20 * 1024 * 1024 && str_starts_with($file->getMimeType(), 'image/')) {
-                    try {
-                        // Gunakan Intervention Image untuk resize/kompresi
-                        $manager = new ImageManager(new Driver());
-                        $image = $manager->read($file);
-                        
-                        // Resize gambar agar tidak terlalu besar (max width 2500px), aspect ratio terjaga
-                        $image->scaleDown(width: 2500);
-                        
-                        // Simpan sementara untuk diupload ke storage
-                        $tempPath = sys_get_temp_dir() . '/' . $filename;
-                        $image->save($tempPath, quality: 80);
-                        
-                        // Simpan ke storage (public disk)
-                        Storage::disk('public')->putFileAs('withdrawals/proofs/'.$withdrawal->id, new \Illuminate\Http\File($tempPath), $filename);
-                        
-                        // Hapus file temp
-                        @unlink($tempPath);
-                    } catch (\Exception $e) {
-                        Log::warning('Gagal resize gambar bukti transfer: '.$e->getMessage());
-                        // Fallback: simpan file asli jika gagal resize
-                        Storage::disk('public')->putFileAs('withdrawals/proofs/'.$withdrawal->id, $file, $filename);
-                    }
+                $dir = 'withdrawals/proofs/'.$withdrawal->id;
+
+                if (str_starts_with((string) $file->getMimeType(), 'image/')) {
+                    $proofPath = ImageHelper::storeCompressedUploadedImage($file, $dir, 'public', [
+                        'max_width' => 2500,
+                        'max_height' => 2500,
+                        'quality' => 80,
+                        'format' => 'webp',
+                    ]);
                 } else {
-                    Storage::disk('public')->putFileAs('withdrawals/proofs/'.$withdrawal->id, $file, $filename);
+                    $proofPath = $file->storeAs($dir, $filename, 'public');
                 }
-                
-                $proofPath = $storagePath;
             }
 
             DB::beginTransaction();

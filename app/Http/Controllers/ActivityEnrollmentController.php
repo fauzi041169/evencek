@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\ActivityUser;
 use App\Models\Payment;
@@ -194,7 +195,17 @@ class ActivityEnrollmentController extends Controller
                     if (is_array($customFiles)) {
                         foreach ($customFiles as $fieldKey => $file) {
                             if ($file && $file->isValid()) {
-                                $path = $file->store('activities/'.$activity->id.'/custom-data', 'public');
+                                $dir = 'activities/'.$activity->id.'/custom-data';
+                                if (str_starts_with((string) $file->getMimeType(), 'image/')) {
+                                    $path = ImageHelper::storeCompressedUploadedImage($file, $dir, 'public', [
+                                        'max_width' => 1920,
+                                        'max_height' => 1920,
+                                        'quality' => 80,
+                                        'format' => 'webp',
+                                    ]);
+                                } else {
+                                    $path = $file->store($dir, 'public');
+                                }
                                 $customData[$fieldKey] = 'storage/'.$path;
                             }
                         }
@@ -239,7 +250,12 @@ class ActivityEnrollmentController extends Controller
                     $file = $request->file('foto_file') ?? $request->file('foto');
                     if ($file && $file->isValid()) {
                         // Use Storage facade
-                        $path = $file->store('profile-photos', 'public');
+                        $path = ImageHelper::storeCompressedUploadedImage($file, 'profile-photos', 'public', [
+                            'max_width' => 1200,
+                            'max_height' => 1200,
+                            'quality' => 82,
+                            'format' => 'webp',
+                        ]);
                         $profileData['foto'] = $path;
                     }
                 }

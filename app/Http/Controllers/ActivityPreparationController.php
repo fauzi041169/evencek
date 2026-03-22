@@ -21,6 +21,7 @@ use App\Models\CertificateSettings;
 use App\Models\Comment;
 use App\Models\District;
 use App\Helpers\RegionMatcher;
+use App\Helpers\ImageHelper;
 use App\Models\Payment;
 use App\Models\Profile;
 use App\Models\Province;
@@ -5847,8 +5848,12 @@ class ActivityPreparationController extends Controller
         $coverImagePath = null;
         if ($request->hasFile('cover_image')) {
             $coverFile = $request->file('cover_image');
-            $coverFilename = 'cover_'.time().'_'.uniqid().'.'.$coverFile->getClientOriginalExtension();
-            $coverImagePath = $coverFile->storeAs('activity_materials/'.$activityId.'/covers', $coverFilename, 'public');
+            $coverImagePath = ImageHelper::storeCompressedUploadedImage($coverFile, 'activity_materials/'.$activityId.'/covers', 'public', [
+                'max_width' => 1200,
+                'max_height' => 1200,
+                'quality' => 80,
+                'format' => 'webp',
+            ]);
         }
 
         if (! $hasFile && $hasLink) {
@@ -5896,8 +5901,19 @@ class ActivityPreparationController extends Controller
                 }
 
                 $directory = 'activity_materials/'.$activityId;
-                $filename = time().'_'.uniqid().'.'.$extension;
-                $filePath = $file->storeAs($directory, $filename, 'public');
+                if ($fileType === 'image') {
+                    $filePath = ImageHelper::storeCompressedUploadedImage($file, $directory, 'public', [
+                        'max_width' => 1920,
+                        'max_height' => 1920,
+                        'quality' => 80,
+                        'format' => 'webp',
+                    ]);
+                    $mimeType = Storage::disk('public')->mimeType($filePath) ?: $mimeType;
+                    $fileSize = Storage::disk('public')->size($filePath) ?: $fileSize;
+                } else {
+                    $filename = time().'_'.uniqid().'.'.$extension;
+                    $filePath = $file->storeAs($directory, $filename, 'public');
+                }
 
                 ActivityMaterial::create([
                     'activity_id' => $activityId,

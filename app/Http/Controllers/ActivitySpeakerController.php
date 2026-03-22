@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\ActivitySpeaker;
 use Illuminate\Http\Request;
@@ -281,7 +282,12 @@ class ActivitySpeakerController extends Controller
             }
 
             if ($request->hasFile('photo')) {
-                $path = $request->file('photo')->store('speakers', 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($request->file('photo'), 'speakers', 'public', [
+                    'max_width' => 1200,
+                    'max_height' => 1200,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
                 $validated['photo'] = $path;
             }
 
@@ -377,7 +383,12 @@ class ActivitySpeakerController extends Controller
                 if ($speaker->photo) {
                     Storage::disk('public')->delete($speaker->photo);
                 }
-                $path = $request->file('photo')->store('speakers', 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($request->file('photo'), 'speakers', 'public', [
+                    'max_width' => 1200,
+                    'max_height' => 1200,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
                 $validated['photo'] = $path;
             }
 

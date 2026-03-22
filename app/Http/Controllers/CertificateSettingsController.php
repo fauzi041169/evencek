@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use Illuminate\Http\Request;
 
 class CertificateSettingsController extends Controller
@@ -97,7 +98,12 @@ class CertificateSettingsController extends Controller
 
             // Simpan menggunakan Storage facade
             $activityId = $request->input('activity_id');
-            $path = $file->store('certificate-backgrounds/'.($activityId ?: 'default'), 'public');
+            $path = ImageHelper::storeCompressedUploadedImage($file, 'certificate-backgrounds/'.($activityId ?: 'default'), 'public', [
+                'max_width' => 2500,
+                'max_height' => 2500,
+                'quality' => 80,
+                'format' => 'webp',
+            ]);
 
             if (! $path) {
                 return response()->json([

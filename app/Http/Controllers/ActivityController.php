@@ -178,7 +178,6 @@ class ActivityController extends Controller
             // Handle Hero Background Upload
             if ($request->hasFile('hero_background')) {
                 $file = $request->file('hero_background');
-                $name = time().'_'.$creator->id.'_hero.'.$file->getClientOriginalExtension();
                 
                 // Hapus file lama
                 if ($creator->hero_background) {
@@ -197,14 +196,18 @@ class ActivityController extends Controller
                 }
 
                 // Simpan ke storage (public disk)
-                $path = $file->storeAs('hero_backgrounds', $name, 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($file, 'hero_backgrounds', 'public', [
+                    'max_width' => 2500,
+                    'max_height' => 2500,
+                    'quality' => 80,
+                    'format' => 'webp',
+                ]);
                 $creator->hero_background = $path;
             }
 
             // Handle Logo Upload
             if ($request->hasFile('subdomain_logo')) {
                 $file = $request->file('subdomain_logo');
-                $name = time().'_'.$creator->id.'_logo.'.$file->getClientOriginalExtension();
 
                 // Hapus file lama
                 if ($creator->subdomain_logo) {
@@ -223,7 +226,12 @@ class ActivityController extends Controller
                 }
 
                 // Simpan ke storage (public disk)
-                $path = $file->storeAs('subdomain_logos', $name, 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($file, 'subdomain_logos', 'public', [
+                    'max_width' => 800,
+                    'max_height' => 800,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
                 $creator->subdomain_logo = $path;
             }
 
@@ -2022,12 +2030,14 @@ class ActivityController extends Controller
                 }
 
                 $image = $request->file('image');
-                $filename = 'activity_'.time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
+                $path = ImageHelper::storeCompressedUploadedImage($image, 'activities', 'public', [
+                    'max_width' => 1600,
+                    'max_height' => 1600,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
 
-                // Store using Storage facade
-                $image->storeAs('activities', $filename, 'public');
-
-                $validated['image'] = $filename;
+                $validated['image'] = basename($path);
             }
 
             // Update activity
@@ -2357,10 +2367,12 @@ class ActivityController extends Controller
 
         try {
             $file = $request->file('image');
-            $filename = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-            
-            // Simpan ke storage (public disk)
-            $path = $file->storeAs('description_images', $filename, 'public');
+            $path = ImageHelper::storeCompressedUploadedImage($file, 'description_images', 'public', [
+                'max_width' => 1600,
+                'max_height' => 1600,
+                'quality' => 80,
+                'format' => 'webp',
+            ]);
             
             // Return the public URL
             $url = \Illuminate\Support\Facades\Storage::url($path);
@@ -2775,13 +2787,14 @@ class ActivityController extends Controller
 
             if ($request->hasFile('image')) {
                 $image = $request->file('image');
-                $filename = 'activity_'.time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
+                $path = ImageHelper::storeCompressedUploadedImage($image, 'activities', 'public', [
+                    'max_width' => 1600,
+                    'max_height' => 1600,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
 
-                // Simpan ke storage (public disk)
-                $image->storeAs('activities', $filename, 'public');
-
-                // Set the image path in validated data
-                $validated['image'] = $filename;
+                $validated['image'] = basename($path);
             }
 
             $activity = Activity::create([

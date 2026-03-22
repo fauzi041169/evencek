@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Pengurus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -47,11 +48,13 @@ class PengurusController extends Controller
 
         if ($request->hasFile('foto')) {
             $foto = $request->file('foto');
-            $filename = time().'_'.$foto->getClientOriginalName();
-
-            // Simpan file menggunakan Storage facade
-            $path = $foto->storeAs('pengurus', $filename, 'public');
-            $validated['foto'] = 'pengurus/'.$filename;
+            $path = ImageHelper::storeCompressedUploadedImage($foto, 'pengurus', 'public', [
+                'max_width' => 1200,
+                'max_height' => 1200,
+                'quality' => 82,
+                'format' => 'webp',
+            ]);
+            $validated['foto'] = $path;
         }
 
         try {
@@ -106,11 +109,13 @@ class PengurusController extends Controller
                 }
 
                 $foto = $request->file('foto');
-                $filename = time().'_'.$foto->getClientOriginalName();
-
-                // Simpan file menggunakan Storage facade
-                $path = $foto->storeAs('pengurus', $filename, 'public');
-                $validated['foto'] = 'pengurus/'.$filename;
+                $path = ImageHelper::storeCompressedUploadedImage($foto, 'pengurus', 'public', [
+                    'max_width' => 1200,
+                    'max_height' => 1200,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
+                $validated['foto'] = $path;
             }
 
             $pengurus->update($validated);

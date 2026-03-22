@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\Gallery;
 use Illuminate\Http\Request;
@@ -39,11 +40,13 @@ class GalleryController extends Controller
                     return back()->with('error', 'File upload tidak valid: '.($file->getError() ?? 'Unknown error'));
                 }
 
-                $filename = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-                
-                // Use Storage facade to store file
-                // Store in storage/app/public/activities/gallery
-                Storage::disk('public')->putFileAs('activities/gallery', $file, $filename);
+                $path = ImageHelper::storeCompressedUploadedImage($file, 'activities/gallery', 'public', [
+                    'max_width' => 1920,
+                    'max_height' => 1920,
+                    'quality' => 80,
+                    'format' => 'webp',
+                ]);
+                $filename = basename($path);
 
                 // Simpan ke DB hanya nama file; path publik di-blade
                 Gallery::create([

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\IdCardBackground;
 use Illuminate\Http\Request;
@@ -57,8 +58,12 @@ class IdCardBackgroundController extends Controller
             ], 400);
         }
         
-        // Use Storage facade
-        $path = $file->store('id-card-backgrounds/'.$activity->id, 'public');
+        $path = ImageHelper::storeCompressedUploadedImage($file, 'id-card-backgrounds/'.$activity->id, 'public', [
+            'max_width' => 2500,
+            'max_height' => 2500,
+            'quality' => 80,
+            'format' => 'webp',
+        ]);
 
         if (! $path) {
             return response()->json([
@@ -212,4 +217,3 @@ class IdCardBackgroundController extends Controller
         ]);
     }
 }
-

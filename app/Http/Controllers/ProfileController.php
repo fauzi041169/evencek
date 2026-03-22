@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\District;
 use App\Models\ActivityCommitteeStructure;
 use App\Models\ActivityUser;
@@ -548,7 +549,12 @@ class ProfileController extends Controller
             // Handle file upload
             if ($request->hasFile('foto_file')) {
                 $foto = $request->file('foto_file');
-                $path = $foto->store('profile-photos', 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($foto, 'profile-photos', 'public', [
+                    'max_width' => 1200,
+                    'max_height' => 1200,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
                 if (! $profile) {
                     $profile = new Profile;
                     $profile->user_id = $user->id;
@@ -569,19 +575,35 @@ class ProfileController extends Controller
                         ->withInput();
                 }
 
-                $fotoName = 'profile-photos/'.time().'_'.uniqid().'.jpg';
-                \Illuminate\Support\Facades\Storage::disk('public')->put($fotoName, $image_data);
+                $stored = ImageHelper::storeCompressedImageBinary($image_data, 'profile-photos', 'public', [
+                    'source_mime' => $mimeType,
+                    'max_width' => 1200,
+                    'max_height' => 1200,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
+
+                if (empty($stored['path'])) {
+                    return redirect()->back()
+                        ->withErrors(['foto_file' => 'Gagal memproses gambar dari kamera.'])
+                        ->withInput();
+                }
 
                 if (! $profile) {
                     $profile = new Profile;
                     $profile->user_id = $user->id;
                 }
-                $profile->foto = $fotoName;
+                $profile->foto = $stored['path'];
             }
 
             if ($request->hasFile('cover_file')) {
                 $cover = $request->file('cover_file');
-                $path = $cover->store('profile-covers', 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($cover, 'profile-covers', 'public', [
+                    'max_width' => 2000,
+                    'max_height' => 2000,
+                    'quality' => 80,
+                    'format' => 'webp',
+                ]);
                 if (! $profile) {
                     $profile = new Profile;
                     $profile->user_id = $user->id;
@@ -824,7 +846,12 @@ class ProfileController extends Controller
         
         try {
             // Simpan menggunakan Storage facade
-            $path = $foto->store('profile-photos', 'public');
+            $path = ImageHelper::storeCompressedUploadedImage($foto, 'profile-photos', 'public', [
+                'max_width' => 1200,
+                'max_height' => 1200,
+                'quality' => 82,
+                'format' => 'webp',
+            ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('API Profile upload error: ' . $e->getMessage());
             return response()->json([
@@ -1048,10 +1075,12 @@ class ProfileController extends Controller
         $user->subdomain = $sub;
         if ($request->hasFile('creator_logo')) {
             $file = $request->file('creator_logo');
-            $name = time().'_'.$user->id.'.'.$file->getClientOriginalExtension();
-            
-            // Simpan ke storage (public disk)
-            $path = $file->storeAs('subdomain_logos', $name, 'public');
+            $path = ImageHelper::storeCompressedUploadedImage($file, 'subdomain_logos', 'public', [
+                'max_width' => 800,
+                'max_height' => 800,
+                'quality' => 82,
+                'format' => 'webp',
+            ]);
 
             if ($user->subdomain_logo) {
                 // Hapus file lama (support storage dan legacy path)

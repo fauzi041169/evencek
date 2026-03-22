@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Category;
 use App\Models\Comment;
 use App\Models\News;
@@ -170,16 +171,18 @@ class NewsController extends Controller
                         throw new \Exception('Format file tidak didukung. Gunakan JPG, PNG, atau GIF');
                     }
 
-                    $fileName = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-                    
-                    // Gunakan Storage facade untuk menyimpan file
-                    $path = $file->storeAs('news/images', $fileName, 'public');
+                    $path = ImageHelper::storeCompressedUploadedImage($file, 'news/images', 'public', [
+                        'max_width' => 1600,
+                        'max_height' => 1600,
+                        'quality' => 80,
+                        'format' => 'webp',
+                    ]);
 
-                    if (!$path) {
+                    if (! $path) {
                         throw new \Exception('Gagal menyimpan file ke storage.');
                     }
 
-                    $validated['image'] = 'news/images/'.$fileName;
+                    $validated['image'] = $path;
 
                 } catch (\Exception $e) {
                     \Log::error('Image upload error:', [
@@ -223,19 +226,30 @@ class NewsController extends Controller
                                 throw new \Exception('Format gambar base64 tidak valid: ' . $mimeType);
                             }
 
-                            $extension = 'png';
-                            if ($mimeType === 'image/jpeg') $extension = 'jpg';
-                            if ($mimeType === 'image/gif') $extension = 'gif';
-                            if ($mimeType === 'image/webp') $extension = 'webp';
+                            if ($mimeType === 'image/gif') {
+                                $filename = 'konten_'.time().'_'.Str::random(10).'.gif';
+                                $path = 'news/content/'.$filename;
+                                if (! Storage::disk('public')->put($path, $imageData)) {
+                                    throw new \Exception('Gagal menyimpan gambar konten');
+                                }
+                                $newUrl = '/storage/'.$path;
+                                $content = str_replace($imageUrl, $newUrl, $content);
+                                continue;
+                            }
 
-                            $filename = 'konten_'.time().'_'.Str::random(10).'.'.$extension;
-                            $path = 'news/content/'.$filename;
+                            $stored = ImageHelper::storeCompressedImageBinary($imageData, 'news/content', 'public', [
+                                'source_mime' => $mimeType,
+                                'max_width' => 1600,
+                                'max_height' => 1600,
+                                'quality' => 80,
+                                'format' => 'webp',
+                            ]);
 
-                            if (! Storage::disk('public')->put($path, $imageData)) {
+                            if (empty($stored['path'])) {
                                 throw new \Exception('Gagal menyimpan gambar konten');
                             }
 
-                            $newUrl = '/storage/news/content/'.$filename;
+                            $newUrl = '/storage/'.$stored['path'];
                             $content = str_replace($imageUrl, $newUrl, $content);
 
                         } catch (\Exception $e) {
@@ -404,8 +418,12 @@ class NewsController extends Controller
                 }
 
                 $image = $request->file('image');
-                $fileName = time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
-                $path = $image->storeAs('news/images', $fileName, 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($image, 'news/images', 'public', [
+                    'max_width' => 1600,
+                    'max_height' => 1600,
+                    'quality' => 80,
+                    'format' => 'webp',
+                ]);
                 $data['image'] = $path;
             }
 
@@ -519,11 +537,12 @@ class NewsController extends Controller
                 ], 422);
             }
 
-            // Generate nama file unik
-            $fileName = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
-            
-            // Gunakan Storage facade
-            $path = $file->storeAs('news/images', $fileName, 'public');
+            $path = ImageHelper::storeCompressedUploadedImage($file, 'news/images', 'public', [
+                'max_width' => 1600,
+                'max_height' => 1600,
+                'quality' => 80,
+                'format' => 'webp',
+            ]);
 
             if (!$path) {
                 \Log::error('Failed to store uploaded file:', [
@@ -538,11 +557,11 @@ class NewsController extends Controller
             }
 
             // Generate URL untuk file yang diupload
-            $url = '/storage/news/images/'.$fileName;
+            $url = '/storage/'.$path;
 
             \Log::info('Image uploaded successfully:', [
                 'original_name' => $file->getClientOriginalName(),
-                'stored_name' => $fileName,
+                'stored_name' => basename($path),
                 'size' => $fileSize,
                 'mime' => $fileMime,
                 'url' => $url,
@@ -551,7 +570,7 @@ class NewsController extends Controller
             return response()->json([
                 'success' => true,
                 'url' => $url,
-                'filename' => $fileName,
+                'filename' => basename($path),
             ]);
 
         } catch (\Exception $e) {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\District;
 use App\Models\Profile;
 use App\Models\Province;
@@ -9,7 +10,10 @@ use App\Models\Regency;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class UserController extends Controller
@@ -125,7 +129,12 @@ class UserController extends Controller
                 }
 
                 $foto = $request->file('foto_file');
-                $newPhoto = $foto->store('profile-photos', 'public');
+                $newPhoto = ImageHelper::storeCompressedUploadedImage($foto, 'profile-photos', 'public', [
+                    'max_width' => 1200,
+                    'max_height' => 1200,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
             }
             // Handle base64 image from camera
             elseif ($request->filled('foto_data') && $request->foto_data != 'delete') {
@@ -159,9 +168,27 @@ class UserController extends Controller
                     }
                 }
 
-                $filename = 'profile-photos/' . time() . '_' . Str::random(10) . '.jpg';
-                Storage::disk('public')->put($filename, $image_data);
-                $newPhoto = $filename;
+                $stored = ImageHelper::storeCompressedImageBinary($image_data, 'profile-photos', 'public', [
+                    'source_mime' => $mimeType,
+                    'max_width' => 1200,
+                    'max_height' => 1200,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
+
+                if (empty($stored['path'])) {
+                    if ($request->ajax() || $request->expectsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Gagal memproses gambar dari kamera.',
+                        ], 500);
+                    }
+                    return redirect()->back()
+                        ->withErrors(['foto_file' => 'Gagal memproses gambar dari kamera.'])
+                        ->withInput();
+                }
+
+                $newPhoto = $stored['path'];
             }
             // Handle photo deletion
             elseif ($request->filled('foto_data') && $request->foto_data === 'delete') {

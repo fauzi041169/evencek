@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Partner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -36,10 +37,13 @@ class PartnerController extends Controller
 
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');
-            $filename = time().'_'.$file->getClientOriginalName();
-
-            // Use Laravel's storage mechanism
-            $path = $file->storeAs('partners', $filename, 'public');
+            $path = ImageHelper::storeCompressedUploadedImage($file, 'partners', 'public', [
+                'max_width' => 800,
+                'max_height' => 800,
+                'quality' => 85,
+                'format' => 'webp',
+            ]);
+            $filename = basename($path);
 
             // Debugging information
             Log::info('File Upload Debug:', [
@@ -48,7 +52,7 @@ class PartnerController extends Controller
                 'path' => $path,
             ]);
 
-            $validatedData['logo'] = 'partners/'.$filename;
+            $validatedData['logo'] = $path;
         }
 
         Partner::create($validatedData);
@@ -80,12 +84,14 @@ class PartnerController extends Controller
             }
 
             $file = $request->file('logo');
-            $filename = time().'_'.$file->getClientOriginalName();
+            $path = ImageHelper::storeCompressedUploadedImage($file, 'partners', 'public', [
+                'max_width' => 800,
+                'max_height' => 800,
+                'quality' => 85,
+                'format' => 'webp',
+            ]);
 
-            // Use Laravel's storage mechanism
-            $path = $file->storeAs('partners', $filename, 'public');
-
-            $validated['logo'] = 'partners/'.$filename;
+            $validated['logo'] = $path;
         }
 
         $partner->update($validated);
@@ -96,12 +102,12 @@ class PartnerController extends Controller
 
     public function destroy(Partner $partner)
     {
-        if ($partner->logo && Storage::disk('public')->exists('partners/'.$partner->logo)) {
-            Storage::disk('public')->delete('partners/'.$partner->logo);
-        }
-        // Fallback for legacy paths (just in case)
-        elseif ($partner->logo && Storage::disk('public')->exists($partner->logo)) {
-            Storage::disk('public')->delete($partner->logo);
+        if ($partner->logo) {
+            if (Storage::disk('public')->exists($partner->logo)) {
+                Storage::disk('public')->delete($partner->logo);
+            } elseif (!str_contains($partner->logo, '/') && Storage::disk('public')->exists('partners/'.$partner->logo)) {
+                Storage::disk('public')->delete('partners/'.$partner->logo);
+            }
         }
 
         $partner->delete();

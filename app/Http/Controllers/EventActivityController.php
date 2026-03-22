@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\EventActivity;
 use App\Models\EventActivityQuestion;
@@ -89,7 +90,12 @@ class EventActivityController extends Controller
             $eventActivity->description = $request->description;
             
             if ($request->hasFile('image')) {
-                $path = $request->file('image')->store('event_activities', 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($request->file('image'), 'event_activities', 'public', [
+                    'max_width' => 1600,
+                    'max_height' => 1600,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
                 $eventActivity->image = $path;
             }
 
@@ -128,7 +134,12 @@ class EventActivityController extends Controller
                             $option->order = $cIndex;
 
                             if (isset($candidate['image']) && $candidate['image'] instanceof \Illuminate\Http\UploadedFile) {
-                                $path = $candidate['image']->store('activity_options', 'public');
+                                $path = ImageHelper::storeCompressedUploadedImage($candidate['image'], 'activity_options', 'public', [
+                                    'max_width' => 1200,
+                                    'max_height' => 1200,
+                                    'quality' => 82,
+                                    'format' => 'webp',
+                                ]);
                                 $option->image = $path;
                             } elseif (isset($candidate['image_path'])) {
                                 // Keep existing image if provided (for update)
@@ -201,7 +212,12 @@ class EventActivityController extends Controller
                 if ($eventActivity->image) {
                     Storage::disk('public')->delete($eventActivity->image);
                 }
-                $path = $request->file('image')->store('event_activities', 'public');
+                $path = ImageHelper::storeCompressedUploadedImage($request->file('image'), 'event_activities', 'public', [
+                    'max_width' => 1600,
+                    'max_height' => 1600,
+                    'quality' => 82,
+                    'format' => 'webp',
+                ]);
                 $eventActivity->image = $path;
             }
 
@@ -240,7 +256,12 @@ class EventActivityController extends Controller
                             $option->order = $cIndex;
 
                             if (isset($candidate['image']) && $candidate['image'] instanceof \Illuminate\Http\UploadedFile) {
-                                $path = $candidate['image']->store('activity_options', 'public');
+                                $path = ImageHelper::storeCompressedUploadedImage($candidate['image'], 'activity_options', 'public', [
+                                    'max_width' => 1200,
+                                    'max_height' => 1200,
+                                    'quality' => 82,
+                                    'format' => 'webp',
+                                ]);
                                 $option->image = $path;
                             } elseif (isset($candidate['image_path'])) {
                                 $option->image = $candidate['image_path'];

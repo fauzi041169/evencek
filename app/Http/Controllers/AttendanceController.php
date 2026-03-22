@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\NewAttendanceRecorded;
 use App\Exports\GenericArrayExport;
+use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\ActivityRecord;
 use App\Models\ActivityUser;
@@ -105,7 +106,12 @@ class AttendanceController extends Controller
         ]);
 
         $file = $request->file('background');
-        $path = $file->store('attendance-backgrounds', 'public');
+        $path = ImageHelper::storeCompressedUploadedImage($file, 'attendance-backgrounds', 'public', [
+            'max_width' => 2500,
+            'max_height' => 2500,
+            'quality' => 80,
+            'format' => 'webp',
+        ]);
         $relativePath = 'storage/' . $path;
 
         $existingJson = Setting::get('attendance_scan_backgrounds');
