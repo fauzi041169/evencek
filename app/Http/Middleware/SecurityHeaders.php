@@ -34,9 +34,10 @@ class SecurityHeaders
         $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
 
         $csp = "default-src 'self'; "
+             ."base-uri 'self'; "
              ."img-src 'self' data: blob: https:; "
              ."style-src 'self' 'unsafe-inline' https:; "
-             ."script-src 'self' 'unsafe-inline' 'unsafe-eval' https: https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com; "
+             ."script-src 'self' 'unsafe-inline' https: https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com; "
              ."font-src 'self' data: https:; "
              ."connect-src 'self' https: https://generativelanguage.googleapis.com; "
              ."frame-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://view.officeapps.live.com; "
@@ -51,9 +52,10 @@ class SecurityHeaders
 
         if ($isSensitive && app()->environment('production')) {
             $csp = "default-src 'self'; "
+                 ."base-uri 'self'; "
                  ."img-src 'self' data: blob: https:; "
                  ."style-src 'self' 'unsafe-inline' https:; "
-                 ."script-src 'self' 'unsafe-inline' 'unsafe-eval' https://code.jquery.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com; "
+                 ."script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com; "
                  ."font-src 'self' data: https:; "
                  ."connect-src 'self' https:; "
                  ."frame-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://view.officeapps.live.com; "
@@ -62,9 +64,10 @@ class SecurityHeaders
         } elseif ($isMaterialServe) {
             // Allow iframe embedding untuk material serve (PDF viewer)
             $csp = "default-src 'self'; "
+                 ."base-uri 'self'; "
                  ."img-src 'self' data: blob: https:; "
                  ."style-src 'self' 'unsafe-inline' https:; "
-                 ."script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "
+                 ."script-src 'self' 'unsafe-inline' https:; "
                  ."font-src 'self' data: https:; "
                  ."connect-src 'self' https:; "
                  ."frame-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com https://*.midtrans.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://view.officeapps.live.com; "
@@ -80,6 +83,7 @@ class SecurityHeaders
             // Note: CSP doesn't support IPv6 bracket notation [::1], so we use broader rules
             $ollamaUrl = env('OLLAMA_URL', 'http://localhost:11434');
             $csp = "default-src 'self'; "
+                 ."base-uri 'self'; "
                  ."img-src 'self' data: blob: https: http:; "
                  ."style-src 'self' 'unsafe-inline' https: http: localhost:* 127.0.0.1:* 10.10.115.108:*; "
                  ."script-src 'self' 'unsafe-inline' 'unsafe-eval' https: http: localhost:* 127.0.0.1:* 10.10.115.108:*; "
