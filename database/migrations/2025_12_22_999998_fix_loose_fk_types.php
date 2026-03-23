@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up()
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         $columnsToFix = [
             'activitirecords' => ['activity_id', 'activity_batch_id'],
             'activitiusers' => ['activity_id', 'activity_batch_id', 'certificate_id'],
@@ -29,12 +33,7 @@ return new class extends Migration
             if (Schema::hasTable($table)) {
                 foreach ($columns as $column) {
                     if (Schema::hasColumn($table, $column)) {
-                        try {
-                            // Using direct SQL to avoid Doctrine limitations with enum/etc if any
-                            DB::statement("ALTER TABLE `$table` MODIFY `$column` CHAR(6) NULL");
-                        } catch (\Exception $e) {
-                            echo "Error modifying $table.$column: ".$e->getMessage()."\n";
-                        }
+                        DB::statement("ALTER TABLE `$table` MODIFY `$column` CHAR(6) NULL");
                     }
                 }
             }
@@ -52,11 +51,7 @@ return new class extends Migration
             if (Schema::hasTable($table)) {
                 foreach ($columns as $column) {
                     if (Schema::hasColumn($table, $column)) {
-                        try {
-                            DB::statement("ALTER TABLE `$table` MODIFY `$column` VARCHAR(36) NOT NULL");
-                        } catch (\Exception $e) {
-                            echo "Error modifying $table.$column: ".$e->getMessage()."\n";
-                        }
+                        DB::statement("ALTER TABLE `$table` MODIFY `$column` VARCHAR(36) NOT NULL");
                     }
                 }
             }
