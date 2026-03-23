@@ -25,7 +25,7 @@ class ActivityEnrollmentController extends Controller
                 'method' => $request->method(),
                 'url' => $request->fullUrl(),
             ]);
-            
+
             Log::info('Enroll Request:', $request->all());
             Log::info('Enroll Request Headers:', $request->headers->all());
             Log::info('Enroll Request wantsJson: '.($request->wantsJson() ? 'true' : 'false'));
@@ -63,7 +63,7 @@ class ActivityEnrollmentController extends Controller
                 $activeBatch = \App\Models\ActivityBatch::where('activity_id', $activity->id)
                     ->where('id', $targetBatchId)
                     ->first();
-                
+
                 // If requested batch not found, fall back to default active batch logic
                 if (! $activeBatch) {
                     $activeBatch = $activity->activeBatch;
@@ -71,20 +71,20 @@ class ActivityEnrollmentController extends Controller
             } else {
                 $activeBatch = $activity->activeBatch;
             }
-            
+
             $batchCount = $activity->batches()->count();
             $hasBatches = $batchCount > 0;
-            
+
             Log::info('Enroll Batch Info', [
                 'has_batches' => $hasBatches,
                 'active_batch' => $activeBatch ? $activeBatch->toArray() : null,
-                'batch_count' => $batchCount
+                'batch_count' => $batchCount,
             ]);
 
             // If batches exist but none is active, reject registration
             if ($hasBatches && ! $activeBatch) {
-                $msg = $batchCount > 1 
-                    ? 'Pendaftaran untuk kegiatan ini sedang ditutup (Tidak ada gelombang/sesi aktif).' 
+                $msg = $batchCount > 1
+                    ? 'Pendaftaran untuk kegiatan ini sedang ditutup (Tidak ada gelombang/sesi aktif).'
                     : 'Pendaftaran untuk kegiatan ini sedang ditutup.';
 
                 Log::warning('Enroll failed: No active batch', ['msg' => $msg]);
@@ -118,12 +118,13 @@ class ActivityEnrollmentController extends Controller
                         })
                         ->first();
                     if ($blockedRule) {
-                        $msg = !empty(trim((string) $blockedRule->keterangan))
+                        $msg = ! empty(trim((string) $blockedRule->keterangan))
                             ? trim($blockedRule->keterangan)
                             : 'Pendaftaran dari daerah Anda tidak diizinkan untuk kegiatan ini. Silakan hubungi panitia jika ada pertanyaan.';
                         if ($wantsJson) {
                             return response()->json(['success' => false, 'message' => $msg], 403);
                         }
+
                         return redirect()->back()->with('error', $msg);
                     }
                 }
@@ -277,7 +278,7 @@ class ActivityEnrollmentController extends Controller
             if (! $user->relationLoaded('profile')) {
                 $user->unsetRelation('profile')->load('profile');
             } else {
-                 $user->refresh();
+                $user->refresh();
             }
 
             $debugValidation['user_after_update'] = $user->toArray();
@@ -337,7 +338,7 @@ class ActivityEnrollmentController extends Controller
             $missingFields = [];
             $mandatoryFields = $activity->mandatory_profile_fields ?? [];
             $template = $activity->import_template;
-            
+
             $customKeys = [];
 
             // Parse template to get required keys
@@ -367,12 +368,18 @@ class ActivityEnrollmentController extends Controller
                         // Normalize key
                         $key = preg_replace('/^\d+\./', '', $rawKey);
                         $key = strtolower(trim($key));
-                        
+
                         // Handle prefixes
-                        if (str_starts_with($key, 'user:')) $key = substr($key, 5);
-                        if (str_starts_with($key, 'profile:')) $key = substr($key, 8);
-                        
-                        if ($key === 'password') continue;
+                        if (str_starts_with($key, 'user:')) {
+                            $key = substr($key, 5);
+                        }
+                        if (str_starts_with($key, 'profile:')) {
+                            $key = substr($key, 8);
+                        }
+
+                        if ($key === 'password') {
+                            continue;
+                        }
 
                         // Try to map to DB key
                         if (isset($map[$key])) {
@@ -389,7 +396,7 @@ class ActivityEnrollmentController extends Controller
             // Include keys from modern custom_fields relationship
             if ($activity->custom_fields && is_array($activity->custom_fields)) {
                 foreach ($activity->custom_fields as $cf) {
-                    if (!empty($cf['is_required']) && !empty($cf['key'])) {
+                    if (! empty($cf['is_required']) && ! empty($cf['key'])) {
                         $customKeys[] = $cf['key'];
                     }
                 }
@@ -398,7 +405,7 @@ class ActivityEnrollmentController extends Controller
             // Merge template keys with mandatory fields + default mandiri requirements
             $defaultRequired = ['email', 'foto'];
             $allRequiredKeys = array_unique(array_merge($defaultRequired, $mandatoryFields, $customKeys));
-            
+
             // Use unified method from User model
             $user->load('profile');
             $missingProfileData = $user->getIncompleteProfileData($allRequiredKeys);
@@ -433,30 +440,30 @@ class ActivityEnrollmentController extends Controller
             if ($activity->custom_fields && is_array($activity->custom_fields)) {
                 $currentCustomData = $request->input('custom_data', []);
                 $customDataUpdated = false;
-                
+
                 foreach ($activity->custom_fields as $field) {
                     // Check if required field is missing or empty
-                    if (!empty($field['is_required'])) {
+                    if (! empty($field['is_required'])) {
                         $key = $field['key'] ?? null;
                         if ($key && (
-                            !isset($currentCustomData[$key]) || 
-                            $currentCustomData[$key] === '' || 
+                            ! isset($currentCustomData[$key]) ||
+                            $currentCustomData[$key] === '' ||
                             $currentCustomData[$key] === null
                         )) {
                             // Fallback: Check user profile additional_data
                             $foundInProfile = false;
                             $user = auth()->user();
-                            if ($user && $user->profile && !empty($user->profile->additional_data)) {
+                            if ($user && $user->profile && ! empty($user->profile->additional_data)) {
                                 $additionalData = $user->profile->additional_data;
-                                
+
                                 // Direct check
-                                if (isset($additionalData[$key]) && !empty($additionalData[$key])) {
+                                if (isset($additionalData[$key]) && ! empty($additionalData[$key])) {
                                     $foundInProfile = true;
                                     $currentCustomData[$key] = $additionalData[$key];
                                     $customDataUpdated = true;
-                                } 
+                                }
                                 // Check case-insensitive
-                                elseif (isset($additionalData[strtolower($key)]) && !empty($additionalData[strtolower($key)])) {
+                                elseif (isset($additionalData[strtolower($key)]) && ! empty($additionalData[strtolower($key)])) {
                                     $foundInProfile = true;
                                     $currentCustomData[$key] = $additionalData[strtolower($key)];
                                     $customDataUpdated = true;
@@ -467,11 +474,14 @@ class ActivityEnrollmentController extends Controller
                                     foreach ($additionalData as $k => $v) {
                                         // Clean suffix if present (e.g. |dropdown:...)
                                         $kClean = $k;
-                                        if (str_contains($k, '|')) $kClean = explode('|', $k)[0];
-                                        elseif (str_contains($k, ':')) $kClean = explode(':', $k)[0];
+                                        if (str_contains($k, '|')) {
+                                            $kClean = explode('|', $k)[0];
+                                        } elseif (str_contains($k, ':')) {
+                                            $kClean = explode(':', $k)[0];
+                                        }
 
                                         $kNormalized = str_replace('_', ' ', strtolower(trim($kClean)));
-                                        if ($kNormalized === $keyNormalized && !empty($v)) {
+                                        if ($kNormalized === $keyNormalized && ! empty($v)) {
                                             $foundInProfile = true;
                                             $currentCustomData[$key] = $v;
                                             $customDataUpdated = true;
@@ -481,9 +491,9 @@ class ActivityEnrollmentController extends Controller
                                 }
                             }
 
-                            if (!$foundInProfile) {
+                            if (! $foundInProfile) {
                                 $missingCustomFields[] = $field['label'] ?? $key;
-                                
+
                                 // Ensure options is an array
                                 $fieldOptions = $field['options'] ?? [];
                                 if (is_string($fieldOptions)) {
@@ -499,7 +509,7 @@ class ActivityEnrollmentController extends Controller
                                     'key' => $key,
                                     'label' => $field['label'] ?? $key,
                                     'type' => $field['type'] ?? 'text',
-                                    'options' => $fieldOptions, 
+                                    'options' => $fieldOptions,
                                 ];
                             }
                         }
@@ -515,14 +525,14 @@ class ActivityEnrollmentController extends Controller
             // AGGREGATE ALL MISSING FIELDS
             $allMissingFields = array_unique(array_merge($missingFields, $missingCustomFields));
             $allMissingData = array_merge($missingProfileData, $missingCustomFieldObjects);
-            
+
             // Deduplicate allMissingData by key
             $uniqueMissingData = [];
             $seenKeys = [];
             foreach ($allMissingData as $item) {
                 // Normalize key for deduplication check
                 $keyCheck = strtolower($item['key']);
-                if (!in_array($keyCheck, $seenKeys)) {
+                if (! in_array($keyCheck, $seenKeys)) {
                     $seenKeys[] = $keyCheck;
                     $uniqueMissingData[] = $item;
                 }
@@ -531,7 +541,7 @@ class ActivityEnrollmentController extends Controller
             if (! $isCommitteeVoucherValidForBypass && ! empty($uniqueMissingData)) {
                 $debugValidation['missing_fields_final'] = $allMissingFields;
                 Log::info('Validation Failed: Missing fields (Aggregated)', $debugValidation);
-                
+
                 $msg = 'Profil Anda belum lengkap. Lengkapi data berikut: '.implode(', ', $allMissingFields);
 
                 if ($wantsJson) {
@@ -550,7 +560,7 @@ class ActivityEnrollmentController extends Controller
 
             // Guards: Prevent staff/owners from registering as participants (Avoid Data Conflict)
             // Superadmins can bypass to test the flow
-            if (!auth()->user()->isSuperAdmin()) {
+            if (! auth()->user()->isSuperAdmin()) {
                 // If user is creator
                 if ($activity->user_id == $user->id) {
                     return response()->json([
@@ -598,11 +608,11 @@ class ActivityEnrollmentController extends Controller
                 $enrollment = $existingEnrollment->first();
 
                 // If status is PENDING (3) or VERIFICATION (0), allow to proceed to payment
-                if (in_array((int)$enrollment->status, [ActivityUser::STATUS_PENDING, ActivityUser::STATUS_VERIFICATION])) {
-                    
+                if (in_array((int) $enrollment->status, [ActivityUser::STATUS_PENDING, ActivityUser::STATUS_VERIFICATION])) {
+
                     // RECOVERY: Ensure payment record exists if missing
                     // Fix: If activity price is explicitly 0, treat as free (Master Override)
-                    if ((int)$activity->price === 0) {
+                    if ((int) $activity->price === 0) {
                         $price = 0;
                     } else {
                         $price = $activity->price;
@@ -641,11 +651,11 @@ class ActivityEnrollmentController extends Controller
                             $routeParams['batch_id'] = $activeBatch->id;
                         }
 
-                        $redirectUrl = route('payments.create', $routeParams);
+                        $redirectUrl = route('payments.activity.create', $routeParams);
                         if (method_exists($activity, 'hasAutomaticPayment') && $activity->hasAutomaticPayment()) {
                             $redirectUrl = route('midtrans.payment.create', $routeParams);
                         }
-                        
+
                         if ($wantsJson) {
                             return response()->json(array_merge([
                                 'success' => true,
@@ -661,7 +671,7 @@ class ActivityEnrollmentController extends Controller
                             $enrollment->status = ActivityUser::STATUS_ACTIVE;
                             $enrollment->save();
                         }
-                        
+
                         $msg = 'Anda sudah terdaftar dalam kegiatan ini';
                         if ($wantsJson) {
                             return response()->json(array_merge([
@@ -670,14 +680,15 @@ class ActivityEnrollmentController extends Controller
                                 'redirect_url' => route('activity.show', $activity->id, false),
                             ], $debugPayload));
                         }
+
                         return redirect()->route('activity.show', $activity->id)->with('success', $msg);
                     }
                 }
 
-                $msg = isset($batchCount) && $batchCount > 1 
-                    ? 'Anda sudah terdaftar dalam kegiatan ini (Sesi/Batch ini)' 
+                $msg = isset($batchCount) && $batchCount > 1
+                    ? 'Anda sudah terdaftar dalam kegiatan ini (Sesi/Batch ini)'
                     : 'Anda sudah terdaftar dalam kegiatan ini';
-                
+
                 Log::warning('Enroll failed: Already enrolled', ['msg' => $msg]);
 
                 if ($wantsJson) {
@@ -690,7 +701,7 @@ class ActivityEnrollmentController extends Controller
                 return redirect()->back()->with('error', $msg);
             }
 
-            $activityUser = new ActivityUser();
+            $activityUser = new ActivityUser;
             $tableName = $activityUser->getTable();
 
             // Calculate price first to determine status
@@ -698,7 +709,7 @@ class ActivityEnrollmentController extends Controller
             $isCommitteeVoucherValid = false;
             $voucherCode = $request->input('committee_voucher_code');
             $validVoucher = null;
-            
+
             if ($voucherCode) {
                 // Check new ActivityVoucher table
                 $validVoucher = \App\Models\ActivityVoucher::where('activity_id', $activity->id)
@@ -708,43 +719,55 @@ class ActivityEnrollmentController extends Controller
 
                 // If found, validate constraints
                 if ($validVoucher) {
-                     // Check Expiration
+                    // Check Expiration
                     if ($validVoucher->valid_until && now()->gt($validVoucher->valid_until)) {
                         $msg = 'Kode voucher sudah kadaluarsa';
-                        if ($wantsJson) return response()->json(['success' => false, 'message' => $msg], 422);
+                        if ($wantsJson) {
+                            return response()->json(['success' => false, 'message' => $msg], 422);
+                        }
+
                         return redirect()->back()->with('error', $msg);
                     }
 
                     // Check Usage Limit
                     if ($validVoucher->usage_limit !== null && $validVoucher->usage_count >= $validVoucher->usage_limit) {
                         $msg = 'Kuota voucher sudah habis';
-                         if ($wantsJson) return response()->json(['success' => false, 'message' => $msg], 422);
+                        if ($wantsJson) {
+                            return response()->json(['success' => false, 'message' => $msg], 422);
+                        }
+
                         return redirect()->back()->with('error', $msg);
                     }
 
                     $isCommitteeVoucherValid = true;
                     $price = 0; // Force free for committee voucher
-                } 
+                }
                 // Legacy check fallback (optional, but code migrated so maybe not needed)
-                elseif (!empty($activity->committee_voucher_code) && $voucherCode === $activity->committee_voucher_code) {
+                elseif (! empty($activity->committee_voucher_code) && $voucherCode === $activity->committee_voucher_code) {
                     // Check Expiration
                     if ($activity->committee_voucher_valid_until && now()->gt($activity->committee_voucher_valid_until)) {
                         $msg = 'Kode voucher sudah kadaluarsa';
-                        if ($wantsJson) return response()->json(['success' => false, 'message' => $msg], 422);
+                        if ($wantsJson) {
+                            return response()->json(['success' => false, 'message' => $msg], 422);
+                        }
+
                         return redirect()->back()->with('error', $msg);
                     }
 
                     // Check Usage Limit
                     if ($activity->committee_voucher_usage_limit !== null && $activity->committee_voucher_usage_count >= $activity->committee_voucher_usage_limit) {
                         $msg = 'Kuota voucher sudah habis';
-                        if ($wantsJson) return response()->json(['success' => false, 'message' => $msg], 422);
+                        if ($wantsJson) {
+                            return response()->json(['success' => false, 'message' => $msg], 422);
+                        }
+
                         return redirect()->back()->with('error', $msg);
                     }
 
                     $isCommitteeVoucherValid = true;
                     $price = 0;
                 }
-            } elseif ((int)$activity->price === 0) {
+            } elseif ((int) $activity->price === 0) {
                 $price = 0;
             } else {
                 $price = $activity->price;
@@ -764,7 +787,7 @@ class ActivityEnrollmentController extends Controller
                 $panitiaType = \App\Models\ActivityParticipationType::where('activity_id', $activityId)
                     ->where('name', 'LIKE', '%Panitia%')
                     ->first();
-                
+
                 if ($panitiaType) {
                     $payload['activity_participation_type_id'] = $panitiaType->id;
                 }
@@ -789,9 +812,26 @@ class ActivityEnrollmentController extends Controller
             }
 
             $enrollment = null;
-            
+
             // Only create ActivityUser immediately if FREE
             if ($price == 0) {
+                $currentParticipantCount = ActivityUser::where('activity_id', $activityId)
+                    ->when($activeBatch, function ($q) use ($activeBatch) {
+                        return $q->where('activity_batch_id', $activeBatch->id);
+                    })
+                    ->where('status', ActivityUser::STATUS_ACTIVE)
+                    ->count();
+
+                $canAccept = $activity->user ? $activity->user->canAcceptParticipants($activity, $currentParticipantCount) : ['allowed' => true, 'message' => ''];
+                if (! ($canAccept['allowed'] ?? true)) {
+                    $msg = (string) ($canAccept['message'] ?? 'Batas peserta telah tercapai.');
+                    if ($wantsJson) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+
+                    return redirect()->back()->with('error', $msg);
+                }
+
                 $enrollment = ActivityUser::create($payload);
 
                 if ($isCommitteeVoucherValid) {
@@ -807,13 +847,13 @@ class ActivityEnrollmentController extends Controller
                         ->where('user_id', $userId)
                         ->first();
 
-                    if (!$existingCommittee) {
+                    if (! $existingCommittee) {
                         // Find default committee type
                         $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)
                             ->where('name', 'like', '%Seksi%')
                             ->first();
-                        
-                        if (!$defaultCommitteeType) {
+
+                        if (! $defaultCommitteeType) {
                             $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)->first();
                         }
 
@@ -830,7 +870,7 @@ class ActivityEnrollmentController extends Controller
                                 'order' => 99,
                             ]);
                         } catch (\Exception $e) {
-                            Log::error('Failed to auto-add committee member: ' . $e->getMessage());
+                            Log::error('Failed to auto-add committee member: '.$e->getMessage());
                         }
                     }
                 }
@@ -847,7 +887,7 @@ class ActivityEnrollmentController extends Controller
                 'activity_price' => $activity->price,
                 'batch_price' => $activeBatch ? $activeBatch->price : 'NO BATCH',
                 'batch_price_is_null' => $activeBatch ? is_null($activeBatch->price) : 'N/A',
-                'final_price' => $price
+                'final_price' => $price,
             ]);
 
             if ($price > 0) {
@@ -865,9 +905,9 @@ class ActivityEnrollmentController extends Controller
                 // Prepare notes with custom_data for persistence
                 $notesData = [
                     'source' => 'enrollment_auto',
-                    'original_notes' => 'Otomatis saat daftar activity'
+                    'original_notes' => 'Otomatis saat daftar activity',
                 ];
-                
+
                 if (isset($payload['custom_data'])) {
                     $notesData['custom_data'] = $payload['custom_data'];
                 }
@@ -884,11 +924,11 @@ class ActivityEnrollmentController extends Controller
                         'updated_at' => now(),
                     ]
                 );
-                
+
                 // If payment existed, update notes to ensure custom_data is saved
                 if ($payment->wasRecentlyCreated === false) {
                     $currentNotes = json_decode($payment->notes, true);
-                    if (!is_array($currentNotes)) {
+                    if (! is_array($currentNotes)) {
                         $currentNotes = ['original_notes' => $payment->notes];
                     }
                     if (isset($payload['custom_data'])) {
@@ -905,11 +945,11 @@ class ActivityEnrollmentController extends Controller
                     $routeParams['batch_id'] = $activeBatch->id;
                 }
 
-                $redirectUrl = route('payments.create', $routeParams);
+                $redirectUrl = route('payments.activity.create', $routeParams);
                 if (method_exists($activity, 'hasAutomaticPayment') && $activity->hasAutomaticPayment()) {
                     $redirectUrl = route('midtrans.payment.create', $routeParams);
                 }
-                
+
                 Log::info('Enrollment Redirecting to Payment', ['url' => $redirectUrl]);
 
                 if ($wantsJson) {

@@ -5,14 +5,13 @@ namespace App\Http\Controllers;
 use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\EventActivity;
-use App\Models\EventActivityQuestion;
 use App\Models\EventActivityOption;
+use App\Models\EventActivityQuestion;
 use App\Models\EventActivityResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
-
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class EventActivityController extends Controller
@@ -20,8 +19,8 @@ class EventActivityController extends Controller
     public function index($activityId)
     {
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
-        
-        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
             abort(403, 'Unauthorized');
         }
 
@@ -37,21 +36,21 @@ class EventActivityController extends Controller
 
         return Inertia::render('Activity/EventActivities/Index', [
             'activity' => $activityData,
-            'eventActivities' => $eventActivities
+            'eventActivities' => $eventActivities,
         ]);
     }
 
     public function create($activityId)
     {
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
-        
-        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
             abort(403, 'Unauthorized');
         }
 
         // Check if we need to pass a type
         $type = request()->query('type', 'other');
-        
+
         $isCommittee = $activity->canManageRegistration(auth()->id());
         $activityData = array_merge($activity->toArray(), [
             'is_committee' => $isCommittee,
@@ -60,7 +59,7 @@ class EventActivityController extends Controller
 
         return Inertia::render('Activity/EventActivities/Create', [
             'activity' => $activityData,
-            'initialType' => $type
+            'initialType' => $type,
         ]);
     }
 
@@ -68,7 +67,7 @@ class EventActivityController extends Controller
     {
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
 
-        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
             abort(403, 'Unauthorized');
         }
 
@@ -82,13 +81,13 @@ class EventActivityController extends Controller
 
         DB::beginTransaction();
         try {
-            $eventActivity = new EventActivity();
+            $eventActivity = new EventActivity;
             $eventActivity->activity_id = $activity->id;
             $eventActivity->title = $request->title;
-            $eventActivity->slug = Str::slug($request->title . '-' . Str::random(6));
+            $eventActivity->slug = Str::slug($request->title.'-'.Str::random(6));
             $eventActivity->type = $request->type;
             $eventActivity->description = $request->description;
-            
+
             if ($request->hasFile('image')) {
                 $path = ImageHelper::storeCompressedUploadedImage($request->file('image'), 'event_activities', 'public', [
                     'max_width' => 1600,
@@ -106,13 +105,13 @@ class EventActivityController extends Controller
 
             if ($request->has('questions')) {
                 foreach ($request->questions as $index => $qData) {
-                    $question = new EventActivityQuestion();
+                    $question = new EventActivityQuestion;
                     $question->event_activity_id = $eventActivity->id;
                     $question->question_text = $qData['text'];
                     $question->type = $qData['type'];
                     $question->order = $index;
                     $question->is_required = isset($qData['is_required']);
-                    
+
                     // Handle simple options for backward compatibility or simple quizzes
                     $options = isset($qData['options']) ? $qData['options'] : null;
                     if (is_string($options)) {
@@ -125,9 +124,11 @@ class EventActivityController extends Controller
                     if (isset($qData['candidates']) && is_array($qData['candidates'])) {
                         foreach ($qData['candidates'] as $cIndex => $candidate) {
                             // Skip if name is empty
-                            if (empty($candidate['name'])) continue;
+                            if (empty($candidate['name'])) {
+                                continue;
+                            }
 
-                            $option = new EventActivityOption();
+                            $option = new EventActivityOption;
                             $option->event_activity_question_id = $question->id;
                             $option->value = $candidate['name'];
                             $option->description = $candidate['description'] ?? null;
@@ -153,19 +154,21 @@ class EventActivityController extends Controller
             }
 
             DB::commit();
+
             return redirect()->route('activity.event-activities.index', $activity->id)
                 ->with('success', 'Kegiatan berhasil ditambahkan.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal menyimpan kegiatan: ' . $e->getMessage())->withInput();
+
+            return back()->with('error', 'Gagal menyimpan kegiatan: '.$e->getMessage())->withInput();
         }
     }
 
     public function edit($activityId, $eventActivityId)
     {
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
-        
-        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
             abort(403, 'Unauthorized');
         }
 
@@ -179,15 +182,15 @@ class EventActivityController extends Controller
 
         return Inertia::render('Activity/EventActivities/Edit', [
             'activity' => $activityData,
-            'eventActivity' => $eventActivity
+            'eventActivity' => $eventActivity,
         ]);
     }
 
     public function update(Request $request, $activityId, $eventActivityId)
     {
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
-        
-        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
             abort(403, 'Unauthorized');
         }
 
@@ -228,14 +231,14 @@ class EventActivityController extends Controller
 
             if ($request->has('questions')) {
                 $eventActivity->questions()->delete();
-                 foreach ($request->questions as $index => $qData) {
-                    $question = new EventActivityQuestion();
+                foreach ($request->questions as $index => $qData) {
+                    $question = new EventActivityQuestion;
                     $question->event_activity_id = $eventActivity->id;
                     $question->question_text = $qData['text'];
                     $question->type = $qData['type'];
                     $question->order = $index;
                     $question->is_required = isset($qData['is_required']);
-                    
+
                     // Handle simple options
                     $options = isset($qData['options']) ? $qData['options'] : null;
                     if (is_string($options)) {
@@ -247,9 +250,11 @@ class EventActivityController extends Controller
                     // Handle Rich Options (Candidates)
                     if (isset($qData['candidates']) && is_array($qData['candidates'])) {
                         foreach ($qData['candidates'] as $cIndex => $candidate) {
-                            if (empty($candidate['name'])) continue;
+                            if (empty($candidate['name'])) {
+                                continue;
+                            }
 
-                            $option = new EventActivityOption();
+                            $option = new EventActivityOption;
                             $option->event_activity_question_id = $question->id;
                             $option->value = $candidate['name'];
                             $option->description = $candidate['description'] ?? null;
@@ -274,11 +279,13 @@ class EventActivityController extends Controller
             }
 
             DB::commit();
+
             return redirect()->route('activity.event-activities.index', $activity->id)
                 ->with('success', 'Kegiatan berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal memperbarui kegiatan: ' . $e->getMessage())->withInput();
+
+            return back()->with('error', 'Gagal memperbarui kegiatan: '.$e->getMessage())->withInput();
         }
     }
 
@@ -286,13 +293,14 @@ class EventActivityController extends Controller
     {
         // Add activity check for authorization
         $activity = Activity::where('id', $activityId)->orWhere('uid', $activityId)->firstOrFail();
-        
-        if (!auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin() && !$activity->canManageRegistration(auth()->id())) {
+
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
             abort(403, 'Unauthorized');
         }
 
         $eventActivity = EventActivity::where('id', $eventActivityId)->firstOrFail();
         $eventActivity->delete();
+
         return back()->with('success', 'Kegiatan berhasil dihapus.');
     }
 
@@ -318,7 +326,7 @@ class EventActivityController extends Controller
         return Inertia::render('Activity/EventActivities/Show', [
             'activity' => $activityData,
             'eventActivity' => $eventActivity,
-            'existingResponse' => $existingResponse
+            'existingResponse' => $existingResponse,
         ]);
     }
 
@@ -328,7 +336,7 @@ class EventActivityController extends Controller
         $eventActivity = EventActivity::where('id', $eventActivityId)->orWhere('uid', $eventActivityId)->firstOrFail();
         $user = auth()->user();
 
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
@@ -341,10 +349,10 @@ class EventActivityController extends Controller
             ->first();
 
         if ($existingResponse) {
-             return back()->with('error', 'Anda sudah mengisi kegiatan ini.');
+            return back()->with('error', 'Anda sudah mengisi kegiatan ini.');
         }
 
-        $response = new EventActivityResponse();
+        $response = new EventActivityResponse;
         $response->event_activity_id = $eventActivity->id;
         $response->user_id = $user->id;
         $response->answers = $request->answers;

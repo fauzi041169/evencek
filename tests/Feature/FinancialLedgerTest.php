@@ -25,7 +25,7 @@ class FinancialLedgerTest extends TestCase
         Schema::dropIfExists('withdrawal_requests');
 
         Schema::create('users', function ($table) {
-            $table->id();
+            $table->char('id', 6)->primary();
             $table->string('name')->nullable();
             $table->string('email')->nullable();
             $table->string('password')->nullable();
@@ -34,8 +34,8 @@ class FinancialLedgerTest extends TestCase
         });
 
         Schema::create('profiles', function ($table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id')->nullable();
+            $table->char('id', 6)->primary();
+            $table->char('user_id', 6)->nullable();
             $table->string('no_hp')->nullable();
             $table->timestamps();
         });
@@ -53,7 +53,7 @@ class FinancialLedgerTest extends TestCase
 
         Schema::create('subscriptions', function ($table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
+            $table->char('user_id', 6);
             $table->unsignedBigInteger('subscription_plan_id');
             $table->string('status')->default('active');
             $table->date('start_date')->nullable();
@@ -65,9 +65,9 @@ class FinancialLedgerTest extends TestCase
 
         Schema::create('payments', function ($table) {
             $table->id();
-            $table->unsignedBigInteger('user_id')->nullable();
-            $table->unsignedBigInteger('activity_id')->nullable();
-            $table->unsignedBigInteger('payment_method_id')->nullable();
+            $table->char('user_id', 6)->nullable();
+            $table->char('activity_id', 6)->nullable();
+            $table->char('payment_method_id', 6)->nullable();
             $table->integer('amount')->default(0);
             $table->string('status')->default('pending');
             $table->string('midtrans_transaction_id')->nullable();
@@ -76,8 +76,8 @@ class FinancialLedgerTest extends TestCase
 
         Schema::create('withdrawal_requests', function ($table) {
             $table->id();
-            $table->unsignedBigInteger('user_id')->nullable();
-            $table->unsignedBigInteger('verifier_id')->nullable();
+            $table->char('user_id', 6)->nullable();
+            $table->char('verifier_id', 6)->nullable();
             $table->integer('amount')->default(0);
             $table->string('status')->default('pending');
             $table->timestamps();

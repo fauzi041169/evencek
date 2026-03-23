@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 
 class SelfRegistrationTest extends TestCase
@@ -46,13 +45,13 @@ class SelfRegistrationTest extends TestCase
 
         // Ambil user yang baru dibuat
         $user = User::where('email', 'testuser@example.com')->first();
-        
+
         // Pastikan password di-hash (tidak plain text)
         $this->assertNotEquals('Password123!', $user->password);
-        
+
         // Pastikan profile dibuat (berdasarkan controller logic)
         $this->assertNotNull($user->profile);
-        
+
         // Pastikan token verifikasi email ada
         $this->assertNotNull($user->email_verification_token);
     }
@@ -78,12 +77,12 @@ class SelfRegistrationTest extends TestCase
         $response = $this->post(route('auth.register.store'), $userData);
 
         $response->assertSessionHasErrors(['email', 'password', 'password_confirmation']);
-        
+
         $this->assertDatabaseMissing('users', [
             'name' => 'Test User',
         ]);
     }
-    
+
     /**
      * Test honeypot protection.
      *
@@ -103,7 +102,7 @@ class SelfRegistrationTest extends TestCase
         ];
 
         $response = $this->post(route('auth.register.store'), $botData);
-        
+
         // Harusnya gagal/redirect back dengan error, dan tidak masuk database
         $response->assertStatus(302);
         $this->assertDatabaseMissing('users', ['email' => 'bot@example.com']);

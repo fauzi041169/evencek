@@ -3,12 +3,12 @@
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class UsersTemplateExport implements FromArray, WithHeadings, ShouldAutoSize, WithColumnFormatting
+class UsersTemplateExport implements FromArray, ShouldAutoSize, WithColumnFormatting, WithHeadings
 {
     public function headings(): array
     {

@@ -44,6 +44,7 @@ class MaintenanceSetting extends Model
             });
         } catch (\Exception $e) {
             Cache::forget(static::MAINTENANCE_CACHE_KEY);
+
             // Jika database tidak tersedia, return default setting object
             return new static([
                 'is_maintenance_mode' => false,

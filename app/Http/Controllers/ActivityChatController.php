@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ActivityChatMessageSent;
 use App\Models\Activity;
 use App\Models\ActivityChat;
 use App\Models\User;
@@ -30,8 +31,8 @@ class ActivityChatController extends Controller
         $isCommittee = $activity->canManageRegistration($user->id);
 
         $activityData = array_merge($activity->toArray(), [
-             'is_committee' => $isCommittee,
-             'can_manage_registration' => $isCommittee,
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
         ]);
 
         if ($isCommittee) {
@@ -108,6 +109,7 @@ class ActivityChatController extends Controller
                 'activity_id' => $activity->id,
                 'error' => $e->getMessage(),
             ]);
+
             return response()->json(['error' => 'Server error'], 500);
         }
     }
@@ -261,6 +263,16 @@ class ActivityChatController extends Controller
                     'name' => 'Unknown User',
                     'avatar' => null,
                 ];
+            }
+
+            try {
+                broadcast(new ActivityChatMessageSent($chat))->toOthers();
+            } catch (\Throwable $e) {
+                Log::warning('Broadcast chat message failed', [
+                    'activity_id' => $activity->id,
+                    'chat_id' => $chat->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             return response()->json([

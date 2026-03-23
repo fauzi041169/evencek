@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class UserController extends Controller
@@ -146,14 +145,15 @@ class UserController extends Controller
                 // Validate Base64 image content
                 $finfo = new \finfo(FILEINFO_MIME_TYPE);
                 $mimeType = $finfo->buffer($image_data);
-                
-                if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/jpg'])) {
+
+                if (! in_array($mimeType, ['image/jpeg', 'image/png', 'image/jpg'])) {
                     if ($request->ajax() || $request->expectsJson()) {
                         return response()->json([
                             'success' => false,
                             'message' => 'Format gambar dari kamera tidak valid.',
                         ], 422);
                     }
+
                     return redirect()->back()
                         ->withErrors(['foto_file' => 'Format gambar dari kamera tidak valid.'])
                         ->withInput();
@@ -183,6 +183,7 @@ class UserController extends Controller
                             'message' => 'Gagal memproses gambar dari kamera.',
                         ], 500);
                     }
+
                     return redirect()->back()
                         ->withErrors(['foto_file' => 'Gagal memproses gambar dari kamera.'])
                         ->withInput();
@@ -293,14 +294,14 @@ class UserController extends Controller
             'email' => 'required|email|unique:users',
             'password' => 'required|string|min:8',
         ]);
-        
+
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => bcrypt($data['password']),
             'role' => 'user',
         ]);
-        
+
         return redirect()->route('users.index')->with('success', 'User created successfully.');
     }
 
@@ -315,6 +316,7 @@ class UserController extends Controller
             return back()->with('error', 'Cannot delete yourself.');
         }
         $user->delete();
+
         return back()->with('success', 'User deleted successfully.');
     }
 
@@ -322,6 +324,4 @@ class UserController extends Controller
     {
         return redirect()->back()->with('success', 'Export functionality is not fully implemented yet.');
     }
-
-
 }

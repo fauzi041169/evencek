@@ -1,9 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -19,10 +17,10 @@ return new class extends Migration
                 // Assuming activity_records is the empty/wrong one (MyISAM), drop it
                 Schema::drop('activity_records');
             }
-            
+
             // Rename old table to new name
             Schema::rename('activitirecords', 'activity_records');
-            
+
             // Optional: Update column types to JSON if they are not
             // We use raw SQL to avoid doctrine/dbal dependency issues
             // Check if column is not json
@@ -44,12 +42,12 @@ return new class extends Migration
     public function down(): void
     {
         // We can't easily reverse a drop, but we can reverse rename
-        if (Schema::hasTable('activity_records') && !Schema::hasTable('activitirecords')) {
-             Schema::rename('activity_records', 'activitirecords');
+        if (Schema::hasTable('activity_records') && ! Schema::hasTable('activitirecords')) {
+            Schema::rename('activity_records', 'activitirecords');
         }
-        
-        if (Schema::hasTable('id_card_backgrounds') && !Schema::hasTable('idcardbegrounds')) {
-             Schema::rename('id_card_backgrounds', 'idcardbegrounds');
+
+        if (Schema::hasTable('id_card_backgrounds') && ! Schema::hasTable('idcardbegrounds')) {
+            Schema::rename('id_card_backgrounds', 'idcardbegrounds');
         }
     }
 };

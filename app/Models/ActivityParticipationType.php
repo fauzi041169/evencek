@@ -10,6 +10,7 @@ class ActivityParticipationType extends Model
     // use Concerns\LogsActivity; // Trait not found
 
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [

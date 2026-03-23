@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('activity_users', 'activity_participation_type_id')) {
+        if (! Schema::hasColumn('activity_users', 'activity_participation_type_id')) {
             Schema::table('activity_users', function (Blueprint $table) {
                 $table->char('activity_participation_type_id', 6)->nullable()->after('activity_participant_group_id');
                 $table->foreign('activity_participation_type_id')->references('id')->on('activity_participation_types')->onDelete('set null');

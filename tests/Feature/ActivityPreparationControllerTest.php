@@ -24,10 +24,10 @@ class ActivityPreparationControllerTest extends TestCase
         Schema::dropIfExists('activity_committee_structures');
         Schema::dropIfExists('activity_divisions');
         Schema::dropIfExists('profiles');
-        Schema::dropIfExists('activitiusers');
+        Schema::dropIfExists('activity_users');
 
         Schema::create('users', function ($table) {
-            $table->id();
+            $table->char('id', 6)->primary();
             $table->string('name')->nullable();
             $table->string('email')->nullable();
             $table->string('password')->nullable();
@@ -35,29 +35,31 @@ class ActivityPreparationControllerTest extends TestCase
             $table->timestamps();
         });
         Schema::create('profiles', function ($table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id')->nullable();
+            $table->char('id', 6)->primary();
+            $table->char('user_id', 6)->nullable();
             $table->string('no_hp')->nullable();
             $table->timestamps();
         });
-        Schema::create('activitiusers', function ($table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('activity_id');
+        Schema::create('activity_users', function ($table) {
+            $table->char('id', 6)->primary();
+            $table->char('user_id', 6);
+            $table->char('activity_id', 6);
             $table->integer('status')->default(0);
             $table->timestamps();
         });
 
         Schema::create('activities', function ($table) {
-            $table->id();
+            $table->char('id', 6)->primary();
+            $table->string('uid')->nullable();
             $table->string('name')->nullable();
-            $table->unsignedBigInteger('user_id')->nullable();
+            $table->char('user_id', 6)->nullable();
             $table->timestamps();
         });
 
         Schema::create('activity_materials', function ($table) {
-            $table->id();
-            $table->unsignedBigInteger('activity_id');
+            $table->char('id', 6)->primary();
+            $table->char('activity_id', 6);
+            $table->char('activity_batch_id', 6)->nullable();
             $table->string('name');
             $table->string('file_name')->nullable();
             $table->string('file_path')->nullable();
@@ -65,14 +67,15 @@ class ActivityPreparationControllerTest extends TestCase
             $table->string('mime_type')->nullable();
             $table->integer('file_size')->default(0);
             $table->text('description')->nullable();
-            $table->unsignedBigInteger('uploaded_by')->nullable();
+            $table->char('uploaded_by', 6)->nullable();
+            $table->string('cover_image_path')->nullable();
             $table->timestamps();
         });
 
         Schema::create('activity_committee_structures', function ($table) {
-            $table->id();
-            $table->unsignedBigInteger('activity_id');
-            $table->unsignedBigInteger('user_id')->nullable();
+            $table->char('id', 6)->primary();
+            $table->char('activity_id', 6);
+            $table->char('user_id', 6)->nullable();
             $table->string('position')->nullable();
             $table->string('name')->nullable();
             $table->string('phone')->nullable();
@@ -81,8 +84,8 @@ class ActivityPreparationControllerTest extends TestCase
             $table->timestamps();
         });
         Schema::create('activity_divisions', function ($table) {
-            $table->id();
-            $table->unsignedBigInteger('activity_id');
+            $table->char('id', 6)->primary();
+            $table->char('activity_id', 6);
             $table->string('name')->nullable();
             $table->string('description')->nullable();
             $table->string('leader_name')->nullable();
@@ -93,14 +96,15 @@ class ActivityPreparationControllerTest extends TestCase
 
     public function test_store_material_requires_auth_and_authorization(): void
     {
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         $respGuest = $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [], ['HTTP_REFERER' => '/']);
         $respGuest->assertStatus(302);
 
         $user = User::create(['name' => 'U', 'email' => 'u@example.com', 'password' => 'x', 'role' => 'user']);
         $this->actingAs($user);
         Storage::fake('public');
-        $file = UploadedFile::fake()->image('materi.png', 100, 100);
+        $file = UploadedFile::fake()->create('materi.png', 10, 'image/png');
         $respForbidden = $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi',
             'file' => $file,
@@ -113,10 +117,11 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'admin@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
-        $file = UploadedFile::fake()->image('materi.png', 120, 120);
+        $file = UploadedFile::fake()->create('materi.png', 10, 'image/png');
         $resp = $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi',
             'file' => $file,
@@ -137,8 +142,10 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $user = User::create(['name' => 'Committee', 'email' => 'c@example.com', 'password' => 'x', 'role' => 'user']);
         $this->actingAs($user);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         DB::table('activity_committee_structures')->insert([
+            'id' => 'C1D2E3',
             'activity_id' => $activityId,
             'user_id' => $user->id,
             'position' => 'Panitia',
@@ -166,8 +173,10 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $user = User::create(['name' => 'Committee', 'email' => 'cfile@example.com', 'password' => 'x', 'role' => 'user']);
         $this->actingAs($user);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         DB::table('activity_committee_structures')->insert([
+            'id' => 'C1D2E3',
             'activity_id' => $activityId,
             'user_id' => $user->id,
             'position' => 'Panitia',
@@ -179,7 +188,7 @@ class ActivityPreparationControllerTest extends TestCase
         ]);
 
         Storage::fake('public');
-        $file = UploadedFile::fake()->image('materi2.jpg', 64, 64);
+        $file = UploadedFile::fake()->create('materi2.jpg', 10, 'image/jpeg');
         $resp = $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi Gambar',
             'file' => $file,
@@ -200,10 +209,11 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'admindel@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
-        $file = UploadedFile::fake()->image('materi-del.png', 80, 80);
+        $file = UploadedFile::fake()->create('materi-del.png', 10, 'image/png');
         $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi Hapus',
             'file' => $file,
@@ -224,8 +234,10 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $user = User::create(['name' => 'Committee', 'email' => 'cdl@example.com', 'password' => 'x', 'role' => 'user']);
         $this->actingAs($user);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         DB::table('activity_committee_structures')->insert([
+            'id' => 'C1D2E3',
             'activity_id' => $activityId,
             'user_id' => $user->id,
             'position' => 'Panitia',
@@ -237,7 +249,7 @@ class ActivityPreparationControllerTest extends TestCase
         ]);
 
         Storage::fake('public');
-        $file = UploadedFile::fake()->image('materi-dl.png', 40, 40);
+        $file = UploadedFile::fake()->create('materi-dl.png', 10, 'image/png');
         $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi Unduh',
             'file' => $file,
@@ -259,7 +271,8 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminpdf@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
         $file = UploadedFile::fake()->create('materi.pdf', 10, 'application/pdf');
@@ -280,7 +293,8 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminpptx@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
         $file = UploadedFile::fake()->create('slides.pptx', 12, 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
@@ -300,10 +314,11 @@ class ActivityPreparationControllerTest extends TestCase
     public function test_download_material_participant_active_can_download(): void
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminu@example.com', 'password' => 'x', 'role' => 'admin']);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         $this->actingAs($admin);
         Storage::fake('public');
-        $file = UploadedFile::fake()->image('materi-part.png', 30, 30);
+        $file = UploadedFile::fake()->create('materi-part.png', 10, 'image/png');
         $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi Peserta',
             'file' => $file,
@@ -311,7 +326,8 @@ class ActivityPreparationControllerTest extends TestCase
         $row = DB::table('activity_materials')->first();
 
         $participant = User::create(['name' => 'Participant', 'email' => 'p@example.com', 'password' => 'x', 'role' => 'user']);
-        DB::table('activitiusers')->insert([
+        DB::table('activity_users')->insert([
+            'id' => 'U1A2B3',
             'user_id' => $participant->id,
             'activity_id' => $activityId,
             'status' => 1,
@@ -327,10 +343,11 @@ class ActivityPreparationControllerTest extends TestCase
     public function test_download_material_non_participant_forbidden(): void
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminu2@example.com', 'password' => 'x', 'role' => 'admin']);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         $this->actingAs($admin);
         Storage::fake('public');
-        $file = UploadedFile::fake()->image('materi-np.png', 30, 30);
+        $file = UploadedFile::fake()->create('materi-np.png', 10, 'image/png');
         $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi NonPeserta',
             'file' => $file,
@@ -347,7 +364,8 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'admindocx@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
         $file = UploadedFile::fake()->create('materi.docx', 8, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -368,7 +386,8 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminmp4@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
         $file = UploadedFile::fake()->create('materi.mp4', 100, 'video/mp4');
@@ -389,7 +408,8 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminmp3@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
         $file = UploadedFile::fake()->create('materi.mp3', 50, 'audio/mpeg');
@@ -410,7 +430,8 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'admindoc@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
         $file = UploadedFile::fake()->create('materi.doc', 6, 'application/msword');
@@ -431,7 +452,8 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminppt@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
         $file = UploadedFile::fake()->create('materi.ppt', 7, 'application/vnd.ms-powerpoint');
@@ -452,8 +474,10 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $user = User::create(['name' => 'Committee', 'email' => 'c-bad@example.com', 'password' => 'x', 'role' => 'user']);
         $this->actingAs($user);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         DB::table('activity_committee_structures')->insert([
+            'id' => 'C1D2E3',
             'activity_id' => $activityId,
             'user_id' => $user->id,
             'position' => 'Panitia',
@@ -468,7 +492,7 @@ class ActivityPreparationControllerTest extends TestCase
             'name' => 'Materi Link Invalid',
             'link_url' => 'invalid_url',
         ], ['HTTP_REFERER' => '/']);
-        $this->assertTrue(in_array($resp->getStatusCode(), [302, 200, 503]));
+        $this->assertTrue(in_array($resp->getStatusCode(), [302, 422, 503]));
         $this->assertDatabaseCount('activity_materials', 0);
     }
 
@@ -476,7 +500,8 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminempty@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         $resp = $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi Kosong',
@@ -489,10 +514,11 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminsize@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
-        $file = UploadedFile::fake()->create('materi-big.bin', 60000, 'application/octet-stream');
+        $file = UploadedFile::fake()->create('materi-big.bin', 150000, 'application/octet-stream');
         $resp = $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi Besar',
             'file' => $file,
@@ -505,7 +531,8 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminsizeok@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
         $file = UploadedFile::fake()->create('materi-ok.bin', 51200, 'application/octet-stream');
@@ -523,10 +550,11 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminprefer@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
 
         Storage::fake('public');
-        $file = UploadedFile::fake()->image('materi-prefer.png', 24, 24);
+        $file = UploadedFile::fake()->create('materi-prefer.png', 10, 'image/png');
         $resp = $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi Preferensi',
             'file' => $file,
@@ -544,9 +572,10 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'adminnonactive@example.com', 'password' => 'x', 'role' => 'admin']);
         $this->actingAs($admin);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         Storage::fake('public');
-        $file = UploadedFile::fake()->image('materi-nonact.png', 20, 20);
+        $file = UploadedFile::fake()->create('materi-nonact.png', 10, 'image/png');
         $this->post(route('activity.preparation.store-material', ['activityId' => $activityId]), [
             'name' => 'Materi Non Aktif',
             'file' => $file,
@@ -554,7 +583,8 @@ class ActivityPreparationControllerTest extends TestCase
         $row = DB::table('activity_materials')->first();
 
         $participant = User::create(['name' => 'Participant', 'email' => 'pna@example.com', 'password' => 'x', 'role' => 'user']);
-        DB::table('activitiusers')->insert([
+        DB::table('activity_users')->insert([
+            'id' => 'U1A2B3',
             'user_id' => $participant->id,
             'activity_id' => $activityId,
             'status' => 0,
@@ -571,8 +601,10 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $user = User::create(['name' => 'Committee', 'email' => 'c-doc@example.com', 'password' => 'x', 'role' => 'user']);
         $this->actingAs($user);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         DB::table('activity_committee_structures')->insert([
+            'id' => 'C1D2E3',
             'activity_id' => $activityId,
             'user_id' => $user->id,
             'position' => 'Panitia',
@@ -601,8 +633,10 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $user = User::create(['name' => 'Committee', 'email' => 'c-ppt@example.com', 'password' => 'x', 'role' => 'user']);
         $this->actingAs($user);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         DB::table('activity_committee_structures')->insert([
+            'id' => 'C1D2E3',
             'activity_id' => $activityId,
             'user_id' => $user->id,
             'position' => 'Panitia',
@@ -631,8 +665,10 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $user = User::create(['name' => 'Committee', 'email' => 'c-mp4@example.com', 'password' => 'x', 'role' => 'user']);
         $this->actingAs($user);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         DB::table('activity_committee_structures')->insert([
+            'id' => 'C1D2E3',
             'activity_id' => $activityId,
             'user_id' => $user->id,
             'position' => 'Panitia',
@@ -661,8 +697,10 @@ class ActivityPreparationControllerTest extends TestCase
     {
         $user = User::create(['name' => 'Committee', 'email' => 'c-mp3@example.com', 'password' => 'x', 'role' => 'user']);
         $this->actingAs($user);
-        $activityId = DB::table('activities')->insertGetId(['name' => 'A', 'user_id' => null]);
+        $activityId = 'A1B2C3';
+        DB::table('activities')->insert(['id' => $activityId, 'name' => 'A', 'user_id' => null]);
         DB::table('activity_committee_structures')->insert([
+            'id' => 'C1D2E3',
             'activity_id' => $activityId,
             'user_id' => $user->id,
             'position' => 'Panitia',

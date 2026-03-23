@@ -47,7 +47,7 @@ class UserSeeder extends Seeder
 
         // Admin
         User::create([
-            'id' => $this->generateCustomUid(), 
+            'id' => $this->generateCustomUid(),
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'password' => Hash::make('2345678901'),

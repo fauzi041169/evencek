@@ -4,9 +4,7 @@ namespace App\Console\Commands;
 
 use App\Helpers\GenderHelper;
 use App\Models\Profile;
-use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class FillGenderFromName extends Command
 {
@@ -33,7 +31,7 @@ class FillGenderFromName extends Command
     public function handle()
     {
         $this->info('Starting gender prediction process...');
-        
+
         $activityUid = $this->option('activity');
         $limit = $this->option('limit');
         $dryRun = $this->option('dry-run');
@@ -67,11 +65,12 @@ class FillGenderFromName extends Command
 
         if ($total === 0) {
             $this->info('No profiles found with empty gender field.');
+
             return 0;
         }
 
         $this->info("Found {$total} profiles with empty gender field.");
-        
+
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
@@ -83,10 +82,11 @@ class FillGenderFromName extends Command
 
         foreach ($profiles as $profile) {
             $user = $profile->user;
-            
-            if (!$user || !$user->name) {
+
+            if (! $user || ! $user->name) {
                 $stats['skipped']++;
                 $bar->advance();
+
                 continue;
             }
 
@@ -94,13 +94,13 @@ class FillGenderFromName extends Command
             $predictedGender = GenderHelper::predict($user->name);
 
             if ($predictedGender && in_array($predictedGender, ['L', 'P'])) {
-                if (!$dryRun) {
+                if (! $dryRun) {
                     try {
                         $profile->jenis_kelamin = $predictedGender;
                         $profile->save();
                         $stats['success']++;
                     } catch (\Exception $e) {
-                        $this->error("\nError updating profile ID {$profile->id}: " . $e->getMessage());
+                        $this->error("\nError updating profile ID {$profile->id}: ".$e->getMessage());
                         $stats['failed']++;
                     }
                 } else {

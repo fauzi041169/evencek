@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\WithdrawalRequest;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
     public function index(Request $request)
     {
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json([]);
         }
 
@@ -35,11 +34,11 @@ class NotificationController extends Controller
                 ->get()
                 ->map(function ($w) {
                     return [
-                        'id' => 'withdrawal_' . $w->id,
+                        'id' => 'withdrawal_'.$w->id,
                         'type' => 'withdrawal_request',
                         'data' => [
-                            'message' => 'Permintaan penarikan dari ' . ($w->user->name ?? 'User'),
-                            'amount' => 'Rp ' . number_format($w->amount, 0, ',', '.'),
+                            'message' => 'Permintaan penarikan dari '.($w->user->name ?? 'User'),
+                            'amount' => 'Rp '.number_format($w->amount, 0, ',', '.'),
                             'user_id' => $w->user_id,
                             'withdrawal_id' => $w->id,
                             'url' => route('payments.admin.withdraw.history'),
@@ -62,7 +61,9 @@ class NotificationController extends Controller
     public function markAsRead(Request $request, $id)
     {
         $user = auth()->user();
-        if (!$user) return response()->json(['success' => false], 401);
+        if (! $user) {
+            return response()->json(['success' => false], 401);
+        }
 
         if (str_starts_with($id, 'withdrawal_')) {
             // Withdrawal notifications persist until the request is processed
@@ -76,13 +77,14 @@ class NotificationController extends Controller
 
         return response()->json(['success' => true]);
     }
-    
+
     public function markAllRead(Request $request)
     {
         $user = auth()->user();
         if ($user) {
             $user->unreadNotifications->markAsRead();
         }
+
         return response()->json(['success' => true]);
     }
 }

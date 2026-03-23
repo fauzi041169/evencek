@@ -18,11 +18,37 @@ export default function CommitteeIndex({ activity }) {
 
     useEffect(() => {
         if (selectedUser) {
+            const hasRealtime = typeof window !== 'undefined' && window.Echo && typeof window.Echo.private === 'function';
             loadMessages(selectedUser.id, false);
-            const interval = setInterval(() => loadMessages(selectedUser.id, true), 10000); // 10s kurangi load
-            return () => clearInterval(interval);
+            if (!hasRealtime) {
+                const interval = setInterval(() => loadMessages(selectedUser.id, true), 10000); // 10s kurangi load
+                return () => clearInterval(interval);
+            }
         }
     }, [selectedUser]);
+
+    useEffect(() => {
+        const hasRealtime = typeof window !== 'undefined' && window.Echo && typeof window.Echo.private === 'function';
+        if (!hasRealtime || !activity?.id || !selectedUser?.id) return;
+
+        const channelName = `activity.${activity.id}.chat.${selectedUser.id}`;
+        const channel = window.Echo.private(channelName);
+
+        channel.listen('.activity.chat.message.sent', (e) => {
+            const incoming = e?.message;
+            if (!incoming) return;
+            setMessages((prev) => {
+                if (prev.some((m) => String(m.id) === String(incoming.id))) return prev;
+                return [...prev, incoming];
+            });
+            loadConversations(true);
+        });
+
+        return () => {
+            channel.stopListening('.activity.chat.message.sent');
+            window.Echo.leave(channelName);
+        };
+    }, [activity?.id, selectedUser?.id]);
 
     useEffect(() => {
         scrollToBottom();
@@ -90,7 +116,8 @@ export default function CommitteeIndex({ activity }) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    ...(window.Echo && typeof window.Echo.socketId === 'function' ? { 'X-Socket-Id': window.Echo.socketId() } : {}),
                 },
                 body: JSON.stringify({
                     message: newMessage,
@@ -279,4 +306,3 @@ export default function CommitteeIndex({ activity }) {
         </AcaraLayout>
     );
 }
-

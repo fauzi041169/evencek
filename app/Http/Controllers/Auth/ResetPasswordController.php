@@ -53,6 +53,7 @@ class ResetPasswordController extends Controller
                 'email' => $user->email,
                 'error' => $e->getMessage(),
             ]);
+
             return back()->withErrors(['email' => 'Sistem reset password sedang bermasalah. Silakan coba lagi nanti atau hubungi administrator.']);
         }
 

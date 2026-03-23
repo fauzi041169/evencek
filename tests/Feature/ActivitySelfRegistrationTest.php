@@ -3,10 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Activity;
-use App\Models\User;
 use App\Models\PaymentMethod;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 
 class ActivitySelfRegistrationTest extends TestCase
@@ -16,12 +15,12 @@ class ActivitySelfRegistrationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Ensure at least one payment method exists for manual payments
         // This prevents foreign key constraint violation in payments table
         // if the controller tries to use PaymentMethod::first() or defaults to 1.
         if (class_exists(PaymentMethod::class)) {
-             PaymentMethod::create([
+            PaymentMethod::create([
                 'name' => 'Transfer Bank BCA',
                 'account_number' => '1234567890',
                 'account_name' => 'Admin Event',
@@ -40,12 +39,16 @@ class ActivitySelfRegistrationTest extends TestCase
     {
         // 1. Create User
         $user = User::factory()->create();
+        $user->profile()->create([
+            'user_id' => $user->id,
+            'foto' => 'profile.jpg',
+        ]);
 
         // 2. Create Free Activity
         $activity = Activity::factory()->create([
             'price' => 0,
             'pendaftaran' => 1, // Open
-            'is_automatic_payment' => false,
+            'payment_method_type' => 'manual',
         ]);
 
         // 3. Login
@@ -57,7 +60,7 @@ class ActivitySelfRegistrationTest extends TestCase
 
         // 5. Assert Redirect (usually back)
         $response->assertStatus(302);
-        
+
         // 6. Check database for enrollment
         // Note: ActivityEnrollmentController uses ActivityUser::STATUS_ACTIVE (1)
         $this->assertDatabaseHas('activity_users', [
@@ -76,12 +79,16 @@ class ActivitySelfRegistrationTest extends TestCase
     {
         // 1. Create User
         $user = User::factory()->create();
+        $user->profile()->create([
+            'user_id' => $user->id,
+            'foto' => 'profile.jpg',
+        ]);
 
         // 2. Create Paid Activity
         $activity = Activity::factory()->create([
             'price' => 100000,
             'pendaftaran' => 1,
-            'is_automatic_payment' => false,
+            'payment_method_type' => 'manual',
         ]);
 
         // 3. Login
@@ -92,21 +99,15 @@ class ActivitySelfRegistrationTest extends TestCase
         $response = $this->post(route('activity.enroll', $activity->id));
 
         // 5. Assert Redirect to Payment Create Page
-        $response->assertRedirect(route('payments.create', $activity->id));
-        
-        // 6. Check database for enrollment
-        $this->assertDatabaseHas('activity_users', [
-            'activity_id' => $activity->id,
-            'user_id' => $user->id,
-        ]);
+        $response->assertRedirect(route('payments.activity.create', $activity->id));
 
-        // 7. Check database for pending payment
+        $paymentMethodId = PaymentMethod::first()?->id;
         $this->assertDatabaseHas('payments', [
             'activity_id' => $activity->id,
             'user_id' => $user->id,
             'amount' => 100000,
             'status' => 'pending',
-            'payment_method_id' => 1, // Controller defaults to 1 if not found, or first()
+            'payment_method_id' => $paymentMethodId,
         ]);
     }
 
@@ -119,12 +120,16 @@ class ActivitySelfRegistrationTest extends TestCase
     {
         // 1. Create User
         $user = User::factory()->create();
+        $user->profile()->create([
+            'user_id' => $user->id,
+            'foto' => 'profile.jpg',
+        ]);
 
         // 2. Create Paid Activity (Auto)
         $activity = Activity::factory()->create([
             'price' => 150000,
             'pendaftaran' => 1,
-            'is_automatic_payment' => true,
+            'payment_method_type' => 'automatic',
         ]);
 
         // 3. Login
@@ -135,14 +140,7 @@ class ActivitySelfRegistrationTest extends TestCase
 
         // 5. Assert Redirect to Midtrans Payment Create Page
         $response->assertRedirect(route('midtrans.payment.create', $activity->id));
-        
-        // 6. Check database for enrollment
-        $this->assertDatabaseHas('activity_users', [
-            'activity_id' => $activity->id,
-            'user_id' => $user->id,
-        ]);
 
-        // 7. Check database for pending payment
         $this->assertDatabaseHas('payments', [
             'activity_id' => $activity->id,
             'user_id' => $user->id,

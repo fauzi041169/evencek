@@ -29,19 +29,20 @@ class NormalizeRegionIds extends Command
     {
         $sqlPath = $this->argument('sql_path');
 
-        if (!File::exists($sqlPath)) {
+        if (! File::exists($sqlPath)) {
             $this->error("File not found: $sqlPath");
+
             return 1;
         }
 
-        $this->info("Reading SQL file to build mapping...");
+        $this->info('Reading SQL file to build mapping...');
 
         // Mappings: OldUID => Name
         $oldProvinces = [];
         $oldRegencies = [];
         $oldDistricts = [];
 
-        $handle = fopen($sqlPath, "r");
+        $handle = fopen($sqlPath, 'r');
         if ($handle) {
             $currentTable = null;
             $nameIndex = 1;
@@ -50,16 +51,16 @@ class NormalizeRegionIds extends Command
                 $line = trim($line);
 
                 // Detect start of INSERT block
-                if (str_starts_with($line, "INSERT INTO `provinces`")) {
+                if (str_starts_with($line, 'INSERT INTO `provinces`')) {
                     $currentTable = 'provinces';
                     $nameIndex = 1; // ('ID', 'NAME', ...)
-                } elseif (str_starts_with($line, "INSERT INTO `regencies`")) {
+                } elseif (str_starts_with($line, 'INSERT INTO `regencies`')) {
                     $currentTable = 'regencies';
                     $nameIndex = 2; // ('ID', 'PROV_ID', 'NAME', ...)
-                } elseif (str_starts_with($line, "INSERT INTO `districts`")) {
+                } elseif (str_starts_with($line, 'INSERT INTO `districts`')) {
                     $currentTable = 'districts';
                     $nameIndex = 2; // ('ID', 'REG_ID', 'NAME', ...)
-                } elseif (str_ends_with($line, ");")) {
+                } elseif (str_ends_with($line, ');')) {
                     // End of block, verify if we should parse this last line
                     if ($currentTable) {
                         if ($currentTable == 'provinces') {
@@ -71,7 +72,7 @@ class NormalizeRegionIds extends Command
                         }
                     }
                     $currentTable = null;
-                } elseif ($currentTable && (str_starts_with($line, "(") || str_ends_with($line, "),"))) {
+                } elseif ($currentTable && (str_starts_with($line, '(') || str_ends_with($line, '),'))) {
                     // This is a value line
                     if ($currentTable == 'provinces') {
                         $this->parseValueLine($line, $oldProvinces, $nameIndex);
@@ -85,29 +86,31 @@ class NormalizeRegionIds extends Command
             fclose($handle);
         }
 
-        $this->info("Found " . count($oldProvinces) . " old provinces.");
-        $this->info("Found " . count($oldRegencies) . " old regencies.");
-        $this->info("Found " . count($oldDistricts) . " old districts.");
+        $this->info('Found '.count($oldProvinces).' old provinces.');
+        $this->info('Found '.count($oldRegencies).' old regencies.');
+        $this->info('Found '.count($oldDistricts).' old districts.');
 
         if (count($oldProvinces) === 0) {
-            $this->error("No province data found in SQL file. Check the format.");
+            $this->error('No province data found in SQL file. Check the format.');
+
             return 1;
         }
 
-        $this->info("Fetching standard regions from database (ensure RegionSeeder has been run)...");
+        $this->info('Fetching standard regions from database (ensure RegionSeeder has been run)...');
 
         // Map Name => NewID
-        $newProvinces = DB::table('provinces')->pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtoupper($name) => $id])->toArray();
-        $newRegencies = DB::table('regencies')->pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtoupper($name) => $id])->toArray();
-        $newDistricts = DB::table('districts')->pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtoupper($name) => $id])->toArray();
+        $newProvinces = DB::table('provinces')->pluck('id', 'name')->mapWithKeys(fn ($id, $name) => [strtoupper($name) => $id])->toArray();
+        $newRegencies = DB::table('regencies')->pluck('id', 'name')->mapWithKeys(fn ($id, $name) => [strtoupper($name) => $id])->toArray();
+        $newDistricts = DB::table('districts')->pluck('id', 'name')->mapWithKeys(fn ($id, $name) => [strtoupper($name) => $id])->toArray();
 
         if (empty($newProvinces)) {
             $this->error("Provinces table is empty. Please run 'php artisan db:seed --class=RegionSeeder' first.");
+
             return 1;
         }
 
-        $this->info("Starting normalization...");
-        
+        $this->info('Starting normalization...');
+
         DB::beginTransaction();
         try {
             // Disable Foreign Key Checks
@@ -124,11 +127,12 @@ class NormalizeRegionIds extends Command
 
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             DB::commit();
-            $this->info("Normalization completed successfully!");
-            
+            $this->info('Normalization completed successfully!');
+
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error("Error: " . $e->getMessage());
+            $this->error('Error: '.$e->getMessage());
+
             return 1;
         }
 
@@ -141,7 +145,7 @@ class NormalizeRegionIds extends Command
         if (preg_match_all('/\((.*?)\)/', $line, $matches)) {
             foreach ($matches[1] as $row) {
                 // Split by comma, handling quotes
-                $parts = str_getcsv($row, ",", "'");
+                $parts = str_getcsv($row, ',', "'");
                 if (count($parts) > $nameIndex) {
                     $uid = $parts[0];
                     $name = strtoupper(trim($parts[$nameIndex])); // Normalize name to uppercase
@@ -155,17 +159,17 @@ class NormalizeRegionIds extends Command
     {
         $this->info("Updating $table.$column...");
         $count = 0;
-        
+
         // Chunk to avoid memory issues if table is huge, but here we loop through OLD IDs which is finite
         foreach ($oldMap as $oldUid => $name) {
             if (isset($newMap[$name])) {
                 $newId = $newMap[$name];
-                
+
                 // Perform update
                 $affected = DB::table($table)
                     ->where($column, $oldUid)
                     ->update([$column => $newId]);
-                
+
                 if ($affected > 0) {
                     $count += $affected;
                     // $this->line("  Mapped $name: $oldUid -> $newId ($affected rows)");
@@ -174,7 +178,7 @@ class NormalizeRegionIds extends Command
                 // $this->warn("  No standard ID found for region: $name (Old ID: $oldUid)");
             }
         }
-        
+
         $this->info("Updated $count rows in $table.$column.");
     }
 }

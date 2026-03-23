@@ -7,13 +7,14 @@ use App\Models\Category;
 use App\Models\Comment;
 use App\Models\News;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Mews\Purifier\Facades\Purifier;
 use Inertia\Inertia;
+use Mews\Purifier\Facades\Purifier;
 
 class NewsController extends Controller
 {
@@ -30,10 +31,10 @@ class NewsController extends Controller
         // Jika ada published_at, gunakan scope published, jika tidak gunakan latest saja
         $featuredNews = News::with('category')
             ->where(function ($query) {
-            $query->whereNotNull('published_at')
-                ->where('published_at', '<=', now())
-                ->orWhereNull('published_at');
-        })
+                $query->whereNotNull('published_at')
+                    ->where('published_at', '<=', now())
+                    ->orWhereNull('published_at');
+            })
             ->latest()
             ->take(3)
             ->get();
@@ -217,13 +218,13 @@ class NewsController extends Controller
                     if (strpos($imageUrl, 'data:image') === 0) {
                         try {
                             $imageData = base64_decode(explode(',', $imageUrl)[1]);
-                            
+
                             // Validate Base64 image content
                             $finfo = new \finfo(FILEINFO_MIME_TYPE);
                             $mimeType = $finfo->buffer($imageData);
-                            
-                            if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'])) {
-                                throw new \Exception('Format gambar base64 tidak valid: ' . $mimeType);
+
+                            if (! in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'])) {
+                                throw new \Exception('Format gambar base64 tidak valid: '.$mimeType);
                             }
 
                             if ($mimeType === 'image/gif') {
@@ -234,6 +235,7 @@ class NewsController extends Controller
                                 }
                                 $newUrl = '/storage/'.$path;
                                 $content = str_replace($imageUrl, $newUrl, $content);
+
                                 continue;
                             }
 
@@ -316,7 +318,11 @@ class NewsController extends Controller
     {
         try {
             $news->load(['category', 'author', 'comments.user', 'comments.children.user']);
-            $news->increment('views_count');
+            $viewerKey = auth()->id() ? ('u:'.auth()->id()) : ('ip:'.request()->ip());
+            $throttleKey = 'news-view:'.$news->id.':'.$viewerKey;
+            if (Cache::add($throttleKey, 1, now()->addMinutes(5))) {
+                $news->increment('views_count');
+            }
             // Rating statistics (only top-level comments with rating)
             $ratingsQuery = $news->allComments()->whereNull('parent_id')->whereNotNull('rating');
             $averageRating = $news->averageRating();
@@ -544,7 +550,7 @@ class NewsController extends Controller
                 'format' => 'webp',
             ]);
 
-            if (!$path) {
+            if (! $path) {
                 \Log::error('Failed to store uploaded file:', [
                     'original_name' => $file->getClientOriginalName(),
                     'error' => 'Storage::storeAs returned false',

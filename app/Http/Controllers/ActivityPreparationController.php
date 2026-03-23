@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
+use App\Helpers\RegionMatcher;
 use App\Mail\VerifyEmailMail;
 use App\Models\Activity;
 use App\Models\ActivityBatch;
@@ -12,42 +14,39 @@ use App\Models\ActivityHotelRoom;
 use App\Models\ActivityHotelRoomAssignment;
 use App\Models\ActivityMaterial;
 use App\Models\ActivityParticipantGroup;
-use App\Models\ActivityRundown;
 use App\Models\ActivityRecord;
+use App\Models\ActivityRundown;
 use App\Models\ActivityUser;
 use App\Models\Attendance;
 use App\Models\CardSettings;
 use App\Models\CertificateSettings;
 use App\Models\Comment;
 use App\Models\District;
-use App\Helpers\RegionMatcher;
-use App\Helpers\ImageHelper;
 use App\Models\Payment;
 use App\Models\Profile;
 use App\Models\Province;
 use App\Models\RefPosition;
 use App\Models\Regency;
 use App\Models\User;
+use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Exception;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ActivityPreparationController extends Controller
@@ -226,17 +225,17 @@ class ActivityPreparationController extends Controller
 
             // Get enrolled users with profile and province
             $participants = ActivityUser::with([
-                    'user.profile.province',
-                    'roomAssignment' => function($q) use ($activityIdValue) {
-                        $q->where('activity_id', $activityIdValue)->with('room');
-                    }
-                ])
+                'user.profile.province',
+                'roomAssignment' => function ($q) use ($activityIdValue) {
+                    $q->where('activity_id', $activityIdValue)->with('room');
+                },
+            ])
                 ->where('activity_id', $activityIdValue)
                 ->orderBy('created_at', 'desc')
                 ->get();
 
             // Map roomAssignment.room to room for frontend compatibility
-            $participants->each(function($p) {
+            $participants->each(function ($p) {
                 if ($p->roomAssignment && $p->roomAssignment->room) {
                     $p->setRelation('room', $p->roomAssignment->room);
                 }
@@ -254,9 +253,9 @@ class ActivityPreparationController extends Controller
 
             // Attach leader_user_id to divisions based on committee structure
             foreach ($divisions as $division) {
-                    $leader = $committeeStructure->firstWhere('activity_division_id', $division->id);
-                    $division->leader_user_id = $leader ? $leader->user_id : null;
-                }
+                $leader = $committeeStructure->firstWhere('activity_division_id', $division->id);
+                $division->leader_user_id = $leader ? $leader->user_id : null;
+            }
 
             // Inject visibility settings
             $cardSettings = CardSettings::where('activity_id', $activityIdValue)
@@ -272,7 +271,7 @@ class ActivityPreparationController extends Controller
             $certificateVisible = $certSettings && isset($certSettings->print_settings['download_card_visible'])
                 ? (bool) $certSettings->print_settings['download_card_visible']
                 : false;
-            
+
             // Set dynamic properties for compatibility
             $activity->id_card_visible = $idCardVisible;
             $activity->certificate_visible = $certificateVisible;
@@ -356,8 +355,6 @@ class ActivityPreparationController extends Controller
         return response()->json($users);
     }
 
-
-
     public function storeOwner(Request $request, $activityId)
     {
         $activity = Activity::findOrFail($activityId);
@@ -401,14 +398,14 @@ class ActivityPreparationController extends Controller
     public function changeRoleBulk(Request $request, $activityId)
     {
         $activity = Activity::where('uid', $activityId)->first();
-        if (!$activity) {
+        if (! $activity) {
             $activity = Activity::find($activityId);
         }
 
-        if (!$activity) {
+        if (! $activity) {
             abort(404, 'Aktivitas tidak ditemukan.');
         }
-        
+
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
             abort(403);
         }
@@ -422,13 +419,13 @@ class ActivityPreparationController extends Controller
 
         $targetTypeId = $request->participation_type_id;
         $targetCommitteeTypeId = $request->committee_type_id;
-        
+
         // Verify the type belongs to this activity
         $targetType = \App\Models\ActivityParticipationType::where('activity_id', $activity->id)
             ->where('id', $targetTypeId)
             ->first();
-            
-        if (!$targetType) {
+
+        if (! $targetType) {
             return redirect()->back()->with('error', 'Tipe kepesertaan tidak valid.');
         }
 
@@ -453,23 +450,23 @@ class ActivityPreparationController extends Controller
         if ($isPanitia && count($affectedUserIds) > 0) {
             // Find default committee type (e.g., Panitia Seksi or just first one)
             $defaultCommitteeType = null;
-            
+
             if ($targetCommitteeTypeId) {
                 $defaultCommitteeType = \App\Models\ActivityCommitteeType::find($targetCommitteeTypeId);
             }
-            
-            if (!$defaultCommitteeType) {
+
+            if (! $defaultCommitteeType) {
                 $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)
                     ->where('name', 'like', '%Seksi%')
                     ->first();
             }
-            
-            if (!$defaultCommitteeType) {
+
+            if (! $defaultCommitteeType) {
                 $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)->first();
             }
 
             // Find default division if needed (optional)
-            // For now, we leave division_id null or try to find "Anggota" division? 
+            // For now, we leave division_id null or try to find "Anggota" division?
             // Better to leave it null or let user assign later.
 
             $users = User::with('profile')->whereIn('id', $affectedUserIds)->get();
@@ -480,7 +477,7 @@ class ActivityPreparationController extends Controller
                     ->where('user_id', $user->id)
                     ->first();
 
-                if (!$committeeMember) {
+                if (! $committeeMember) {
                     ActivityCommitteeStructure::create([
                         'activity_id' => $activity->id,
                         'user_id' => $user->id,
@@ -494,7 +491,7 @@ class ActivityPreparationController extends Controller
                 } elseif ($targetCommitteeTypeId && $committeeMember->committee_type_id !== $targetCommitteeTypeId) {
                     // Update committee type if explicitly requested and different
                     $committeeMember->update([
-                        'committee_type_id' => $targetCommitteeTypeId
+                        'committee_type_id' => $targetCommitteeTypeId,
                     ]);
                 }
             }
@@ -508,18 +505,19 @@ class ActivityPreparationController extends Controller
         return redirect()->back()->with('success', "Berhasil mengubah peran {$count} peserta.");
     }
 
-    private function applyFilters($query, $request, $activity = null) {
+    private function applyFilters($query, $request, $activity = null)
+    {
         $activityId = $activity ? $activity->id : ($query->getModel()->activity_id ?? request()->route('activityId'));
-        if (!$activityId && $request->route('activityId')) {
-             // Fallback if not passed
-             $act = Activity::where('uid', $request->route('activityId'))->first() ?? Activity::find($request->route('activityId'));
-             $activityId = $act->id ?? null;
+        if (! $activityId && $request->route('activityId')) {
+            // Fallback if not passed
+            $act = Activity::where('uid', $request->route('activityId'))->first() ?? Activity::find($request->route('activityId'));
+            $activityId = $act->id ?? null;
         }
 
         if ($val = $request->batch_id) {
             $query->where('activity_batch_id', $val);
         }
-        
+
         if ($val = $request->search) {
             $searchTerm = trim($val);
             $query->where(function ($q) use ($searchTerm) {
@@ -560,44 +558,72 @@ class ActivityPreparationController extends Controller
                 });
             });
         }
-        
+
         // Detailed Filters
-        if ($val = $request->name) $query->whereHas('user', fn($q) => $q->where('name', $val));
-        if ($val = $request->email) $query->whereHas('user', fn($q) => $q->where('email', $val));
-        if ($val = $request->no_hp) $query->whereHas('user.profile', fn($q) => $q->where('no_hp', $val));
-        if ($val = $request->nik) $query->whereHas('user.profile', fn($q) => $q->where('nik', $val));
-        if ($val = $request->instansi) $query->whereHas('user.profile', fn($q) => $q->where('instansi', $val));
-        if ($val = $request->pekerjaan) $query->whereHas('user.profile', fn($q) => $q->where('pekerjaan', $val));
-        if ($val = $request->jabatan) $query->whereHas('user.profile', fn($q) => $q->where('jabatan', $val));
-        
+        if ($val = $request->name) {
+            $query->whereHas('user', fn ($q) => $q->where('name', $val));
+        }
+        if ($val = $request->email) {
+            $query->whereHas('user', fn ($q) => $q->where('email', $val));
+        }
+        if ($val = $request->no_hp) {
+            $query->whereHas('user.profile', fn ($q) => $q->where('no_hp', $val));
+        }
+        if ($val = $request->nik) {
+            $query->whereHas('user.profile', fn ($q) => $q->where('nik', $val));
+        }
+        if ($val = $request->instansi) {
+            $query->whereHas('user.profile', fn ($q) => $q->where('instansi', $val));
+        }
+        if ($val = $request->pekerjaan) {
+            $query->whereHas('user.profile', fn ($q) => $q->where('pekerjaan', $val));
+        }
+        if ($val = $request->jabatan) {
+            $query->whereHas('user.profile', fn ($q) => $q->where('jabatan', $val));
+        }
+
         if ($val = $request->jenis_kelamin) {
-             if ($val === '__EMPTY__') {
-                $query->whereHas('user.profile', fn($q) => $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-'));
+            if ($val === '__EMPTY__') {
+                $query->whereHas('user.profile', fn ($q) => $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-'));
             } else {
-                $query->whereHas('user.profile', fn($q) => $q->where('jenis_kelamin', $val));
+                $query->whereHas('user.profile', fn ($q) => $q->where('jenis_kelamin', $val));
             }
         }
-        
+
         if ($val = $request->birth_place) {
-             if ($val === '__EMPTY__') {
-                $query->whereHas('user.profile', fn($q) => $q->whereNull('birth_place')->orWhere('birth_place', '')->orWhere('birth_place', '-'));
+            if ($val === '__EMPTY__') {
+                $query->whereHas('user.profile', fn ($q) => $q->whereNull('birth_place')->orWhere('birth_place', '')->orWhere('birth_place', '-'));
             } else {
-                $query->whereHas('user.profile', fn($q) => $q->where('birth_place', $val));
+                $query->whereHas('user.profile', fn ($q) => $q->where('birth_place', $val));
             }
         }
-        
-        if ($val = $request->birth_year) $query->whereHas('user.profile', fn($q) => $q->whereYear('birth_date', $val));
-        if ($val = $request->address) $query->whereHas('user.profile', fn($q) => $q->where('alamat', $val));
-        
-        if ($val = $request->province_name) $query->whereHas('user.profile.province', fn($q) => $q->where('name', $val));
-        if ($val = $request->regency_name) $query->whereHas('user.profile.regency', fn($q) => $q->where('name', $val));
-        if ($val = $request->district_name) $query->whereHas('user.profile.district', fn($q) => $q->where('name', $val));
-        
-        if ($val = $request->province_id) $query->whereHas('user.profile', fn($q) => $q->where('province_id', $val));
-        if ($val = $request->regency_id) $query->whereHas('user.profile', fn($q) => $q->where('regency_id', $val));
-        
+
+        if ($val = $request->birth_year) {
+            $query->whereHas('user.profile', fn ($q) => $q->whereYear('birth_date', $val));
+        }
+        if ($val = $request->address) {
+            $query->whereHas('user.profile', fn ($q) => $q->where('alamat', $val));
+        }
+
+        if ($val = $request->province_name) {
+            $query->whereHas('user.profile.province', fn ($q) => $q->where('name', $val));
+        }
+        if ($val = $request->regency_name) {
+            $query->whereHas('user.profile.regency', fn ($q) => $q->where('name', $val));
+        }
+        if ($val = $request->district_name) {
+            $query->whereHas('user.profile.district', fn ($q) => $q->where('name', $val));
+        }
+
+        if ($val = $request->province_id) {
+            $query->whereHas('user.profile', fn ($q) => $q->where('province_id', $val));
+        }
+        if ($val = $request->regency_id) {
+            $query->whereHas('user.profile', fn ($q) => $q->where('regency_id', $val));
+        }
+
         if ($val = $request->district_id) {
-             if (str_starts_with($val, 'other:')) {
+            if (str_starts_with($val, 'other:')) {
                 $otherVal = substr($val, 6);
                 if (Schema::hasColumn('profiles', 'other_district')) {
                     $query->whereHas('user.profile', function ($q) use ($otherVal) {
@@ -611,28 +637,32 @@ class ActivityPreparationController extends Controller
             }
         }
 
-        if ($val = $request->group_id) $query->where('activity_participant_group_id', $val);
-        
-        if ($val = $request->room_number) $query->whereHas('room', fn($q) => $q->where('room_number', $val));
-        
+        if ($val = $request->group_id) {
+            $query->where('activity_participant_group_id', $val);
+        }
+
+        if ($val = $request->room_number) {
+            $query->whereHas('room', fn ($q) => $q->where('room_number', $val));
+        }
+
         if ($val = $request->room_status && $activityId) {
             if ($val === 'assigned') {
                 $query->whereExists(function ($q) use ($activityId) {
                     $q->select(\DB::raw(1))
-                      ->from('activity_hotel_room_assignments')
-                      ->whereColumn('activity_hotel_room_assignments.user_id', 'activity_users.user_id')
-                      ->where('activity_hotel_room_assignments.activity_id', $activityId);
+                        ->from('activity_hotel_room_assignments')
+                        ->whereColumn('activity_hotel_room_assignments.user_id', 'activity_users.user_id')
+                        ->where('activity_hotel_room_assignments.activity_id', $activityId);
                 });
             } elseif ($val === 'unassigned') {
                 $query->whereNotExists(function ($q) use ($activityId) {
                     $q->select(\DB::raw(1))
-                      ->from('activity_hotel_room_assignments')
-                      ->whereColumn('activity_hotel_room_assignments.user_id', 'activity_users.user_id')
-                      ->where('activity_hotel_room_assignments.activity_id', $activityId);
+                        ->from('activity_hotel_room_assignments')
+                        ->whereColumn('activity_hotel_room_assignments.user_id', 'activity_users.user_id')
+                        ->where('activity_hotel_room_assignments.activity_id', $activityId);
                 });
             }
         }
-        
+
         // Registration Method (Calculated Bulk IDs)
         if ($val = $request->registration_method) {
             $bulkGroupUserIds = [];
@@ -641,53 +671,56 @@ class ActivityPreparationController extends Controller
                     $paymentsWithNotes = Payment::select('id', 'activity_id', 'user_id', 'notes')
                         ->where('activity_id', $activityId)
                         ->whereNotNull('notes')
-                        ->where(function($q) {
+                        ->where(function ($q) {
                             $q->where('notes', 'like', '%user_ids%')
-                              ->orWhere('notes', 'like', '%bulk_import%');
+                                ->orWhere('notes', 'like', '%bulk_import%');
                         })
                         ->get();
 
                     foreach ($paymentsWithNotes as $p) {
                         $decoded = json_decode($p->notes, true);
-                        if (!$decoded && str_contains($p->notes, '{')) {
-                             $start = strpos($p->notes, '{');
-                             $end = strrpos($p->notes, '}');
-                             if ($start !== false && $end !== false) {
-                                 $decoded = json_decode(substr($p->notes, $start, $end - $start + 1), true);
-                             }
+                        if (! $decoded && str_contains($p->notes, '{')) {
+                            $start = strpos($p->notes, '{');
+                            $end = strrpos($p->notes, '}');
+                            if ($start !== false && $end !== false) {
+                                $decoded = json_decode(substr($p->notes, $start, $end - $start + 1), true);
+                            }
                         }
 
                         if (is_array($decoded)) {
                             $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
                             foreach ($uids as $uid) {
-                                if($uid) $bulkGroupUserIds[] = (string)$uid;
+                                if ($uid) {
+                                    $bulkGroupUserIds[] = (string) $uid;
+                                }
                             }
                         }
                     }
                     $bulkGroupUserIds = array_unique($bulkGroupUserIds);
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
             }
 
             if ($val === 'kelompok') {
-                 $query->where(function($q) use ($bulkGroupUserIds) {
+                $query->where(function ($q) use ($bulkGroupUserIds) {
                     $q->whereNotNull('activity_participant_group_id');
-                    if (!empty($bulkGroupUserIds)) {
+                    if (! empty($bulkGroupUserIds)) {
                         $q->orWhereIn('user_id', $bulkGroupUserIds);
                     }
-                 });
+                });
             } elseif ($val === 'mandiri') {
                 $query->whereNull('activity_participant_group_id');
-                if (!empty($bulkGroupUserIds)) {
+                if (! empty($bulkGroupUserIds)) {
                     $query->whereNotIn('user_id', $bulkGroupUserIds);
                 }
             }
         }
-        
+
         // Custom columns
         foreach ($request->all() as $reqKey => $reqVal) {
-            if (str_starts_with($reqKey, 'custom_') && !empty($reqVal)) {
-                $jsonKey = substr($reqKey, 7); 
-                $query->where("custom_data->{$jsonKey}", (string)$reqVal);
+            if (str_starts_with($reqKey, 'custom_') && ! empty($reqVal)) {
+                $jsonKey = substr($reqKey, 7);
+                $query->where("custom_data->{$jsonKey}", (string) $reqVal);
             }
         }
     }
@@ -703,7 +736,7 @@ class ActivityPreparationController extends Controller
 
             // AUTO-FIX: Jika harga kegiatan 0 (Gratis), otomatis set status peserta menjadi AKTIF
             // Ini menangani kasus dimana harga diubah menjadi 0 setelah ada pendaftar (yang sebelumnya Menunggu Verifikasi)
-            if ((int)$activity->price === 0) {
+            if ((int) $activity->price === 0) {
                 ActivityUser::where('activity_id', $activity->id)
                     ->whereIn('status', [ActivityUser::STATUS_VERIFICATION, ActivityUser::STATUS_PENDING])
                     ->update(['status' => ActivityUser::STATUS_ACTIVE]);
@@ -732,7 +765,7 @@ class ActivityPreparationController extends Controller
 
             // Optimasi: Cache filter location data (Province, Regency, District)
             $cacheKey = "activity_participants_filters_{$activityId}";
-            $locationFilters = Cache::remember($cacheKey, 300, function() use ($activityId, $activityUserTable) {
+            $locationFilters = Cache::remember($cacheKey, 300, function () use ($activityId, $activityUserTable) {
                 // 1. Get relevant Province IDs
                 $participantProvinceIds = ActivityUser::query()
                     ->from($activityUserTable)
@@ -788,7 +821,7 @@ class ActivityPreparationController extends Controller
                 } catch (\Exception $e) {
                     \Log::warning('Failed to load other districts', ['error' => $e->getMessage()]);
                 }
-                
+
                 return compact('provinces', 'regencies', 'districts', 'otherDistricts');
             });
 
@@ -802,7 +835,7 @@ class ActivityPreparationController extends Controller
 
             $districts = $locationFilters['districts'];
             $totalDistricts = $districts->count();
-            
+
             $otherDistricts = $locationFilters['otherDistricts'];
             $selectedDistrictId = request('district_id');
 
@@ -812,28 +845,28 @@ class ActivityPreparationController extends Controller
             \Log::info('DEBUG PARTICIPANTS START', [
                 'activity_id' => $activityId,
                 'request_all' => request()->all(),
-                'initial_count' => $query->count()
+                'initial_count' => $query->count(),
             ]);
 
             // Try to load relationships, but don't fail if they don't exist
             try {
                 $query->with([
-                    'user.profile', 
+                    'user.profile',
                     'user.profile.province',
                     'user.profile.regency',
                     'user.profile.district',
-                    'batch', 
-                    'participantGroup', 
-                    'creator', 
-                    'updater', 
-                    'roomAssignment' => function($q) use ($activityId) {
+                    'batch',
+                    'participantGroup',
+                    'creator',
+                    'updater',
+                    'roomAssignment' => function ($q) use ($activityId) {
                         $q->where('activity_id', $activityId)->with('room');
                     },
-                    'payment' => function($q) use ($activityId) {
+                    'payment' => function ($q) use ($activityId) {
                         $q->where('activity_id', $activityId)
-                          ->with(['paymentMethod', 'verifier'])
-                          ->latest();
-                    }
+                            ->with(['paymentMethod', 'verifier'])
+                            ->latest();
+                    },
                 ]);
             } catch (\Exception $e) {
                 \Log::warning('Failed to set eager loading', ['error' => $e->getMessage()]);
@@ -968,76 +1001,76 @@ class ActivityPreparationController extends Controller
 
             // --- OPTIMIZED FILTER LOGIC (MOVED FROM MANUAL FILTERING) ---
             if ($val = request('name')) {
-                $query->whereHas('user', fn($q) => $q->where('name', $val));
+                $query->whereHas('user', fn ($q) => $q->where('name', $val));
             }
             if ($val = request('email')) {
-                $query->whereHas('user', fn($q) => $q->where('email', $val));
+                $query->whereHas('user', fn ($q) => $q->where('email', $val));
             }
             if ($val = request('no_hp')) {
-                $query->whereHas('user.profile', fn($q) => $q->where('no_hp', $val));
+                $query->whereHas('user.profile', fn ($q) => $q->where('no_hp', $val));
             }
             if ($val = request('nik')) {
-                $query->whereHas('user.profile', fn($q) => $q->where('nik', $val));
+                $query->whereHas('user.profile', fn ($q) => $q->where('nik', $val));
             }
             if ($val = request('instansi')) {
-                $query->whereHas('user.profile', fn($q) => $q->where('instansi', $val));
+                $query->whereHas('user.profile', fn ($q) => $q->where('instansi', $val));
             }
             if ($val = request('pekerjaan')) {
-                $query->whereHas('user.profile', fn($q) => $q->where('pekerjaan', $val));
+                $query->whereHas('user.profile', fn ($q) => $q->where('pekerjaan', $val));
             }
             if ($val = request('jabatan')) {
-                $query->whereHas('user.profile', fn($q) => $q->where('jabatan', $val));
+                $query->whereHas('user.profile', fn ($q) => $q->where('jabatan', $val));
             }
             if ($val = request('jenis_kelamin')) {
                 if ($val === '__EMPTY__') {
-                    $query->whereHas('user.profile', fn($q) => $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-'));
+                    $query->whereHas('user.profile', fn ($q) => $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-'));
                 } else {
-                    $query->whereHas('user.profile', fn($q) => $q->where('jenis_kelamin', $val));
+                    $query->whereHas('user.profile', fn ($q) => $q->where('jenis_kelamin', $val));
                 }
             }
             if ($val = request('birth_place')) {
-                 if ($val === '__EMPTY__') {
-                    $query->whereHas('user.profile', fn($q) => $q->whereNull('birth_place')->orWhere('birth_place', '')->orWhere('birth_place', '-'));
+                if ($val === '__EMPTY__') {
+                    $query->whereHas('user.profile', fn ($q) => $q->whereNull('birth_place')->orWhere('birth_place', '')->orWhere('birth_place', '-'));
                 } else {
-                    $query->whereHas('user.profile', fn($q) => $q->where('birth_place', $val));
+                    $query->whereHas('user.profile', fn ($q) => $q->where('birth_place', $val));
                 }
             }
             if ($val = request('birth_year')) {
-                 $query->whereHas('user.profile', fn($q) => $q->whereYear('birth_date', $val));
+                $query->whereHas('user.profile', fn ($q) => $q->whereYear('birth_date', $val));
             }
             if ($val = request('address')) {
-                $query->whereHas('user.profile', fn($q) => $q->where('alamat', $val));
+                $query->whereHas('user.profile', fn ($q) => $q->where('alamat', $val));
             }
             if ($val = request('province_name')) {
-                $query->whereHas('user.profile.province', fn($q) => $q->where('name', $val));
+                $query->whereHas('user.profile.province', fn ($q) => $q->where('name', $val));
             }
             if ($val = request('regency_name')) {
-                $query->whereHas('user.profile.regency', fn($q) => $q->where('name', $val));
+                $query->whereHas('user.profile.regency', fn ($q) => $q->where('name', $val));
             }
             if ($val = request('district_name')) {
-                $query->whereHas('user.profile.district', fn($q) => $q->where('name', $val));
+                $query->whereHas('user.profile.district', fn ($q) => $q->where('name', $val));
             }
             if ($val = request('group_id')) {
                 $query->where('activity_participant_group_id', $val);
             }
             if ($val = request('room_number')) {
-                $query->whereHas('room', fn($q) => $q->where('room_number', $val));
+                $query->whereHas('room', fn ($q) => $q->where('room_number', $val));
             }
 
             if ($val = request('room_status')) {
                 if ($val === 'assigned') {
                     $query->whereExists(function ($q) use ($activityId) {
                         $q->select(\DB::raw(1))
-                          ->from('activity_hotel_room_assignments')
-                          ->whereColumn('activity_hotel_room_assignments.user_id', 'activity_users.user_id')
-                          ->where('activity_hotel_room_assignments.activity_id', $activityId);
+                            ->from('activity_hotel_room_assignments')
+                            ->whereColumn('activity_hotel_room_assignments.user_id', 'activity_users.user_id')
+                            ->where('activity_hotel_room_assignments.activity_id', $activityId);
                     });
                 } elseif ($val === 'unassigned') {
                     $query->whereNotExists(function ($q) use ($activityId) {
                         $q->select(\DB::raw(1))
-                          ->from('activity_hotel_room_assignments')
-                          ->whereColumn('activity_hotel_room_assignments.user_id', 'activity_users.user_id')
-                          ->where('activity_hotel_room_assignments.activity_id', $activityId);
+                            ->from('activity_hotel_room_assignments')
+                            ->whereColumn('activity_hotel_room_assignments.user_id', 'activity_users.user_id')
+                            ->where('activity_hotel_room_assignments.activity_id', $activityId);
                     });
                 }
             }
@@ -1049,45 +1082,48 @@ class ActivityPreparationController extends Controller
                 $paymentsWithNotes = Payment::select('id', 'activity_id', 'user_id', 'notes')
                     ->where('activity_id', $activityId)
                     ->whereNotNull('notes')
-                    ->where(function($q) {
+                    ->where(function ($q) {
                         $q->where('notes', 'like', '%user_ids%')
-                          ->orWhere('notes', 'like', '%bulk_import%');
+                            ->orWhere('notes', 'like', '%bulk_import%');
                     })
                     ->get();
 
                 foreach ($paymentsWithNotes as $p) {
                     $decoded = json_decode($p->notes, true);
                     // Handle malformed json or mixed string if needed (simplified here for speed)
-                    if (!$decoded && str_contains($p->notes, '{')) {
+                    if (! $decoded && str_contains($p->notes, '{')) {
                         // fallback extractor
-                         $start = strpos($p->notes, '{');
-                         $end = strrpos($p->notes, '}');
-                         if ($start !== false && $end !== false) {
-                             $decoded = json_decode(substr($p->notes, $start, $end - $start + 1), true);
-                         }
+                        $start = strpos($p->notes, '{');
+                        $end = strrpos($p->notes, '}');
+                        if ($start !== false && $end !== false) {
+                            $decoded = json_decode(substr($p->notes, $start, $end - $start + 1), true);
+                        }
                     }
 
                     if (is_array($decoded)) {
                         $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
                         foreach ($uids as $uid) {
-                            if($uid) $bulkGroupUserIds[] = (string)$uid;
+                            if ($uid) {
+                                $bulkGroupUserIds[] = (string) $uid;
+                            }
                         }
                     }
                 }
                 $bulkGroupUserIds = array_unique($bulkGroupUserIds);
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
 
             if ($val = request('registration_method')) {
                 if ($val === 'kelompok') {
-                     $query->where(function($q) use ($bulkGroupUserIds) {
+                    $query->where(function ($q) use ($bulkGroupUserIds) {
                         $q->whereNotNull('activity_participant_group_id');
-                        if (!empty($bulkGroupUserIds)) {
+                        if (! empty($bulkGroupUserIds)) {
                             $q->orWhereIn('user_id', $bulkGroupUserIds);
                         }
-                     });
+                    });
                 } elseif ($val === 'mandiri') {
                     $query->whereNull('activity_participant_group_id');
-                    if (!empty($bulkGroupUserIds)) {
+                    if (! empty($bulkGroupUserIds)) {
                         $query->whereNotIn('user_id', $bulkGroupUserIds);
                     }
                 }
@@ -1095,24 +1131,24 @@ class ActivityPreparationController extends Controller
 
             // Custom Column Filtering
             foreach (request()->all() as $reqKey => $reqVal) {
-                if (str_starts_with($reqKey, 'custom_') && !empty($reqVal)) {
+                if (str_starts_with($reqKey, 'custom_') && ! empty($reqVal)) {
                     $jsonKey = substr($reqKey, 7); // Remove 'custom_' prefix
                     if (str_contains($jsonKey, '|')) {
                         $jsonKey = trim(explode('|', $jsonKey, 2)[0]);
                     }
-                    
+
                     // Filter based on JSON column
-                    $query->where("custom_data->{$jsonKey}", (string)$reqVal);
+                    $query->where("custom_data->{$jsonKey}", (string) $reqVal);
                 }
             }
 
             $participants = collect();
             // $bulkGroupUserIds is already calculated above
-            
+
             \Log::info('DEBUG PARTICIPANTS BEFORE QUERY', [
                 'count_before_paginate' => $query->count(),
                 'sql' => $query->toSql(),
-                'bindings' => $query->getBindings()
+                'bindings' => $query->getBindings(),
             ]);
 
             try {
@@ -1121,11 +1157,13 @@ class ActivityPreparationController extends Controller
                 $orderColumn = 'created_at';
 
                 $perPage = (int) request('per_page', 25);
-                if ($perPage > 500) $perPage = 500;
+                if ($perPage > 500) {
+                    $perPage = 500;
+                }
                 $participants = $query->orderBy($orderColumn, 'desc')->paginate($perPage)->appends(request()->query());
 
                 // Map roomAssignment.room to room for frontend compatibility
-                $participants->getCollection()->each(function($p) {
+                $participants->getCollection()->each(function ($p) {
                     if ($p->roomAssignment && $p->roomAssignment->room) {
                         $p->setRelation('room', $p->roomAssignment->room);
                     }
@@ -1142,28 +1180,27 @@ class ActivityPreparationController extends Controller
 
                 // Load relationships manually with error handling
                 if ($participants->isNotEmpty()) {
-                        // Optimasi Eager Loading: Load nested relationships sekaligus
-                        // REMOVED TRY-CATCH TO DEBUG LOADING ISSUES
-                        $participants->load([
-                            'user.profile.province',
-                            'user.profile.regency',
-                            'user.profile.district',
-                            'batch',
-                            'participantGroup'
-                        ]);
-                        
-                        // Load payments for "Metode Daftar" column
-                        $participants->load(['user.payments' => function ($query) use ($activityId) {
-                            $query->where('activity_id', $activityId)
-                                ->orderBy('id', 'desc')
-                                ->with(['paymentMethod', 'verifier', 'user']);
-                        }]);
+                    // Optimasi Eager Loading: Load nested relationships sekaligus
+                    // REMOVED TRY-CATCH TO DEBUG LOADING ISSUES
+                    $participants->load([
+                        'user.profile.province',
+                        'user.profile.regency',
+                        'user.profile.district',
+                        'batch',
+                        'participantGroup',
+                    ]);
 
-                        if ($participants->isNotEmpty()) {
-                            $firstP = $participants->first();
+                    // Load payments for "Metode Daftar" column
+                    $participants->load(['user.payments' => function ($query) use ($activityId) {
+                        $query->where('activity_id', $activityId)
+                            ->orderBy('id', 'desc')
+                            ->with(['paymentMethod', 'verifier', 'user']);
+                    }]);
 
-                        }
+                    if ($participants->isNotEmpty()) {
+                        $firstP = $participants->first();
 
+                    }
 
                     // Build bulk group user ids from payments (notes user_ids)
                     try {
@@ -1188,6 +1225,7 @@ class ActivityPreparationController extends Controller
                                     return $decoded;
                                 }
                             }
+
                             return null;
                         };
 
@@ -1196,9 +1234,9 @@ class ActivityPreparationController extends Controller
                         $payments = Payment::select('id', 'activity_id', 'user_id', 'notes')
                             ->where('activity_id', $activityId)
                             ->whereNotNull('notes')
-                            ->where(function($q) {
+                            ->where(function ($q) {
                                 $q->where('notes', 'like', '%user_ids%')
-                                  ->orWhere('notes', 'like', '%bulk_import%');
+                                    ->orWhere('notes', 'like', '%bulk_import%');
                             })
                             ->get();
 
@@ -1382,7 +1420,9 @@ class ActivityPreparationController extends Controller
                     foreach ($fields as $field) {
                         $label = $field['label'] ?? '';
                         $key = $field['key'] ?? $label;
-                        if ($label === '') continue;
+                        if ($label === '') {
+                            continue;
+                        }
                         $lower = strtolower($key);
                         if (! in_array($lower, $builtinTemplateKeys, true)) {
                             $mergeDisplayKeys[] = $key;
@@ -1395,7 +1435,9 @@ class ActivityPreparationController extends Controller
                 $rawParts = array_map('trim', explode(',', $template));
                 foreach ($rawParts as $col) {
                     $baseKey = $this->normalizeImportKey($col);
-                    if ($baseKey === '') continue;
+                    if ($baseKey === '') {
+                        continue;
+                    }
                     $lower = strtolower($baseKey);
                     if (! in_array($lower, $builtinTemplateKeys, true) && ! in_array($baseKey, $mergeDisplayKeys, true)) {
                         $mergeDisplayKeys[] = $baseKey;
@@ -1417,14 +1459,14 @@ class ActivityPreparationController extends Controller
                                 if (empty($p->is_group_payment)) {
                                     return true;
                                 }
-                                
+
                                 // If it IS a group payment, the user must be in the group members
                                 // We check the manually attached group_members relation
                                 if ($p->relationLoaded('group_members')) {
                                     return $p->group_members->contains('id', $participant->user_id);
                                 }
-                                
-                                return false; 
+
+                                return false;
                             })
                             ->sortByDesc('created_at')
                             ->first();
@@ -1455,17 +1497,22 @@ class ActivityPreparationController extends Controller
                         if (! empty($mergeDisplayKeys)) {
                             $canonical = function ($k) {
                                 $base = trim(explode('|', (string) $k)[0]);
+
                                 return strtolower(preg_replace('/\s+/', '_', $base));
                             };
                             foreach ($mergeDisplayKeys as $displayKey) {
                                 $baseKey = trim(explode('|', (string) $displayKey)[0]);
-                                if ($baseKey === '') continue;
+                                if ($baseKey === '') {
+                                    continue;
+                                }
                                 if (isset($merged[$baseKey]) && $merged[$baseKey] !== '' && $merged[$baseKey] !== null) {
                                     continue;
                                 }
                                 $canonicalDisplay = $canonical($displayKey);
                                 foreach ($profileAdditional as $profileKey => $profileVal) {
-                                    if ($profileVal === '' || $profileVal === null) continue;
+                                    if ($profileVal === '' || $profileVal === null) {
+                                        continue;
+                                    }
                                     if ($canonical($profileKey) === $canonicalDisplay) {
                                         $merged[$baseKey] = $profileVal;
                                         break;
@@ -1548,7 +1595,6 @@ class ActivityPreparationController extends Controller
                 }
             }
 
-
             $roomOccupants = [];
             try {
                 // 1. Get occupancy counts across ALL batches for capacity check
@@ -1616,26 +1662,28 @@ class ActivityPreparationController extends Controller
             $baseKeys = [];
 
             // Prioritize current activity's custom fields (if any)
-            if ($activity && !empty($activity->custom_fields)) {
-                $fields = is_string($activity->custom_fields) 
-                    ? json_decode($activity->custom_fields, true) 
+            if ($activity && ! empty($activity->custom_fields)) {
+                $fields = is_string($activity->custom_fields)
+                    ? json_decode($activity->custom_fields, true)
                     : $activity->custom_fields;
-                    
+
                 if (is_array($fields)) {
                     foreach ($fields as $field) {
                         $label = $field['label'] ?? '';
                         $key = $field['key'] ?? $label;
-                        if ($label === '') continue;
-                        
-                        $raw = $key;
-                        if (isset($field['type']) && $field['type'] === 'dropdown' && !empty($field['options'])) {
-                             $opts = is_array($field['options']) ? implode('~', $field['options']) : $field['options'];
-                             $raw .= '|Dropdown:' . $opts;
+                        if ($label === '') {
+                            continue;
                         }
-                        
+
+                        $raw = $key;
+                        if (isset($field['type']) && $field['type'] === 'dropdown' && ! empty($field['options'])) {
+                            $opts = is_array($field['options']) ? implode('~', $field['options']) : $field['options'];
+                            $raw .= '|Dropdown:'.$opts;
+                        }
+
                         $lower = strtolower($key);
                         // Skip built-in fields but store custom ones
-                        if (!isset($builtinTemplateKeys[$lower])) {
+                        if (! isset($builtinTemplateKeys[$lower])) {
                             $baseKeys[$lower] = $raw;
                         }
                     }
@@ -1643,32 +1691,36 @@ class ActivityPreparationController extends Controller
             }
 
             // 2. Extract from current activity's import template
-            if ($activity && !empty($activity->import_template)) {
+            if ($activity && ! empty($activity->import_template)) {
                 $template = (string) $activity->import_template;
-                
+
                 // Smart split: Split by comma, but rejoin parts if they look like fragmented dropdown options
                 $rawParts = explode(',', $template);
                 $columns = [];
-                $buffer = "";
+                $buffer = '';
                 foreach ($rawParts as $part) {
                     $part = trim($part);
-                    if ($buffer === "") {
+                    if ($buffer === '') {
                         $buffer = $part;
                     } else {
                         // If buffer contains a pipe and current part doesn't, it's likely a continuation of options
-                        if (str_contains($buffer, '|') && !str_contains($part, '|')) {
-                            $buffer .= ',' . $part;
+                        if (str_contains($buffer, '|') && ! str_contains($part, '|')) {
+                            $buffer .= ','.$part;
                         } else {
                             $columns[] = $buffer;
                             $buffer = $part;
                         }
                     }
                 }
-                if ($buffer !== "") $columns[] = $buffer;
-                
+                if ($buffer !== '') {
+                    $columns[] = $buffer;
+                }
+
                 foreach ($columns as $col) {
                     $rawKey = $this->normalizeImportKeyRaw($col);
-                    if ($rawKey === '') continue;
+                    if ($rawKey === '') {
+                        continue;
+                    }
 
                     $baseKey = $rawKey;
                     if (str_contains($baseKey, '|')) {
@@ -1676,10 +1728,10 @@ class ActivityPreparationController extends Controller
                     }
 
                     $lower = strtolower($baseKey);
-                    if (!isset($builtinTemplateKeys[$lower])) {
+                    if (! isset($builtinTemplateKeys[$lower])) {
                         // Prefer key with definition if available
                         $existing = $baseKeys[$lower] ?? null;
-                        if ($existing === null || (!str_contains($existing, '|') && str_contains($rawKey, '|'))) {
+                        if ($existing === null || (! str_contains($existing, '|') && str_contains($rawKey, '|'))) {
                             $baseKeys[$lower] = $rawKey;
                         }
                     }
@@ -1706,17 +1758,19 @@ class ActivityPreparationController extends Controller
                                 if (is_array($data)) {
                                     foreach (array_keys($data) as $key) {
                                         $base = $this->normalizeImportKey($key);
-                                        if ($base === '') continue;
-                                        
+                                        if ($base === '') {
+                                            continue;
+                                        }
+
                                         $baseLower = strtolower($base);
                                         $cleanLower = str_starts_with($baseLower, 'custom_') ? substr($baseLower, 7) : $baseLower;
-                                        
+
                                         // Check if any variant exists (raw, prefixed, or unprefixed)
-                                        $exists = isset($baseKeys[$baseLower]) || 
-                                                 isset($baseKeys['custom_' . $cleanLower]) || 
+                                        $exists = isset($baseKeys[$baseLower]) ||
+                                                 isset($baseKeys['custom_'.$cleanLower]) ||
                                                  isset($baseKeys[$cleanLower]);
-                                                 
-                                        if (!$exists) {
+
+                                        if (! $exists) {
                                             $baseKeys[$baseLower] = $base;
                                         }
                                     }
@@ -1737,9 +1791,9 @@ class ActivityPreparationController extends Controller
             $filterOptionsCacheKey = "activity_participant_filter_options_{$activityId}_v5";
             $filterOptions = Cache::remember($filterOptionsCacheKey, 3600, function () use ($activityId, $customKeys) {
                 $options = [];
-                
+
                 // Helper to get distinct profile fields
-                $getProfileFieldOptions = function($field) use ($activityId) {
+                $getProfileFieldOptions = function ($field) use ($activityId) {
                     return DB::table('activity_users')
                         ->join('users', 'activity_users.user_id', '=', 'users.id')
                         ->join('profiles', 'users.id', '=', 'profiles.user_id')
@@ -1762,7 +1816,7 @@ class ActivityPreparationController extends Controller
                 $options['no_hp'] = $getProfileFieldOptions('no_hp');
                 $options['nik'] = $getProfileFieldOptions('nik');
                 $options['address'] = $getProfileFieldOptions('alamat');
-                
+
                 // User fields
                 $options['name'] = DB::table('activity_users')
                     ->join('users', 'activity_users.user_id', '=', 'users.id')
@@ -1815,7 +1869,7 @@ class ActivityPreparationController extends Controller
                     ->pluck('name')
                     ->sort()
                     ->values();
-                
+
                 // Birth Year
                 $options['birth_year'] = DB::table('activity_users')
                     ->join('users', 'activity_users.user_id', '=', 'users.id')
@@ -1845,10 +1899,10 @@ class ActivityPreparationController extends Controller
                     ->select(DB::raw('COALESCE(payment_methods.name, IF(payments.midtrans_transaction_id IS NOT NULL, "Payment Gateway (Otomatis)", "Transfer Bank (Manual)")) as method_name'))
                     ->distinct()
                     ->pluck('method_name')
-                    ->filter(fn($v) => $v && $v !== '-')
+                    ->filter(fn ($v) => $v && $v !== '-')
                     ->sort(SORT_NATURAL | SORT_FLAG_CASE)
                     ->values();
-                    
+
                 // Status
                 $options['status'] = collect([
                     ['value' => '0', 'label' => 'Menunggu Verifikasi'],
@@ -1858,7 +1912,7 @@ class ActivityPreparationController extends Controller
                 ]);
 
                 // Custom Columns Options
-                if (!empty($customKeys)) {
+                if (! empty($customKeys)) {
                     $customValues = [];
                     foreach ($customKeys as $key) {
                         $customValues[$key] = [];
@@ -1868,7 +1922,7 @@ class ActivityPreparationController extends Controller
                     ActivityUser::where('activity_id', $activityId)
                         ->whereNotNull('custom_data')
                         ->select('custom_data')
-                        ->chunk(500, function($users) use (&$customValues, $customKeys) {
+                        ->chunk(500, function ($users) use (&$customValues, $customKeys) {
                             foreach ($users as $user) {
                                 $data = $user->custom_data; // Casted to array by model
                                 if (is_array($data)) {
@@ -1879,7 +1933,7 @@ class ActivityPreparationController extends Controller
                                         if (isset($data[$key])) {
                                             $val = $data[$key];
                                             if (is_string($val) || is_numeric($val)) {
-                                                $valStr = trim((string)$val);
+                                                $valStr = trim((string) $val);
                                                 if ($valStr !== '') {
                                                     $customValues[$key][$valStr] = true;
                                                 }
@@ -1889,14 +1943,14 @@ class ActivityPreparationController extends Controller
                                 }
                             }
                         });
-                    
+
                     foreach ($customKeys as $key) {
-                         $options["custom_{$key}"] = collect(array_keys($customValues[$key]))
+                        $options["custom_{$key}"] = collect(array_keys($customValues[$key]))
                             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
                             ->values();
                     }
                 }
-                
+
                 return $options;
             });
 
@@ -1917,42 +1971,40 @@ class ActivityPreparationController extends Controller
             $provinceOptions = $filterOptions['province_name'];
             $regencyNameOptions = $filterOptions['regency_name'];
             $districtNameOptions = $filterOptions['district_name'];
-            
+
             $customOptions = [];
-            if (!empty($customKeys)) {
+            if (! empty($customKeys)) {
                 foreach ($customKeys as $key) {
                     $customOptions[$key] = $filterOptions["custom_{$key}"] ?? [];
                 }
             }
-            
+
             // Empty flags for UI (simplified)
-            $hasUnspecifiedGender = true; 
+            $hasUnspecifiedGender = true;
             $hasUnspecifiedBirthPlace = true;
             $hasUnspecifiedBirthYear = true;
 
             $registrationMethodOptions = collect([
                 ['value' => 'mandiri', 'label' => 'Mandiri'],
-                ['value' => 'kelompok', 'label' => 'Kelompok']
+                ['value' => 'kelompok', 'label' => 'Kelompok'],
             ]);
 
-            // NOTE: Manual filtering and manual pagination removed. 
+            // NOTE: Manual filtering and manual pagination removed.
             // We now rely on Eloquent filtering (applied before pagination) and standard Pagination.
-
 
             // Load all regions for lookup modal and filters - CACHED
             // Cache global regions for 24 hours as they change rarely
-            $provinces = Cache::remember('all_provinces', 86400, function() {
+            $provinces = Cache::remember('all_provinces', 86400, function () {
                 return Province::orderBy('name')->get(['id', 'name']);
             });
 
-            $regencies = Cache::remember('all_regencies', 86400, function() {
+            $regencies = Cache::remember('all_regencies', 86400, function () {
                 return Regency::orderBy('name')->get(['id', 'name', 'province_id']);
             });
 
-            $districts = Cache::remember('all_districts', 86400, function() {
+            $districts = Cache::remember('all_districts', 86400, function () {
                 return District::orderBy('name')->get(['id', 'name', 'regency_id']);
             });
-
 
             // Custom Keys already loaded above
 
@@ -1986,7 +2038,7 @@ class ActivityPreparationController extends Controller
                     }
                     if (! $exists) {
                         $label = ucfirst(str_replace('_', ' ', $key));
-                        $templateOptions[] = ['value' => $key, 'label' => $label . ' (Kolom Tambahan)'];
+                        $templateOptions[] = ['value' => $key, 'label' => $label.' (Kolom Tambahan)'];
                     }
                 }
             }
@@ -1996,7 +2048,7 @@ class ActivityPreparationController extends Controller
 
             \Log::info('participants method: columnSettings loaded', [
                 'activity_id' => $activityId,
-                'column_settings' => $columnSettings
+                'column_settings' => $columnSettings,
             ]);
 
             // Load participant groups
@@ -2012,27 +2064,27 @@ class ActivityPreparationController extends Controller
                 'perPage' => $perPage,
                 'items_on_page' => $participants->count(), // Paginator count is count of items on page
                 'total' => $participants->total(),
-                'request' => request()->all()
+                'request' => request()->all(),
             ]);
 
             // Ensure per_page is in filters for frontend state sync
             $filters = request()->all();
-            if (!isset($filters['per_page'])) {
+            if (! isset($filters['per_page'])) {
                 $filters['per_page'] = $perPage;
             }
 
             // DEBUG: Check specific user data before render
             if ($participants->isNotEmpty()) {
-                $debugUser = $participants->first(function($p) {
+                $debugUser = $participants->first(function ($p) {
                     return $p->user && $p->user->email === 'maderum434@gmail.com';
                 });
                 if ($debugUser) {
-                     \Log::info('DEBUG CONTROLLER RENDER:', [
+                    \Log::info('DEBUG CONTROLLER RENDER:', [
                         'user_email' => $debugUser->user->email,
-                        'profile_exists' => (bool)$debugUser->user->profile,
+                        'profile_exists' => (bool) $debugUser->user->profile,
                         'province_relation' => $debugUser->user->profile ? $debugUser->user->profile->province : 'NO PROFILE',
                         'regency_relation' => $debugUser->user->profile ? $debugUser->user->profile->regency : 'NO PROFILE',
-                     ]);
+                    ]);
                 }
             }
 
@@ -2107,7 +2159,7 @@ class ActivityPreparationController extends Controller
                 'hasUnspecifiedBirthPlace' => $hasUnspecifiedBirthPlace,
                 'hasUnspecifiedBirthYear' => $hasUnspecifiedBirthYear,
                 'bulkGroupUserIds' => $bulkGroupUserIds,
-                'filters' => $filters
+                'filters' => $filters,
             ]);
 
         } catch (\Exception $e) {
@@ -2166,7 +2218,7 @@ class ActivityPreparationController extends Controller
                 'bulkGroupUserIds' => [],
                 'unverifiedEmailCount' => 0,
                 'participationTypes' => collect(),
-                'filters' => request()->all()
+                'filters' => request()->all(),
             ])->with('error', 'Terjadi kesalahan saat memuat data peserta. Silakan refresh halaman.');
         }
     }
@@ -2742,7 +2794,7 @@ class ActivityPreparationController extends Controller
         $linked = 0;
         $skipped = 0;
         $alreadyLinked = 0;
-        
+
         $stats = [
             'new_users' => 0,
             'existing_users' => 0,
@@ -2796,6 +2848,7 @@ class ActivityPreparationController extends Controller
                 $h = strtolower(trim((string) $value));
                 $h = preg_replace('/^\xEF\xBB\xBF/', '', $h); // Strip UTF-8 BOM
                 $h = preg_replace('/\s+/', ' ', $h);
+
                 return str_ends_with($h, '*') ? substr($h, 0, -1) : $h;
             };
 
@@ -2827,6 +2880,7 @@ class ActivityPreparationController extends Controller
                         }
                     }
                 }
+
                 return false;
             };
 
@@ -2837,20 +2891,17 @@ class ActivityPreparationController extends Controller
                 'no_hp' => array_search('no_hp', $header, true) ?: array_search('profile:no_hp', $header, true),
                 'alamat' => array_search('alamat', $header, true) ?: array_search('profile:address', $header, true),
                 'jenis_kelamin' => array_search('jenis_kelamin', $header, true) ?: array_search('profile:gender', $header, true),
-                'province' =>
-                    array_search('province', $header, true)
+                'province' => array_search('province', $header, true)
                     ?: array_search('provinsi', $header, true)
                     ?: array_search('province_name', $header, true)
                     ?: array_search('profile:province_name', $header, true),
-                'regency' =>
-                    array_search('regency', $header, true)
+                'regency' => array_search('regency', $header, true)
                     ?: array_search('kabupaten', $header, true)
                     ?: array_search('kota', $header, true)
                     ?: array_search('kabupaten/kota', $header, true)
                     ?: array_search('regency_name', $header, true)
                     ?: array_search('profile:regency_name', $header, true),
-                'district' =>
-                    array_search('district', $header, true)
+                'district' => array_search('district', $header, true)
                     ?: array_search('kecamatan', $header, true)
                     ?: array_search('district_name', $header, true)
                     ?: array_search('profile:district_name', $header, true),
@@ -2891,10 +2942,11 @@ class ActivityPreparationController extends Controller
             }
 
             if ($colMap['email'] === false) {
-                $message = 'Kolom header "email" wajib ada. Header yang ditemukan: ' . implode(', ', $header);
+                $message = 'Kolom header "email" wajib ada. Header yang ditemukan: '.implode(', ', $header);
                 if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
                     return response()->json(['success' => false, 'message' => $message], 422);
                 }
+
                 return redirect()->back()->with('success', null)->with('error', $message);
             }
 
@@ -2926,6 +2978,7 @@ class ActivityPreparationController extends Controller
                         $indices[$idx] = true;
                     }
                 }
+
                 return array_keys($indices);
             };
             $provinceColIndices = $collectColIndices(['province_id', 'profile:province_id', 'province id', 'province', 'provinsi', 'province_name', 'profile:province_name']);
@@ -2982,12 +3035,14 @@ class ActivityPreparationController extends Controller
                 // Helper untuk simpan file dari URL ke storage publik
                 $storeFileFromUrl = function ($rawUrl, $emailHint) use ($activityId) {
                     try {
-                        if (!is_string($rawUrl) || trim($rawUrl) === '') return null;
+                        if (! is_string($rawUrl) || trim($rawUrl) === '') {
+                            return null;
+                        }
                         $url = trim($rawUrl);
                         if (str_starts_with($url, 'storage/')) {
                             return $url;
                         }
-                        if (!(str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))) {
+                        if (! (str_starts_with($url, 'http://') || str_starts_with($url, 'https://'))) {
                             return null;
                         }
                         // Handle Google Drive share links
@@ -3000,11 +3055,12 @@ class ActivityPreparationController extends Controller
                             $driveId = $m[1];
                         }
                         if ($driveId) {
-                            $url = 'https://drive.google.com/uc?export=download&id=' . $driveId;
+                            $url = 'https://drive.google.com/uc?export=download&id='.$driveId;
                         }
                         $resp = Http::timeout(25)->withOptions(['allow_redirects' => true, 'verify' => false])->get($url);
-                        if (!$resp->ok()) {
+                        if (! $resp->ok()) {
                             \Log::warning('Import file download failed', ['url' => $url, 'status' => $resp->status()]);
+
                             return null;
                         }
                         $content = $resp->body();
@@ -3013,26 +3069,39 @@ class ActivityPreparationController extends Controller
                         }
                         $ct = strtolower($resp->header('content-type') ?? '');
                         $ext = null;
-                        if (preg_match('#application/pdf#', $ct)) $ext = 'pdf';
-                        elseif (preg_match('#image/jpeg#', $ct)) $ext = 'jpg';
-                        elseif (preg_match('#image/png#', $ct)) $ext = 'png';
-                        elseif (preg_match('#application/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document#', $ct)) $ext = 'docx';
-                        elseif (preg_match('#application/msword#', $ct)) $ext = 'doc';
-                        elseif (preg_match('#application/zip#', $ct)) $ext = 'zip';
-                        // Fallback from URL path
-                        if (!$ext) {
-                            $pathExt = pathinfo(parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION);
-                            if ($pathExt) $ext = strtolower($pathExt);
+                        if (preg_match('#application/pdf#', $ct)) {
+                            $ext = 'pdf';
+                        } elseif (preg_match('#image/jpeg#', $ct)) {
+                            $ext = 'jpg';
+                        } elseif (preg_match('#image/png#', $ct)) {
+                            $ext = 'png';
+                        } elseif (preg_match('#application/vnd\\.openxmlformats-officedocument\\.wordprocessingml\\.document#', $ct)) {
+                            $ext = 'docx';
+                        } elseif (preg_match('#application/msword#', $ct)) {
+                            $ext = 'doc';
+                        } elseif (preg_match('#application/zip#', $ct)) {
+                            $ext = 'zip';
                         }
-                        if (!$ext) $ext = 'bin';
+                        // Fallback from URL path
+                        if (! $ext) {
+                            $pathExt = pathinfo(parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION);
+                            if ($pathExt) {
+                                $ext = strtolower($pathExt);
+                            }
+                        }
+                        if (! $ext) {
+                            $ext = 'bin';
+                        }
 
-                        $emailSlug = Str::slug(explode('@', (string)$emailHint)[0] ?: 'file');
-                        $filename = $emailSlug . '-' . Str::random(10) . '.' . $ext;
-                        $dest = 'activities/' . $activityId . '/custom-data/imports/' . $filename;
+                        $emailSlug = Str::slug(explode('@', (string) $emailHint)[0] ?: 'file');
+                        $filename = $emailSlug.'-'.Str::random(10).'.'.$ext;
+                        $dest = 'activities/'.$activityId.'/custom-data/imports/'.$filename;
                         Storage::disk('public')->put($dest, $content);
-                        return 'storage/' . $dest;
+
+                        return 'storage/'.$dest;
                     } catch (\Throwable $e) {
                         \Log::warning('Import file download exception', ['error' => $e->getMessage()]);
+
                         return null;
                     }
                 };
@@ -3057,8 +3126,8 @@ class ActivityPreparationController extends Controller
                                 elseif (preg_match('#^(www\\.|drive\\.google\\.com|docs\\.google\\.com|bit\\.ly|tinyurl\\.)#i', $val) ||
                                         preg_match('#^[a-zA-Z0-9][-a-zA-Z0-9\\.]*\\.[a-zA-Z]{2,}(/|$)#', $val)) {
                                     $link = $val;
-                                    if (!str_starts_with(strtolower($link), 'http')) {
-                                        $link = 'https://' . ltrim($link, '/');
+                                    if (! str_starts_with(strtolower($link), 'http')) {
+                                        $link = 'https://'.ltrim($link, '/');
                                     }
                                     $customData[$customKey] = $link;
                                 }
@@ -3137,16 +3206,22 @@ class ActivityPreparationController extends Controller
                 $districtId = null;
 
                 $getCellValue = function ($colIndex) use ($row) {
-                    if ($colIndex === false) return '';
+                    if ($colIndex === false) {
+                        return '';
+                    }
+
                     return trim((string) ($row[$colIndex] ?? ''));
                 };
 
                 $extractId = function ($value) {
-                    if (empty($value)) return null;
-                    if (preg_match('/^(\d+)/', trim((string)$value), $matches)) {
+                    if (empty($value)) {
+                        return null;
+                    }
+                    if (preg_match('/^(\d+)/', trim((string) $value), $matches)) {
                         return $matches[1];
                     }
-                    return trim((string)$value);
+
+                    return trim((string) $value);
                 };
 
                 $firstNonEmpty = function (array $indices) use ($getCellValue) {
@@ -3156,6 +3231,7 @@ class ActivityPreparationController extends Controller
                             return $v;
                         }
                     }
+
                     return '';
                 };
 
@@ -3174,6 +3250,7 @@ class ActivityPreparationController extends Controller
                     if (str_contains($v, 'fakepath') || preg_match('#[\\\\/][a-z0-9_.-]+\.(pdf|doc|jpg|jpeg|png)#i', $v)) {
                         return true;
                     }
+
                     return false;
                 };
 
@@ -3191,63 +3268,71 @@ class ActivityPreparationController extends Controller
                 }
 
                 // Process Province
-                if (!empty($provinceRaw)) {
+                if (! empty($provinceRaw)) {
                     $provinceMatch = null;
                     if (is_numeric($extractId($provinceRaw))) {
                         $provinceMatch = Province::find($extractId($provinceRaw));
                     }
-                    if (!$provinceMatch) {
+                    if (! $provinceMatch) {
                         $provinceMatch = RegionMatcher::matchProvince($provinceRaw, 0.7);
                     }
 
                     if ($provinceMatch) {
                         $provinceId = $provinceMatch->id;
                     } else {
-                        $failures[] = ['row' => $i, 'email' => $email, 'error' => 'Nama Provinsi tidak valid atau tidak ditemukan: ' . $provinceRaw];
+                        $failures[] = ['row' => $i, 'email' => $email, 'error' => 'Nama Provinsi tidak valid atau tidak ditemukan: '.$provinceRaw];
                         $skipped++;
+
                         continue;
                     }
                 }
 
                 // Process Regency
-                if (!empty($regencyRaw)) {
+                if (! empty($regencyRaw)) {
                     $regencyMatch = null;
                     if (is_numeric($extractId($regencyRaw))) {
                         $regencyMatch = Regency::whereKey($extractId($regencyRaw));
-                        if ($provinceId) $regencyMatch->where('province_id', $provinceId);
+                        if ($provinceId) {
+                            $regencyMatch->where('province_id', $provinceId);
+                        }
                         $regencyMatch = $regencyMatch->first();
                     }
-                    if (!$regencyMatch) {
+                    if (! $regencyMatch) {
                         $regencyMatch = RegionMatcher::matchRegency($regencyRaw, $provinceId, 0.7);
                     }
 
                     if ($regencyMatch) {
                         $regencyId = $regencyMatch->id;
-                        if (!$provinceId) $provinceId = $regencyMatch->province_id;
+                        if (! $provinceId) {
+                            $provinceId = $regencyMatch->province_id;
+                        }
                     } else {
                         $provName = $provinceId ? Province::find($provinceId)->name : 'Provinsi terpilih';
                         $failures[] = [
-                            'row' => $i, 
-                            'email' => $email, 
-                            'error' => "Nama Kabupaten/Kota \"$regencyRaw\" tidak ditemukan" . ($provinceId ? " di $provName" : "")
+                            'row' => $i,
+                            'email' => $email,
+                            'error' => "Nama Kabupaten/Kota \"$regencyRaw\" tidak ditemukan".($provinceId ? " di $provName" : ''),
                         ];
                         $skipped++;
+
                         continue;
                     }
                 }
 
                 // Process District
-                if (!empty($districtRaw)) {
+                if (! empty($districtRaw)) {
                     $districtMatch = null;
                     if (is_numeric($extractId($districtRaw))) {
                         $districtMatch = District::whereKey($extractId($districtRaw));
-                        if ($regencyId) $districtMatch->where('regency_id', $regencyId);
+                        if ($regencyId) {
+                            $districtMatch->where('regency_id', $regencyId);
+                        }
                         $districtMatch = $districtMatch->first();
                     }
-                    if (!$districtMatch) {
+                    if (! $districtMatch) {
                         $districtMatch = RegionMatcher::matchDistrict($districtRaw, $regencyId, 0.7);
                     }
-                    if (!$districtMatch && $provinceId) {
+                    if (! $districtMatch && $provinceId) {
                         $fallbackDistrict = RegionMatcher::matchDistrict($districtRaw, null, 0.85);
                         if ($fallbackDistrict) {
                             $fallbackRegency = Regency::find($fallbackDistrict->regency_id);
@@ -3259,11 +3344,13 @@ class ActivityPreparationController extends Controller
 
                     if ($districtMatch) {
                         $districtId = $districtMatch->id;
-                        if (!$regencyId) {
+                        if (! $regencyId) {
                             $regencyId = $districtMatch->regency_id;
-                            if (!$provinceId) {
+                            if (! $provinceId) {
                                 $reg = Regency::find($regencyId);
-                                if ($reg) $provinceId = $reg->province_id;
+                                if ($reg) {
+                                    $provinceId = $reg->province_id;
+                                }
                             }
                         } else {
                             $regencyId = $districtMatch->regency_id;
@@ -3271,22 +3358,26 @@ class ActivityPreparationController extends Controller
                     } else {
                         $regName = $regencyId ? Regency::find($regencyId)->name : 'Kabupaten terpilih';
                         $failures[] = [
-                            'row' => $i, 
-                            'email' => $email, 
-                            'error' => "Nama Kecamatan \"$districtRaw\" tidak ditemukan" . ($regencyId ? " di $regName" : "")
+                            'row' => $i,
+                            'email' => $email,
+                            'error' => "Nama Kecamatan \"$districtRaw\" tidak ditemukan".($regencyId ? " di $regName" : ''),
                         ];
                         $skipped++;
+
                         continue;
                     }
                 }
 
-
                 // Ensure other_ fields are null if real ID matched
-                if ($provinceId) $otherProvince = null;
-                if ($regencyId) $otherRegency = null;
-                if ($districtId) $otherDistrict = null;
-
-
+                if ($provinceId) {
+                    $otherProvince = null;
+                }
+                if ($regencyId) {
+                    $otherRegency = null;
+                }
+                if ($districtId) {
+                    $otherDistrict = null;
+                }
 
                 $user = $existingUsers->get($email);
 
@@ -3495,14 +3586,14 @@ class ActivityPreparationController extends Controller
                                 }
                                 $activityUser->save();
                             }
-                            
+
                             if ($isGroupChanged) {
                                 $action = ($action === 'updated_profile') ? 'updated_profile_and_group' : 'updated_group';
                             } else {
-                                $action = ($action === 'updated_profile') ? 'updated_profile_and_data' : 'updated_data'; 
+                                $action = ($action === 'updated_profile') ? 'updated_profile_and_data' : 'updated_data';
                             }
                         } elseif ($action === 'updated_profile') {
-                             // Keep action as updated_profile if only profile changed
+                            // Keep action as updated_profile if only profile changed
                         }
 
                         if ($action === 'existing_user') {
@@ -3525,9 +3616,9 @@ class ActivityPreparationController extends Controller
                     $successes[] = ['row' => $i, 'email' => $email, 'action' => $action];
                 }
 
-            // Siapkan data ActivityUser untuk batch insert
-            // Jika user baru, kita akan insert setelah user dibuat
-            // Jika user existing, langsung insert
+                // Siapkan data ActivityUser untuk batch insert
+                // Jika user baru, kita akan insert setelah user dibuat
+                // Jika user existing, langsung insert
                 if ($user) {
                     $processedUserIds[] = $user->id;
                     // Fix: Free event participants should start as STATUS_VERIFICATION (0), matching self-registration.
@@ -3779,8 +3870,8 @@ class ActivityPreparationController extends Controller
                 'mark_paid' => $markPaid,
                 'pending_count' => count($pendingUserIds),
                 'activity_price' => $activity->price,
-                'total_bill' => $stats['total_bill']
-            ]
+                'total_bill' => $stats['total_bill'],
+            ],
         ];
 
         // Return preview response early
@@ -3788,7 +3879,7 @@ class ActivityPreparationController extends Controller
             $importResult['is_preview'] = true;
             $importResult['bulk_payment_available'] = $isPaidEvent && ! $markPaid;
             $importResult['preview_pending_count'] = $previewPendingCount;
-            
+
             if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
                 return response()->json($importResult, 200);
             }
@@ -3837,13 +3928,13 @@ class ActivityPreparationController extends Controller
             } else {
                 session()->forget('import_return_to');
             }
-            
+
             // Redirect directly to payment page if payment is required
-            $redirectUrl = route('payments.create', [
+            $redirectUrl = route('payments.activity.create', [
                 'activity' => $activityId,
                 'is_bulk' => 1,
                 'batch_id' => $batchId,
-                'return_to' => $returnTo
+                'return_to' => $returnTo,
             ]);
 
             $importResult['redirect_url'] = $redirectUrl;
@@ -3865,13 +3956,16 @@ class ActivityPreparationController extends Controller
 
         if ($returnTo === 'detail') {
             session(['import_return_to' => 'detail']);
+
             return redirect()->route('activity.detail', $activityId)->with('success', $message);
         } elseif ($returnTo === 'show') {
             session(['import_return_to' => 'show']);
+
             return redirect()->route('activity.show', $activityId)->with('success', $message);
         }
 
         session()->forget('import_return_to');
+
         return redirect()->route('activity.participants.index', $activityId)->with('success', $message);
     }
 
@@ -4064,26 +4158,26 @@ class ActivityPreparationController extends Controller
         $columns = array_map('trim', explode(',', $templateStr));
 
         // Helper to normalize a column string (e.g. "name*|opt" -> "user:name*|opt")
-        $normalizeCol = function($col) use ($keyMap) {
+        $normalizeCol = function ($col) use ($keyMap) {
             $base = $col;
             $suffix = '';
-            
+
             if (str_contains($base, '|')) {
                 $parts = explode('|', $base, 2);
                 $base = $parts[0];
-                $suffix = '|' . $parts[1];
+                $suffix = '|'.$parts[1];
             }
-            
+
             $isRequired = false;
             if (str_ends_with($base, '*')) {
                 $base = substr($base, 0, -1);
                 $isRequired = true;
             }
-            
+
             $lowerBase = strtolower(trim($base));
             $normalizedBase = $keyMap[$lowerBase] ?? $base; // Use mapped key or keep original
-            
-            return $normalizedBase . ($isRequired ? '*' : '') . $suffix;
+
+            return $normalizedBase.($isRequired ? '*' : '').$suffix;
         };
 
         // 1. Normalize Initial Columns
@@ -4091,43 +4185,56 @@ class ActivityPreparationController extends Controller
         $columns = array_values(array_unique($columns));
 
         // Helper to check existence in normalized columns
-        $findIndex = function($targetKey, $cols) {
+        $findIndex = function ($targetKey, $cols) {
             $targetBase = $targetKey;
-             if (str_contains($targetBase, '|')) $targetBase = explode('|', $targetBase)[0];
-             if (str_ends_with($targetBase, '*')) $targetBase = substr($targetBase, 0, -1);
-             $targetBase = strtolower(trim($targetBase));
-             
-             foreach ($cols as $i => $col) {
-                 $colBase = $col;
-                 if (str_contains($colBase, '|')) $colBase = explode('|', $colBase)[0];
-                 if (str_ends_with($colBase, '*')) $colBase = substr($colBase, 0, -1);
-                 $colBase = strtolower(trim($colBase));
-                 
-                 if ($colBase === $targetBase) return $i;
-             }
-             return -1;
+            if (str_contains($targetBase, '|')) {
+                $targetBase = explode('|', $targetBase)[0];
+            }
+            if (str_ends_with($targetBase, '*')) {
+                $targetBase = substr($targetBase, 0, -1);
+            }
+            $targetBase = strtolower(trim($targetBase));
+
+            foreach ($cols as $i => $col) {
+                $colBase = $col;
+                if (str_contains($colBase, '|')) {
+                    $colBase = explode('|', $colBase)[0];
+                }
+                if (str_ends_with($colBase, '*')) {
+                    $colBase = substr($colBase, 0, -1);
+                }
+                $colBase = strtolower(trim($colBase));
+
+                if ($colBase === $targetBase) {
+                    return $i;
+                }
+            }
+
+            return -1;
         };
 
         // 2. Add/Merge Mandatory Profile Fields
         if ($activity->mandatory_profile_fields && is_array($activity->mandatory_profile_fields)) {
             foreach ($activity->mandatory_profile_fields as $fieldKey) {
-                if (!is_string($fieldKey) || empty($fieldKey) || $fieldKey === 'foto') continue;
+                if (! is_string($fieldKey) || empty($fieldKey) || $fieldKey === 'foto') {
+                    continue;
+                }
 
                 $normalizedKey = $keyMap[strtolower($fieldKey)] ?? strtolower($fieldKey);
-                
+
                 $idx = $findIndex($normalizedKey, $columns);
                 if ($idx !== -1) {
-                    if (!str_contains($columns[$idx], '*')) {
+                    if (! str_contains($columns[$idx], '*')) {
                         // Insert * before options pipe
                         if (str_contains($columns[$idx], '|')) {
                             $parts = explode('|', $columns[$idx], 2);
-                            $columns[$idx] = $parts[0] . '*' . '|' . $parts[1];
+                            $columns[$idx] = $parts[0].'*'.'|'.$parts[1];
                         } else {
                             $columns[$idx] .= '*';
                         }
                     }
                 } else {
-                    $columns[] = $normalizedKey . '*';
+                    $columns[] = $normalizedKey.'*';
                 }
             }
         }
@@ -4136,17 +4243,19 @@ class ActivityPreparationController extends Controller
         if ($activity->custom_fields && is_array($activity->custom_fields)) {
             foreach ($activity->custom_fields as $field) {
                 $label = $field['label'] ?? '';
-                if (!$label) continue;
-                
+                if (! $label) {
+                    continue;
+                }
+
                 // Construct strictly from definition
                 $header = $label;
-                if (!empty($field['is_required'])) {
+                if (! empty($field['is_required'])) {
                     $header .= '*';
                 }
-                if (($field['type'] ?? '') === 'dropdown' && !empty($field['options'])) {
-                    $header .= '|dropdown:' . $field['options'];
+                if (($field['type'] ?? '') === 'dropdown' && ! empty($field['options'])) {
+                    $header .= '|dropdown:'.$field['options'];
                 }
-                
+
                 // Compare using label (which is the key for custom fields)
                 // Note: normalizedCol above kept 'unknown' keys as-is.
                 if ($findIndex($label, $columns) === -1) {
@@ -4165,7 +4274,7 @@ class ActivityPreparationController extends Controller
             if (str_contains($base, '|')) {
                 $parts = explode('|', $base, 2);
                 $base = $parts[0];
-                $options = '|' . $parts[1];
+                $options = '|'.$parts[1];
             }
             $isRequired = false;
             if (str_ends_with($base, '*')) {
@@ -4178,18 +4287,18 @@ class ActivityPreparationController extends Controller
 
             if (isset($seenBases[$dedupeKey])) {
                 $existingIdx = $seenBases[$dedupeKey];
-                if ($isRequired && !str_contains($finalColumns[$existingIdx], '*')) {
-                   $existingCol = $finalColumns[$existingIdx];
-                   if (str_contains($existingCol, '|')) {
-                       $parts = explode('|', $existingCol, 2);
-                       $finalColumns[$existingIdx] = $parts[0] . '*' . '|' . $parts[1];
-                   } else {
-                       $finalColumns[$existingIdx] .= '*';
-                   }
+                if ($isRequired && ! str_contains($finalColumns[$existingIdx], '*')) {
+                    $existingCol = $finalColumns[$existingIdx];
+                    if (str_contains($existingCol, '|')) {
+                        $parts = explode('|', $existingCol, 2);
+                        $finalColumns[$existingIdx] = $parts[0].'*'.'|'.$parts[1];
+                    } else {
+                        $finalColumns[$existingIdx] .= '*';
+                    }
                 }
             } else {
                 $seenBases[$dedupeKey] = count($finalColumns);
-                $finalColumns[] = $cleanBase . ($isRequired ? '*' : '') . $options;
+                $finalColumns[] = $cleanBase.($isRequired ? '*' : '').$options;
             }
         }
 
@@ -4223,6 +4332,7 @@ class ActivityPreparationController extends Controller
                 $h = strtolower(trim((string) $value));
                 $h = preg_replace('/^\xEF\xBB\xBF/', '', $h);
                 $h = preg_replace('/\s+/', ' ', $h);
+
                 return str_ends_with($h, '*') ? substr($h, 0, -1) : $h;
             };
 
@@ -4261,9 +4371,10 @@ class ActivityPreparationController extends Controller
             ]);
         } catch (\Throwable $e) {
             \Log::error('Preview upload failed', ['error' => $e->getMessage()]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal memproses file untuk pratinjau: ' . $e->getMessage(),
+                'message' => 'Gagal memproses file untuk pratinjau: '.$e->getMessage(),
             ], 422);
         }
     }
@@ -4275,7 +4386,7 @@ class ActivityPreparationController extends Controller
             $activity = Activity::findOrFail($activityId);
         }
         $activityId = $activity->id;
-        
+
         // Map short keys to full keys
         $keyMap = [
             'name' => 'user:name',
@@ -4327,13 +4438,13 @@ class ActivityPreparationController extends Controller
         $columns = array_map('trim', explode(',', $templateStr));
 
         // Helper to normalize
-        $normalizeCol = function($col) use ($keyMap) {
+        $normalizeCol = function ($col) use ($keyMap) {
             $base = $col;
             $suffix = '';
             if (str_contains($base, '|')) {
                 $parts = explode('|', $base, 2);
                 $base = $parts[0];
-                $suffix = '|' . $parts[1];
+                $suffix = '|'.$parts[1];
             }
             $isRequired = false;
             if (str_ends_with($base, '*')) {
@@ -4341,49 +4452,63 @@ class ActivityPreparationController extends Controller
                 $isRequired = true;
             }
             $lowerBase = strtolower(trim($base));
-            $normalizedBase = $keyMap[$lowerBase] ?? $base; 
-            return $normalizedBase . ($isRequired ? '*' : '') . $suffix;
+            $normalizedBase = $keyMap[$lowerBase] ?? $base;
+
+            return $normalizedBase.($isRequired ? '*' : '').$suffix;
         };
 
         // 1. Normalize Initial
         $columns = array_map($normalizeCol, $columns);
         $columns = array_values(array_unique($columns));
 
-        $findIndex = function($targetKey, $cols) {
+        $findIndex = function ($targetKey, $cols) {
             $targetBase = $targetKey;
-             if (str_contains($targetBase, '|')) $targetBase = explode('|', $targetBase)[0];
-             if (str_ends_with($targetBase, '*')) $targetBase = substr($targetBase, 0, -1);
-             $targetBase = strtolower(trim($targetBase));
-             
-             foreach ($cols as $i => $col) {
-                 $colBase = $col;
-                 if (str_contains($colBase, '|')) $colBase = explode('|', $colBase)[0];
-                 if (str_ends_with($colBase, '*')) $colBase = substr($colBase, 0, -1);
-                 $colBase = strtolower(trim($colBase));
-                 
-                 if ($colBase === $targetBase) return $i;
-             }
-             return -1;
+            if (str_contains($targetBase, '|')) {
+                $targetBase = explode('|', $targetBase)[0];
+            }
+            if (str_ends_with($targetBase, '*')) {
+                $targetBase = substr($targetBase, 0, -1);
+            }
+            $targetBase = strtolower(trim($targetBase));
+
+            foreach ($cols as $i => $col) {
+                $colBase = $col;
+                if (str_contains($colBase, '|')) {
+                    $colBase = explode('|', $colBase)[0];
+                }
+                if (str_ends_with($colBase, '*')) {
+                    $colBase = substr($colBase, 0, -1);
+                }
+                $colBase = strtolower(trim($colBase));
+
+                if ($colBase === $targetBase) {
+                    return $i;
+                }
+            }
+
+            return -1;
         };
 
         // 2. Add Mandatory
         if ($activity->mandatory_profile_fields && is_array($activity->mandatory_profile_fields)) {
             foreach ($activity->mandatory_profile_fields as $fieldKey) {
-                if (!is_string($fieldKey) || empty($fieldKey) || $fieldKey === 'foto') continue;
+                if (! is_string($fieldKey) || empty($fieldKey) || $fieldKey === 'foto') {
+                    continue;
+                }
 
                 $normalizedKey = $keyMap[strtolower($fieldKey)] ?? $fieldKey;
                 $idx = $findIndex($normalizedKey, $columns);
                 if ($idx !== -1) {
-                    if (!str_contains($columns[$idx], '*')) {
+                    if (! str_contains($columns[$idx], '*')) {
                         if (str_contains($columns[$idx], '|')) {
                             $parts = explode('|', $columns[$idx], 2);
-                            $columns[$idx] = $parts[0] . '*' . '|' . $parts[1];
+                            $columns[$idx] = $parts[0].'*'.'|'.$parts[1];
                         } else {
                             $columns[$idx] .= '*';
                         }
                     }
                 } else {
-                    $columns[] = $normalizedKey . '*';
+                    $columns[] = $normalizedKey.'*';
                 }
             }
         }
@@ -4392,12 +4517,18 @@ class ActivityPreparationController extends Controller
         if ($activity->custom_fields && is_array($activity->custom_fields)) {
             foreach ($activity->custom_fields as $field) {
                 $label = $field['label'] ?? '';
-                if (!$label) continue;
-                
+                if (! $label) {
+                    continue;
+                }
+
                 $header = $label;
-                if (!empty($field['is_required'])) { $header .= '*'; }
-                if (($field['type'] ?? '') === 'dropdown' && !empty($field['options'])) { $header .= '|dropdown:' . $field['options']; }
-                
+                if (! empty($field['is_required'])) {
+                    $header .= '*';
+                }
+                if (($field['type'] ?? '') === 'dropdown' && ! empty($field['options'])) {
+                    $header .= '|dropdown:'.$field['options'];
+                }
+
                 // Pre-Normalize custom field label check
                 $normalizedLabel = $keyMap[strtolower(trim($label))] ?? trim($label);
                 if ($findIndex($normalizedLabel, $columns) === -1) {
@@ -4416,7 +4547,7 @@ class ActivityPreparationController extends Controller
             if (str_contains($base, '|')) {
                 $parts = explode('|', $base, 2);
                 $base = $parts[0];
-                $options = '|' . $parts[1];
+                $options = '|'.$parts[1];
             }
             $isRequired = false;
             if (str_ends_with($base, '*')) {
@@ -4424,29 +4555,29 @@ class ActivityPreparationController extends Controller
                 $isRequired = true;
             }
             $cleanBase = strtolower(trim($base));
-            
+
             // Re-normalize base just in case
             $cleanBase = $keyMap[$cleanBase] ?? $cleanBase;
 
             if (isset($seenBases[$cleanBase])) {
                 $existingIdx = $seenBases[$cleanBase];
-                if ($isRequired && !str_contains($finalColumns[$existingIdx], '*')) {
-                   $existingCol = $finalColumns[$existingIdx];
-                   if (str_contains($existingCol, '|')) {
-                       $parts = explode('|', $existingCol, 2);
-                       $finalColumns[$existingIdx] = $parts[0] . '*' . '|' . $parts[1];
-                   } else {
-                       $finalColumns[$existingIdx] .= '*';
-                   }
+                if ($isRequired && ! str_contains($finalColumns[$existingIdx], '*')) {
+                    $existingCol = $finalColumns[$existingIdx];
+                    if (str_contains($existingCol, '|')) {
+                        $parts = explode('|', $existingCol, 2);
+                        $finalColumns[$existingIdx] = $parts[0].'*'.'|'.$parts[1];
+                    } else {
+                        $finalColumns[$existingIdx] .= '*';
+                    }
                 }
             } else {
                 $seenBases[$cleanBase] = count($finalColumns);
-                 // Reconstruct column using proper base
-                $finalColumns[] = $cleanBase . ($isRequired ? '*' : '') . $options;
+                // Reconstruct column using proper base
+                $finalColumns[] = $cleanBase.($isRequired ? '*' : '').$options;
             }
         }
         $columns = $finalColumns;
-        
+
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
@@ -4729,7 +4860,7 @@ class ActivityPreparationController extends Controller
             $activity = Activity::findOrFail($activityId);
         }
         $activityId = $activity->id;
-        
+
         // Allow any authenticated user to download their own import result
         // The import_result session is unique to the user's session
         if (! auth()->check()) {
@@ -4810,9 +4941,9 @@ class ActivityPreparationController extends Controller
         $targetUserIds = [$userId];
 
         // Expand with Import Groups (registration groups)
-        // This ensures that if a user is part of a registration group (Kelompok), 
+        // This ensures that if a user is part of a registration group (Kelompok),
         // the action applies to the entire group.
-        // We do NOT expand based on Payment groups anymore, to avoid affecting 
+        // We do NOT expand based on Payment groups anymore, to avoid affecting
         // other groups or individuals who just happened to pay together.
         $targetUserIds = $this->expandUserIdsWithGroups($activityId, $targetUserIds);
 
@@ -4828,7 +4959,7 @@ class ActivityPreparationController extends Controller
             })
             ->update([
                 'status' => (int) $request->status,
-                'updated_by' => auth()->id()
+                'updated_by' => auth()->id(),
             ]);
 
         // Refresh original participant
@@ -4938,9 +5069,9 @@ class ActivityPreparationController extends Controller
                                 // Fallback ke public_path jika file tidak ada di storage disk (legacy)
                                 $pathsToCheck = [
                                     public_path($payment->proof_of_payment),
-                                    public_path('storage/' . $payment->proof_of_payment)
+                                    public_path('storage/'.$payment->proof_of_payment),
                                 ];
-                                
+
                                 foreach ($pathsToCheck as $path) {
                                     if (File::exists($path) &&
                                         ! str_contains($payment->proof_of_payment, 'assets/images/credit/bukti bayar.png')) {
@@ -5401,7 +5532,7 @@ class ActivityPreparationController extends Controller
     public function storeCommittee(Request $request, $activityId)
     {
         $activity = Activity::where('uid', $activityId)->first();
-        if (!$activity) {
+        if (! $activity) {
             $activity = Activity::where('id', $activityId)->firstOrFail();
         }
         $activityIdValue = $activity->id;
@@ -5424,7 +5555,7 @@ class ActivityPreparationController extends Controller
         $isDuplicate = ActivityCommitteeStructure::where('activity_id', $activityIdValue)
             ->where('user_id', $request->user_id)
             ->exists();
-            
+
         if ($isDuplicate) {
             return redirect()->back()->withErrors(['user_id' => 'Peserta ini sudah terdaftar sebagai panitia.']);
         }
@@ -5465,15 +5596,15 @@ class ActivityPreparationController extends Controller
                 ]);
             }
         } else {
-             // Logic for "Anggota" -> Map to "Koordinator"
-             // Example: "Anggota Acara" -> "Koordinator Acara"
-             $suffix = trim(str_ireplace('anggota', '', $lowerPositionName));
-             if ($suffix) {
-                 $division = ActivityDivision::where('activity_id', $activityIdValue)
-                     ->where('name', 'like', '%Koordinator%')
-                     ->where('name', 'like', "%{$suffix}%")
-                     ->first();
-             }
+            // Logic for "Anggota" -> Map to "Koordinator"
+            // Example: "Anggota Acara" -> "Koordinator Acara"
+            $suffix = trim(str_ireplace('anggota', '', $lowerPositionName));
+            if ($suffix) {
+                $division = ActivityDivision::where('activity_id', $activityIdValue)
+                    ->where('name', 'like', '%Koordinator%')
+                    ->where('name', 'like', "%{$suffix}%")
+                    ->first();
+            }
         }
 
         ActivityCommitteeStructure::create([
@@ -5499,7 +5630,7 @@ class ActivityPreparationController extends Controller
     public function updateCommittee(Request $request, $activityId, $committeeId)
     {
         $activity = Activity::where('uid', $activityId)->first();
-        if (!$activity) {
+        if (! $activity) {
             $activity = Activity::where('id', $activityId)->firstOrFail();
         }
         $activityIdValue = $activity->id;
@@ -5521,7 +5652,7 @@ class ActivityPreparationController extends Controller
             ->where('user_id', $request->user_id)
             ->where('id', '!=', $committeeId)
             ->exists();
-            
+
         if ($isDuplicate) {
             return redirect()->back()->withErrors(['user_id' => 'Peserta ini sudah terdaftar sebagai panitia.']);
         }
@@ -5568,7 +5699,7 @@ class ActivityPreparationController extends Controller
     public function destroyCommittee($activityId, $committeeId)
     {
         $activity = Activity::where('uid', $activityId)->first();
-        if (!$activity) {
+        if (! $activity) {
             $activity = Activity::where('id', $activityId)->firstOrFail();
         }
         $activityIdValue = $activity->id;
@@ -5872,7 +6003,7 @@ class ActivityPreparationController extends Controller
             ]);
         } elseif ($hasFile) {
             $files = $request->hasFile('files') ? $request->file('files') : [$request->file('file')];
-            
+
             foreach ($files as $file) {
                 $originalName = $file->getClientOriginalName();
                 $extension = $file->getClientOriginalExtension();
@@ -6011,7 +6142,7 @@ class ActivityPreparationController extends Controller
         // Fallback checks
         $pathsToCheck = [
             public_path('storage/'.$relativePath),
-            public_path($material->file_path)
+            public_path($material->file_path),
         ];
 
         foreach ($pathsToCheck as $path) {
@@ -6312,10 +6443,10 @@ class ActivityPreparationController extends Controller
                     } else {
                         // Fallback ke public_path
                         $publicPath = public_path('storage/'.$normalized);
-                        
+
                         // Cek juga direct path
                         $directPath = public_path($normalized);
-                        
+
                         if (file_exists($publicPath)) {
                             $fileExists = true;
                             // Untuk PDF, gunakan route serve-material
@@ -6332,13 +6463,13 @@ class ActivityPreparationController extends Controller
                                 $materialUrl = asset('storage/'.$normalized);
                             }
                         } elseif (file_exists($directPath)) {
-                             $fileExists = true;
-                             if ($fileType === 'pdf') {
-                                 $materialUrl = url('/activity/'.$activityId.'/materials/'.$materialId.'/serve');
-                             } else {
-                                 // If it's in public root (not storage), asset() points to it
-                                 $materialUrl = asset($normalized);
-                             }
+                            $fileExists = true;
+                            if ($fileType === 'pdf') {
+                                $materialUrl = url('/activity/'.$activityId.'/materials/'.$materialId.'/serve');
+                            } else {
+                                // If it's in public root (not storage), asset() points to it
+                                $materialUrl = asset($normalized);
+                            }
                         } else {
                             \Log::warning('Material file not found', [
                                 'activity_id' => $activityId,
@@ -6536,13 +6667,13 @@ class ActivityPreparationController extends Controller
             } elseif ($combinedFilter === 'role_peserta') {
                 $roleFilter = 'peserta';
             } elseif (in_array($combinedFilter, ['status_active', 'status_verification', 'status_pending', 'status_rejected'])) {
-                 $statusMap = [
-                     'status_active' => ActivityUser::STATUS_ACTIVE,
-                     'status_verification' => ActivityUser::STATUS_VERIFICATION,
-                     'status_pending' => ActivityUser::STATUS_PENDING,
-                     'status_rejected' => ActivityUser::STATUS_REJECTED
-                 ];
-                 $participantStatusFilter = $statusMap[$combinedFilter] ?? null;
+                $statusMap = [
+                    'status_active' => ActivityUser::STATUS_ACTIVE,
+                    'status_verification' => ActivityUser::STATUS_VERIFICATION,
+                    'status_pending' => ActivityUser::STATUS_PENDING,
+                    'status_rejected' => ActivityUser::STATUS_REJECTED,
+                ];
+                $participantStatusFilter = $statusMap[$combinedFilter] ?? null;
             } elseif ($combinedFilter === 'email_unverified') {
                 $query->whereHas('user', function ($q) {
                     $q->whereNull('email_verified_at');
@@ -6562,17 +6693,17 @@ class ActivityPreparationController extends Controller
 
         // Location Filters
         if ($request->filled('province_id')) {
-            $query->whereHas('user.profile', fn($q) => $q->where('province_id', $request->province_id));
+            $query->whereHas('user.profile', fn ($q) => $q->where('province_id', $request->province_id));
         }
         if ($request->filled('regency_id')) {
-            $query->whereHas('user.profile', fn($q) => $q->where('regency_id', $request->regency_id));
+            $query->whereHas('user.profile', fn ($q) => $q->where('regency_id', $request->regency_id));
         }
         if ($request->filled('district_id')) {
-             if (str_starts_with($request->district_id, 'other:')) {
+            if (str_starts_with($request->district_id, 'other:')) {
                 $otherVal = substr($request->district_id, 6);
-                $query->whereHas('user.profile', fn($q) => $q->where('other_district', $otherVal));
+                $query->whereHas('user.profile', fn ($q) => $q->where('other_district', $otherVal));
             } else {
-                $query->whereHas('user.profile', fn($q) => $q->where('district_id', $request->district_id));
+                $query->whereHas('user.profile', fn ($q) => $q->where('district_id', $request->district_id));
             }
         }
 
@@ -6582,7 +6713,7 @@ class ActivityPreparationController extends Controller
                 // User fields
                 $q->orWhereHas('user', function ($u) use ($searchTerm) {
                     $u->where('name', 'like', "%{$searchTerm}%")
-                      ->orWhere('email', 'like', "%{$searchTerm}%");
+                        ->orWhere('email', 'like', "%{$searchTerm}%");
                 });
 
                 // Profile fields
@@ -6596,12 +6727,12 @@ class ActivityPreparationController extends Controller
                     $p->orWhereHas('district', fn ($loc) => $loc->where('name', 'like', "%{$searchTerm}%"));
                 });
 
-                 // Custom Data
+                // Custom Data
                 if (Schema::hasColumn('activity_users', 'custom_data')) {
                     $q->orWhere('custom_data', 'like', "%{$searchTerm}%");
                 }
-                
-                 // Participant Group
+
+                // Participant Group
                 $q->orWhereHas('participantGroup', function ($g) use ($searchTerm) {
                     $g->where('name', 'like', "%{$searchTerm}%");
                 });
@@ -6741,6 +6872,7 @@ class ActivityPreparationController extends Controller
                 $s = strtolower(trim((string) $s));
                 $s = preg_replace('/^custom_/', '', $s);
                 $s = str_replace([' ', '-', '__'], ['_', '_', '_'], $s);
+
                 return $s;
             };
             $target = $canonical($key);
@@ -6765,7 +6897,7 @@ class ActivityPreparationController extends Controller
         if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($relative)) {
             // Fallback: path di DB bisa dari activity lain (salah id); coba path dengan activity + user saat ini
             $filename = basename($relative);
-            $fallbackRelative = 'activities/' . $activity->id . '/custom-data/users/' . $au->user_id . '/' . $filename;
+            $fallbackRelative = 'activities/'.$activity->id.'/custom-data/users/'.$au->user_id.'/'.$filename;
             if ($fallbackRelative !== $relative && \Illuminate\Support\Facades\Storage::disk('public')->exists($fallbackRelative)) {
                 $relative = $fallbackRelative;
             } else {
@@ -6775,11 +6907,13 @@ class ActivityPreparationController extends Controller
                     'key' => $key,
                     'path' => $relative,
                 ]);
+
                 return $this->customFileNotFoundResponse('File tidak ditemukan di server.');
             }
         }
         $mime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($relative) ?: 'application/octet-stream';
         $filename = basename($relative);
+
         return \Illuminate\Support\Facades\Storage::disk('public')->response($relative, $filename, [
             'Content-Type' => $mime,
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
@@ -6798,6 +6932,7 @@ class ActivityPreparationController extends Controller
         $msg = htmlspecialchars($message);
         $hint = 'Anda dapat memperbarui dari tombol <strong>Edit Profil Peserta</strong> pada halaman Data Peserta kegiatan.';
         $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Data / file tidak ada</title><style>body{font-family:system-ui,sans-serif;background:#1e293b;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.box{background:#334155;padding:2rem;border-radius:12px;max-width:420px;text-align:center}.box h1{font-size:1.125rem;margin:0 0 0.75rem;color:#f1f5f9}.box p{margin:0 0 0.5rem;font-size:0.875rem;color:#94a3b8}.box .hint{margin-top:1rem;padding-top:1rem;border-top:1px solid #475569;font-size:0.8125rem;color:#64748b}</style></head><body><div class="box"><h1>Data atau file tidak ada</h1><p>'.$msg.'</p><p class="hint">'.$hint.'</p></div></body></html>';
+
         return response($html, 200)->header('Content-Type', 'text/html; charset=utf-8');
     }
 
@@ -6828,9 +6963,9 @@ class ActivityPreparationController extends Controller
         $isCurrentlyActive = ($participant->status == ActivityUser::STATUS_ACTIVE);
         $newStatus = $isCurrentlyActive ? ActivityUser::STATUS_VERIFICATION : ActivityUser::STATUS_ACTIVE;
         $message = $isCurrentlyActive ? 'Peserta dinonaktifkan (status diubah ke verifikasi).' : 'Peserta diaktifkan.';
-        
+
         $userIdsToUpdate = [$userId];
-        
+
         // 1. Check explicit group
         if ($participant->activity_participant_group_id) {
             $groupMembers = ActivityUser::where('activity_id', $activityId)
@@ -6845,33 +6980,36 @@ class ActivityPreparationController extends Controller
                 $parentPayment = Payment::where('activity_id', $activityId)
                     ->where('notes', 'like', '%user_ids%')
                     ->get()
-                    ->first(function($p) use ($userId) {
+                    ->first(function ($p) use ($userId) {
                         $notes = json_decode($p->notes, true);
-                        if (!is_array($notes)) return false;
-                        
+                        if (! is_array($notes)) {
+                            return false;
+                        }
+
                         $uids = $notes['user_ids'] ?? ($notes['bulk_import']['user_ids'] ?? []);
                         if (is_array($uids)) {
                             // Compare as strings to be safe
-                            return in_array((string)$userId, array_map('strval', $uids));
+                            return in_array((string) $userId, array_map('strval', $uids));
                         }
+
                         return false;
                     });
-                
+
                 if ($parentPayment) {
-                     $notes = json_decode($parentPayment->notes, true);
-                     $groupUids = $notes['user_ids'] ?? ($notes['bulk_import']['user_ids'] ?? []);
-                     if (!empty($groupUids)) {
-                         $userIdsToUpdate = array_merge($userIdsToUpdate, $groupUids);
-                     }
+                    $notes = json_decode($parentPayment->notes, true);
+                    $groupUids = $notes['user_ids'] ?? ($notes['bulk_import']['user_ids'] ?? []);
+                    if (! empty($groupUids)) {
+                        $userIdsToUpdate = array_merge($userIdsToUpdate, $groupUids);
+                    }
                 }
             } catch (\Exception $e) {
-                \Log::warning('Error checking implict group structure: ' . $e->getMessage());
+                \Log::warning('Error checking implict group structure: '.$e->getMessage());
             }
         }
-        
+
         $userIdsToUpdate = array_unique($userIdsToUpdate);
         $count = count($userIdsToUpdate);
-        
+
         if ($count > 1) {
             $message .= " (Status diterapkan untuk $count anggota kelompok)";
         }
@@ -6879,7 +7017,7 @@ class ActivityPreparationController extends Controller
         // Apply update to all found members
         ActivityUser::where('activity_id', $activityId)
             ->whereIn('user_id', $userIdsToUpdate)
-            ->when($request->has('batch_id') && $request->batch_id, function($q) use ($request) {
+            ->when($request->has('batch_id') && $request->batch_id, function ($q) use ($request) {
                 $q->where('activity_batch_id', $request->batch_id);
             })
             ->update([
@@ -6972,17 +7110,17 @@ class ActivityPreparationController extends Controller
 
             \Log::info('saveColumnSettings called', [
                 'activity_id_input' => $data['activity_id'],
-                'settings_received' => $data['settings']
+                'settings_received' => $data['settings'],
             ]);
 
             // Support both ID and UID
             $activity = Activity::find($data['activity_id']);
-            if (!$activity) {
+            if (! $activity) {
                 $activity = Activity::where('uid', $data['activity_id'])->first();
             }
-            
-            if (!$activity) {
-                throw new \Exception('Activity not found with ID/UID: ' . $data['activity_id']);
+
+            if (! $activity) {
+                throw new \Exception('Activity not found with ID/UID: '.$data['activity_id']);
             }
 
             // Check permission
@@ -6995,24 +7133,24 @@ class ActivityPreparationController extends Controller
 
             $activity->column_settings = $data['settings'];
             $activity->save();
-            
+
             // Log for debugging
-            \Log::info('Column settings saved for activity ' . $activity->id, [
+            \Log::info('Column settings saved for activity '.$activity->id, [
                 'user_id' => $actor->id,
                 'settings_count' => count($data['settings']),
-                'saved_settings' => $activity->column_settings
+                'saved_settings' => $activity->column_settings,
             ]);
 
             return response()->json([
-                'success' => true, 
+                'success' => true,
                 'message' => 'Pengaturan kolom berhasil disimpan.',
-                'settings' => $activity->column_settings
+                'settings' => $activity->column_settings,
             ]);
         } catch (\Exception $e) {
             \Log::error('Error saving column settings', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
+                'request_data' => $request->all(),
             ]);
 
             return response()->json(['success' => false, 'message' => 'Gagal menyimpan pengaturan: '.$e->getMessage()], 500);
@@ -7026,18 +7164,18 @@ class ActivityPreparationController extends Controller
     {
         try {
             $activity = Activity::where('uid', $activityId)->first();
-            if (!$activity) {
+            if (! $activity) {
                 $activity = Activity::findOrFail($activityId);
             }
 
             $actor = auth()->user();
-            if (!$actor) {
+            if (! $actor) {
                 return response()->json(['success' => false, 'message' => 'Silakan login terlebih dahulu.'], 403);
             }
 
             // Check permission
-            if (!$actor->isAdmin() && !$actor->isSuperAdmin() && $activity->user_id !== $actor->id) {
-                if (!$activity->canManageRegistration($actor->id)) {
+            if (! $actor->isAdmin() && ! $actor->isSuperAdmin() && $activity->user_id !== $actor->id) {
+                if (! $activity->canManageRegistration($actor->id)) {
                     return response()->json(['success' => false, 'message' => 'Anda tidak memiliki izin untuk melakukan ini.'], 403);
                 }
             }
@@ -7047,7 +7185,7 @@ class ActivityPreparationController extends Controller
                 ->with('user.profile');
 
             // Apply user_ids filter if provided
-            if ($request->has('user_ids') && is_array($request->input('user_ids')) && count($request->input('user_ids')) > 0 && !$request->boolean('select_all')) {
+            if ($request->has('user_ids') && is_array($request->input('user_ids')) && count($request->input('user_ids')) > 0 && ! $request->boolean('select_all')) {
                 $query->whereIn('user_id', $request->input('user_ids'));
             }
 
@@ -7062,18 +7200,20 @@ class ActivityPreparationController extends Controller
 
             foreach ($participants as $participant) {
                 $profile = $participant->user->profile ?? null;
-                
+
                 // Skip if profile doesn't exist or gender is already filled
-                if (!$profile || (!empty($profile->jenis_kelamin) && $profile->jenis_kelamin !== '-')) {
+                if (! $profile || (! empty($profile->jenis_kelamin) && $profile->jenis_kelamin !== '-')) {
                     $stats['skipped']++;
+
                     continue;
                 }
 
                 $stats['total']++;
 
                 $userName = $participant->user->name ?? null;
-                if (!$userName) {
+                if (! $userName) {
                     $stats['failed']++;
+
                     continue;
                 }
 
@@ -7088,7 +7228,7 @@ class ActivityPreparationController extends Controller
                     } catch (\Exception $e) {
                         \Log::error('Error updating gender for profile', [
                             'profile_id' => $profile->id,
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                         $stats['failed']++;
                     }
@@ -7100,30 +7240,31 @@ class ActivityPreparationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Berhasil mengisi {$stats['success']} jenis kelamin dari {$stats['total']} peserta yang kosong.",
-                'stats' => $stats
+                'stats' => $stats,
             ]);
 
         } catch (\Exception $e) {
             \Log::error('Error filling gender', [
                 'activity_id' => $activityId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan: '.$e->getMessage(),
             ], 500);
         }
     }
+
     public function updateCommitteeVoucher(Request $request, $activityId)
     {
         $activity = Activity::where('uid', $activityId)->first();
-        if (!$activity) {
+        if (! $activity) {
             $activity = Activity::where('id', $activityId)->firstOrFail();
         }
 
-        if (!$activity->canManageRegistration(auth()->id())) {
+        if (! $activity->canManageRegistration(auth()->id())) {
             abort(403, 'Anda tidak memiliki izin.');
         }
 
@@ -7145,22 +7286,22 @@ class ActivityPreparationController extends Controller
     public function storeVoucher(Request $request, $activityId)
     {
         $activity = Activity::where('uid', $activityId)->first();
-        if (!$activity) {
+        if (! $activity) {
             $activity = Activity::where('id', $activityId)->firstOrFail();
         }
 
-        if (!$activity->canManageRegistration(auth()->id())) {
+        if (! $activity->canManageRegistration(auth()->id())) {
             abort(403, 'Anda tidak memiliki izin.');
         }
 
         $validated = $request->validate([
             'code' => [
-                'required', 
-                'string', 
+                'required',
+                'string',
                 'max:50',
                 \Illuminate\Validation\Rule::unique('activity_vouchers')->where(function ($query) use ($activity) {
                     return $query->where('activity_id', $activity->id);
-                })
+                }),
             ],
             'usage_limit' => 'nullable|integer|min:0',
             'valid_until' => 'nullable|date',
@@ -7183,11 +7324,11 @@ class ActivityPreparationController extends Controller
     public function updateVoucher(Request $request, $activityId, $voucherId)
     {
         $activity = Activity::where('uid', $activityId)->first();
-        if (!$activity) {
+        if (! $activity) {
             $activity = Activity::where('id', $activityId)->firstOrFail();
         }
 
-        if (!$activity->canManageRegistration(auth()->id())) {
+        if (! $activity->canManageRegistration(auth()->id())) {
             abort(403, 'Anda tidak memiliki izin.');
         }
 
@@ -7197,12 +7338,12 @@ class ActivityPreparationController extends Controller
 
         $validated = $request->validate([
             'code' => [
-                'required', 
-                'string', 
+                'required',
+                'string',
                 'max:50',
                 \Illuminate\Validation\Rule::unique('activity_vouchers')->ignore($voucher->id)->where(function ($query) use ($activity) {
                     return $query->where('activity_id', $activity->id);
-                })
+                }),
             ],
             'usage_limit' => 'nullable|integer|min:0',
             'valid_until' => 'nullable|date',
@@ -7218,11 +7359,11 @@ class ActivityPreparationController extends Controller
     public function destroyVoucher($activityId, $voucherId)
     {
         $activity = Activity::where('uid', $activityId)->first();
-        if (!$activity) {
+        if (! $activity) {
             $activity = Activity::where('id', $activityId)->firstOrFail();
         }
 
-        if (!$activity->canManageRegistration(auth()->id())) {
+        if (! $activity->canManageRegistration(auth()->id())) {
             abort(403, 'Anda tidak memiliki izin.');
         }
 

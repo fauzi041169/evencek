@@ -105,7 +105,7 @@ class PartnerController extends Controller
         if ($partner->logo) {
             if (Storage::disk('public')->exists($partner->logo)) {
                 Storage::disk('public')->delete($partner->logo);
-            } elseif (!str_contains($partner->logo, '/') && Storage::disk('public')->exists('partners/'.$partner->logo)) {
+            } elseif (! str_contains($partner->logo, '/') && Storage::disk('public')->exists('partners/'.$partner->logo)) {
                 Storage::disk('public')->delete('partners/'.$partner->logo);
             }
         }

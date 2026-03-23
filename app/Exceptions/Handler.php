@@ -2,12 +2,15 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\ConnectionException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
@@ -44,20 +47,27 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
+        $requestId = (string) ($request->headers->get('X-Request-Id') ?: Str::uuid());
+
         // 419 Page Expired (CSRF/session): redirect back dengan pesan agar Inertia dapat respon valid
         // sehingga tidak muncul modal error; setelah redirect halaman punya token baru.
         if ($e instanceof TokenMismatchException) {
             if ($request->expectsJson() || $request->header('X-Inertia')) {
-                return redirect()->back()->with('error', 'Sesi berakhir. Silakan muat ulang halaman dan coba lagi.');
+                return redirect()->back()
+                    ->with('error', 'Sesi berakhir. Silakan muat ulang halaman dan coba lagi.')
+                    ->withHeaders(['X-Request-Id' => $requestId]);
             }
-            return redirect()->back()->with('error', 'Sesi berakhir. Silakan muat ulang halaman dan coba lagi.');
+
+            return redirect()->back()
+                ->with('error', 'Sesi berakhir. Silakan muat ulang halaman dan coba lagi.')
+                ->withHeaders(['X-Request-Id' => $requestId]);
         }
 
         if ($e instanceof ModelNotFoundException) {
-            return response()->view('errors.404', [], 404);
+            return response()->view('errors.404', [], 404)->withHeaders(['X-Request-Id' => $requestId]);
         }
         if ($e instanceof NotFoundHttpException) {
-            return response()->view('errors.404', [], 404);
+            return response()->view('errors.404', [], 404)->withHeaders(['X-Request-Id' => $requestId]);
         }
         // Handle database connection errors globally
         if ($e instanceof QueryException || $e instanceof ConnectionException) {
@@ -75,6 +85,7 @@ class Handler extends ExceptionHandler
                         'success' => false,
                         'message' => 'Database tidak tersedia. Silakan hubungi administrator.',
                         'error' => 'Database connection failed',
+                        'request_id' => $requestId,
                     ], 503);
                 }
 
@@ -82,12 +93,14 @@ class Handler extends ExceptionHandler
                 return response()->view('errors.database', [
                     'message' => 'Database tidak tersedia saat ini. Silakan coba lagi nanti atau hubungi administrator.',
                     'error' => $errorMessage,
-                ], 503);
+                    'request_id' => $requestId,
+                ], 503)->withHeaders(['X-Request-Id' => $requestId]);
             }
         }
 
         try {
             Log::error('Unhandled Exception', [
+                'request_id' => $requestId,
                 'url' => $request->fullUrl(),
                 'method' => $request->method(),
                 'user_id' => auth()->id(),
@@ -98,13 +111,39 @@ class Handler extends ExceptionHandler
 
         if (! config('app.debug')) {
             if (method_exists($e, 'getStatusCode') && (int) $e->getStatusCode() === 500) {
-                return response()->view('errors.500', [], 500);
+                if ($request->expectsJson() || $request->is('api/*') || $request->header('X-Inertia')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Terjadi kesalahan server. Silakan coba lagi.',
+                        'request_id' => $requestId,
+                    ], 500)->withHeaders(['X-Request-Id' => $requestId]);
+                }
+
+                return response()->view('errors.500', [
+                    'request_id' => $requestId,
+                ], 500)->withHeaders(['X-Request-Id' => $requestId]);
             }
-            if (! $this->isHttpException($e) && ! ($e instanceof TokenMismatchException)) {
-                return response()->view('errors.500', [], 500);
+            if (! $this->isHttpException($e) && ! ($e instanceof TokenMismatchException) && ! ($e instanceof ValidationException) && ! ($e instanceof AuthenticationException)) {
+                if ($request->expectsJson() || $request->is('api/*') || $request->header('X-Inertia')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Terjadi kesalahan server. Silakan coba lagi.',
+                        'request_id' => $requestId,
+                    ], 500)->withHeaders(['X-Request-Id' => $requestId]);
+                }
+
+                return response()->view('errors.500', [
+                    'request_id' => $requestId,
+                ], 500)->withHeaders(['X-Request-Id' => $requestId]);
             }
         }
 
-        return parent::render($request, $e);
+        $response = parent::render($request, $e);
+
+        try {
+            return $response->withHeaders(['X-Request-Id' => $requestId]);
+        } catch (Throwable $ignored) {
+            return $response;
+        }
     }
 }

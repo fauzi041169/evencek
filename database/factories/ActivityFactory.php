@@ -2,8 +2,9 @@
 
 namespace Database\Factories;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
+use App\Models\Category;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Activity>
@@ -17,6 +18,14 @@ class ActivityFactory extends Factory
      */
     public function definition(): array
     {
+        $category = Category::query()->first();
+        if (! $category) {
+            $category = Category::create([
+                'name' => 'Default',
+                'description' => null,
+            ]);
+        }
+
         return [
             'name' => fake()->sentence(3),
             'description' => fake()->paragraph(),
@@ -30,6 +39,7 @@ class ActivityFactory extends Factory
             'payment_method_type' => 'manual',
             'status' => 'published',
             'user_id' => User::factory(),
+            'category_id' => $category->id,
         ];
     }
 }

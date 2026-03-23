@@ -15,8 +15,8 @@ class Subscription extends Model
 
     protected static function booted()
     {
-        static::saved(fn (Subscription $s) => Cache::forget('user_dashboard_subscription_' . $s->user_id));
-        static::deleted(fn (Subscription $s) => Cache::forget('user_dashboard_subscription_' . $s->user_id));
+        static::saved(fn (Subscription $s) => Cache::forget('user_dashboard_subscription_'.$s->user_id));
+        static::deleted(fn (Subscription $s) => Cache::forget('user_dashboard_subscription_'.$s->user_id));
     }
 
     protected $fillable = [

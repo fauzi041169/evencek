@@ -29,14 +29,14 @@ return new class extends Migration
                 'materials_visible',
                 'groups_visible',
             ];
-            
+
             $toDrop = [];
             foreach ($columns as $col) {
                 if (Schema::hasColumn('activities', $col)) {
                     $toDrop[] = $col;
                 }
             }
-            
+
             if (!empty($toDrop)) {
                 $table->dropColumn($toDrop);
             }
@@ -50,20 +50,48 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('activities', function (Blueprint $table) {
-            if (!Schema::hasColumn('activities', 'detail_description_visible')) $table->boolean('detail_description_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_gallery_visible')) $table->boolean('detail_gallery_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_comments_visible')) $table->boolean('detail_comments_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_participants_visible')) $table->boolean('detail_participants_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_materials_visible')) $table->boolean('detail_materials_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_speakers_visible')) $table->boolean('detail_speakers_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_rundown_visible')) $table->boolean('detail_rundown_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'description_visible')) $table->boolean('description_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'participants_visible')) $table->boolean('participants_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'speakers_visible')) $table->boolean('speakers_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'show_gallery')) $table->boolean('show_gallery')->default(true);
-            if (!Schema::hasColumn('activities', 'rundown_visible')) $table->boolean('rundown_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'materials_visible')) $table->boolean('materials_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'groups_visible')) $table->boolean('groups_visible')->default(true);
+            if (! Schema::hasColumn('activities', 'detail_description_visible')) {
+                $table->boolean('detail_description_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_gallery_visible')) {
+                $table->boolean('detail_gallery_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_comments_visible')) {
+                $table->boolean('detail_comments_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_participants_visible')) {
+                $table->boolean('detail_participants_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_materials_visible')) {
+                $table->boolean('detail_materials_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_speakers_visible')) {
+                $table->boolean('detail_speakers_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_rundown_visible')) {
+                $table->boolean('detail_rundown_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'description_visible')) {
+                $table->boolean('description_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'participants_visible')) {
+                $table->boolean('participants_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'speakers_visible')) {
+                $table->boolean('speakers_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'show_gallery')) {
+                $table->boolean('show_gallery')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'rundown_visible')) {
+                $table->boolean('rundown_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'materials_visible')) {
+                $table->boolean('materials_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'groups_visible')) {
+                $table->boolean('groups_visible')->default(true);
+            }
         });
     }
 };

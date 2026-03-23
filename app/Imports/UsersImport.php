@@ -2,8 +2,8 @@
 
 namespace App\Imports;
 
-use App\Helpers\RegionMatcher;
 use App\Helpers\GenderHelper;
+use App\Helpers\RegionMatcher;
 use App\Models\Activity;
 use App\Models\ActivityUser;
 use App\Models\Payment;
@@ -28,7 +28,9 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
     use Importable, SkipsErrors;
 
     protected $activity_id;
+
     protected $markPaid = true;
+
     protected $pendingUserIds = [];
 
     protected $successCount = 0;
@@ -64,7 +66,7 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
                     $activity = \App\Models\Activity::with('activeBatch')->find($this->activity_id);
                     $price = (float) ($activity->price ?? 0);
                     $batchId = $activity && $activity->activeBatch ? $activity->activeBatch->id : null;
-                    if (!$this->markPaid && $price > 0 && !empty($this->pendingUserIds)) {
+                    if (! $this->markPaid && $price > 0 && ! empty($this->pendingUserIds)) {
                         $allowed = count($this->pendingUserIds);
                         $gross = $allowed * $price;
                         session(['import_bulk_payment' => [
@@ -429,7 +431,7 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
                     'district_id' => $profile->district_id,
                     'gender_saved' => $profile->jenis_kelamin,
                 ]);
-                if ($profile && !empty($gender) && $profile->jenis_kelamin !== $gender) {
+                if ($profile && ! empty($gender) && $profile->jenis_kelamin !== $gender) {
                     Log::error('Field jenis_kelamin tidak tersimpan dengan benar', [
                         'expected' => $gender,
                         'actual' => $profile->jenis_kelamin,
@@ -442,9 +444,9 @@ class UsersImport implements SkipsOnError, ToModel, WithChunkReading, WithEvents
                 $activity = Activity::with('activeBatch')->find($this->activity_id);
                 if ($activity) {
                     $batchId = $activity->activeBatch ? $activity->activeBatch->id : null;
-                    
+
                     $price = $activity->price;
-                    if ((int)$activity->price === 0) {
+                    if ((int) $activity->price === 0) {
                         $price = 0;
                     } elseif ($activity->activeBatch && $activity->activeBatch->price !== null) {
                         $price = $activity->activeBatch->price;

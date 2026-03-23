@@ -6,8 +6,8 @@ use App\Models\MaintenanceSetting;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\HttpFoundation\Response;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 class MaintenanceMode
 {
@@ -25,6 +25,31 @@ class MaintenanceMode
 
         // 2. Skip maintenance check for superadmin
         if (auth()->check() && auth()->user()->isSuperAdmin()) {
+            return $next($request);
+        }
+
+        $dbReachable = true;
+        if (config('database.default') === 'mysql') {
+            $host = (string) config('database.connections.mysql.host');
+            $port = (int) (config('database.connections.mysql.port') ?: 3306);
+            $dbReachable = false;
+            if ($host !== '') {
+                $candidates = [$host];
+                if (strtolower($host) === 'localhost') {
+                    $candidates[] = '127.0.0.1';
+                }
+                foreach (array_values(array_unique($candidates)) as $candidate) {
+                    $fp = @fsockopen($candidate, $port, $errno, $errstr, 0.35);
+                    if (is_resource($fp)) {
+                        fclose($fp);
+                        $dbReachable = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (! $dbReachable) {
             return $next($request);
         }
 

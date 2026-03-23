@@ -36,10 +36,11 @@ class IdCardBackgroundController extends Controller
 
         if ($validator->fails()) {
             \Log::error('Background upload validation failed', ['errors' => $validator->errors()]);
+
             return response()->json([
                 'success' => false,
                 'message' => $validator->errors()->first(),
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -57,7 +58,7 @@ class IdCardBackgroundController extends Controller
                 'message' => 'File upload tidak valid',
             ], 400);
         }
-        
+
         $path = ImageHelper::storeCompressedUploadedImage($file, 'id-card-backgrounds/'.$activity->id, 'public', [
             'max_width' => 2500,
             'max_height' => 2500,
@@ -109,7 +110,7 @@ class IdCardBackgroundController extends Controller
         }
 
         $filename = ltrim($request->input('filename'), '/');
-        
+
         $bgRecord = DB::table('id_card_backgrounds')->where('filename', $filename)->first();
         if (! $bgRecord) {
             return response()->json([
@@ -120,7 +121,7 @@ class IdCardBackgroundController extends Controller
 
         // Check ownership if activity_id is set
         if ($bgRecord->activity_id && $bgRecord->activity_id != $activity->id) {
-             return response()->json([
+            return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized file access',
             ], 403);
@@ -146,7 +147,7 @@ class IdCardBackgroundController extends Controller
         ]);
     }
 
-    public function getBackgroundImages(Request $request, $activityId)
+    public function getBackgroundImages(Request $request, $activityId = null)
     {
         if (! auth()->check()) {
             return response()->json([
@@ -155,18 +156,21 @@ class IdCardBackgroundController extends Controller
             ], 403);
         }
 
-        $activity = Activity::find($activityId);
-        if (! $activity || ! $activity->canAccessPrinting(auth()->user(), 'cards')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized',
-            ], 403);
-        }
+        $items = collect();
+        if ($activityId) {
+            $activity = Activity::find($activityId);
+            if (! $activity || ! $activity->canAccessPrinting(auth()->user(), 'cards')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized',
+                ], 403);
+            }
 
-        $items = DB::table('id_card_backgrounds')
-            ->where('activity_id', $activityId)
-            ->orderBy('created_at', 'desc')
-            ->get(['id', 'filename', 'original_name']);
+            $items = DB::table('id_card_backgrounds')
+                ->where('activity_id', $activityId)
+                ->orderBy('created_at', 'desc')
+                ->get(['id', 'filename', 'original_name']);
+        }
 
         // Initialize images array
         $images = [];
@@ -177,7 +181,7 @@ class IdCardBackgroundController extends Controller
             if (\Illuminate\Support\Str::startsWith($it->filename, 'id-card-backgrounds/')) {
                 $url = \Illuminate\Support\Facades\Storage::url($it->filename);
             } else {
-                $url = asset('assets/images/card/' . $it->filename);
+                $url = asset('assets/images/card/'.$it->filename);
             }
 
             $images[] = [
@@ -185,7 +189,7 @@ class IdCardBackgroundController extends Controller
                 'filename' => $it->filename,
                 'original_name' => $it->original_name,
                 'url' => $url,
-                'type' => 'uploaded'
+                'type' => 'uploaded',
             ];
         }
 
@@ -194,19 +198,23 @@ class IdCardBackgroundController extends Controller
         if (file_exists($defaultPath) && is_dir($defaultPath)) {
             $files = scandir($defaultPath);
             foreach ($files as $file) {
-                if ($file === '.' || $file === '..') continue;
-                
+                if ($file === '.' || $file === '..') {
+                    continue;
+                }
+
                 // Only allow image extensions
                 $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                if (!in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) continue;
+                if (! in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) {
+                    continue;
+                }
 
-                $filename = 'background/default/' . $file;
+                $filename = 'background/default/'.$file;
                 $images[] = [
-                    'id' => 'default_' . $file,
+                    'id' => 'default_'.$file,
                     'filename' => $filename,
-                    'original_name' => 'Default ' . $file,
-                    'url' => asset('assets/images/card/' . $filename),
-                    'type' => 'default'
+                    'original_name' => 'Default '.$file,
+                    'url' => asset('assets/images/card/'.$filename),
+                    'type' => 'default',
                 ];
             }
         }

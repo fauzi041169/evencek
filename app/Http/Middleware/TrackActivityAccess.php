@@ -2,12 +2,13 @@
 
 namespace App\Http\Middleware;
 
-use Closure;
-use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use App\Models\ActivityCommitteeStructure;
 use App\Models\ActivityUser;
+use Closure;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpFoundation\Response;
 
 class TrackActivityAccess
 {
@@ -23,10 +24,10 @@ class TrackActivityAccess
         if (Auth::check()) {
             $user = Auth::user();
             $route = $request->route();
-            
+
             // Try to find activity ID from route parameters
             $activityId = $route->parameter('activity') ?? $route->parameter('id') ?? $route->parameter('activityId');
-            
+
             // If activity is an object (Route Model Binding), get its ID
             if (is_object($activityId) && isset($activityId->id)) {
                 $activityId = $activityId->id;
@@ -34,6 +35,10 @@ class TrackActivityAccess
 
             if ($activityId) {
                 $now = now();
+                $throttleKey = 'activity-access:'.$user->id.':'.$activityId;
+                if (! Cache::add($throttleKey, 1, now()->addSeconds(60))) {
+                    return $response;
+                }
 
                 // 1. Track Committee Access
                 $committee = ActivityCommitteeStructure::where('user_id', $user->id)

@@ -1,10 +1,10 @@
 <?php
 
 namespace App\Http\Controllers;
- 
-use Illuminate\Http\Request;
+
 use App\Models\Activity;
 use App\Models\ActivityParticipationType;
+use Illuminate\Http\Request;
 
 class ActivityParticipationTypeController extends Controller
 {
@@ -12,15 +12,15 @@ class ActivityParticipationTypeController extends Controller
     {
         try {
             $activity = Activity::where('uid', $activityId)->first();
-            if (!$activity) {
+            if (! $activity) {
                 $activity = Activity::where('id', $activityId)->firstOrFail();
             }
-            
+
             // Permission check
             if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Anda tidak memiliki izin untuk melakukan aksi ini.'
+                    'message' => 'Anda tidak memiliki izin untuk melakukan aksi ini.',
                 ], 403);
             }
 
@@ -38,12 +38,12 @@ class ActivityParticipationTypeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Jenis kepesertaan berhasil ditambahkan.',
-                'data' => $participationType
+                'data' => $participationType,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -52,18 +52,18 @@ class ActivityParticipationTypeController extends Controller
     {
         try {
             $activity = Activity::where('uid', $activityId)->first();
-            if (!$activity) {
+            if (! $activity) {
                 $activity = Activity::where('id', $activityId)->firstOrFail();
             }
 
             $type = ActivityParticipationType::where('activity_id', $activity->id)
-                    ->where('id', $typeId)
-                    ->firstOrFail();
+                ->where('id', $typeId)
+                ->firstOrFail();
 
             if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Anda tidak memiliki izin untuk melakukan aksi ini.'
+                    'message' => 'Anda tidak memiliki izin untuk melakukan aksi ini.',
                 ], 403);
             }
 
@@ -80,12 +80,12 @@ class ActivityParticipationTypeController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Jenis kepesertaan berhasil diperbarui.',
-                'data' => $type
+                'data' => $type,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -94,18 +94,18 @@ class ActivityParticipationTypeController extends Controller
     {
         try {
             $activity = Activity::where('uid', $activityId)->first();
-            if (!$activity) {
+            if (! $activity) {
                 $activity = Activity::where('id', $activityId)->firstOrFail();
             }
 
             $type = ActivityParticipationType::where('activity_id', $activity->id)
-                    ->where('id', $typeId)
-                    ->firstOrFail();
+                ->where('id', $typeId)
+                ->firstOrFail();
 
             if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && ! $activity->canManageRegistration(auth()->id())) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Anda tidak memiliki izin untuk melakukan aksi ini.'
+                    'message' => 'Anda tidak memiliki izin untuk melakukan aksi ini.',
                 ], 403);
             }
 
@@ -113,12 +113,12 @@ class ActivityParticipationTypeController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Jenis kepesertaan berhasil dihapus.'
+                'message' => 'Jenis kepesertaan berhasil dihapus.',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                'message' => 'Terjadi kesalahan: '.$e->getMessage(),
             ], 500);
         }
     }

@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
 use SplFileObject;
 
@@ -41,7 +40,7 @@ class ImportSqlDump extends Command
         // Use PDO directly to ensure session state persists
         $pdo = DB::connection()->getPdo();
         $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
-        
+
         $file = new SplFileObject($path);
         $statement = '';
         $executed = 0;
@@ -59,9 +58,9 @@ class ImportSqlDump extends Command
             }
 
             if (strpos($trimmed, '/*') === 0 || strpos($trimmed, '*/') === 0 || strpos($trimmed, '/*!') === 0) {
-               // checking for mysql directives
+                // checking for mysql directives
             }
-            
+
             $statement .= $line;
 
             if (substr(rtrim($trimmed), -1) !== ';') {
@@ -74,7 +73,7 @@ class ImportSqlDump extends Command
             if ($sql === '') {
                 continue;
             }
-            
+
             // Debug logging for activities
             if (str_contains($sql, 'INSERT INTO `activities`')) {
                 $this->info('Attempting to insert into activities table...');
@@ -84,10 +83,10 @@ class ImportSqlDump extends Command
             try {
                 DB::unprepared($sql);
                 $executed++;
-                
+
                 if (str_contains($sql, 'INSERT INTO `activities`')) {
-                     $this->info('Successfully inserted into activities table.');
-                     Log::info('ImportSqlDump: Successfully inserted into activities table.');
+                    $this->info('Successfully inserted into activities table.');
+                    Log::info('ImportSqlDump: Successfully inserted into activities table.');
                 }
             } catch (QueryException $e) {
                 $errorInfo = $e->errorInfo ?? [];
@@ -100,7 +99,7 @@ class ImportSqlDump extends Command
                 // 1068: Multiple primary key defined
                 // 1826: Duplicate foreign key constraint name
                 if (in_array($driverCode, [1061, 1050, 1091, 1068, 1826])) {
-                     $this->warn('Notice: '.$e->getMessage());
+                    $this->warn('Notice: '.$e->getMessage());
                 } elseif ($sqlState === '01000' && (int) $driverCode === 1265) {
                     $this->warn('Warning while executing statement: '.$e->getMessage());
                     $executed++;

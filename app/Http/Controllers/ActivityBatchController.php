@@ -67,13 +67,13 @@ class ActivityBatchController extends Controller
 
         $isCommittee = $activity->canManageRegistration($user->id);
         $activityData = array_merge($activity->toArray(), [
-             'is_committee' => $isCommittee,
-             'can_manage_registration' => $isCommittee,
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
         ]);
 
         return Inertia::render('Activity/Batches/Index', [
             'activity' => $activityData,
-            'batches' => $batches
+            'batches' => $batches,
         ]);
     }
 

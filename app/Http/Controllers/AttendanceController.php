@@ -55,6 +55,7 @@ class AttendanceController extends Controller
         if (empty($backgrounds)) {
             $backgrounds = ['assets/images/hero/defoult.webp'];
         }
+
         return $backgrounds;
     }
 
@@ -112,7 +113,7 @@ class AttendanceController extends Controller
             'quality' => 80,
             'format' => 'webp',
         ]);
-        $relativePath = 'storage/' . $path;
+        $relativePath = 'storage/'.$path;
 
         $existingJson = Setting::get('attendance_scan_backgrounds');
         $list = [];
@@ -327,7 +328,7 @@ class AttendanceController extends Controller
         $attendances = ActivityRecord::where([
             'activity_id' => $activity->id,
             'attendance_id' => $attendance->id,
-            'record_type' => 'attendance'
+            'record_type' => 'attendance',
         ])
             ->orderBy('created_at', 'desc')
             ->limit(9)
@@ -337,6 +338,7 @@ class AttendanceController extends Controller
         $users = User::with('profile')->whereIn('id', $userIds)->get()->keyBy('id');
         $participants = $attendances->map(function ($record) use ($users) {
             $user = $users->get($record->user_id);
+
             return [
                 'id' => $record->id,
                 'user_id' => $record->user_id,
@@ -435,7 +437,7 @@ class AttendanceController extends Controller
     public function create(Activity $activity)
     {
         $this->authorizeActivityAccess($activity->id);
-        
+
         $isCommittee = $activity->canManageRegistration(auth()->id());
         $activityData = array_merge($activity->toArray(), [
             'is_committee' => $isCommittee,
@@ -444,14 +446,14 @@ class AttendanceController extends Controller
 
         return Inertia::render('Activity/Attendance/Create', [
             'activity' => $activityData,
-            'batches' => $activity->batches
+            'batches' => $activity->batches,
         ]);
     }
 
     public function edit(Activity $activity, Attendance $attendance)
     {
         $this->authorizeActivityAccess($activity->id);
-        
+
         $isCommittee = $activity->canManageRegistration(auth()->id());
         $activityData = array_merge($activity->toArray(), [
             'is_committee' => $isCommittee,
@@ -461,7 +463,7 @@ class AttendanceController extends Controller
         return Inertia::render('Activity/Attendance/Edit', [
             'activity' => $activityData,
             'attendance' => $attendance,
-            'batches' => $activity->batches
+            'batches' => $activity->batches,
         ]);
     }
 
@@ -778,17 +780,18 @@ class AttendanceController extends Controller
             $participants->getCollection()->transform(function ($participant) use ($selectedAttendanceId) {
                 $records = optional($participant->user)->attendanceRecords;
                 $participant->attendance_records = $records ? $records->where('attendance_id', $selectedAttendanceId)->values() : collect();
+
                 return $participant;
             });
         }
 
         $selectedActivityData = $selectedActivity;
         if ($selectedActivity) {
-             $isCommittee = $selectedActivity->canManageRegistration(auth()->id());
-             $selectedActivityData = array_merge($selectedActivity->toArray(), [
-                 'is_committee' => $isCommittee,
-                 'can_manage_registration' => $isCommittee,
-             ]);
+            $isCommittee = $selectedActivity->canManageRegistration(auth()->id());
+            $selectedActivityData = array_merge($selectedActivity->toArray(), [
+                'is_committee' => $isCommittee,
+                'can_manage_registration' => $isCommittee,
+            ]);
         }
 
         return Inertia::render('Activity/Attendance/Management', [
@@ -881,7 +884,7 @@ class AttendanceController extends Controller
                 $isPresent = (bool) $record;
 
                 // Filter logic
-                if ($statusFilter === 'present' && !$isPresent) {
+                if ($statusFilter === 'present' && ! $isPresent) {
                     continue;
                 }
                 if ($statusFilter === 'absent' && $isPresent) {
@@ -939,13 +942,13 @@ class AttendanceController extends Controller
             $activityUser = ActivityUser::find($scannedId);
             if ($activityUser) {
                 $finalUserId = $activityUser->user_id;
-            } 
+            }
             // 2. Jika bukan ActivityUser ID, cek apakah User ID valid
             elseif (User::where('id', $scannedId)->exists()) {
                 $finalUserId = $scannedId;
             }
 
-            if (!$finalUserId) {
+            if (! $finalUserId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'User tidak ditemukan (Invalid ID)',
@@ -982,6 +985,7 @@ class AttendanceController extends Controller
 
             if ($existingAttendance) {
                 $existingUser = User::with(['profile.province'])->find($finalUserId);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'User sudah melakukan absensi',
@@ -1605,9 +1609,9 @@ class AttendanceController extends Controller
             $activityName = $activity->name ?? '';
 
             if ($activity && $activity->batches()->count() > 1 && $attendance->activity_batch_id) {
-                 if ($attendance->batch) {
-                     $activityName .= ' - ' . $attendance->batch->name;
-                 }
+                if ($attendance->batch) {
+                    $activityName .= ' - '.$attendance->batch->name;
+                }
             }
 
             \Log::info('Universal QR Scan Attendance:', [

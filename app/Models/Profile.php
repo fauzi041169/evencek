@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\Traits\HasCustomUid;
 use App\Helpers\GenderHelper;
+use App\Traits\HasCustomUid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -54,7 +54,7 @@ class Profile extends Model
         // Normalisasi dan Prediksi Gender sebelum simpan
         static::saving(function ($profile) {
             // 1. Normalisasi
-            if (!empty($profile->jenis_kelamin)) {
+            if (! empty($profile->jenis_kelamin)) {
                 $profile->jenis_kelamin = GenderHelper::normalize($profile->jenis_kelamin);
             }
 
@@ -62,13 +62,13 @@ class Profile extends Model
             if (empty($profile->jenis_kelamin)) {
                 // Coba ambil nama dari relasi user
                 $user = $profile->user;
-                
+
                 // Jika user belum terload (misal saat create baru via user_id), coba cari
-                if (!$user && $profile->user_id) {
+                if (! $user && $profile->user_id) {
                     $user = \App\Models\User::find($profile->user_id);
                 }
 
-                if ($user && !empty($user->name)) {
+                if ($user && ! empty($user->name)) {
                     $prediction = GenderHelper::predict($user->name);
                     if ($prediction) {
                         $profile->jenis_kelamin = $prediction;
@@ -155,8 +155,8 @@ class Profile extends Model
     public function getFotoUrlAttribute()
     {
         $default = asset('assets/images/profilefoto/default-profile.png');
-        
-        if (!$this->foto) {
+
+        if (! $this->foto) {
             return $default;
         }
 
@@ -174,13 +174,14 @@ class Profile extends Model
                     ? \Illuminate\Support\Facades\Storage::url($this->foto)
                     : route('profile.photo', $this->user_id);
             }
+
             // If it's supposed to be in storage but isn't there, DON'T check assets.
             return $default;
         }
-        
+
         // 2. If it's a raw GUID/filename (usually older storage or direct upload)
-        if (!str_contains($this->foto, '/') && strlen($this->foto) > 30) {
-            $storagePath = 'profile-photos/' . $this->foto;
+        if (! str_contains($this->foto, '/') && strlen($this->foto) > 30) {
+            $storagePath = 'profile-photos/'.$this->foto;
             if (\Illuminate\Support\Facades\Storage::disk('public')->exists($storagePath)) {
                 return $hasPublicStorage
                     ? \Illuminate\Support\Facades\Storage::url($storagePath)
@@ -189,10 +190,10 @@ class Profile extends Model
         }
 
         // 3. Legacy path check (only for filenames that are NOT storage paths)
-        if (!str_contains($this->foto, '/')) {
-            $photoPath = public_path('assets/images/profilefoto/' . $this->foto);
-            if (file_exists($photoPath) && !is_dir($photoPath)) {
-                return asset('assets/images/profilefoto/' . $this->foto);
+        if (! str_contains($this->foto, '/')) {
+            $photoPath = public_path('assets/images/profilefoto/'.$this->foto);
+            if (file_exists($photoPath) && ! is_dir($photoPath)) {
+                return asset('assets/images/profilefoto/'.$this->foto);
             }
         }
 

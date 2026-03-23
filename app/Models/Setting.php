@@ -54,6 +54,7 @@ class Setting extends Model
             ]
         );
         Cache::forget('inertia_app_settings');
+
         return $result;
     }
 

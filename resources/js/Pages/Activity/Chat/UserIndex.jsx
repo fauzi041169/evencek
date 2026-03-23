@@ -13,9 +13,34 @@ export default function UserIndex({ activity }) {
 
     useEffect(() => {
         loadMessages(false);
-        const interval = setInterval(() => loadMessages(true), 10000); // 10s kurangi load
-        return () => clearInterval(interval);
+        const hasRealtime = typeof window !== 'undefined' && window.Echo && typeof window.Echo.private === 'function';
+        if (!hasRealtime) {
+            const interval = setInterval(() => loadMessages(true), 10000); // 10s kurangi load
+            return () => clearInterval(interval);
+        }
     }, []);
+
+    useEffect(() => {
+        const hasRealtime = typeof window !== 'undefined' && window.Echo && typeof window.Echo.private === 'function';
+        if (!hasRealtime || !activity?.id || !currentUserId) return;
+
+        const channelName = `activity.${activity.id}.chat.${currentUserId}`;
+        const channel = window.Echo.private(channelName);
+
+        channel.listen('.activity.chat.message.sent', (e) => {
+            const incoming = e?.message;
+            if (!incoming) return;
+            setMessages((prev) => {
+                if (prev.some((m) => String(m.id) === String(incoming.id))) return prev;
+                return [...prev, incoming];
+            });
+        });
+
+        return () => {
+            channel.stopListening('.activity.chat.message.sent');
+            window.Echo.leave(channelName);
+        };
+    }, [activity?.id, currentUserId]);
 
     useEffect(() => {
         if (isScrolledToBottom) {
@@ -80,7 +105,8 @@ export default function UserIndex({ activity }) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    ...(window.Echo && typeof window.Echo.socketId === 'function' ? { 'X-Socket-Id': window.Echo.socketId() } : {}),
                 },
                 body: JSON.stringify({ 
                     message: newMessage,
@@ -210,4 +236,3 @@ export default function UserIndex({ activity }) {
         </MainLayout>
     );
 }
-

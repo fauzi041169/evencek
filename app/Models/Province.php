@@ -10,6 +10,7 @@ class Province extends Model
 {
     // use HasCustomUid; // Removed to allow standard IDs
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $table = 'provinces';
@@ -25,6 +26,4 @@ class Province extends Model
     {
         return $this->hasMany(District::class);
     }
-
-
 }

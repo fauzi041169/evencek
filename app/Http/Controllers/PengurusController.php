@@ -153,7 +153,7 @@ class PengurusController extends Controller
                     } elseif (file_exists(public_path('storage/'.$pengurus->foto))) {
                         $deleted = @unlink(public_path('storage/'.$pengurus->foto));
                     }
-                    
+
                     if ($deleted) {
                         Log::info('Foto berhasil dihapus', ['path' => $pengurus->foto]);
                     }

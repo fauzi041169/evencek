@@ -22,8 +22,6 @@ trait ManagesParticipantDeletion
     /**
      * Delete participants and all related data (payments, files, records, etc.)
      *
-     * @param Activity $activity
-     * @param array $userIds
      * @return array Result summary
      */
     protected function deleteParticipants(Activity $activity, array $userIds)
@@ -35,7 +33,7 @@ trait ManagesParticipantDeletion
             try {
                 // Get user object (if exists) - optional check but good for logging
                 $user = User::find($uid);
-                
+
                 // 1. Delete Payments & Proof Files
                 $payments = Payment::where('activity_id', $activity->id)->where('user_id', $uid)->get();
                 foreach ($payments as $payment) {
@@ -48,19 +46,19 @@ trait ManagesParticipantDeletion
                 $enrollments = ActivityUser::where('activity_id', $activity->id)->where('user_id', $uid)->get();
                 foreach ($enrollments as $enrollment) {
                     // Check for files in custom_data
-                    if (!empty($enrollment->custom_data)) {
+                    if (! empty($enrollment->custom_data)) {
                         $this->deleteCustomDataFiles($enrollment->custom_data);
                     }
-                    
+
                     // Check for certificate file (if any stored)
-                    if (!empty($enrollment->certificate_id)) {
+                    if (! empty($enrollment->certificate_id)) {
                         $this->deleteCertificateFile($enrollment->certificate_id, $activity->id);
                     }
 
                     $this->deleteEnrollmentImage($enrollment);
                     $enrollment->delete();
                 }
-                
+
                 // Explicit cleanup for legacy/typo tables to ensure no residue
                 $legacyUserTables = ['activitiusers', 'activity_users'];
                 foreach ($legacyUserTables as $table) {
@@ -78,10 +76,10 @@ trait ManagesParticipantDeletion
                     $attendanceIds = Attendance::where('activity_id', $activity->id)->pluck('id')->toArray();
                 }
 
-                if (!empty($attendanceIds)) {
+                if (! empty($attendanceIds)) {
                     // Main model
                     ActivityRecord::whereIn('attendance_id', $attendanceIds)->where('user_id', $uid)->delete();
-                    
+
                     // Legacy/Typo tables
                     $legacyRecordTables = ['activitirecords', 'activity_records'];
                     foreach ($legacyRecordTables as $table) {
@@ -104,14 +102,14 @@ trait ManagesParticipantDeletion
                     ->where('commentable_type', Activity::class)
                     ->where('user_id', $uid)
                     ->delete();
-                    
+
                 // 6. Delete Activity Chats
                 if (Schema::hasTable('activity_chats')) {
                     // Delete chats where user is the participant context
                     ActivityChat::where('activity_id', $activity->id)
                         ->where('user_id', $uid)
                         ->delete();
-                        
+
                     // Also delete chats where user is the sender (if any, though usually same as above)
                     ActivityChat::where('activity_id', $activity->id)
                         ->where('sender_id', $uid)
@@ -120,14 +118,14 @@ trait ManagesParticipantDeletion
 
                 $count++;
             } catch (\Exception $e) {
-                Log::error("Failed to delete participant $uid from activity {$activity->id}: " . $e->getMessage());
+                Log::error("Failed to delete participant $uid from activity {$activity->id}: ".$e->getMessage());
                 $errors[] = $uid;
             }
         }
 
         return [
             'count' => $count,
-            'errors' => $errors
+            'errors' => $errors,
         ];
     }
 
@@ -136,10 +134,14 @@ trait ManagesParticipantDeletion
      */
     protected function deletePaymentProof(Payment $payment)
     {
-        if (!$payment->proof_of_payment) return;
+        if (! $payment->proof_of_payment) {
+            return;
+        }
 
         // Skip default assets
-        if (str_contains($payment->proof_of_payment, 'assets/images/credit/bukti bayar.png')) return;
+        if (str_contains($payment->proof_of_payment, 'assets/images/credit/bukti bayar.png')) {
+            return;
+        }
 
         try {
             if (Storage::disk('public')->exists($payment->proof_of_payment)) {
@@ -148,9 +150,9 @@ trait ManagesParticipantDeletion
                 // Fallback paths
                 $pathsToCheck = [
                     public_path($payment->proof_of_payment),
-                    public_path('storage/' . $payment->proof_of_payment)
+                    public_path('storage/'.$payment->proof_of_payment),
                 ];
-                
+
                 foreach ($pathsToCheck as $path) {
                     if (File::exists($path)) {
                         File::delete($path);
@@ -158,7 +160,7 @@ trait ManagesParticipantDeletion
                 }
             }
         } catch (\Exception $e) {
-            Log::warning("Failed to delete payment proof for payment {$payment->id}: " . $e->getMessage());
+            Log::warning("Failed to delete payment proof for payment {$payment->id}: ".$e->getMessage());
         }
     }
 
@@ -167,7 +169,9 @@ trait ManagesParticipantDeletion
      */
     protected function deleteEnrollmentImage(ActivityUser $enrollment)
     {
-        if (!$enrollment->image_path) return;
+        if (! $enrollment->image_path) {
+            return;
+        }
 
         try {
             if (Storage::disk('public')->exists($enrollment->image_path)) {
@@ -180,7 +184,7 @@ trait ManagesParticipantDeletion
                 }
             }
         } catch (\Exception $e) {
-            Log::warning("Failed to delete enrollment image for enrollment {$enrollment->id}: " . $e->getMessage());
+            Log::warning("Failed to delete enrollment image for enrollment {$enrollment->id}: ".$e->getMessage());
         }
     }
 
@@ -203,7 +207,7 @@ trait ManagesParticipantDeletion
             $groupMemberIds = ActivityUser::where('activity_id', $activityId)
                 ->whereIn('activity_participant_group_id', $groupIds)
                 ->pluck('user_id');
-            
+
             $allUserIds = $allUserIds->merge($groupMemberIds);
         }
 
@@ -215,13 +219,15 @@ trait ManagesParticipantDeletion
      */
     protected function deleteCustomDataFiles($customData)
     {
-        if (!is_array($customData)) return;
+        if (! is_array($customData)) {
+            return;
+        }
 
         foreach ($customData as $key => $value) {
             // Check if value looks like a file path
             if (is_string($value) && (
-                strpos($value, 'storage/') === 0 || 
-                strpos($value, 'uploads/') === 0 || 
+                strpos($value, 'storage/') === 0 ||
+                strpos($value, 'uploads/') === 0 ||
                 strpos($value, '/storage/') !== false
             )) {
                 try {
@@ -237,7 +243,7 @@ trait ManagesParticipantDeletion
                         }
                     }
                 } catch (\Exception $e) {
-                    Log::warning("Failed to delete custom data file {$value}: " . $e->getMessage());
+                    Log::warning("Failed to delete custom data file {$value}: ".$e->getMessage());
                 }
             }
         }

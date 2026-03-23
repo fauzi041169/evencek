@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('profiles', function (Blueprint $table) {
-            if (!Schema::hasColumn('profiles', 'other_province')) {
+            if (! Schema::hasColumn('profiles', 'other_province')) {
                 $table->string('other_province')->nullable()->after('district_id');
             }
-            if (!Schema::hasColumn('profiles', 'other_regency')) {
+            if (! Schema::hasColumn('profiles', 'other_regency')) {
                 $table->string('other_regency')->nullable()->after('other_province');
             }
-            if (!Schema::hasColumn('profiles', 'other_district')) {
+            if (! Schema::hasColumn('profiles', 'other_district')) {
                 $table->string('other_district')->nullable()->after('other_regency');
             }
         });
@@ -37,7 +37,7 @@ return new class extends Migration
                 }
             }
 
-            if (!empty($columnsToDrop)) {
+            if (! empty($columnsToDrop)) {
                 $table->dropColumn($columnsToDrop);
             }
         });

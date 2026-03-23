@@ -31,8 +31,9 @@ class ForgotPasswordController extends Controller
                 'hp_time' => $hpTime,
                 'current_time' => time(),
                 'diff' => time() - $hpTime,
-                'email' => $request->email
+                'email' => $request->email,
             ]);
+
             return redirect()->route('login')
                 ->with('status', 'Jika email yang Anda masukkan terdaftar, kami akan mengirimkan link reset password ke email Anda.');
         }
@@ -63,6 +64,7 @@ class ForgotPasswordController extends Controller
                 'email' => $user->email,
                 'error' => $e->getMessage(),
             ]);
+
             return back()->withErrors(['email' => 'Sistem reset password sedang bermasalah. Silakan coba lagi nanti atau hubungi administrator.']);
         }
 

@@ -13,9 +13,11 @@ class SecurityHeaders
     public function handle(Request $request, Closure $next)
     {
         $response = $next($request);
+        $host = $request->getHost();
+        $isDevHost = $host === '127.0.0.1' || $host === 'localhost';
 
         // Frame protection - Allow same-origin in development for testing
-        $frameOption = app()->environment(['local', 'development']) ? 'SAMEORIGIN' : 'DENY';
+        $frameOption = (app()->environment(['local', 'development']) || $isDevHost) ? 'SAMEORIGIN' : 'DENY';
         $response->headers->set('X-Frame-Options', $frameOption);
 
         // MIME sniffing protection
@@ -30,7 +32,6 @@ class SecurityHeaders
 
         // Permissions Policy: allow camera and microphone for same-origin
         $response->headers->set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
-
 
         $csp = "default-src 'self'; "
              ."img-src 'self' data: blob: https:; "
@@ -74,7 +75,7 @@ class SecurityHeaders
             $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         }
 
-        if (app()->environment(['local', 'development'])) {
+        if (app()->environment(['local', 'development']) || $isDevHost) {
             // For development, use permissive policy with localhost and 127.0.0.1
             // Note: CSP doesn't support IPv6 bracket notation [::1], so we use broader rules
             $ollamaUrl = env('OLLAMA_URL', 'http://localhost:11434');

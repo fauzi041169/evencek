@@ -3,20 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ImageHelper;
-use App\Models\District;
 use App\Models\ActivityCommitteeStructure;
 use App\Models\ActivityUser;
+use App\Models\District;
 use App\Models\Profile;
 use App\Models\Province;
 use App\Models\Regency;
 use App\Models\User;
-use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class ProfileController extends Controller
 {
@@ -93,8 +93,8 @@ class ProfileController extends Controller
         $user = User::with('profile')->findOrFail($id);
 
         // Perbaiki otorisasi: izinkan admin, superadmin, dan creator mengedit profil siapa pun
-        if (! auth()->check() || (auth()->id() !== $user->id && 
-            ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) && 
+        if (! auth()->check() || (auth()->id() !== $user->id &&
+            ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) &&
             ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()) &&
             ! (method_exists(auth()->user(), 'isCreator') && auth()->user()->isCreator())
         )) {
@@ -158,22 +158,22 @@ class ProfileController extends Controller
             // Sanitize region inputs to ensures they are null if empty/invalid string
             $cleanRegions = [];
             foreach (['province_id', 'regency_id', 'district_id'] as $key) {
-                 if ($request->has($key)) {
-                     $val = $request->input($key);
-                     // Check for various empty/invalid states
-                     if ($val === '' || $val === 'null' || $val === 'undefined' || is_null($val)) {
-                         $cleanRegions[$key] = null;
-                     }
-                 }
+                if ($request->has($key)) {
+                    $val = $request->input($key);
+                    // Check for various empty/invalid states
+                    if ($val === '' || $val === 'null' || $val === 'undefined' || is_null($val)) {
+                        $cleanRegions[$key] = null;
+                    }
+                }
             }
-            if (!empty($cleanRegions)) {
+            if (! empty($cleanRegions)) {
                 $request->merge($cleanRegions);
             }
 
             $nameRule = $isParticipantEdit ? 'nullable|string|max:255' : 'sometimes|required|string|max:255';
             $emailRule = $isParticipantEdit
-                ? 'nullable|email|unique:users,email,' . $user->id
-                : 'sometimes|required|email|unique:users,email,' . $user->id;
+                ? 'nullable|email|unique:users,email,'.$user->id
+                : 'sometimes|required|email|unique:users,email,'.$user->id;
 
             $rules = [
                 'name' => $nameRule,
@@ -323,6 +323,7 @@ class ProfileController extends Controller
                     return false;
                 }
                 $v = strtolower($value);
+
                 return str_contains($v, 'fakepath') || preg_match('#^[a-zA-Z]:\\\\#', $value) || preg_match('#\\\\#', $value);
             };
 
@@ -356,13 +357,13 @@ class ProfileController extends Controller
                                         continue;
                                     }
                                     $ext = $uploaded->getClientOriginalExtension();
-                                    $name = \Illuminate\Support\Str::slug($user->name ?: 'user') . '-' . time() . '-' . uniqid() . ($ext ? '.' . $ext : '');
-                                    $dir = 'activities/' . $activity->id . '/custom-data/users/' . $user->id;
-                                    $dest = $dir . '/' . $name;
+                                    $name = \Illuminate\Support\Str::slug($user->name ?: 'user').'-'.time().'-'.uniqid().($ext ? '.'.$ext : '');
+                                    $dir = 'activities/'.$activity->id.'/custom-data/users/'.$user->id;
+                                    $dest = $dir.'/'.$name;
                                     try {
                                         \Illuminate\Support\Facades\Storage::disk('public')->putFileAs($dir, $uploaded, $name);
                                         if (\Illuminate\Support\Facades\Storage::disk('public')->exists($dest)) {
-                                            $fileUploadsData[$keyNorm] = 'storage/' . $dest;
+                                            $fileUploadsData[$keyNorm] = 'storage/'.$dest;
                                         } else {
                                             \Illuminate\Support\Facades\Log::warning('Profile update: file written but not found on disk', [
                                                 'field' => $fieldKey, 'path' => $dest, 'activity_id' => $activity->id, 'user_id' => $user->id,
@@ -431,13 +432,13 @@ class ProfileController extends Controller
                             }
                             if ($f && $f->isValid()) {
                                 $ext = $f->getClientOriginalExtension();
-                                $name = \Illuminate\Support\Str::slug($user->name ?: 'user') . '-' . time() . '-' . uniqid() . ($ext ? '.' . $ext : '');
-                                $dir = 'activities/' . $activity->id . '/custom-data/users/' . $user->id;
-                                $dest = $dir . '/' . $name;
+                                $name = \Illuminate\Support\Str::slug($user->name ?: 'user').'-'.time().'-'.uniqid().($ext ? '.'.$ext : '');
+                                $dir = 'activities/'.$activity->id.'/custom-data/users/'.$user->id;
+                                $dest = $dir.'/'.$name;
                                 try {
                                     \Illuminate\Support\Facades\Storage::disk('public')->putFileAs($dir, $f, $name);
                                     if (\Illuminate\Support\Facades\Storage::disk('public')->exists($dest)) {
-                                        $fileUploadsData[$fileKey] = 'storage/' . $dest;
+                                        $fileUploadsData[$fileKey] = 'storage/'.$dest;
                                     } else {
                                         \Illuminate\Support\Facades\Log::warning('Profile update: custom_fields file written but not found', ['field' => $fileKey, 'path' => $dest]);
                                     }
@@ -472,13 +473,13 @@ class ProfileController extends Controller
                                 continue;
                             }
                             $ext = $uploaded->getClientOriginalExtension();
-                            $name = \Illuminate\Support\Str::slug($user->name ?: 'user') . '-' . time() . '-' . uniqid() . ($ext ? '.' . $ext : '');
-                            $dir = 'activities/' . $activity->id . '/custom-data/users/' . $user->id;
-                            $dest = $dir . '/' . $name;
+                            $name = \Illuminate\Support\Str::slug($user->name ?: 'user').'-'.time().'-'.uniqid().($ext ? '.'.$ext : '');
+                            $dir = 'activities/'.$activity->id.'/custom-data/users/'.$user->id;
+                            $dest = $dir.'/'.$name;
                             try {
                                 \Illuminate\Support\Facades\Storage::disk('public')->putFileAs($dir, $uploaded, $name);
                                 if (\Illuminate\Support\Facades\Storage::disk('public')->exists($dest)) {
-                                    $fileUploadsData[$inputNorm] = 'storage/' . $dest;
+                                    $fileUploadsData[$inputNorm] = 'storage/'.$dest;
                                 } else {
                                     \Illuminate\Support\Facades\Log::warning('Profile update: allFiles fallback file written but not found', ['input' => $inputName, 'path' => $dest]);
                                 }
@@ -568,9 +569,9 @@ class ProfileController extends Controller
 
                 $finfo = new \finfo(FILEINFO_MIME_TYPE);
                 $mimeType = $finfo->buffer($image_data);
-                
-                if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/jpg'])) {
-                     return redirect()->back()
+
+                if (! in_array($mimeType, ['image/jpeg', 'image/png', 'image/jpg'])) {
+                    return redirect()->back()
                         ->withErrors(['foto_file' => 'Format gambar dari kamera tidak valid.'])
                         ->withInput();
                 }
@@ -655,6 +656,7 @@ class ProfileController extends Controller
                                 $clean,
                                 'custom_'.$norm,
                             ]));
+
                             return $variants;
                         };
                         // 1) Prioritas: data file yang baru diunggah
@@ -666,10 +668,16 @@ class ProfileController extends Controller
                         // 2) Fallback: jika tidak ada fileUploadsData (kasus hosting tertentu), sinkronkan nilai additionalData yang tampak seperti path/link file
                         if (empty($fileUploadsData)) {
                             foreach ($additionalData as $k => $v) {
-                                if (! is_string($k)) continue;
-                                if (! is_string($v)) continue;
+                                if (! is_string($k)) {
+                                    continue;
+                                }
+                                if (! is_string($v)) {
+                                    continue;
+                                }
                                 $val = trim($v);
-                                if ($val === '' ) continue;
+                                if ($val === '') {
+                                    continue;
+                                }
                                 $isUrl = str_starts_with($val, 'http://') || str_starts_with($val, 'https://') || \Illuminate\Support\Str::contains($val, ['drive.google.com', 'docs.google.com']);
                                 $looksStorage = preg_match('#(^|/)storage/#i', $val) || preg_match('#activities/\\d+/custom-data/users/#i', $val);
                                 if ($isUrl || $looksStorage) {
@@ -694,7 +702,7 @@ class ProfileController extends Controller
             // Cari value 'utusan' dari input (case-insensitive key search)
             $utusanValue = null;
             $utusanKeyFound = null;
-            if (!empty($additionalData)) {
+            if (! empty($additionalData)) {
                 foreach ($additionalData as $key => $val) {
                     if (strtolower($key) === 'utusan') {
                         $utusanValue = $val;
@@ -708,12 +716,12 @@ class ProfileController extends Controller
             // dan update isinya untuk user ini.
             if ($utusanValue !== null) {
                 $tablesToCheck = ['users', 'profiles', 'activity_users'];
-                
+
                 foreach ($tablesToCheck as $tableName) {
                     // Dapatkan semua kolom tabel
                     $columns = Schema::getColumnListing($tableName);
                     $targetColumn = null;
-                    
+
                     // Cari kolom yang namanya 'utusan' (case-insensitive)
                     foreach ($columns as $col) {
                         if (strtolower($col) === 'utusan') {
@@ -742,17 +750,17 @@ class ProfileController extends Controller
                 $activityId = $request->input('activity_id');
                 // Additional data from request contains both profile extras and activity custom cols
                 // We will save them to custom_data of the activity user pivot/record
-                
+
                 $activityUser = ActivityUser::where('activity_id', $activityId)
                     ->where('user_id', $user->id)
                     ->first();
 
                 if ($activityUser) {
                     $existingCustomData = $activityUser->custom_data ?? [];
-                    if (!is_array($existingCustomData)) {
+                    if (! is_array($existingCustomData)) {
                         $existingCustomData = json_decode($existingCustomData, true) ?? [];
                     }
-                    
+
                     // Merge new data. We assume keys in additional_data are relevant
                     // Remove activity_id from data to sync to prevent pollution
                     $dataToSync = $additionalData;
@@ -761,32 +769,32 @@ class ProfileController extends Controller
                     }
 
                     $newCustomData = array_merge($existingCustomData, $dataToSync);
-                    
+
                     $activityUser->custom_data = $newCustomData;
-                    
-                    // Also update phone/name cache in ActivityUser/Committee if needed? 
+
+                    // Also update phone/name cache in ActivityUser/Committee if needed?
                     // Usually they are just relations, but sometimes cached.
                     // For now just custom_data.
-                    
+
                     $activityUser->save();
 
                     \Log::info('ProfileController: Synced custom_data to ActivityUser', [
                         'user_id' => $user->id,
                         'activity_id' => $activityId,
-                        'synced_data' => $dataToSync
+                        'synced_data' => $dataToSync,
                     ]);
-                    
+
                     // Also update Committee Structure phone/name if exists
-                     $committeeMember = ActivityCommitteeStructure::where('activity_id', $activityId)
+                    $committeeMember = ActivityCommitteeStructure::where('activity_id', $activityId)
                         ->where('user_id', $user->id)
                         ->first();
                     if ($committeeMember) {
-                         $committeeMember->name = $user->name;
-                         $committeeMember->email = $user->email;
-                         if (isset($profileData['no_hp'])) {
-                             $committeeMember->phone = $profileData['no_hp'];
-                         }
-                         $committeeMember->save();
+                        $committeeMember->name = $user->name;
+                        $committeeMember->email = $user->email;
+                        if (isset($profileData['no_hp'])) {
+                            $committeeMember->phone = $profileData['no_hp'];
+                        }
+                        $committeeMember->save();
                     }
                 }
             }
@@ -804,23 +812,23 @@ class ProfileController extends Controller
             }
 
             return redirect()->back()->with('success', 'Profile updated successfully.');
-            
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Re-throw validation exceptions to let Laravel handle them (422)
             throw $e;
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Profile Update Critical Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-            
+            \Illuminate\Support\Facades\Log::error('Profile Update Critical Error: '.$e->getMessage()."\n".$e->getTraceAsString());
+
             if ($request->wantsJson()) {
                 return response()->json([
-                    'status' => 'error', 
-                    'message' => 'Terjadi kesalahan server saat menyimpan profil: ' . $e->getMessage()
+                    'status' => 'error',
+                    'message' => 'Terjadi kesalahan server saat menyimpan profil: '.$e->getMessage(),
                 ], 500);
             }
-            
+
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+                ->with('error', 'Terjadi kesalahan sistem: '.$e->getMessage());
         }
     }
 
@@ -843,7 +851,7 @@ class ProfileController extends Controller
         $profile = $user->profile;
 
         $foto = $request->file('foto_file');
-        
+
         try {
             // Simpan menggunakan Storage facade
             $path = ImageHelper::storeCompressedUploadedImage($foto, 'profile-photos', 'public', [
@@ -853,11 +861,12 @@ class ProfileController extends Controller
                 'format' => 'webp',
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('API Profile upload error: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('API Profile upload error: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal upload foto. Server error.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
 
@@ -882,9 +891,11 @@ class ProfileController extends Controller
     {
         try {
             $provinces = \App\Models\Province::orderBy('name')->get(['id', 'name']);
+
             return response()->json($provinces);
         } catch (\Exception $e) {
             \Log::error('Error fetching provinces: '.$e->getMessage());
+
             return response()->json(['error' => 'Failed to fetch provinces'], 500);
         }
     }
@@ -1018,10 +1029,10 @@ class ProfileController extends Controller
         if ($targetUserId != $user->id) {
             // Hanya admin/superadmin yang boleh ganti password orang lain
             if (! ($user->isSuperAdmin() || $user->isAdmin())) {
-                 abort(403, 'Unauthorized action.');
+                abort(403, 'Unauthorized action.');
             }
             $user = User::findOrFail($targetUserId);
-            
+
             // Validasi tanpa current_password
             $request->validate([
                 'new_password' => ['required', 'min:8', 'confirmed'],

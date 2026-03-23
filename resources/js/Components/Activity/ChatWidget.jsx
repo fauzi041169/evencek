@@ -1,7 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { usePage, router } from '@inertiajs/react';
 import { MessageSquareText, X, Send, ArrowLeft, Loader2 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Tooltip,
+    Filler
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
 export default function ChatWidget({ activityId, ownerId, ownerName }) {
     const { auth } = usePage().props;
@@ -99,11 +111,14 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
 
     useEffect(() => {
         if (isOpen && auth.user) {
+            const hasRealtime = typeof window !== 'undefined' && window.Echo && typeof window.Echo.private === 'function';
             if (isOwner) {
                 if (activeConversation) {
                     fetchMessages(false);
-                    const interval = setInterval(() => fetchMessages(true), 15000); // 15s kurangi load
-                    return () => clearInterval(interval);
+                    if (!hasRealtime) {
+                        const interval = setInterval(() => fetchMessages(true), 15000); // 15s kurangi load
+                        return () => clearInterval(interval);
+                    }
                 } else {
                     fetchConversations(false);
                     const interval = setInterval(() => fetchConversations(true), 30000);
@@ -111,11 +126,41 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
                 }
             } else {
                 fetchMessages(false);
-                const interval = setInterval(() => fetchMessages(true), 15000);
-                return () => clearInterval(interval);
+                if (!hasRealtime) {
+                    const interval = setInterval(() => fetchMessages(true), 15000);
+                    return () => clearInterval(interval);
+                }
             }
         }
     }, [isOpen, activityId, isOwner, activeConversation]);
+
+    useEffect(() => {
+        const hasRealtime = typeof window !== 'undefined' && window.Echo && typeof window.Echo.private === 'function';
+        if (!hasRealtime || !isOpen || !auth.user) return;
+
+        if (isOwner && !activeConversation) return;
+
+        const participantId = isOwner ? activeConversation?.user?.id : auth.user.id;
+        if (!participantId) return;
+
+        const channelName = `activity.${activityId}.chat.${participantId}`;
+        const channel = window.Echo.private(channelName);
+
+        channel.listen('.activity.chat.message.sent', (e) => {
+            const incoming = e?.message;
+            if (!incoming) return;
+
+            setMessages((prev) => {
+                if (prev.some((m) => String(m.id) === String(incoming.id))) return prev;
+                return [...prev, incoming];
+            });
+        });
+
+        return () => {
+            channel.stopListening('.activity.chat.message.sent');
+            window.Echo.leave(channelName);
+        };
+    }, [isOpen, activityId, isOwner, activeConversation, auth.user?.id]);
 
     const sendMessage = async (e) => {
         e.preventDefault();
@@ -129,12 +174,15 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
             return;
         }
 
+        const tempId = `temp-${Date.now()}`;
         const tempMessage = {
-            id: Date.now(),
+            id: tempId,
+            activity_id: activityId,
+            user_id: targetId,
+            sender_id: auth.user.id,
             message: messageInput,
-            is_sender: true,
             created_at: new Date().toISOString(),
-            user: { name: auth.user.name, avatar: auth.user.avatar }
+            sender: { id: auth.user.id, name: auth.user.name, avatar: auth.user.avatar },
         };
 
         setMessages(prev => [...prev, tempMessage]);
@@ -147,6 +195,7 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    ...(window.Echo && typeof window.Echo.socketId === 'function' ? { 'X-Socket-Id': window.Echo.socketId() } : {}),
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({ 
@@ -158,11 +207,16 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
             if (!response.ok) {
                 throw new Error('Failed to send');
             }
-            
-            // Refresh messages to get server timestamp/ID
-            fetchMessages(true);
+
+            const data = await response.json();
+            if (data?.message) {
+                setMessages((prev) => prev.map((m) => (m.id === tempId ? data.message : m)));
+            } else {
+                fetchMessages(true);
+            }
         } catch (error) {
             console.error('Send failed', error);
+            setMessages((prev) => prev.filter((m) => m.id !== tempId));
             Swal.fire({
                 icon: 'error',
                 title: 'Gagal',
@@ -183,6 +237,51 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
     useEffect(() => {
         scrollToBottom();
     }, [messages, isOpen]);
+
+    const sparkData = useMemo(() => {
+        const labels = [];
+        const counts = [];
+        const now = new Date();
+
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(now.getDate() - i);
+            labels.push(d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }));
+            counts.push(0);
+        }
+
+        for (const msg of messages) {
+            const dt = new Date(msg.created_at);
+            if (Number.isNaN(dt.getTime())) continue;
+            const diffDays = Math.floor((now - dt) / (24 * 60 * 60 * 1000));
+            if (diffDays < 0 || diffDays > 6) continue;
+            const idx = 6 - diffDays;
+            counts[idx] += 1;
+        }
+
+        return {
+            labels,
+            datasets: [
+                {
+                    data: counts,
+                    borderColor: 'rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(255,255,255,0.22)',
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                },
+            ],
+        };
+    }, [messages]);
+
+    const sparkOptions = useMemo(() => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false } },
+        elements: { line: { capBezierPoints: true } },
+    }), []);
 
     return (
         <>
@@ -221,12 +320,19 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
                                 }
                             </h3>
                         </div>
-                        <button
-                            onClick={() => setIsOpen(false)}
-                            className="hover:bg-indigo-700 rounded-full w-8 h-8 flex items-center justify-center transition"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {!isOwner && messages.length > 0 && (
+                                <div className="w-20 h-9">
+                                    <Line data={sparkData} options={sparkOptions} />
+                                </div>
+                            )}
+                            <button
+                                onClick={() => setIsOpen(false)}
+                                className="hover:bg-indigo-700 rounded-full w-8 h-8 flex items-center justify-center transition"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Content */}
@@ -288,22 +394,27 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
                                     </div>
                                 ) : (
                                     messages.map((msg, idx) => (
+                                        (() => {
+                                            const isMe = auth.user && String(msg.sender_id) === String(auth.user.id);
+                                            return (
                                         <div
                                             key={msg.id || idx}
-                                            className={`flex ${msg.is_sender ? 'justify-end' : 'justify-start'}`}
+                                            className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                                         >
                                             <div
-                                                className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${msg.is_sender
+                                                className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${isMe
                                                     ? 'bg-indigo-600 text-white rounded-br-none'
                                                     : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'
                                                     }`}
                                             >
                                                 <p>{msg.message}</p>
-                                                <p className={`text-[10px] mt-1 ${msg.is_sender ? 'text-indigo-200' : 'text-gray-400'}`}>
+                                                <p className={`text-[10px] mt-1 ${isMe ? 'text-indigo-200' : 'text-gray-400'}`}>
                                                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </p>
                                             </div>
                                         </div>
+                                            );
+                                        })()
                                     ))
                                 )}
                                 <div ref={messagesEndRef} />

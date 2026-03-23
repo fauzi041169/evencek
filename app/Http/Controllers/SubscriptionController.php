@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
@@ -13,7 +14,6 @@ use Inertia\Inertia;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Midtrans\Transaction;
-use App\Models\Setting;
 
 class SubscriptionController extends Controller
 {
@@ -87,10 +87,11 @@ class SubscriptionController extends Controller
         $plans = SubscriptionPlan::where('is_active', true)
             ->orderBy('sort_order')
             ->get();
-        
+
         // Append formatted_price
         $plans->transform(function ($plan) {
             $plan->formatted_price = $plan->formatted_price;
+
             return $plan;
         });
 
@@ -139,7 +140,7 @@ class SubscriptionController extends Controller
                             $sub->save();
                             \Log::warning('Transaction not found in Midtrans, marking as cancelled', [
                                 'subscription_id' => $sub->id,
-                                'order_id' => $sub->midtrans_order_id
+                                'order_id' => $sub->midtrans_order_id,
                             ]);
                         } else {
                             \Log::warning('Auto-check Midtrans status failed on subscription.index', [
@@ -165,14 +166,14 @@ class SubscriptionController extends Controller
         }
 
         $heroAnim = Setting::get('hero_animation_style', 'circles');
-        
+
         $midtransStatus = null;
         if (config('app.debug')) {
             $isProductionRaw = config('services.midtrans.is_production', false);
             $midtransStatus = [
                 'isProduction' => filter_var($isProductionRaw, FILTER_VALIDATE_BOOLEAN),
-                'clientKeySet' => !empty(config('services.midtrans.client_key')),
-                'serverKeySet' => !empty(config('services.midtrans.server_key')),
+                'clientKeySet' => ! empty(config('services.midtrans.client_key')),
+                'serverKeySet' => ! empty(config('services.midtrans.server_key')),
             ];
         }
 

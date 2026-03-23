@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\News;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class NewsController extends Controller
 {
@@ -57,13 +58,17 @@ class NewsController extends Controller
     /**
      * Get news detail
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         try {
             $news = News::with(['category', 'author', 'comments.user'])->findOrFail($id);
 
-            // Increment view count
-            $news->increment('views_count');
+            $userId = $request->user()?->id;
+            $viewerKey = $userId ? ('u:'.$userId) : ('ip:'.$request->ip());
+            $throttleKey = 'news-view:'.$news->id.':'.$viewerKey;
+            if (Cache::add($throttleKey, 1, now()->addMinutes(5))) {
+                $news->increment('views_count');
+            }
 
             return response()->json([
                 'success' => true,

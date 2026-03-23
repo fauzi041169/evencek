@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\ActivityRecord;
 use App\Models\ActivityUser;
@@ -19,14 +20,13 @@ use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Models\View;
-use App\Helpers\ImageHelper;
-use Inertia\Inertia;
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Cache;
-use Exception;
-use Carbon\Carbon;
+use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
@@ -53,7 +53,7 @@ class DashboardController extends Controller
         $provinces = Cache::remember('dashboard_provinces', 3600, function () {
             return Province::select('id', 'name')->orderBy('name')->get();
         });
-        
+
         $activities = Cache::remember('dashboard_activities', 600, function () {
             return Activity::select('id', 'name')->orderBy('name')->get();
         });
@@ -83,7 +83,7 @@ class DashboardController extends Controller
         }
 
         // 0. Schema Checks (Cached globally as they rarely change)
-        $schemaFlags = Cache::remember('dashboard_schema_flags', 86400, function() {
+        $schemaFlags = Cache::remember('dashboard_schema_flags', 86400, function () {
             return [
                 'viewsExist' => Schema::hasTable('views'),
                 'followersExist' => Schema::hasTable('followers'),
@@ -112,7 +112,7 @@ class DashboardController extends Controller
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as current_month,
                 SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) as last_month
             ', [$startCurrent, $startLast, $startCurrent])->first();
-            
+
             $totalNews = $newsStats->total ?? 0;
             $currentMonthNews = $newsStats->current_month ?? 0;
             $lastMonthNews = $newsStats->last_month ?? 0;
@@ -124,14 +124,15 @@ class DashboardController extends Controller
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as current_month,
                 SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) as last_month
             ', [$startCurrent, $startLast, $startCurrent])->first();
-            
+
             $totalCategory = $categoryStats->total ?? 0;
             $currentMonthCategory = $categoryStats->current_month ?? 0;
             $lastMonthCategory = $categoryStats->last_month ?? 0;
             $categoryGrowth = $lastMonthCategory > 0 ? round((($currentMonthCategory - $lastMonthCategory) / $lastMonthCategory) * 100, 1) : 0;
 
             // Partner
-            $totalPartner = 0; $partnerGrowth = 0;
+            $totalPartner = 0;
+            $partnerGrowth = 0;
             if ($partnersExist) {
                 $partnerStats = Partner::selectRaw('
                     COUNT(*) as total,
@@ -143,7 +144,8 @@ class DashboardController extends Controller
             }
 
             // Pengurus
-            $totalPengurus = 0; $pengurusGrowth = 0;
+            $totalPengurus = 0;
+            $pengurusGrowth = 0;
             if ($pengurusExist) {
                 $pengurusStats = Pengurus::selectRaw('
                     COUNT(*) as total,
@@ -155,7 +157,8 @@ class DashboardController extends Controller
             }
 
             // Gallery
-            $totalGallery = 0; $galleryGrowth = 0;
+            $totalGallery = 0;
+            $galleryGrowth = 0;
             if ($galleriesExist) {
                 $galleryStats = Gallery::selectRaw('
                     COUNT(*) as total,
@@ -167,7 +170,8 @@ class DashboardController extends Controller
             }
 
             // Attendance
-            $totalAttendance = 0; $attendanceGrowth = 0;
+            $totalAttendance = 0;
+            $attendanceGrowth = 0;
             if ($attendancesExist) {
                 $attendanceStats = Attendance::selectRaw('
                     COUNT(*) as total,
@@ -182,11 +186,11 @@ class DashboardController extends Controller
 
             // Subscription
             $subscriptionStats = [
-                'total' => 0, 'active' => 0, 'pending' => 0, 
+                'total' => 0, 'active' => 0, 'pending' => 0,
                 'cancelled' => 0, 'expired' => 0, 'inactive' => 0,
             ];
             $subscriptionByPlan = ['labels' => [], 'data' => []];
-            
+
             if ($subscriptionsExist) {
                 $subStats = Subscription::selectRaw('
                     COUNT(*) as total,
@@ -203,7 +207,7 @@ class DashboardController extends Controller
                 $subscriptionStats['expired'] = $subStats->expired ?? 0;
                 $subscriptionStats['inactive'] = max(0, $subscriptionStats['total'] - $subscriptionStats['active']);
             }
-            
+
             if ($subscriptionsExist && $subscriptionPlansExist) {
                 $plans = SubscriptionPlan::orderBy('sort_order')->get();
                 foreach ($plans as $plan) {
@@ -216,9 +220,13 @@ class DashboardController extends Controller
             }
 
             // Payment
-            $totalPayment = 0; $totalPaymentAmount = 0; $pendingPayment = 0;
-            $verifiedPayment = 0; $rejectedPayment = 0; $paymentGrowth = 0;
-            
+            $totalPayment = 0;
+            $totalPaymentAmount = 0;
+            $pendingPayment = 0;
+            $verifiedPayment = 0;
+            $rejectedPayment = 0;
+            $paymentGrowth = 0;
+
             if ($paymentsExist) {
                 $paymentStats = Payment::selectRaw('
                     COUNT(*) as total,
@@ -235,7 +243,7 @@ class DashboardController extends Controller
                 $pendingPayment = $paymentStats->pending ?? 0;
                 $verifiedPayment = $paymentStats->verified ?? 0;
                 $rejectedPayment = $paymentStats->rejected ?? 0;
-                
+
                 $currentMonthPayment = $paymentStats->current_month ?? 0;
                 $lastMonthPayment = $paymentStats->last_month ?? 0;
                 $paymentGrowth = $lastMonthPayment > 0 ? round((($currentMonthPayment - $lastMonthPayment) / $lastMonthPayment) * 100, 1) : 0;
@@ -256,9 +264,9 @@ class DashboardController extends Controller
         });
 
         // 2. Filtered Stats (Dependent on activity_id and province_id)
-        $cacheKey = 'dashboard_filtered_stats_' . md5(json_encode([
+        $cacheKey = 'dashboard_filtered_stats_'.md5(json_encode([
             'activity_id' => $selectedActivity,
-            'province_id' => $selectedProvince
+            'province_id' => $selectedProvince,
         ]));
 
         $filteredStats = Cache::remember($cacheKey, 600, function () use ($selectedActivity, $selectedProvince, $userQuery, $activityUserQuery, $activityQuery) {
@@ -284,7 +292,7 @@ class DashboardController extends Controller
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as current_month,
                 SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) as last_month
             ', [$startCurrent, $startLast, $startCurrent])->first();
-            
+
             $totalUsers = $userStats->total ?? 0;
             $currentMonthUsers = $userStats->current_month ?? 0;
             $lastMonthUsers = $userStats->last_month ?? 0;
@@ -296,7 +304,7 @@ class DashboardController extends Controller
                 SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as current_month,
                 SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) as last_month
             ', [$startCurrent, $startLast, $startCurrent])->first();
-            
+
             $totalParticipants = $participantStats->total ?? 0;
             $currentMonthParticipants = $participantStats->current_month ?? 0;
             $lastMonthParticipants = $participantStats->last_month ?? 0;
@@ -354,7 +362,7 @@ class DashboardController extends Controller
 
         if ($viewsExist) {
             try {
-                $pageViews = Cache::remember('dashboard_page_views', 3600, function() {
+                $pageViews = Cache::remember('dashboard_page_views', 3600, function () {
                     return View::select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
                         ->whereDate('created_at', '>=', now()->subDays(7))
                         ->groupBy('date')
@@ -369,12 +377,12 @@ class DashboardController extends Controller
             $pageViews = [12000, 19000, 15000, 25000, 22000, 30000, 28000]; // Data dummy
         }
 
-        $userSessionsKey = 'dashboard_user_sessions_' . md5(json_encode([
+        $userSessionsKey = 'dashboard_user_sessions_'.md5(json_encode([
             'act' => $selectedActivity,
-            'prov' => $selectedProvince
+            'prov' => $selectedProvince,
         ]));
 
-        $userSessions = Cache::remember($userSessionsKey, 3600, function() use ($userQuery) {
+        $userSessions = Cache::remember($userSessionsKey, 3600, function () use ($userQuery) {
             try {
                 return $userQuery->clone()
                     ->select(DB::raw('DATE(last_login_at) as date'), DB::raw('count(*) as count'))
@@ -409,13 +417,13 @@ class DashboardController extends Controller
         $endDateStr = $endMonth->toDateString();
 
         // Aktivitas per bulan (12 bulan terakhir) - untuk tren kegiatan
-        $activityTrendKey = 'dashboard_activity_trend_' . md5(json_encode([
+        $activityTrendKey = 'dashboard_activity_trend_'.md5(json_encode([
             'act' => $selectedActivity,
             'prov' => $selectedProvince,
             'start' => $startDateStr,
-            'end' => $endDateStr
+            'end' => $endDateStr,
         ]));
-        $activityTrend = Cache::remember($activityTrendKey, 3600, function() use ($activityQuery, $startMonth, $endMonth, $months) {
+        $activityTrend = Cache::remember($activityTrendKey, 3600, function () use ($activityQuery, $startMonth, $endMonth, $months) {
             $trend = [
                 'labels' => [],
                 'data' => [],
@@ -425,26 +433,27 @@ class DashboardController extends Controller
                 ->whereBetween('created_at', [$startMonth, $endMonth])
                 ->groupBy('year', 'month')
                 ->get()
-                ->mapWithKeys(function($item) {
-                    return [$item->year . '-' . $item->month => $item->count];
+                ->mapWithKeys(function ($item) {
+                    return [$item->year.'-'.$item->month => $item->count];
                 });
             for ($i = 0; $i < $months; $i++) {
                 $date = $startMonth->copy()->addMonths($i);
-                $key = $date->year . '-' . $date->month;
+                $key = $date->year.'-'.$date->month;
                 $trend['labels'][] = $date->format('M Y');
                 $trend['data'][] = $monthlyData[$key] ?? 0;
             }
+
             return $trend;
         });
 
         // Tren Kunjungan User per bulan (12 bulan terakhir) - menggunakan data aktual
-        $userVisitTrendKey = 'dashboard_user_visit_trend_' . md5(json_encode([
+        $userVisitTrendKey = 'dashboard_user_visit_trend_'.md5(json_encode([
             'act' => $selectedActivity,
             'prov' => $selectedProvince,
             'start' => $startDateStr,
-            'end' => $endDateStr
+            'end' => $endDateStr,
         ]));
-        $userVisitTrend = Cache::remember($userVisitTrendKey, 3600, function() use ($viewsExist, $userQuery, $startMonth, $endMonth, $months) {
+        $userVisitTrend = Cache::remember($userVisitTrendKey, 3600, function () use ($viewsExist, $userQuery, $startMonth, $endMonth, $months) {
             $trend = [
                 'labels' => [],
                 'data' => [],
@@ -460,31 +469,31 @@ class DashboardController extends Controller
                         ->whereNotNull('user_id')
                         ->groupBy('year', 'month')
                         ->get()
-                        ->mapWithKeys(function($item) {
-                            return [$item->year . '-' . $item->month => $item->count];
+                        ->mapWithKeys(function ($item) {
+                            return [$item->year.'-'.$item->month => $item->count];
                         });
                 } catch (Exception $e) {
                 }
             }
-            
+
             if (empty($monthlyData) || $monthlyData->isEmpty()) {
                 $monthlyData = $userQuery->clone()
                     ->selectRaw('YEAR(last_login_at) as year, MONTH(last_login_at) as month, COUNT(*) as count')
                     ->whereBetween('last_login_at', [$startMonth, $endMonth])
                     ->groupBy('year', 'month')
                     ->get()
-                    ->mapWithKeys(function($item) {
-                        return [$item->year . '-' . $item->month => $item->count];
+                    ->mapWithKeys(function ($item) {
+                        return [$item->year.'-'.$item->month => $item->count];
                     });
             }
 
             for ($i = 0; $i < $months; $i++) {
                 $date = $startMonth->copy()->addMonths($i);
-                $key = $date->year . '-' . $date->month;
+                $key = $date->year.'-'.$date->month;
                 $trend['labels'][] = $date->format('M Y');
                 $trend['data'][] = $monthlyData[$key] ?? 0;
             }
-            
+
             return $trend;
         });
 
@@ -496,11 +505,11 @@ class DashboardController extends Controller
         }
 
         // Trend ganda (Input vs Output) mengikuti desain: Input = Aktivitas per bulan, Output = Berita per bulan
-        $trendDual = Cache::remember('dashboard_trend_dual_' . md5(json_encode([
+        $trendDual = Cache::remember('dashboard_trend_dual_'.md5(json_encode([
             'act' => $selectedActivity ?: 'all',
             'start' => $startDateStr,
             'end' => $endDateStr,
-        ])), 3600, function() use ($activityQuery, $startMonth, $endMonth, $months) {
+        ])), 3600, function () use ($activityQuery, $startMonth, $endMonth, $months) {
             $trend = [
                 'labels' => [],
                 'input' => [],
@@ -511,30 +520,31 @@ class DashboardController extends Controller
                 ->whereBetween('created_at', [$startMonth, $endMonth])
                 ->groupBy('year', 'month')
                 ->get()
-                ->mapWithKeys(function($item) {
-                    return [$item->year . '-' . $item->month => $item->count];
+                ->mapWithKeys(function ($item) {
+                    return [$item->year.'-'.$item->month => $item->count];
                 });
-                
+
             $newsData = News::selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, COUNT(*) as count')
                 ->whereBetween('created_at', [$startMonth, $endMonth])
                 ->groupBy('year', 'month')
                 ->get()
-                ->mapWithKeys(function($item) {
-                    return [$item->year . '-' . $item->month => $item->count];
+                ->mapWithKeys(function ($item) {
+                    return [$item->year.'-'.$item->month => $item->count];
                 });
 
             for ($i = 0; $i < $months; $i++) {
                 $date = $startMonth->copy()->addMonths($i);
-                $key = $date->year . '-' . $date->month;
+                $key = $date->year.'-'.$date->month;
                 $trend['labels'][] = $date->format('M');
                 $trend['input'][] = $activityData[$key] ?? 0;
                 $trend['output'][] = $newsData[$key] ?? 0;
             }
+
             return $trend;
         });
 
         // Data Performa Berita
-        $newsPerformance = Cache::remember('dashboard_news_performance', 3600, function() {
+        $newsPerformance = Cache::remember('dashboard_news_performance', 3600, function () {
             try {
                 $newsQuery = News::select('news.category_id', 'news_categories.name as category_name', DB::raw('count(*) as count'))
                     ->join('news_categories', 'news.category_id', '=', 'news_categories.id')
@@ -543,6 +553,7 @@ class DashboardController extends Controller
                     ->orderBy('count', 'desc')
                     ->limit(4);
                 $result = $newsQuery->get()->toArray();
+
                 return empty($result) ? [] : $result;
             } catch (Exception $e) {
                 return [
@@ -555,7 +566,7 @@ class DashboardController extends Controller
         });
 
         // Data untuk grafik kategori - NOW FILTERED
-        $categoryData = Cache::remember('dashboard_category_data_' . md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function() use ($selectedActivity, $selectedProvince, $activityQuery) {
+        $categoryData = Cache::remember('dashboard_category_data_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($selectedActivity, $selectedProvince, $activityQuery) {
             $categoryQuery = Category::query();
             if ($selectedActivity || $selectedProvince) {
                 $participatingActivityIds = $activityQuery->clone()->pluck('id');
@@ -576,7 +587,7 @@ class DashboardController extends Controller
         });
 
         // Data untuk grafik status aktivitas - NOW FILTERED
-        $statusData = Cache::remember('dashboard_status_data_' . md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function() use ($activityQuery) {
+        $statusData = Cache::remember('dashboard_status_data_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($activityQuery) {
             $statusQuery = $activityQuery->clone()->select('status', DB::raw('count(*) as total'))
                 ->groupBy('status');
             $statusCounts = $statusQuery->get();
@@ -588,7 +599,7 @@ class DashboardController extends Controller
         });
 
         // Data untuk aktivitas terbaru - NOW FILTERED
-        $recentActivities = Cache::remember('dashboard_recent_activities_' . md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 600, function() use ($activityQuery) {
+        $recentActivities = Cache::remember('dashboard_recent_activities_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 600, function () use ($activityQuery) {
             $recentActivitiesQuery = $activityQuery->clone()->with('category')
                 ->withCount(['participants' => function ($query) {
                     $query->where('status', true);
@@ -602,17 +613,17 @@ class DashboardController extends Controller
         // Data Demografi Pengguna
         $demographics = [
             'labels' => ['18-24', '25-34', '35-44', '45-54', '55+'],
-            'data' => [25, 35, 20, 15, 5], 
+            'data' => [25, 35, 20, 15, 5],
         ];
 
         // Data Distribusi Pengguna Global
         $globalDistribution = [
             'labels' => ['Amerika Utara', 'Eropa', 'Asia', 'Amerika Selatan', 'Afrika'],
-            'data' => [30, 25, 20, 15, 10], 
+            'data' => [30, 25, 20, 15, 10],
         ];
 
         // Data untuk grafik partisipasi
-        $participationData = Cache::remember('dashboard_participation_data_' . md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function() use ($activityUserQuery) {
+        $participationData = Cache::remember('dashboard_participation_data_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($activityUserQuery) {
             return [
                 $activityUserQuery->clone()->where('status', true)->count(),
                 $activityUserQuery->clone()->where('status', false)->count(),
@@ -620,7 +631,7 @@ class DashboardController extends Controller
         });
 
         // Top 10 user teraktif + tren 30 hari (dibanding 30 hari sebelumnya)
-        $topActiveUsers = Cache::remember('dashboard_top_active_users', 3600, function() {
+        $topActiveUsers = Cache::remember('dashboard_top_active_users', 3600, function () {
             try {
                 $tableName = Schema::hasTable('activity_users') ? 'activity_users' : 'activity_users';
 
@@ -672,7 +683,7 @@ class DashboardController extends Controller
         });
 
         // Top 5 aktivitas dengan rating tertinggi
-        $topRatedActivities = Cache::remember('dashboard_top_rated_activities', 3600, function() use ($activityQuery) {
+        $topRatedActivities = Cache::remember('dashboard_top_rated_activities', 3600, function () use ($activityQuery) {
             try {
                 // Optimize: Use withAvg to calculate rating in DB query
                 $activities = $activityQuery->clone()
@@ -680,13 +691,13 @@ class DashboardController extends Controller
                     ->withCount(['participants' => function ($q) {
                         $q->where('status', true);
                     }])
-                    ->withAvg(['allComments as average_rating' => function($q) {
+                    ->withAvg(['allComments as average_rating' => function ($q) {
                         $q->whereNull('parent_id')->whereNotNull('rating');
                     }], 'rating')
                     ->orderByDesc('average_rating')
                     ->take(5)
                     ->get();
-                
+
                 return $activities->map(function ($act) {
                     return [
                         'name' => $act->name,
@@ -699,7 +710,7 @@ class DashboardController extends Controller
         });
 
         // Top 5 user teraktif harian (berdasarkan page views jika tersedia, fallback ke pendaftaran hari ini)
-        $topDailyActiveUsers = Cache::remember('dashboard_top_daily_active_users', 600, function() use ($viewsExist) {
+        $topDailyActiveUsers = Cache::remember('dashboard_top_daily_active_users', 600, function () use ($viewsExist) {
             try {
                 $rows = collect();
                 if ($viewsExist) {
@@ -721,12 +732,16 @@ class DashboardController extends Controller
                         ->take(10)
                         ->get();
                 }
-                
-                if ($rows->isEmpty()) return collect();
+
+                if ($rows->isEmpty()) {
+                    return collect();
+                }
 
                 $userMap = User::whereIn('id', $rows->pluck('user_id'))->with('profile')->get()->keyBy('id');
+
                 return $rows->map(function ($row) use ($userMap) {
                     $u = $userMap->get($row->user_id);
+
                     return [
                         'name' => $u->name ?? ('User #'.$row->user_id),
                         'photo' => optional($u->profile)->foto,
@@ -754,7 +769,9 @@ class DashboardController extends Controller
                     ->take(10)
                     ->get();
 
-                if ($rankByParticipants->isEmpty()) return collect();
+                if ($rankByParticipants->isEmpty()) {
+                    return collect();
+                }
 
                 $creatorIds = $rankByParticipants->pluck('user_id');
 
@@ -762,15 +779,15 @@ class DashboardController extends Controller
                     ->with('profile.province')
                     ->get()
                     ->keyBy('id');
-                
+
                 // Pre-fetch sparkline data for all top creators
                 // Optimize: Single query instead of 60 queries (10 creators * 6 weeks)
                 $sparklineStart = now()->subWeeks(6)->startOfWeek();
                 $sparklineData = DB::table($tableName)
                     ->join('activities', 'activities.id', '=', $tableName.'.activity_id')
                     ->select(
-                        'activities.user_id', 
-                        DB::raw('YEARWEEK('.$tableName.'.created_at, 3) as yearweek'), 
+                        'activities.user_id',
+                        DB::raw('YEARWEEK('.$tableName.'.created_at, 3) as yearweek'),
                         DB::raw('COUNT(*) as count')
                     )
                     ->whereIn('activities.user_id', $creatorIds)
@@ -826,7 +843,7 @@ class DashboardController extends Controller
                     // Sparkline: peserta aktif per minggu (6 minggu terakhir)
                     $spark = [];
                     $userSparkData = $sparklineData->get($row->user_id, collect())->pluck('count', 'yearweek');
-                    
+
                     for ($w = 5; $w >= 0; $w--) {
                         $checkDate = now()->subWeeks($w);
                         // Use ISO-8601 year and week number to match MySQL YEARWEEK(date, 3)
@@ -857,12 +874,12 @@ class DashboardController extends Controller
         });
 
         // Gender chart data - Cached and Optimized
-        $profileStatsKey = 'dashboard_profile_stats_' . md5(json_encode([
+        $profileStatsKey = 'dashboard_profile_stats_'.md5(json_encode([
             'act' => $selectedActivity,
-            'prov' => $selectedProvince
+            'prov' => $selectedProvince,
         ]));
 
-        $profileStats = Cache::remember($profileStatsKey, 3600, function() use ($userQuery) {
+        $profileStats = Cache::remember($profileStatsKey, 3600, function () use ($userQuery) {
             $genderQuery = Profile::select('jenis_kelamin', DB::raw('COUNT(profiles.id) as total'))
                 ->whereNotNull('jenis_kelamin')
                 ->where('jenis_kelamin', '!=', '')
@@ -945,7 +962,7 @@ class DashboardController extends Controller
         // But better to cache if possible.
         // Actually, $stats['totalUsers'] is already cached in $dashboardData.
         // But $usersWithProfile depends on filters.
-        $usersWithProfile = Cache::remember('dashboard_users_with_profile_' . md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function() use ($userQuery) {
+        $usersWithProfile = Cache::remember('dashboard_users_with_profile_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($userQuery) {
             return $userQuery->clone()->has('profile')->count();
         });
         $usersWithoutProfile = max(0, $stats['totalUsers'] - $usersWithProfile);
@@ -961,7 +978,7 @@ class DashboardController extends Controller
         ];
 
         // Attendance Type Chart Data
-        $attendanceTypeData = Cache::remember('dashboard_attendance_type_data', 3600, function() use ($attendancesExist) {
+        $attendanceTypeData = Cache::remember('dashboard_attendance_type_data', 3600, function () use ($attendancesExist) {
             $data = [
                 'labels' => [],
                 'data' => [],
@@ -977,6 +994,7 @@ class DashboardController extends Controller
                     $data = ['labels' => ['No Data'], 'data' => [0]];
                 }
             }
+
             return $data;
         });
 
@@ -1020,11 +1038,11 @@ class DashboardController extends Controller
     public function creatorDashboard(Request $request)
     {
         $userId = auth()->id();
-        $cacheKey = 'creator_dashboard_data_' . $userId;
+        $cacheKey = 'creator_dashboard_data_'.$userId;
 
         $data = Cache::remember($cacheKey, 600, function () use ($userId) {
             // Helper for subquery to avoid loading IDs into memory
-            $myActivityIdsSubQuery = function($query) use ($userId) {
+            $myActivityIdsSubQuery = function ($query) use ($userId) {
                 $query->select('id')->from('activities')->where('user_id', $userId);
             };
 
@@ -1071,17 +1089,17 @@ class DashboardController extends Controller
             $monthlyLabels = [];
             $monthlyActivities = [];
             $monthlyParticipants = [];
-            
+
             // Optimize loop queries with grouping
             $startOfPeriod = now()->subMonths(5)->startOfMonth();
-            
+
             $actCounts = Activity::where('user_id', $userId)
                 ->where('created_at', '>=', $startOfPeriod)
                 ->selectRaw('YEAR(created_at) as y, MONTH(created_at) as m, COUNT(*) as total')
                 ->groupBy('y', 'm')
                 ->get()
-                ->mapWithKeys(function($item) {
-                    return [$item->y . '-' . $item->m => $item->total];
+                ->mapWithKeys(function ($item) {
+                    return [$item->y.'-'.$item->m => $item->total];
                 });
 
             $partCounts = ActivityUser::whereIn('activity_id', $myActivityIdsSubQuery)
@@ -1089,14 +1107,14 @@ class DashboardController extends Controller
                 ->selectRaw('YEAR(created_at) as y, MONTH(created_at) as m, COUNT(*) as total')
                 ->groupBy('y', 'm')
                 ->get()
-                ->mapWithKeys(function($item) {
-                    return [$item->y . '-' . $item->m => $item->total];
+                ->mapWithKeys(function ($item) {
+                    return [$item->y.'-'.$item->m => $item->total];
                 });
 
             for ($i = 5; $i >= 0; $i--) {
                 $date = now()->subMonths($i);
-                $key = $date->year . '-' . $date->month;
-                
+                $key = $date->year.'-'.$date->month;
+
                 $monthlyLabels[] = $date->translatedFormat('M Y');
                 $monthlyActivities[] = $actCounts[$key] ?? 0;
                 $monthlyParticipants[] = $partCounts[$key] ?? 0;
@@ -1124,9 +1142,9 @@ class DashboardController extends Controller
         $userId = $user->id;
 
         // Cache stats calculation
-        $stats = Cache::remember('user_dashboard_stats_' . $userId, 600, function () use ($userId) {
+        $stats = Cache::remember('user_dashboard_stats_'.$userId, 600, function () use ($userId) {
             $query = ActivityUser::where('user_id', $userId);
-            
+
             // Single query for all stats
             $statsRaw = $query->selectRaw('
                 COUNT(*) as total,
@@ -1136,7 +1154,7 @@ class DashboardController extends Controller
             ', [
                 ActivityUser::STATUS_ACTIVE,
                 ActivityUser::STATUS_VERIFICATION,
-                ActivityUser::STATUS_REJECTED
+                ActivityUser::STATUS_REJECTED,
             ])->first();
 
             return [
@@ -1149,21 +1167,22 @@ class DashboardController extends Controller
 
         // Daftar pendaftaran kegiatan per batch (tampil terpisah jika batch berbeda)
         // Limit to 50 latest activities to prevent overload
-        $joinedActivityUsers = Cache::remember('user_dashboard_activities_' . $userId, 600, function() use ($userId) {
+        $joinedActivityUsers = Cache::remember('user_dashboard_activities_'.$userId, 600, function () use ($userId) {
             $results = ActivityUser::where('user_id', $userId)
                 ->with(['activity' => function ($query) {
                     $query->select('id', 'name', 'category_id', 'date', 'start_time', 'end_time', 'location', 'image', 'status')
-                          ->with('category:id,name')
-                          ->withCount('batches');
+                        ->with('category:id,name')
+                        ->withCount('batches');
                 }, 'batch:id,name,start_date,end_date,start_time,end_time'])
                 ->orderBy('created_at', 'desc')
-                ->limit(50) 
+                ->limit(50)
                 ->get();
 
             $results->transform(function ($item) {
                 if ($item->activity) {
                     $item->activity->image = ImageHelper::getImageUrl($item->activity->image, asset('assets/images/hero/defoult.webp'), 'activities');
                 }
+
                 return $item;
             });
 
@@ -1171,7 +1190,7 @@ class DashboardController extends Controller
         });
 
         // Status langganan (cache 5 menit agar tidak query tiap buka dashboard)
-        $subscription = Cache::remember('user_dashboard_subscription_' . $userId, 300, function () use ($user) {
+        $subscription = Cache::remember('user_dashboard_subscription_'.$userId, 300, function () use ($user) {
             return $user->activeSubscription ?? $user->subscriptions()->latest()->first();
         });
 
@@ -1288,9 +1307,9 @@ class DashboardController extends Controller
         $week = $request->input('week'); // Week of month (1-5)
         $day = $request->input('day');
 
-        $cacheKey = 'api_user_visit_trend_' . md5(json_encode($request->all()));
+        $cacheKey = 'api_user_visit_trend_'.md5(json_encode($request->all()));
 
-        $result = Cache::remember($cacheKey, 3600, function() use ($year, $month, $week, $day) {
+        $result = Cache::remember($cacheKey, 3600, function () use ($year, $month, $week, $day) {
             $labels = [];
             $data = [];
             $viewsExist = Schema::hasTable('views');
@@ -1351,7 +1370,7 @@ class DashboardController extends Controller
             } elseif ($month) {
                 // CASE 3: Daily trend for a specific month
                 $daysInMonth = Carbon::createFromDate($year, $month, 1)->daysInMonth;
-                
+
                 $queryData = [];
                 if ($viewsExist) {
                     $queryData = DB::table('views')
@@ -1378,7 +1397,7 @@ class DashboardController extends Controller
             } else {
                 // CASE 4: Monthly trend for a specific year
                 $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                
+
                 $queryData = [];
                 if ($viewsExist) {
                     $queryData = DB::table('views')
@@ -1415,5 +1434,3 @@ class DashboardController extends Controller
         ]);
     }
 }
-
-

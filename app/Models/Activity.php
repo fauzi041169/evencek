@@ -13,6 +13,7 @@ class Activity extends Model
     use HasFactory;
 
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $table = 'activities';
@@ -88,7 +89,7 @@ class Activity extends Model
                 'type' => $field->type,
                 'options' => $field->options,
                 'is_required' => (bool) $field->pivot->is_required,
-                'is_optional' => !((bool) $field->pivot->is_required)
+                'is_optional' => ! ((bool) $field->pivot->is_required),
             ];
         })->toArray();
 
@@ -100,23 +101,25 @@ class Activity extends Model
 
         // Include "legacy" custom fields from column_settings if they are enabled
         // and not already present in the relationship
-        if (!empty($this->column_settings) && is_array($this->column_settings)) {
+        if (! empty($this->column_settings) && is_array($this->column_settings)) {
             foreach ($this->column_settings as $colKey => $enabled) {
                 if ($enabled && str_starts_with($colKey, 'col-custom-')) {
                     $baseKey = str_replace('col-custom-', '', $colKey);
-                    
+
                     // Skip if already in modern custom_fields (bandingkan key kanonik agar tidak ganda)
-                    if (in_array($canonicalKey($baseKey), $existingKeysCanonical)) continue;
-                    
+                    if (in_array($canonicalKey($baseKey), $existingKeysCanonical)) {
+                        continue;
+                    }
+
                     // Guess label: utusan -> Utusan, my_field -> My Field
                     $label = ucwords(str_replace(['_', '-'], ' ', $baseKey));
-                    
+
                     // Try to extract type/options from import_template if available
                     $type = 'text';
                     $options = '';
                     $isRequired = false;
 
-                    if (!empty($this->import_template)) {
+                    if (! empty($this->import_template)) {
                         $cols = explode(',', $this->import_template);
                         foreach ($cols as $col) {
                             $col = trim($col);
@@ -124,28 +127,30 @@ class Activity extends Model
                             // Extract parts
                             $parts = explode('|', $col);
                             $colLabel = $parts[0];
-                            
+
                             $colRequired = false;
                             // Check if required
                             if (str_ends_with($colLabel, '*')) {
                                 $colLabel = substr($colLabel, 0, -1);
                                 $colRequired = true;
                             }
-                            
+
                             // Normalize check
                             if (strtolower($colLabel) === strtolower($label)) {
                                 // Match found!
                                 $isRequired = $colRequired;
-                                
+
                                 if (count($parts) > 1) {
                                     $def = $parts[1]; // e.g. dropdown:Option1~Option2*
-                                    if (str_ends_with($def, '*')) $def = substr($def, 0, -1);
-                                    
+                                    if (str_ends_with($def, '*')) {
+                                        $def = substr($def, 0, -1);
+                                    }
+
                                     if (str_starts_with($def, 'dropdown:')) {
-                                         $type = 'dropdown';
-                                         // Convert ~ to , for frontend compatibility
-                                         $options = str_replace('~', ',', substr($def, 9));
-                                     } elseif ($def === 'text') {
+                                        $type = 'dropdown';
+                                        // Convert ~ to , for frontend compatibility
+                                        $options = str_replace('~', ',', substr($def, 9));
+                                    } elseif ($def === 'text') {
                                         $type = 'text';
                                     } elseif ($def === 'number') {
                                         $type = 'number';
@@ -167,7 +172,7 @@ class Activity extends Model
                         'type' => $type,
                         'options' => $options,
                         'is_required' => $isRequired,
-                        'is_optional' => !$isRequired
+                        'is_optional' => ! $isRequired,
                     ];
                     $existingKeysCanonical[] = $canonicalKey($baseKey);
                 }
@@ -179,9 +184,14 @@ class Activity extends Model
         $fields = array_values(array_filter($fields, function ($f) use (&$seenLabel, $canonicalKey) {
             $label = $f['label'] ?? '';
             $canon = $canonicalKey($label);
-            if ($canon === '') return true;
-            if (isset($seenLabel[$canon])) return false;
+            if ($canon === '') {
+                return true;
+            }
+            if (isset($seenLabel[$canon])) {
+                return false;
+            }
             $seenLabel[$canon] = true;
+
             return true;
         }));
 
@@ -226,7 +236,6 @@ class Activity extends Model
     /**
      * Check if payment method is automatic (Midtrans)
      */
-
     public function getDateAttribute($value)
     {
         if (is_null($value) || $value instanceof Carbon) {

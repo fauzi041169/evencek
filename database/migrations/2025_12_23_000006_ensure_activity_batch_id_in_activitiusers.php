@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (Schema::hasTable('activity_users')) {
             Schema::table('activity_users', function (Blueprint $table) {
-                if (!Schema::hasColumn('activity_users', 'activity_batch_id')) {
+                if (! Schema::hasColumn('activity_users', 'activity_batch_id')) {
                     $table->char('activity_batch_id', 6)->nullable()->after('activity_id')->index();
                     $table->foreign('activity_batch_id')->references('id')->on('activity_batches')->nullOnDelete();
                 }

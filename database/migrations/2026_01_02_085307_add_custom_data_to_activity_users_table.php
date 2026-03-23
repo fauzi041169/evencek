@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (Schema::hasTable('activity_users')) {
             Schema::table('activity_users', function (Blueprint $table) {
-                if (!Schema::hasColumn('activity_users', 'custom_data')) {
+                if (! Schema::hasColumn('activity_users', 'custom_data')) {
                     $table->json('custom_data')->nullable()->after('status');
                 }
             });

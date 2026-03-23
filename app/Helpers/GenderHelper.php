@@ -10,7 +10,7 @@ class GenderHelper
     /**
      * Normalize gender input to 'L' or 'P'.
      *
-     * @param string|null $gender
+     * @param  string|null  $gender
      * @return string|null
      */
     public static function normalize($gender)
@@ -42,7 +42,7 @@ class GenderHelper
     /**
      * Predict gender based on name.
      *
-     * @param string $name
+     * @param  string  $name
      * @return string|null 'L' or 'P'
      */
     public static function predict($name)
@@ -53,7 +53,7 @@ class GenderHelper
 
         // Clean name
         $name = strtoupper(trim(preg_replace('/[^a-zA-Z\s]/', '', $name)));
-        
+
         // Try AI if enabled
         if (config('services.ai_gender.enabled')) {
             $aiPrediction = self::predictWithAI($name);
@@ -96,7 +96,7 @@ class GenderHelper
             'RAYHAN', 'RIAN', 'RIFQI', 'ROHMAD', 'ROHMAT', 'ROZAK', 'SEPTIAN',
             'SIDIK', 'SLAMET', 'SOFYAN', 'SUGENG', 'SUPRI', 'SYAHRUL', 'SYAMSUL',
             'TOMMY', 'TONI', 'TOTOK', 'TRIYONO', 'UMAR', 'USMAN', 'WILDAN',
-            'WISNU', 'YOGA', 'YOGI', 'YOSEP', 'YUDHA', 'ZAKI', 'ZULKARNAEN'
+            'WISNU', 'YOGA', 'YOGI', 'YOSEP', 'YUDHA', 'ZAKI', 'ZULKARNAEN',
         ];
 
         // Kata kunci spesifik Perempuan (Strong)
@@ -135,36 +135,56 @@ class GenderHelper
             'TARA', 'TATA', 'TIA', 'TIKA', 'TINA', 'TITIK', 'TITIN',
             'TRIANA', 'ULFA', 'UMI', 'UTAMI', 'VENNY', 'VERA', 'VICKY',
             'VIDYA', 'VIRA', 'VITA', 'WIDIA', 'WIDURI', 'WINDY', 'WIRDA',
-            'YAYUK', 'YOVITA', 'YULIA', 'YUNITA', 'YUYUN', 'ZASKIA'
+            'YAYUK', 'YOVITA', 'YULIA', 'YUNITA', 'YUYUN', 'ZASKIA',
         ];
 
         // Cek Nama Depan (Strong Match)
-        if (in_array($firstName, $maleStrong)) return 'L';
-        if (in_array($firstName, $femaleStrong)) return 'P';
+        if (in_array($firstName, $maleStrong)) {
+            return 'L';
+        }
+        if (in_array($firstName, $femaleStrong)) {
+            return 'P';
+        }
 
         // Cek Nama Belakang/Akhiran (Suffix)
-        if (str_ends_with($name, ' PUTRA') || str_ends_with($name, ' PRAKOSO') || str_ends_with($name, ' WIBOWO')) return 'L';
-        if (str_ends_with($name, ' PUTRI') || str_ends_with($name, ' WATI') || str_ends_with($name, ' SARI') || str_ends_with($name, ' NINGSIH')) return 'P';
+        if (str_ends_with($name, ' PUTRA') || str_ends_with($name, ' PRAKOSO') || str_ends_with($name, ' WIBOWO')) {
+            return 'L';
+        }
+        if (str_ends_with($name, ' PUTRI') || str_ends_with($name, ' WATI') || str_ends_with($name, ' SARI') || str_ends_with($name, ' NINGSIH')) {
+            return 'P';
+        }
 
         // Heuristik berdasarkan kata yang terkandung (Medium)
         foreach ($parts as $part) {
-            if (in_array($part, $maleStrong)) return 'L';
-            if (in_array($part, $femaleStrong)) return 'P';
+            if (in_array($part, $maleStrong)) {
+                return 'L';
+            }
+            if (in_array($part, $femaleStrong)) {
+                return 'P';
+            }
         }
 
         // Regex Patterns
-        if (preg_match('/(WATI|SARI|DEWI|YANTI|YANI|ASTUTI|NINGSIH|NURUL|AYU|PUTRI)$/', $name)) return 'P';
-        if (preg_match('/(PUTRA|SANTOSO|WIBOWO|SAPUTRA|HIDAYAT|PRATAMA|PERDANA|LAKSANA)$/', $name)) return 'L';
+        if (preg_match('/(WATI|SARI|DEWI|YANTI|YANI|ASTUTI|NINGSIH|NURUL|AYU|PUTRI)$/', $name)) {
+            return 'P';
+        }
+        if (preg_match('/(PUTRA|SANTOSO|WIBOWO|SAPUTRA|HIDAYAT|PRATAMA|PERDANA|LAKSANA)$/', $name)) {
+            return 'L';
+        }
 
         // Akhiran (Weak Heuristics) - case-insensitive
         $lastChar = strtoupper(substr($firstName, -1));
-        if (in_array($lastChar, ['O', 'U', 'K'])) return 'L'; 
+        if (in_array($lastChar, ['O', 'U', 'K'])) {
+            return 'L';
+        }
         if (in_array($lastChar, ['A', 'E'])) {
             // Check pengecualian nama berakhiran 'a' tapi cowok (misal: Eka, Indra, Reza, Rama)
             $maleEndsA = ['EKA', 'INDRA', 'REZA', 'RAMA', 'YUDHA', 'SATRIA', 'ARYA', 'DWI', 'EZZA', 'PRADANA', 'MAHENDRA'];
-            if (in_array($firstName, $maleEndsA)) return 'L';
-            
-            return 'P'; 
+            if (in_array($firstName, $maleEndsA)) {
+                return 'L';
+            }
+
+            return 'P';
         }
 
         return null;
@@ -179,7 +199,9 @@ class GenderHelper
         $url = config('services.ai_gender.url');
         $model = config('services.ai_gender.model');
 
-        if (!$apiKey) return null;
+        if (! $apiKey) {
+            return null;
+        }
 
         try {
             // Using generic OpenAI Chat Completion format
@@ -197,12 +219,16 @@ class GenderHelper
                 $content = strtoupper(trim($response->json('choices.0.message.content')));
                 // Clean response
                 $content = str_replace(['.', '"', "'"], '', $content);
-                
-                if (str_contains($content, 'LAKI') || $content === 'L') return 'L';
-                if (str_contains($content, 'PEREMPUAN') || $content === 'P') return 'P';
+
+                if (str_contains($content, 'LAKI') || $content === 'L') {
+                    return 'L';
+                }
+                if (str_contains($content, 'PEREMPUAN') || $content === 'P') {
+                    return 'P';
+                }
             }
         } catch (\Exception $e) {
-            Log::error('AI Gender Prediction Error: ' . $e->getMessage());
+            Log::error('AI Gender Prediction Error: '.$e->getMessage());
         }
 
         return null;

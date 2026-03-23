@@ -3,8 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Activity;
+use App\Models\ActivityBatch;
 use App\Models\ActivityUser;
+use App\Models\FinancialSetting;
 use App\Models\Payment;
+use App\Models\PaymentChannel;
+use App\Models\User;
+use App\Models\Voucher;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -12,18 +18,14 @@ use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Midtrans\Config;
 use Midtrans\Snap;
-use App\Models\PaymentChannel;
-use App\Models\ActivityBatch;
-use App\Models\Voucher;
-use App\Models\User;
-use App\Models\FinancialSetting;
-use Exception;
 
 class MidtransPaymentController extends Controller
 {
     private function normalizeChannelCode(?string $code): ?string
     {
-        if (! $code) return null;
+        if (! $code) {
+            return null;
+        }
         $map = [
             // Virtual Accounts
             'bca_va' => 'bca_va',
@@ -49,18 +51,20 @@ class MidtransPaymentController extends Controller
             // credit card
             'credit_card' => 'credit_card',
         ];
+
         return $map[strtolower($code)] ?? $code;
     }
+
     public function getChannels()
     {
         $channels = PaymentChannel::where('is_active', true)
             ->orderBy('type')
             ->orderBy('name')
             ->get();
-            
+
         return response()->json([
             'success' => true,
-            'channels' => $channels
+            'channels' => $channels,
         ]);
     }
 
@@ -219,7 +223,7 @@ class MidtransPaymentController extends Controller
 
         $transactionDetails['enabled_payments'] = [$this->normalizeChannelCode($request->channel_code)];
         $returnTo = request('return_to', session('import_return_to'));
-        
+
         if ($returnTo) {
             $transactionDetails['callbacks'] = [
                 'finish' => route('midtrans.payment.finish', ['return_to' => $returnTo, 'activity_id' => $activity->id]),
@@ -275,15 +279,16 @@ class MidtransPaymentController extends Controller
             if ($isAjax || $isModal) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Anda tidak memiliki izin untuk melakukan pembayaran.'
+                    'message' => 'Anda tidak memiliki izin untuk melakukan pembayaran.',
                 ], 403);
             }
+
             return redirect()->route('activity.detail', $activity->id)
                 ->with('error', 'Anda tidak memiliki izin untuk melakukan pembayaran.');
         }
 
         if (method_exists($activity, 'hasAutomaticPayment') && ! $activity->hasAutomaticPayment()) {
-            $manualUrl = route('payments.create', array_merge(['activity' => $activity->id], $request->query()));
+            $manualUrl = route('payments.activity.create', array_merge(['activity' => $activity->id], $request->query()));
 
             if ($isAjax || $isModal) {
                 return response()->json([
@@ -304,7 +309,7 @@ class MidtransPaymentController extends Controller
         // Unified Profile Validation
         $template = $activity->import_template;
         $customKeys = [];
-        
+
         if ($template) {
             $map = [
                 'email' => 'email',
@@ -330,11 +335,17 @@ class MidtransPaymentController extends Controller
                     $rawKey = trim(substr($col, 0, -1));
                     $key = preg_replace('/^\d+\./', '', $rawKey);
                     $key = strtolower(trim($key));
-                    
-                    if (str_starts_with($key, 'user:')) $key = substr($key, 5);
-                    if (str_starts_with($key, 'profile:')) $key = substr($key, 8);
-                    
-                    if ($key === 'password') continue;
+
+                    if (str_starts_with($key, 'user:')) {
+                        $key = substr($key, 5);
+                    }
+                    if (str_starts_with($key, 'profile:')) {
+                        $key = substr($key, 8);
+                    }
+
+                    if ($key === 'password') {
+                        continue;
+                    }
 
                     if (isset($map[$key])) {
                         $customKeys[] = $map[$key];
@@ -350,7 +361,7 @@ class MidtransPaymentController extends Controller
         // Include keys from modern custom_fields relationship
         if ($activity->custom_fields && is_array($activity->custom_fields)) {
             foreach ($activity->custom_fields as $cf) {
-                if (!empty($cf['is_required']) && !empty($cf['key'])) {
+                if (! empty($cf['is_required']) && ! empty($cf['key'])) {
                     $customKeys[] = $cf['key'];
                 }
             }
@@ -358,7 +369,7 @@ class MidtransPaymentController extends Controller
 
         $mandatoryFields = $activity->mandatory_profile_fields ?? [];
         $allRequiredKeys = array_unique(array_merge(['email', 'foto'], $mandatoryFields, $customKeys));
-        
+
         $missingProfileData = $user->getIncompleteProfileData($allRequiredKeys);
         $missingFields = array_column($missingProfileData, 'label');
         $missingFieldKeys = array_column($missingProfileData, 'key');
@@ -372,7 +383,7 @@ class MidtransPaymentController extends Controller
                     'message' => $msg,
                     'missing_fields' => $missingFields,
                     'missing_profile_fields' => $missingFieldKeys,
-                    'is_profile_incomplete' => true
+                    'is_profile_incomplete' => true,
                 ], 422);
             }
 
@@ -405,7 +416,7 @@ class MidtransPaymentController extends Controller
         // Validasi activity
         if (! $activity->hasAutomaticPayment()) {
             // Alihkan langsung ke alur pembayaran manual agar peserta tidak terblokir
-            return redirect()->route('payments.create', $activity->id)
+            return redirect()->route('payments.activity.create', $activity->id)
                 ->with('info', 'Kegiatan ini menggunakan pembayaran manual. Silakan unggah bukti transfer.');
         }
 
@@ -418,7 +429,7 @@ class MidtransPaymentController extends Controller
                 ->where('id', $targetBatchId)
                 ->first();
         }
-            
+
         // Fallback to default active batch if not found or not requested
         if (! $activeBatch) {
             $activeBatch = $activity->activeBatch;
@@ -433,7 +444,7 @@ class MidtransPaymentController extends Controller
         // Check minimum payment amount for automatic payment (Adjust for bulk if applicable)
         $financialSettings = FinancialSetting::current();
         $minAutoPrice = $financialSettings ? $financialSettings->min_auto_price : 10000;
-        
+
         $bulk = session('import_bulk_payment') ?? session('import_bulk_payment_payload');
         $checkPrice = $price;
         if ($request->boolean('is_bulk') && is_array($bulk)) {
@@ -441,10 +452,10 @@ class MidtransPaymentController extends Controller
         }
 
         if ($checkPrice > 0 && $checkPrice < $minAutoPrice) {
-            $errorMsg = 'Total tagihan (Rp ' . number_format($checkPrice, 0, ',', '.') . ') di bawah batas minimum pembayaran otomatis (Rp ' . number_format($minAutoPrice, 0, ',', '.') . '). Silakan gunakan metode manual.';
-            
+            $errorMsg = 'Total tagihan (Rp '.number_format($checkPrice, 0, ',', '.').') di bawah batas minimum pembayaran otomatis (Rp '.number_format($minAutoPrice, 0, ',', '.').'). Silakan gunakan metode manual.';
+
             if ($isAjax || $isModal) {
-                 return response()->json(['status' => 'error', 'message' => $errorMsg], 422);
+                return response()->json(['status' => 'error', 'message' => $errorMsg], 422);
             }
 
             return redirect()->back()->with('error', $errorMsg);
@@ -561,14 +572,14 @@ class MidtransPaymentController extends Controller
                 // Preserve existing notes if they are JSON (likely containing custom_data from enrollment)
                 $existingNotes = $existingPayment->notes;
                 if (is_string($existingNotes) && (str_starts_with($existingNotes, '{') || str_starts_with($existingNotes, '['))) {
-                     $decoded = json_decode($existingNotes, true);
-                     if (json_last_error() === JSON_ERROR_NONE) {
-                         // It is valid JSON, keep it. Don't overwrite with simple text.
-                         $notesField = $existingNotes;
-                     }
+                    $decoded = json_decode($existingNotes, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        // It is valid JSON, keep it. Don't overwrite with simple text.
+                        $notesField = $existingNotes;
+                    }
                 }
             }
-            
+
             $paymentMatch = [
                 'user_id' => $user->id,
                 'activity_id' => $activity->id,
@@ -644,7 +655,7 @@ class MidtransPaymentController extends Controller
                 $transactionDetails['enabled_payments'] = $enabledPayments;
             }
             $returnTo = $request->input('return_to', session('import_return_to'));
-            
+
             if ($returnTo) {
                 $transactionDetails['callbacks'] = [
                     'finish' => route('midtrans.payment.finish', ['return_to' => $returnTo, 'activity_id' => $activity->id]),
@@ -683,6 +694,7 @@ class MidtransPaymentController extends Controller
                     ]);
                 }
                 $channels = PaymentChannel::where('is_active', true)->get();
+
                 return Inertia::render('Payments/Midtrans', [
                     'payment' => $payment,
                     'activity' => $activity,
@@ -716,7 +728,7 @@ class MidtransPaymentController extends Controller
             }
 
             $channels = PaymentChannel::where('is_active', true)->get();
-            
+
             return Inertia::render('Payments/Midtrans', [
                 'payment' => $payment,
                 'activity' => $activity,
@@ -881,6 +893,7 @@ class MidtransPaymentController extends Controller
                 } elseif ($returnTo === 'show') {
                     $routeTarget = route('activity.show', $activityIdParam);
                 }
+
                 return redirect($routeTarget)
                     ->with('error', 'Permintaan pembayaran tidak valid.');
             }
@@ -901,6 +914,7 @@ class MidtransPaymentController extends Controller
                 } elseif ($returnTo === 'show') {
                     $routeTarget = route('activity.show', $activityIdParam);
                 }
+
                 return redirect($routeTarget)
                     ->with('error', 'Pembayaran tidak ditemukan.');
             }
@@ -916,11 +930,12 @@ class MidtransPaymentController extends Controller
             $payment->refresh();
 
             if ($payment->status === 'approved' && $beforeStatus !== 'approved') {
-                $routeTarget = match($returnTo) {
+                $routeTarget = match ($returnTo) {
                     'participants' => route('activity.participants.index', $payment->activity_id),
                     'show' => route('activity.show', $payment->activity_id),
                     default => route('activity.detail', $payment->activity_id),
                 };
+
                 return redirect($routeTarget)
                     ->with('success', 'Pembayaran Anda berhasil dan keikutsertaan telah diaktifkan.');
             }
@@ -932,11 +947,12 @@ class MidtransPaymentController extends Controller
             ]);
         }
 
-        $routeTarget = match($returnTo) {
+        $routeTarget = match ($returnTo) {
             'participants' => route('activity.participants.index', $payment->activity_id),
             'show' => route('activity.show', $payment->activity_id),
             default => route('activity.detail', $payment->activity_id),
         };
+
         return redirect($routeTarget)
             ->with('info', 'Pembayaran selesai di Midtrans dan sedang divalidasi. Jika belum aktif, silakan refresh atau coba kembali nanti.');
     }
@@ -959,11 +975,12 @@ class MidtransPaymentController extends Controller
         if (! $orderId) {
             Log::warning('Unfinish callback without order_id');
             if ($activityIdParam) {
-                $routeTarget = match($returnTo) {
+                $routeTarget = match ($returnTo) {
                     'participants' => route('activity.participants.index', $activityIdParam),
                     'show' => route('activity.show', $activityIdParam),
                     default => route('activity.detail', $activityIdParam),
                 };
+
                 return redirect($routeTarget)
                     ->with('warning', 'Pembayaran dibatalkan. Anda dapat mencoba lagi nanti.');
             }
@@ -988,21 +1005,23 @@ class MidtransPaymentController extends Controller
                 ->first();
 
             if ($lastPayment) {
-                $routeTarget = match($returnTo) {
+                $routeTarget = match ($returnTo) {
                     'participants' => route('activity.participants.index', $lastPayment->activity_id),
                     'show' => route('activity.show', $lastPayment->activity_id),
                     default => route('activity.detail', $lastPayment->activity_id),
                 };
+
                 return redirect($routeTarget)
                     ->with('warning', 'Pembayaran belum selesai. Silakan selesaikan pembayaran Anda.');
             }
 
             if ($activityIdParam) {
-                $routeTarget = match($returnTo) {
+                $routeTarget = match ($returnTo) {
                     'participants' => route('activity.participants.index', $activityIdParam),
                     'show' => route('activity.show', $activityIdParam),
                     default => route('activity.detail', $activityIdParam),
                 };
+
                 return redirect($routeTarget)
                     ->with('warning', 'Pembayaran dibatalkan. Anda dapat mencoba lagi nanti.');
             }
@@ -1017,11 +1036,12 @@ class MidtransPaymentController extends Controller
             'activity_id' => $payment->activity_id,
         ]);
 
-        $routeTarget = match($returnTo) {
+        $routeTarget = match ($returnTo) {
             'participants' => route('activity.participants.index', $payment->activity_id),
             'show' => route('activity.show', $payment->activity_id),
             default => route('activity.detail', $payment->activity_id),
         };
+
         return redirect($routeTarget)
             ->with('warning', 'Pembayaran belum selesai. Silakan selesaikan pembayaran Anda untuk menyelesaikan pendaftaran.');
     }
@@ -1044,11 +1064,12 @@ class MidtransPaymentController extends Controller
         if (! $orderId) {
             Log::warning('Error callback without order_id');
             if ($activityIdParam) {
-                $routeTarget = match($returnTo) {
+                $routeTarget = match ($returnTo) {
                     'participants' => route('activity.participants.index', $activityIdParam),
                     'show' => route('activity.show', $activityIdParam),
                     default => route('activity.detail', $activityIdParam),
                 };
+
                 return redirect($routeTarget)
                     ->with('error', 'Terjadi kesalahan saat memproses pembayaran.');
             }
@@ -1073,21 +1094,23 @@ class MidtransPaymentController extends Controller
                 ->first();
 
             if ($lastPayment) {
-                $routeTarget = match($returnTo) {
+                $routeTarget = match ($returnTo) {
                     'participants' => route('activity.participants.index', $lastPayment->activity_id),
                     'show' => route('activity.show', $lastPayment->activity_id),
                     default => route('activity.detail', $lastPayment->activity_id),
                 };
+
                 return redirect($routeTarget)
                     ->with('error', 'Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi.');
             }
 
             if ($activityIdParam) {
-                $routeTarget = match($returnTo) {
+                $routeTarget = match ($returnTo) {
                     'participants' => route('activity.participants.index', $activityIdParam),
                     'show' => route('activity.show', $activityIdParam),
                     default => route('activity.detail', $activityIdParam),
                 };
+
                 return redirect($routeTarget)
                     ->with('error', 'Terjadi kesalahan saat memproses pembayaran.');
             }
@@ -1105,6 +1128,7 @@ class MidtransPaymentController extends Controller
         $routeTarget = $returnTo === 'participants'
             ? route('activity.participants.index', $payment->activity_id)
             : route('activity.detail', $payment->activity_id);
+
         return redirect($routeTarget)
             ->with('error', 'Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi atau hubungi support jika masalah berlanjut.');
     }

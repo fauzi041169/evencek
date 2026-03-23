@@ -49,7 +49,6 @@ class Kernel extends HttpKernel
             // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \App\Http\Middleware\ApiSecurity::class,
             \App\Http\Middleware\PerformanceLogger::class,
-            \App\Http\Middleware\DebugSanctum::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
@@ -87,6 +86,5 @@ class Kernel extends HttpKernel
     protected $routeMiddleware = [
         'role' => \App\Http\Middleware\Role::class,
         'admin' => \App\Http\Middleware\IsAdmin::class,
-        'pengurus' => \App\Http\Middleware\PengurusMiddleware::class,
     ];
 }

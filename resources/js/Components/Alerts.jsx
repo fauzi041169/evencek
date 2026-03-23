@@ -4,6 +4,7 @@ import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 export default function Alerts({ flash: propFlash, errors: propErrors }) {
     const { flash: pageFlash, errors: pageErrors } = usePage().props;
+    const [externalFlash, setExternalFlash] = useState(null);
     const rawFlash = propFlash || pageFlash || {};
     const errors = propErrors || pageErrors || {};
 
@@ -26,8 +27,19 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
         return null;
     };
 
+    useEffect(() => {
+        const handler = (e) => {
+            const detail = e?.detail;
+            if (!detail || typeof detail !== 'object') return;
+            setExternalFlash({ ...detail, _ts: Date.now() });
+        };
+
+        window.addEventListener('app:flash', handler);
+        return () => window.removeEventListener('app:flash', handler);
+    }, []);
+
     const flash = useMemo(() => {
-        const f = { ...rawFlash };
+        const f = { ...rawFlash, ...(externalFlash || {}) };
         const genericMsg = extractMessage(f.message);
         const genericType = typeof f.type === 'string' ? f.type : (typeof f.status === 'string' ? f.status : null);
         if (genericMsg && !f.success && !f.error && !f.info && !f.warning) {
@@ -39,7 +51,7 @@ export default function Alerts({ flash: propFlash, errors: propErrors }) {
         f.info = extractMessage(f.info) || null;
         f.warning = extractMessage(f.warning) || null;
         return f;
-    }, [rawFlash]);
+    }, [rawFlash, externalFlash?._ts]);
 
     const ignoredErrorKeys = ['login', 'email', 'password', 'name', 'password_confirmation', 'current_password'];
     const errorList = useMemo(() => {

@@ -79,8 +79,10 @@ class ApiMonitorController extends Controller
         foreach ($allRoutes as $r) {
             $uri = method_exists($r, 'uri') ? $r->uri() : $r->uri;
             if (in_array($uri, $allow)) {
-                $methods = array_values(array_filter($r->methods(), function($m){ return $m !== 'HEAD'; }));
-                if (!isset($apiMap[$uri])) {
+                $methods = array_values(array_filter($r->methods(), function ($m) {
+                    return $m !== 'HEAD';
+                }));
+                if (! isset($apiMap[$uri])) {
                     $apiMap[$uri] = [
                         'uri' => $uri,
                         'methods' => [],
@@ -91,7 +93,9 @@ class ApiMonitorController extends Controller
             }
         }
         $apiRoutes = array_values($apiMap);
-        usort($apiRoutes, function($a,$b){ return strcmp($a['uri'],$b['uri']); });
+        usort($apiRoutes, function ($a, $b) {
+            return strcmp($a['uri'], $b['uri']);
+        });
 
         return Inertia::render('ApiMonitor/Index', [
             'apiRoutes' => $apiRoutes,

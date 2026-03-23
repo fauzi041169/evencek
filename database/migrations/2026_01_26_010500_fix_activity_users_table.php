@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -21,7 +21,7 @@ return new class extends Migration
                     ->where('activity_id', $row->activity_id)
                     ->exists();
 
-                if (!$exists) {
+                if (! $exists) {
                     try {
                         DB::table('activity_users')->insert([
                             'id' => $row->id,
@@ -45,10 +45,10 @@ return new class extends Migration
                     }
                 }
             }
-            
+
             // Drop the old table
             Schema::drop('activitiusers');
-        } elseif (Schema::hasTable('activitiusers') && !Schema::hasTable('activity_users')) {
+        } elseif (Schema::hasTable('activitiusers') && ! Schema::hasTable('activity_users')) {
             // Just rename if target doesn't exist
             Schema::rename('activitiusers', 'activity_users');
         }
@@ -57,21 +57,21 @@ return new class extends Migration
         Schema::table('activity_users', function (Blueprint $table) {
             // Check if foreign key exists is hard in generic way, but we can try-catch or check constraint name convention
             // We'll use a safer approach: modify column to be sure it matches types then add FK
-            
+
             // First ensure column type matches parent
             // activity_batches.id is char(6)
         });
-        
+
         // Use raw SQL to safely add FK if not exists
         try {
             $fkExists = DB::select("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_NAME = 'activity_users' AND CONSTRAINT_NAME = 'activity_users_activity_batch_id_foreign' AND TABLE_SCHEMA = DATABASE()");
-            
+
             if (empty($fkExists)) {
                 Schema::table('activity_users', function (Blueprint $table) {
-                     $table->foreign('activity_batch_id', 'activity_users_activity_batch_id_foreign')
-                          ->references('id')
-                          ->on('activity_batches')
-                          ->nullOnDelete();
+                    $table->foreign('activity_batch_id', 'activity_users_activity_batch_id_foreign')
+                        ->references('id')
+                        ->on('activity_batches')
+                        ->nullOnDelete();
                 });
             }
         } catch (\Exception $e) {
@@ -87,7 +87,7 @@ return new class extends Migration
         // We generally don't reverse the drop of a typo table.
         // But we can remove the FK.
         Schema::table('activity_users', function (Blueprint $table) {
-             $table->dropForeign(['activity_batch_id']);
+            $table->dropForeign(['activity_batch_id']);
         });
     }
 };

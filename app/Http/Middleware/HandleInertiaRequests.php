@@ -61,6 +61,42 @@ class HandleInertiaRequests extends Middleware
             'appSettings' => function () {
                 $cacheKey = 'inertia_app_settings';
                 $ttl = 300; // 5 menit – kurangi query DB tiap request
+                $dbReachable = true;
+                if (config('database.default') === 'mysql') {
+                    $host = (string) config('database.connections.mysql.host');
+                    $port = (int) (config('database.connections.mysql.port') ?: 3306);
+                    $dbReachable = false;
+                    if ($host !== '') {
+                        $candidates = [$host];
+                        if (strtolower($host) === 'localhost') {
+                            $candidates[] = '127.0.0.1';
+                        }
+                        foreach (array_values(array_unique($candidates)) as $candidate) {
+                            $fp = @fsockopen($candidate, $port, $errno, $errstr, 0.35);
+                            if (is_resource($fp)) {
+                                fclose($fp);
+                                $dbReachable = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (! $dbReachable) {
+                    return [
+                        'app_name' => config('app.name', 'EVENTCEK'),
+                        'app_logo' => '/assets/images/logo.png',
+                        'hero_animation_style' => 'circles',
+                        'hero_background_1' => null,
+                        'hero_background_2' => null,
+                        'hero_background_3' => null,
+                        'hero_slide3_right_image' => null,
+                        'navbar_opacity' => '1',
+                        'subscription_service_enabled' => false,
+                        'colors' => [],
+                        'isLocal' => app()->environment(['local', 'development']),
+                    ];
+                }
                 try {
                     return Cache::remember($cacheKey, $ttl, function () {
                         return [
@@ -95,18 +131,30 @@ class HandleInertiaRequests extends Middleware
             },
         ]);
 
-
     }
+
     private static function formatAssetUrl($path)
     {
-        if (!$path) return null;
-        if (str_starts_with($path, 'http')) return $path;
-        if (str_starts_with($path, 'assets/')) return '/' . $path;
-        if (str_starts_with($path, '/assets/')) return $path;
-        if (str_starts_with($path, 'storage/')) return '/' . $path;
-        if (str_starts_with($path, '/storage/')) return $path;
-        
+        if (! $path) {
+            return null;
+        }
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+        if (str_starts_with($path, 'assets/')) {
+            return '/'.$path;
+        }
+        if (str_starts_with($path, '/assets/')) {
+            return $path;
+        }
+        if (str_starts_with($path, 'storage/')) {
+            return '/'.$path;
+        }
+        if (str_starts_with($path, '/storage/')) {
+            return $path;
+        }
+
         // Assume storage path if not matching above
-        return '/storage/' . $path;
+        return '/storage/'.$path;
     }
 }

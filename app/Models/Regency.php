@@ -4,12 +4,13 @@ namespace App\Models;
 
 use App\Traits\HasCustomUid;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Regency extends Model
 {
     use HasCustomUid;
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $table = 'regencies';
@@ -25,6 +26,4 @@ class Regency extends Model
     {
         return $this->hasMany(District::class);
     }
-
-
 }

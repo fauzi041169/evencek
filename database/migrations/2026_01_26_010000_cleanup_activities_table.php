@@ -2,9 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -18,7 +17,7 @@ return new class extends Migration
             $activities = DB::table('activities')->get();
             foreach ($activities as $activity) {
                 $updates = [];
-                
+
                 // Migrate visibility columns to visible_sections JSON
                 if (empty($activity->visible_sections)) {
                     $visibleSections = [];
@@ -46,27 +45,27 @@ return new class extends Migration
                             // (OR logic if multiple columns map to same key, though usually only one set exists)
                             if ($activity->$col) {
                                 $visibleSections[$key] = true;
-                            } elseif (!isset($visibleSections[$key])) {
+                            } elseif (! isset($visibleSections[$key])) {
                                 $visibleSections[$key] = false;
                             }
                         }
                     }
-                    
+
                     // If we found any mapping, update the JSON
-                    if (!empty($visibleSections)) {
+                    if (! empty($visibleSections)) {
                         $updates['visible_sections'] = json_encode($visibleSections);
                     }
                 }
-                
+
                 // Migrate 'materi' text to ActivityMaterial if not empty
-                if (property_exists($activity, 'materi') && !empty($activity->materi)) {
+                if (property_exists($activity, 'materi') && ! empty($activity->materi)) {
                     // Check if this content is already in activity_materials to avoid duplication?
                     // It's hard to check for text content equivalence.
                     // We'll just create a new record if it looks like a file path or substantial text.
-                    
+
                     // Generate a custom UID for the new material
                     $uid = $this->generateCustomUid();
-                    
+
                     try {
                         DB::table('activity_materials')->insert([
                             'id' => $uid,
@@ -84,7 +83,7 @@ return new class extends Migration
                     }
                 }
 
-                if (!empty($updates)) {
+                if (! empty($updates)) {
                     DB::table('activities')->where('id', $activity->id)->update($updates);
                 }
             }
@@ -109,15 +108,15 @@ return new class extends Migration
                 'groups_visible',
                 'materi', // Redundant text column
             ];
-            
+
             $toDrop = [];
             foreach ($columns as $col) {
                 if (Schema::hasColumn('activities', $col)) {
                     $toDrop[] = $col;
                 }
             }
-            
-            if (!empty($toDrop)) {
+
+            if (! empty($toDrop)) {
                 $table->dropColumn($toDrop);
             }
         });
@@ -140,7 +139,7 @@ return new class extends Migration
             shuffle($combined);
             $uid = implode('', $combined);
         } while (DB::table('activity_materials')->where('id', $uid)->exists());
-        
+
         return $uid;
     }
 
@@ -151,21 +150,51 @@ return new class extends Migration
     {
         Schema::table('activities', function (Blueprint $table) {
             // Restore columns if needed (simplified restoration with default values)
-            if (!Schema::hasColumn('activities', 'detail_description_visible')) $table->boolean('detail_description_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_gallery_visible')) $table->boolean('detail_gallery_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_comments_visible')) $table->boolean('detail_comments_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_participants_visible')) $table->boolean('detail_participants_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_materials_visible')) $table->boolean('detail_materials_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_speakers_visible')) $table->boolean('detail_speakers_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'detail_rundown_visible')) $table->boolean('detail_rundown_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'description_visible')) $table->boolean('description_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'participants_visible')) $table->boolean('participants_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'speakers_visible')) $table->boolean('speakers_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'show_gallery')) $table->boolean('show_gallery')->default(true);
-            if (!Schema::hasColumn('activities', 'rundown_visible')) $table->boolean('rundown_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'materials_visible')) $table->boolean('materials_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'groups_visible')) $table->boolean('groups_visible')->default(true);
-            if (!Schema::hasColumn('activities', 'materi')) $table->text('materi')->nullable();
+            if (! Schema::hasColumn('activities', 'detail_description_visible')) {
+                $table->boolean('detail_description_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_gallery_visible')) {
+                $table->boolean('detail_gallery_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_comments_visible')) {
+                $table->boolean('detail_comments_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_participants_visible')) {
+                $table->boolean('detail_participants_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_materials_visible')) {
+                $table->boolean('detail_materials_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_speakers_visible')) {
+                $table->boolean('detail_speakers_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'detail_rundown_visible')) {
+                $table->boolean('detail_rundown_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'description_visible')) {
+                $table->boolean('description_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'participants_visible')) {
+                $table->boolean('participants_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'speakers_visible')) {
+                $table->boolean('speakers_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'show_gallery')) {
+                $table->boolean('show_gallery')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'rundown_visible')) {
+                $table->boolean('rundown_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'materials_visible')) {
+                $table->boolean('materials_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'groups_visible')) {
+                $table->boolean('groups_visible')->default(true);
+            }
+            if (! Schema::hasColumn('activities', 'materi')) {
+                $table->text('materi')->nullable();
+            }
         });
     }
 };

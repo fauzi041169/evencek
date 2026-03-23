@@ -12,6 +12,7 @@ class TestEmailCommand extends Command
      * @var string
      */
     protected $signature = 'mail:test {email}';
+
     protected $description = 'Test sending email';
 
     public function handle()
@@ -26,7 +27,7 @@ class TestEmailCommand extends Command
             });
             $this->info('Email sent successfully!');
         } catch (\Exception $e) {
-            $this->error('Failed to send email: ' . $e->getMessage());
+            $this->error('Failed to send email: '.$e->getMessage());
         }
     }
 }

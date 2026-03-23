@@ -9,8 +9,6 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PaymentLookupTest extends TestCase
@@ -31,11 +29,14 @@ class PaymentLookupTest extends TestCase
     {
         $user = User::factory()->create();
         $activity = Activity::factory()->create(['price' => 0, 'user_id' => $user->id]);
-        
+
         // User must be enrolled for lookup to work effectively or at least be the user
         $this->actingAs($user);
 
-        $response = $this->getJson("/api/payments/lookup?activity_id={$activity->id}&user_id={$user->id}");
+        $response = $this->getJson(route('payments.lookup', [
+            'activity_id' => $activity->id,
+            'user_id' => $user->id,
+        ]));
 
         $response->assertStatus(200)
             ->assertJson([
@@ -52,7 +53,10 @@ class PaymentLookupTest extends TestCase
 
         $this->actingAs($user);
 
-        $response = $this->getJson("/api/payments/lookup?activity_id={$activity->id}&user_id={$user->id}");
+        $response = $this->getJson(route('payments.lookup', [
+            'activity_id' => $activity->id,
+            'user_id' => $user->id,
+        ]));
 
         $response->assertStatus(404)
             ->assertJson([
@@ -71,14 +75,17 @@ class PaymentLookupTest extends TestCase
             'user_id' => $user->id,
             'activity_id' => $activity->id,
             'amount' => 100000,
-            'payment_method_id' => 1,
+            'payment_method_id' => PaymentMethod::first()->id,
             'status' => 'pending',
             'proof_of_payment' => 'test.jpg',
         ]);
 
         $this->actingAs($user);
 
-        $response = $this->getJson("/api/payments/lookup?activity_id={$activity->id}&user_id={$user->id}");
+        $response = $this->getJson(route('payments.lookup', [
+            'activity_id' => $activity->id,
+            'user_id' => $user->id,
+        ]));
 
         $response->assertStatus(200)
             ->assertJson([
@@ -94,7 +101,7 @@ class PaymentLookupTest extends TestCase
     {
         $owner = User::factory()->create();
         $activity = Activity::factory()->create(['price' => 100000, 'user_id' => $owner->id]);
-        
+
         $payer = User::factory()->create();
         $member = User::factory()->create();
 
@@ -124,7 +131,7 @@ class PaymentLookupTest extends TestCase
             'user_id' => $payer->id,
             'activity_id' => $activity->id,
             'amount' => 200000, // For 2 people
-            'payment_method_id' => 1,
+            'payment_method_id' => PaymentMethod::first()->id,
             'status' => 'pending',
             'proof_of_payment' => 'group.jpg',
         ]);
@@ -132,7 +139,10 @@ class PaymentLookupTest extends TestCase
         // Lookup for MEMBER (who didn't pay directly)
         $this->actingAs($member);
 
-        $response = $this->getJson("/api/payments/lookup?activity_id={$activity->id}&user_id={$member->id}");
+        $response = $this->getJson(route('payments.lookup', [
+            'activity_id' => $activity->id,
+            'user_id' => $member->id,
+        ]));
 
         $response->assertStatus(200)
             ->assertJson([
@@ -142,12 +152,12 @@ class PaymentLookupTest extends TestCase
                 ],
             ]);
     }
-    
+
     public function test_lookup_bulk_import_payment()
     {
         $owner = User::factory()->create();
         $activity = Activity::factory()->create(['price' => 100000, 'user_id' => $owner->id]);
-        
+
         $payer = User::factory()->create();
         $beneficiary = User::factory()->create(); // User who benefits from bulk payment but isn't grouped yet
 
@@ -156,20 +166,23 @@ class PaymentLookupTest extends TestCase
             'user_id' => $payer->id,
             'activity_id' => $activity->id,
             'amount' => 200000,
-            'payment_method_id' => 1,
+            'payment_method_id' => PaymentMethod::first()->id,
             'status' => 'pending',
             'proof_of_payment' => 'bulk.jpg',
             'notes' => json_encode([
                 'bulk_import' => [
-                    'user_ids' => [$payer->id, $beneficiary->id]
-                ]
+                    'user_ids' => [$payer->id, $beneficiary->id],
+                ],
             ]),
         ]);
 
         // Lookup for Beneficiary
         $this->actingAs($beneficiary);
 
-        $response = $this->getJson("/api/payments/lookup?activity_id={$activity->id}&user_id={$beneficiary->id}");
+        $response = $this->getJson(route('payments.lookup', [
+            'activity_id' => $activity->id,
+            'user_id' => $beneficiary->id,
+        ]));
 
         $response->assertStatus(200)
             ->assertJson([

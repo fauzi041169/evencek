@@ -137,7 +137,7 @@ class ActivityParticipantGroupController extends Controller
         }
 
         $groupId = $request->group_id;
-        
+
         if ($groupId === 'new_group') {
             return redirect()->back()->with('error', 'Silakan simpan nama kelompok baru terlebih dahulu (klik tombol Simpan di sebelah kolom input) sebelum melanjutkan.');
         }

@@ -1,5 +1,6 @@
 import './bootstrap';
 import './i18n';
+import './echo';
 import { createInertiaApp, router } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
@@ -50,6 +51,35 @@ createInertiaApp({
                 }).then((result) => {
                     if (result.isConfirmed) window.location.reload();
                 });
+                return;
+            }
+
+            if (typeof status === 'number' && status >= 500) {
+                (async () => {
+                    let message = `Terjadi kesalahan server (HTTP ${status}). Silakan coba lagi.`;
+                    try {
+                        if (response) {
+                            const ct = response.headers?.get?.('content-type') || '';
+                            if (ct.includes('application/json')) {
+                                const data = await response.clone().json();
+                                if (data?.message && typeof data.message === 'string') {
+                                    message = data.message;
+                                }
+                                if (data?.request_id && typeof data.request_id === 'string') {
+                                    message = `${message} (Request ID: ${data.request_id})`;
+                                }
+                            } else {
+                                const text = await response.clone().text();
+                                if (text && typeof text === 'string' && text.length < 300) {
+                                    message = text;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                    }
+
+                    window.dispatchEvent(new CustomEvent('app:flash', { detail: { error: message } }));
+                })();
             }
         });
 

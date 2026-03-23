@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Payment;
 use App\Traits\HasCustomUid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -162,20 +161,23 @@ class User extends Authenticatable
 
                         // Fuzzy search for keys like "Key|modifier" - Fix for 422 error when keys mismatch in case/suffix
                         if (empty($val)) {
-                             foreach ($profile->additional_data as $k => $v) {
-                                 $kClean = $k;
-                                 if (str_contains($k, '|')) $kClean = explode('|', $k)[0];
-                                 elseif (str_contains($k, ':')) $kClean = explode(':', $k)[0];
-                                 
-                                 // Normalize: lowercase and replace underscores with spaces
-                                 $kNormalized = str_replace('_', ' ', strtolower(trim($kClean)));
-                                 $keyNormalized = str_replace('_', ' ', strtolower(trim($effectiveKey)));
-                                 
-                                 if ($kNormalized === $keyNormalized) {
-                                     $val = $v;
-                                     break;
-                                 }
-                             }
+                            foreach ($profile->additional_data as $k => $v) {
+                                $kClean = $k;
+                                if (str_contains($k, '|')) {
+                                    $kClean = explode('|', $k)[0];
+                                } elseif (str_contains($k, ':')) {
+                                    $kClean = explode(':', $k)[0];
+                                }
+
+                                // Normalize: lowercase and replace underscores with spaces
+                                $kNormalized = str_replace('_', ' ', strtolower(trim($kClean)));
+                                $keyNormalized = str_replace('_', ' ', strtolower(trim($effectiveKey)));
+
+                                if ($kNormalized === $keyNormalized) {
+                                    $val = $v;
+                                    break;
+                                }
+                            }
                         }
                     }
 
@@ -248,6 +250,7 @@ class User extends Authenticatable
             }
             $publicStorage = public_path('storage');
             $hasPublicStorage = is_dir($publicStorage);
+
             return $hasPublicStorage
                 ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->avatar)
                 : route('profile.photo', $this->id);

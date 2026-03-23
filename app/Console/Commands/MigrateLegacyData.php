@@ -3,15 +3,16 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use SplFileObject;
 
 class MigrateLegacyData extends Command
 {
     protected $signature = 'db:migrate-legacy {path : Path to SQL dump file}';
+
     protected $description = 'Import legacy SQL dump and migrate to normalized schema';
 
     protected $userIdMap = [];
@@ -19,13 +20,14 @@ class MigrateLegacyData extends Command
     public function handle()
     {
         $path = $this->argument('path');
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             $this->error("File not found: $path");
+
             return 1;
         }
 
-        $this->info("Setting up temporary database connection...");
-        
+        $this->info('Setting up temporary database connection...');
+
         // Configure temp connection
         Config::set('database.connections.temp_migration', [
             'driver' => 'mysql',
@@ -44,36 +46,39 @@ class MigrateLegacyData extends Command
         // Verify connection
         try {
             DB::connection('temp_migration')->getPdo();
-            $this->info("Connected to temporary database.");
+            $this->info('Connected to temporary database.');
         } catch (\Exception $e) {
-            $this->error("Could not connect to temporary database: " . $e->getMessage());
+            $this->error('Could not connect to temporary database: '.$e->getMessage());
+
             return 1;
         }
 
         // Import SQL Dump
-        $this->info("Importing SQL dump to temporary database...");
-        if (!$this->importSqlDump($path)) {
-            $this->error("Failed to import SQL dump.");
+        $this->info('Importing SQL dump to temporary database...');
+        if (! $this->importSqlDump($path)) {
+            $this->error('Failed to import SQL dump.');
+
             return 1;
         }
 
         // Migrate Data
-        $this->info("Migrating data to main database...");
+        $this->info('Migrating data to main database...');
         $this->migrateData();
 
-        $this->info("Migration completed successfully.");
+        $this->info('Migration completed successfully.');
+
         return 0;
     }
 
     protected function importSqlDump($path)
     {
         DB::connection('temp_migration')->statement('SET FOREIGN_KEY_CHECKS=0');
-        
+
         // Drop all tables in temp DB to ensure clean state
         $tables = DB::connection('temp_migration')->select('SHOW TABLES');
         $dbName = Config::get('database.connections.temp_migration.database');
-        $key = "Tables_in_" . $dbName;
-        
+        $key = 'Tables_in_'.$dbName;
+
         foreach ($tables as $table) {
             $tableName = $table->$key;
             DB::connection('temp_migration')->statement("DROP TABLE IF EXISTS `$tableName`");
@@ -83,12 +88,14 @@ class MigrateLegacyData extends Command
         $statement = '';
         $count = 0;
 
-        while (!$file->eof()) {
+        while (! $file->eof()) {
             $line = $file->fgets();
-            if ($line === false) break;
-            
+            if ($line === false) {
+                break;
+            }
+
             $trimmed = trim($line);
-            
+
             if ($trimmed === '' || str_starts_with($trimmed, '--') || str_starts_with($trimmed, '/*')) {
                 continue;
             }
@@ -103,14 +110,15 @@ class MigrateLegacyData extends Command
                         $this->output->write('.');
                     }
                 } catch (\Exception $e) {
-                    $this->warn("\nError executing statement: " . $e->getMessage());
+                    $this->warn("\nError executing statement: ".$e->getMessage());
                 }
                 $statement = '';
             }
         }
-        
+
         DB::connection('temp_migration')->statement('SET FOREIGN_KEY_CHECKS=1');
         $this->newLine();
+
         return true;
     }
 
@@ -154,7 +162,9 @@ class MigrateLegacyData extends Command
         ];
 
         foreach ($tablesToMigrate as $sourceTable => $targetTable) {
-            if ($sourceTable === 'users') continue; // Already done
+            if ($sourceTable === 'users') {
+                continue;
+            } // Already done
             $this->migrateTable($sourceTable, $targetTable);
         }
 
@@ -163,11 +173,13 @@ class MigrateLegacyData extends Command
 
     protected function migrateUsers()
     {
-        $this->info("Migrating users...");
+        $this->info('Migrating users...');
         $sourceTable = 'users';
         $targetTable = 'users';
 
-        if (!Schema::connection('temp_migration')->hasTable($sourceTable)) return;
+        if (! Schema::connection('temp_migration')->hasTable($sourceTable)) {
+            return;
+        }
 
         $columns = array_intersect(
             DB::connection('temp_migration')->getSchemaBuilder()->getColumnListing($sourceTable),
@@ -176,7 +188,9 @@ class MigrateLegacyData extends Command
 
         foreach (DB::connection('temp_migration')->table($sourceTable)->cursor() as $row) {
             $data = [];
-            foreach ($columns as $col) $data[$col] = $row->$col;
+            foreach ($columns as $col) {
+                $data[$col] = $row->$col;
+            }
             $this->cleanData($data);
 
             $oldId = $row->id;
@@ -184,8 +198,8 @@ class MigrateLegacyData extends Command
 
             $existingUser = DB::table($targetTable)->where('email', $email)->first();
 
-            if (!$existingUser && !empty($row->google_id)) {
-                 $existingUser = DB::table($targetTable)->where('google_id', $row->google_id)->first();
+            if (! $existingUser && ! empty($row->google_id)) {
+                $existingUser = DB::table($targetTable)->where('google_id', $row->google_id)->first();
             }
 
             if ($existingUser) {
@@ -203,18 +217,18 @@ class MigrateLegacyData extends Command
                     $data['id'] = $newId;
                     $this->userIdMap[$oldId] = $newId;
                     $this->info("ID Collision: Mapped user $oldId -> $newId");
-                    
+
                     try {
                         DB::table($targetTable)->insert($data);
                     } catch (\Exception $e) {
-                        $this->warn("Failed to insert remapped user: " . $e->getMessage());
+                        $this->warn('Failed to insert remapped user: '.$e->getMessage());
                     }
                 } else {
                     // Clean insert
                     try {
                         DB::table($targetTable)->insert($data);
                     } catch (\Exception $e) {
-                        $this->warn("Failed to insert user $oldId: " . $e->getMessage());
+                        $this->warn("Failed to insert user $oldId: ".$e->getMessage());
                     }
                 }
             }
@@ -225,13 +239,16 @@ class MigrateLegacyData extends Command
     {
         // Skip irrelevant tables
         $skippedTables = [
-            'performance_logs', 'jobs', 'failed_jobs', 'sessions', 'cache', 'migrations', 
-            'password_reset_tokens', 'personal_access_tokens'
+            'performance_logs', 'jobs', 'failed_jobs', 'sessions', 'cache', 'migrations',
+            'password_reset_tokens', 'personal_access_tokens',
         ];
-        if (in_array($targetTable, $skippedTables)) return;
+        if (in_array($targetTable, $skippedTables)) {
+            return;
+        }
 
-        if (!Schema::connection('temp_migration')->hasTable($sourceTable)) {
+        if (! Schema::connection('temp_migration')->hasTable($sourceTable)) {
             $this->warn("Source table '$sourceTable' does not exist in dump. Skipping.");
+
             return;
         }
 
@@ -240,9 +257,10 @@ class MigrateLegacyData extends Command
         $sourceColumns = DB::connection('temp_migration')->getSchemaBuilder()->getColumnListing($sourceTable);
         $targetColumns = Schema::getColumnListing($targetTable);
         $columnsToMigrate = array_intersect($sourceColumns, $targetColumns);
-        
+
         if (empty($columnsToMigrate)) {
             $this->warn("No matching columns for '$targetTable'. Skipping.");
+
             return;
         }
 
@@ -266,7 +284,7 @@ class MigrateLegacyData extends Command
                 // Special handling for pivot tables without ID
                 // e.g. activity_owners (activity_id, user_id)
                 if ($targetTable === 'activity_owners') {
-                     DB::table($targetTable)->updateOrInsert(
+                    DB::table($targetTable)->updateOrInsert(
                         ['activity_id' => $data['activity_id'], 'user_id' => $data['user_id']],
                         $data
                     );
@@ -282,7 +300,8 @@ class MigrateLegacyData extends Command
         $this->output->write(" Done.\n");
     }
 
-    protected function remapRow(&$data) {
+    protected function remapRow(&$data)
+    {
         if (isset($data['user_id']) && isset($this->userIdMap[$data['user_id']])) {
             $data['user_id'] = $this->userIdMap[$data['user_id']];
         }
@@ -293,14 +312,17 @@ class MigrateLegacyData extends Command
         }
     }
 
-    protected function generateUniqueId($table) {
+    protected function generateUniqueId($table)
+    {
         do {
             $id = strtoupper(Str::random(6));
         } while (DB::table($table)->where('id', $id)->exists());
+
         return $id;
     }
 
-    protected function cleanData(&$data) {
+    protected function cleanData(&$data)
+    {
         foreach ($data as $key => $value) {
             if ($value === '0000-00-00 00:00:00' || $value === '0000-00-00') {
                 $data[$key] = null;

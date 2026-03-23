@@ -64,22 +64,22 @@ class SettingController extends Controller
 
         $heroBackgrounds = array_map(function ($item) {
             $path = $item['path'] ?? 'assets/images/hero/defoult.webp';
-            
+
             // If path doesn't start with assets/ or storage/, and it's not a URL, it's likely a storage path
-            if (!Str::startsWith($path, ['assets/', 'storage/', 'http://', 'https://'])) {
-                $item['url'] = asset('storage/' . $path);
+            if (! Str::startsWith($path, ['assets/', 'storage/', 'http://', 'https://'])) {
+                $item['url'] = asset('storage/'.$path);
             } else {
                 $item['url'] = asset($path);
             }
-            
+
             return $item;
         }, $heroBackgrounds);
 
         // Slide 3 right panel image (optional)
         $slide3RightPath = \App\Models\Setting::get('home_hero_slide3_right_image');
         if ($slide3RightPath) {
-            if (!Str::startsWith($slide3RightPath, ['assets/', 'storage/', 'http://', 'https://'])) {
-                $slide3RightUrl = asset('storage/' . $slide3RightPath);
+            if (! Str::startsWith($slide3RightPath, ['assets/', 'storage/', 'http://', 'https://'])) {
+                $slide3RightUrl = asset('storage/'.$slide3RightPath);
             } else {
                 $slide3RightUrl = asset($slide3RightPath);
             }
@@ -102,7 +102,7 @@ class SettingController extends Controller
                 $appLogoUrl = asset($appLogoUrl);
             } else {
                 // Assume it's a storage path without prefix
-                $appLogoUrl = asset('storage/' . $appLogoUrl);
+                $appLogoUrl = asset('storage/'.$appLogoUrl);
             }
         } else {
             $appLogoUrl = $logoFallback;
@@ -115,7 +115,7 @@ class SettingController extends Controller
                 $appFaviconUrl = asset($appFaviconUrl);
             } else {
                 // Assume it's a storage path without prefix
-                $appFaviconUrl = asset('storage/' . $appFaviconUrl);
+                $appFaviconUrl = asset('storage/'.$appFaviconUrl);
             }
         } else {
             $appFaviconUrl = $faviconFallback;

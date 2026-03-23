@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('card_settings', function (Blueprint $table) {
-            if (!Schema::hasColumn('card_settings', 'type')) {
+            if (! Schema::hasColumn('card_settings', 'type')) {
                 $table->string('type')->default('participant')->after('activity_batch_id');
             }
         });

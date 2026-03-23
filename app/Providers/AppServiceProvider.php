@@ -37,16 +37,37 @@ class AppServiceProvider extends ServiceProvider
                 storage_path('framework/testing'),
                 storage_path('logs'),
             ];
-            
+
             foreach ($storageDirs as $dir) {
-                if (!file_exists($dir)) {
+                if (! file_exists($dir)) {
                     @mkdir($dir, 0755, true);
                 }
             }
 
-            if (Schema::hasTable('settings')) {
+            $dbReachable = true;
+            if (config('database.default') === 'mysql') {
+                $host = (string) config('database.connections.mysql.host');
+                $port = (int) (config('database.connections.mysql.port') ?: 3306);
+                $dbReachable = false;
+                if ($host !== '') {
+                    $candidates = [$host];
+                    if (strtolower($host) === 'localhost') {
+                        $candidates[] = '127.0.0.1';
+                    }
+                    foreach (array_values(array_unique($candidates)) as $candidate) {
+                        $fp = @fsockopen($candidate, $port, $errno, $errstr, 0.35);
+                        if (is_resource($fp)) {
+                            fclose($fp);
+                            $dbReachable = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if ($dbReachable && Schema::hasTable('settings')) {
                 $favicon = \App\Models\Setting::get('app_favicon');
-                $faviconUrl = $favicon ? (str_starts_with($favicon, 'http') ? $favicon : (str_starts_with($favicon, 'storage/') || str_starts_with($favicon, 'assets/') ? asset($favicon) : asset('storage/' . $favicon))) : asset('favicon.ico');
+                $faviconUrl = $favicon ? (str_starts_with($favicon, 'http') ? $favicon : (str_starts_with($favicon, 'storage/') || str_starts_with($favicon, 'assets/') ? asset($favicon) : asset('storage/'.$favicon))) : asset('favicon.ico');
                 View::share('appFavicon', $faviconUrl);
             }
         } catch (\Throwable $e) {

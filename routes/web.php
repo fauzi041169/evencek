@@ -2,11 +2,20 @@
 
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\ActivityBatchController;
+use App\Http\Controllers\ActivityChatController;
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\ActivityEnrollmentController;
+use App\Http\Controllers\ActivityParticipantGroupController;
 use App\Http\Controllers\ActivityPreparationController;
+use App\Http\Controllers\ActivityScanController;
 use App\Http\Controllers\ActivitySpeakerController;
+use App\Http\Controllers\ApiMonitorController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController as AuthLoginController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\CardSettingsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CommentController;
@@ -17,29 +26,18 @@ use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\IdCardBackgroundController;
 use App\Http\Controllers\MaintenanceController;
-use App\Http\Controllers\SettingController;
+use App\Http\Controllers\MidtransPaymentController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PengurusController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RegionController;
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserManagementController;
-use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\Auth\EmailVerificationController;
-use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\Auth\ResetPasswordController;
-use App\Http\Controllers\ActivityEnrollmentController;
-use App\Http\Controllers\ActivityParticipantGroupController;
-use App\Http\Controllers\ActivityChatController;
-use App\Http\Controllers\ApiMonitorController;
-use App\Http\Controllers\ActivityScanController;
-use App\Http\Controllers\CertificateSettingsController;
-use App\Http\Controllers\MidtransPaymentController;
 use App\Models\Activity;
-use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 // ============================================================================
@@ -65,36 +63,36 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::post('/ai/chat', [App\Http\Controllers\AIController::class, 'chat'])->name('ai.chat');
 
 // Fix for 404 on /login - redirect to home with login modal
-Route::get('/login', function() {
+Route::get('/login', function () {
     return redirect()->route('home', ['login' => 'true']);
 });
 Route::get('/about', [AboutController::class, 'index'])->name('about');
 Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance');
-    Route::post('/maintenance/update-app', [MaintenanceController::class, 'updateApp'])->name('maintenance.update-app');
-    Route::post('/maintenance/npm-run-build', [MaintenanceController::class, 'npmRunBuild'])->name('maintenance.npm-run-build');
-    Route::post('/maintenance/update-permission', [MaintenanceController::class, 'updatePermission'])->name('maintenance.update-permission');
+Route::post('/maintenance/update-app', [MaintenanceController::class, 'updateApp'])->name('maintenance.update-app');
+Route::post('/maintenance/npm-run-build', [MaintenanceController::class, 'npmRunBuild'])->name('maintenance.npm-run-build');
+Route::post('/maintenance/update-permission', [MaintenanceController::class, 'updatePermission'])->name('maintenance.update-permission');
 
 // Subscription Routes
 Route::prefix('subscriptions')->name('subscriptions.')->controller(SubscriptionController::class)->group(function () {
     Route::get('/pricing', 'index')->name('pricing');
     Route::post('/subscribe', 'subscribe')->name('subscribe')->middleware('auth');
-    
+
     // Payment callback (public)
     Route::post('/payment/notification', 'handleNotification')->name('payment.notification');
-    
+
     // Payment process pages
     Route::get('/payment/finish', 'finish')->name('finish');
     Route::get('/payment/unfinish', 'unfinish')->name('unfinish');
     Route::get('/payment/error', [SubscriptionController::class, 'error'])->name('error');
     Route::get('/payment/{subscription}', 'showPayment')->name('payment.show');
     Route::post('/payment/{subscription}/retry', 'retryPayment')->name('payment.retry');
-    
+
     // Protected routes
     Route::middleware('auth')->group(function () {
         Route::get('/my-subscription', 'mySubscription')->name('my');
         Route::get('/history', 'history')->name('history');
         Route::get('/invoices/{invoice}', 'downloadInvoice')->name('invoice');
-        
+
         // Admin routes
         Route::get('/manage', 'manage')->name('manage')->middleware('role:admin,superadmin');
         Route::get('/subscriptions/manage-payments', 'managePaymentsAdmin')->name('payments.manage')->middleware('role:admin,superadmin');
@@ -186,7 +184,7 @@ Route::prefix('payments')->name('payments.')->middleware(['auth'])->controller(P
     Route::get('/creator-finance', 'creatorFinance')->name('creator.finance')->middleware('role:creator,admin,superadmin');
     Route::get('/creator-finance/pdf', 'downloadCreatorFinancePdf')->name('creator.finance.pdf')->middleware('role:creator,admin,superadmin');
     Route::post('/channels/sync', 'syncChannels')->name('channels.sync'); // Added sync route
-    
+
     // Rule Routes
     Route::post('/rules/vouchers', 'financialRulesCreateVoucher')->name('rules.vouchers.create');
     Route::post('/rules/auto-override', 'financialRulesSaveAutoOverride')->name('rules.auto-override.save');
@@ -224,7 +222,7 @@ Route::prefix('activity')->name('activity.')->controller(ActivityController::cla
     // IMPORTANT: Specific routes like 'detail' must be defined BEFORE the generic '{activity}' wildcard
     Route::match(['get', 'post'], '/{activity}/enroll', [ActivityEnrollmentController::class, 'enroll'])->name('enroll')->middleware('auth');
     Route::get('/{activity}/detail', 'detail')->name('detail');
-    
+
     // Generic wildcard route - catches everything else, so it must be at the very bottom
     Route::get('/{activity}', 'show')->name('show');
 });
@@ -385,7 +383,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/committee', 'showCommittee')->name('committee');
         Route::post('/committee', 'storeCommittee')->name('store-committee');
         Route::put('/committee-voucher-update', 'updateCommitteeVoucher')->name('committee-voucher.update');
-        
+
         // Vouchers
         Route::post('/vouchers', 'storeVoucher')->name('vouchers.store');
         Route::put('/vouchers/{voucherId}', 'updateVoucher')->name('vouchers.update');
@@ -450,11 +448,11 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/{id}/certificates', 'showCertificates')->name('certificates')->middleware('auth');
         Route::get('/{id}/idcards', 'showIdCards')->name('idcards')->middleware('auth');
         Route::get('/{id}/idcards/design', 'designIdCard')->name('idcards.design')->middleware('auth');
-        
+
         // Print HTML endpoints
         Route::get('/{id}/print-cards-html/{type?}', 'printCardsHtml')->name('activity.print-cards-html')->middleware('auth');
         Route::get('/{id}/print-certificates-html', 'printCertificatesHtml')->name('print-certificates-html');
-        
+
         // Legacy print endpoints
         Route::get('/{id}/print-cards', 'printCardsHtml')->name('print-cards')->middleware('auth');
         Route::get('/{id}/print-certificates', 'printCertificatesHtml')->name('print-certificates')->middleware('role:admin,creator,superadmin,user');
@@ -574,7 +572,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         // Scan page backgrounds management
         Route::post('/scan-backgrounds/upload', 'uploadScanBackground')->name('scan.backgrounds.upload');
         Route::post('/scan-backgrounds/delete', 'deleteScanBackground')->name('scan.backgrounds.delete');
-        });
+    });
 
     Route::prefix('attendance')
         ->name('attendance.')
@@ -583,8 +581,6 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         ->group(function () {
             Route::post('/scan/activity-store', 'store')->name('scan.activity.store');
         });
-
-
 
     // Certificate Settings Routes (mirip CardSettingsController)
     Route::prefix('certificate-settings')->name('certificate-settings.')->controller(\App\Http\Controllers\CertificateSettingsController::class)->group(function () {
@@ -662,7 +658,6 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     // App Download Route
     Route::get('/download-apk', [SettingController::class, 'downloadApk'])->name('app.download-apk');
 
-
     // ID Card Background Upload
     Route::post('/idcard-background/upload', [IdCardBackgroundController::class, 'upload'])
         ->middleware(['auth', 'throttle:30,1'])
@@ -683,12 +678,12 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/toggle-apk', 'toggleApkVisibility')->name('toggle-apk')->middleware('role:superadmin');
         Route::post('/upload-apk', 'uploadApk')->name('upload-apk')->middleware('role:superadmin');
         Route::post('/delete-apk', 'deleteApk')->name('delete-apk')->middleware('role:superadmin');
-        
+
         // Logs
         Route::get('/logs', 'logs')->name('logs')->middleware('role:superadmin');
         Route::post('/logs/clear', 'clearLogs')->name('logs.clear')->middleware('role:superadmin');
         Route::get('/logs/download', 'logsDownload')->name('logs.download')->middleware('role:superadmin');
-        
+
         // NPM Build
         Route::post('/npm-run-build', 'npmRunBuild')->name('npm-run-build')->middleware('role:superadmin');
 

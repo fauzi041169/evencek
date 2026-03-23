@@ -22,7 +22,7 @@ class SubscriptionManagePaymentsAdminTest extends TestCase
         Schema::dropIfExists('subscription_plans');
 
         Schema::create('users', function ($table) {
-            $table->id();
+            $table->char('id', 6)->primary();
             $table->string('name')->nullable();
             $table->string('email')->nullable();
             $table->string('password')->nullable();
@@ -31,8 +31,8 @@ class SubscriptionManagePaymentsAdminTest extends TestCase
         });
 
         Schema::create('profiles', function ($table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id')->nullable();
+            $table->char('id', 6)->primary();
+            $table->char('user_id', 6)->nullable();
             $table->string('no_hp')->nullable();
             $table->timestamps();
         });
@@ -49,7 +49,7 @@ class SubscriptionManagePaymentsAdminTest extends TestCase
 
         Schema::create('subscriptions', function ($table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
+            $table->char('user_id', 6);
             $table->unsignedBigInteger('subscription_plan_id');
             $table->string('status')->default('active');
             $table->string('midtrans_order_id')->nullable();
@@ -89,7 +89,7 @@ class SubscriptionManagePaymentsAdminTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $resp = $this->get(route('subscription.payments.manage'));
+        $resp = $this->get(route('payments.manage'));
         $this->assertTrue(in_array($resp->getStatusCode(), [200, 302, 503]));
         if ($resp->getStatusCode() === 200) {
             $resp->assertViewHas('stats');

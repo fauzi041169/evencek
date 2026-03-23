@@ -23,7 +23,10 @@ class ImageHelper
     public static function getImageUrl($imagePath, $defaultImage = 'images/activities/defoult.png', $folderPrefix = null)
     {
         if (empty($imagePath)) {
-            if (str_starts_with($defaultImage, 'http')) return $defaultImage;
+            if (str_starts_with($defaultImage, 'http')) {
+                return $defaultImage;
+            }
+
             return self::absolute(Storage::url($defaultImage));
         }
 
@@ -32,8 +35,8 @@ class ImageHelper
         }
 
         // Apply folder prefix if provided and path has no directory separator
-        if ($folderPrefix && !str_contains($imagePath, '/')) {
-            $imagePath = $folderPrefix . '/' . $imagePath;
+        if ($folderPrefix && ! str_contains($imagePath, '/')) {
+            $imagePath = $folderPrefix.'/'.$imagePath;
         }
 
         if (Storage::disk('public')->exists($imagePath)) {
@@ -52,7 +55,10 @@ class ImageHelper
             return self::absolute(Storage::url($cleanPath));
         }
 
-        if (str_starts_with($defaultImage, 'http')) return $defaultImage;
+        if (str_starts_with($defaultImage, 'http')) {
+            return $defaultImage;
+        }
+
         return self::absolute(Storage::url($defaultImage));
     }
 
@@ -64,11 +70,13 @@ class ImageHelper
 
         if (in_array($extension, ['svg'], true) || $mimeType === 'image/svg+xml') {
             $name = self::uniqueName($extension ?: 'svg');
+
             return $file->storeAs($directory, $name, $disk);
         }
 
         if (in_array($extension, ['gif'], true) || $mimeType === 'image/gif') {
             $name = self::uniqueName($extension ?: 'gif');
+
             return $file->storeAs($directory, $name, $disk);
         }
 
@@ -81,6 +89,7 @@ class ImageHelper
 
         if (! is_string($binary) || $binary === '') {
             $name = self::uniqueName($extension ?: 'jpg');
+
             return $file->storeAs($directory, $name, $disk);
         }
 
@@ -94,6 +103,7 @@ class ImageHelper
 
         if (! $compressed || ! is_string($compressed['binary'] ?? null) || ($compressed['binary'] ?? '') === '') {
             $name = self::uniqueName($extension ?: 'jpg');
+
             return $file->storeAs($directory, $name, $disk);
         }
 
@@ -143,6 +153,7 @@ class ImageHelper
                 File::makeDirectory($absDir, 0755, true);
             }
             $file->move($absDir, $name);
+
             return $publicDir.'/'.$name;
         }
 
@@ -153,6 +164,7 @@ class ImageHelper
                 File::makeDirectory($absDir, 0755, true);
             }
             $file->move($absDir, $name);
+
             return $publicDir.'/'.$name;
         }
 
@@ -170,6 +182,7 @@ class ImageHelper
                 File::makeDirectory($absDir, 0755, true);
             }
             $file->move($absDir, $name);
+
             return $publicDir.'/'.$name;
         }
 
@@ -199,6 +212,7 @@ class ImageHelper
                 File::makeDirectory($absDir, 0755, true);
             }
             $file->move($absDir, $name);
+
             return $publicDir.'/'.$name;
         }
 
@@ -215,6 +229,7 @@ class ImageHelper
     private static function uniqueName(string $extension): string
     {
         $extension = ltrim(strtolower($extension), '.');
+
         return time().'_'.Str::random(10).'.'.$extension;
     }
 
@@ -249,6 +264,7 @@ class ImageHelper
         $h = imagesy($img);
         if ($w <= 0 || $h <= 0) {
             imagedestroy($img);
+
             return null;
         }
 
@@ -259,6 +275,7 @@ class ImageHelper
         $dst = imagecreatetruecolor($targetW, $targetH);
         if (! $dst) {
             imagedestroy($img);
+
             return null;
         }
 

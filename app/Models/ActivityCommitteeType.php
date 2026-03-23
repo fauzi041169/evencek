@@ -10,6 +10,7 @@ class ActivityCommitteeType extends Model
     use HasCustomUid;
 
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [

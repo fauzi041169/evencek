@@ -104,7 +104,7 @@ class ActivitySpeakerController extends Controller
         // or if it's the only file for this activity
         // If still not found, try to find by similarity in name
         $photoNameWithoutExt = strtolower(pathinfo($photoName, PATHINFO_FILENAME));
-        
+
         // Remove common patterns that might cause mismatches
         $simplifiedPhotoName = preg_replace('/[^a-z0-9]/', '', $photoNameWithoutExt);
 
@@ -176,13 +176,13 @@ class ActivitySpeakerController extends Controller
 
         $isCommittee = $activity->canManageRegistration(auth()->id());
         $activityData = array_merge($activity->toArray(), [
-             'is_committee' => $isCommittee,
-             'can_manage_registration' => $isCommittee,
+            'is_committee' => $isCommittee,
+            'can_manage_registration' => $isCommittee,
         ]);
 
         return \Inertia\Inertia::render('Activity/Speakers/Index', [
             'activity' => $activityData,
-            'speakers' => $speakers
+            'speakers' => $speakers,
         ]);
     }
 
@@ -259,22 +259,22 @@ class ActivitySpeakerController extends Controller
                 }
 
                 // Reuse photo if not uploaded
-                if (!$request->hasFile('photo') && $existingSpeaker->photo) {
+                if (! $request->hasFile('photo') && $existingSpeaker->photo) {
                     $oldPath = $existingSpeaker->photo;
                     if (Storage::disk('public')->exists($oldPath)) {
                         $extension = pathinfo($oldPath, PATHINFO_EXTENSION);
-                        $newPath = 'speakers/' . uniqid() . '.' . $extension;
+                        $newPath = 'speakers/'.uniqid().'.'.$extension;
                         Storage::disk('public')->copy($oldPath, $newPath);
                         $validated['photo'] = $newPath;
                     }
                 }
 
                 // Reuse CV if not uploaded
-                if (!$request->hasFile('cv') && $existingSpeaker->cv) {
+                if (! $request->hasFile('cv') && $existingSpeaker->cv) {
                     $oldPath = $existingSpeaker->cv;
                     if (Storage::disk('public')->exists($oldPath)) {
                         $extension = pathinfo($oldPath, PATHINFO_EXTENSION);
-                        $newPath = 'speakers/cv/' . uniqid() . '.' . $extension;
+                        $newPath = 'speakers/cv/'.uniqid().'.'.$extension;
                         Storage::disk('public')->copy($oldPath, $newPath);
                         $validated['cv'] = $newPath;
                     }

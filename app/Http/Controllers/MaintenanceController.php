@@ -30,7 +30,7 @@ class MaintenanceController extends Controller
         // Get APK List
         $files = Storage::disk('public')->files('apk');
         $apkList = [];
-        
+
         foreach ($files as $filePath) {
             $name = basename($filePath);
             // Expected format: eventcekapp_VERSION.apk
@@ -53,7 +53,7 @@ class MaintenanceController extends Controller
         // Permission Report Data
         $roles = ['superadmin', 'admin', 'creator', 'user'];
         $permissionKeys = \App\Models\RolePermission::getAllPermissionKeys();
-        
+
         $permissionMatrix = [];
         foreach ($permissionKeys as $key) {
             $row = ['permission' => $key];
@@ -151,7 +151,7 @@ class MaintenanceController extends Controller
 
         $filename = $request->filename;
         // $apkPath = public_path('assets/apk/'.$filename); // Legacy path
-        $storagePath = 'apk/' . $filename; // Storage path
+        $storagePath = 'apk/'.$filename; // Storage path
 
         // Security check: prevent directory traversal
         if (strpos($filename, '..') !== false || strpos($filename, '/') !== false || strpos($filename, '\\') !== false) {
@@ -165,7 +165,7 @@ class MaintenanceController extends Controller
             Storage::disk('public')->delete($storagePath);
             $deleted = true;
         }
-        
+
         // Also check legacy path just in case
         $legacyPath = public_path('assets/apk/'.$filename);
         if (File::exists($legacyPath)) {
@@ -225,24 +225,24 @@ class MaintenanceController extends Controller
             set_time_limit(300); // 5 minutes
             $basePath = base_path();
 
-            $output = "";
+            $output = '';
 
             // 1. Git Pull (Simple)
             $gitCommand = "cd \"{$basePath}\" && git pull origin main 2>&1";
             $gitOutput = [];
             $gitReturn = 0;
-            
+
             \Log::info("Executing git command: $gitCommand");
             exec($gitCommand, $gitOutput, $gitReturn);
-            
-            $output .= "Git Pull Output:\n" . implode("\n", $gitOutput) . "\n\n";
-            \Log::info("Git Pull Result (Code $gitReturn): " . implode("\n", $gitOutput));
+
+            $output .= "Git Pull Output:\n".implode("\n", $gitOutput)."\n\n";
+            \Log::info("Git Pull Result (Code $gitReturn): ".implode("\n", $gitOutput));
 
             if ($gitReturn !== 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal melakukan git pull. Code: ' . $gitReturn,
-                    'output' => $output
+                    'message' => 'Gagal melakukan git pull. Code: '.$gitReturn,
+                    'output' => $output,
                 ], 500);
             }
 
@@ -250,41 +250,41 @@ class MaintenanceController extends Controller
             $migrateCommand = "cd \"{$basePath}\" && php artisan migrate --force 2>&1";
             $migrateOutput = [];
             $migrateReturn = 0;
-            
+
             \Log::info("Executing migrate command: $migrateCommand");
             exec($migrateCommand, $migrateOutput, $migrateReturn);
-            
-            $output .= "Migrate Output:\n" . implode("\n", $migrateOutput) . "\n\n";
-            \Log::info("Migrate Result (Code $migrateReturn): " . implode("\n", $migrateOutput));
+
+            $output .= "Migrate Output:\n".implode("\n", $migrateOutput)."\n\n";
+            \Log::info("Migrate Result (Code $migrateReturn): ".implode("\n", $migrateOutput));
 
             if ($migrateReturn !== 0) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal melakukan migrasi database. Code: ' . $migrateReturn,
-                    'output' => $output
+                    'message' => 'Gagal melakukan migrasi database. Code: '.$migrateReturn,
+                    'output' => $output,
                 ], 500);
             }
-            
+
             // 3. Optimize Clear (Route, View, Config, Cache)
             $optimizeCommand = "cd \"{$basePath}\" && php artisan optimize:clear 2>&1";
             $optimizeOutput = [];
             $optimizeReturn = 0;
             exec($optimizeCommand, $optimizeOutput, $optimizeReturn);
-            $output .= "Optimize Clear Output:\n" . implode("\n", $optimizeOutput) . "\n\n";
+            $output .= "Optimize Clear Output:\n".implode("\n", $optimizeOutput)."\n\n";
 
             // 4. Create Storage Symlink (Native PHP Fallback)
             try {
                 $target = storage_path('app/public');
                 $link = public_path('storage');
-                
+
                 if (file_exists($link)) {
-                    if (is_dir($link) && !is_link($link)) {
+                    if (is_dir($link) && ! is_link($link)) {
                         // It's a real directory! This blocks the symlink.
                         // Rename it to storage_backup_TIMESTAMP
-                        $backupName = 'storage_backup_' . time();
+                        $backupName = 'storage_backup_'.time();
                         rename($link, public_path($backupName));
                         $output .= "Warning: public/storage was a real directory. Renamed to $backupName.\n";
-                        
+
                         // Now try to create symlink
                         if (function_exists('symlink')) {
                             symlink($target, $link);
@@ -300,25 +300,25 @@ class MaintenanceController extends Controller
                         symlink($target, $link);
                         $output .= "Storage Link Created (symlink).\n";
                     } else {
-                         $output .= "Warning: symlink() function disabled. Cannot create storage link.\n";
+                        $output .= "Warning: symlink() function disabled. Cannot create storage link.\n";
                     }
                 }
             } catch (\Exception $e) {
-                $output .= "Storage Link Error: " . $e->getMessage() . "\n";
+                $output .= 'Storage Link Error: '.$e->getMessage()."\n";
             }
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Aplikasi berhasil diupdate (Git Pull, Migrate & Storage Link).',
-                'output' => $output
+                'output' => $output,
             ]);
         } catch (\Exception $e) {
-            \Log::error("Update App Exception: " . $e->getMessage());
+            \Log::error('Update App Exception: '.$e->getMessage());
             \Log::error($e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan sistem: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -333,7 +333,7 @@ class MaintenanceController extends Controller
             set_time_limit(300); // 5 minutes
 
             $basePath = base_path();
-            
+
             // Check if npm is available
             $npmVersion = shell_exec('npm -v');
             if (empty($npmVersion)) {
@@ -346,28 +346,28 @@ class MaintenanceController extends Controller
             $command = "cd {$basePath} && npm run build 2>&1";
             $output = [];
             $returnVar = 0;
-            
+
             exec($command, $output, $returnVar);
-            
+
             $outputString = implode("\n", $output);
 
             if ($returnVar !== 0) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Gagal menjalankan npm run build.',
-                    'output' => $outputString
+                    'output' => $outputString,
                 ], 500);
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Build berhasil selesai.',
-                'output' => $outputString
+                'output' => $outputString,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan sistem: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -381,11 +381,11 @@ class MaintenanceController extends Controller
 
         // Generate filename: eventcekapp_0.1.1.apk
         $apkName = "eventcekapp_{$newVersion}.apk";
-        $path = "apk";
+        $path = 'apk';
 
         // Store using Storage facade
         Storage::disk('public')->putFileAs($path, $file, $apkName);
-        
+
         $apkPath = 'storage/apk/'.$apkName;
         $fullPath = 'apk/'.$apkName; // Relative to public disk
 
@@ -670,6 +670,7 @@ class MaintenanceController extends Controller
 
             if (! File::exists($path)) {
                 $summary[] = $label.': not found';
+
                 continue;
             }
 
@@ -714,63 +715,63 @@ class MaintenanceController extends Controller
             [
                 'folder' => 'profile-photos',
                 'model' => \App\Models\User::class,
-                'column' => 'avatar'
+                'column' => 'avatar',
             ],
             [
                 'folder' => 'assets/images/profilefoto',
                 'model' => \App\Models\Profile::class,
                 'column' => 'foto',
-                'type' => 'legacy_public'
+                'type' => 'legacy_public',
             ],
             [
                 'folder' => 'activities',
                 'model' => \App\Models\Activity::class,
-                'column' => 'image'
+                'column' => 'image',
             ],
             [
                 'folder' => 'activities/gallery',
                 'model' => \App\Models\Gallery::class,
-                'column' => 'image'
+                'column' => 'image',
             ],
             [
                 'folder' => 'partners',
                 'model' => \App\Models\Partner::class,
-                'column' => 'logo'
+                'column' => 'logo',
             ],
             [
                 'folder' => 'mitras', // Check both potential folders for partners
                 'model' => \App\Models\Partner::class,
-                'column' => 'logo'
+                'column' => 'logo',
             ],
             [
                 'folder' => 'news',
                 'model' => \App\Models\News::class,
-                'column' => 'image'
+                'column' => 'image',
             ],
             [
                 'folder' => 'speakers',
                 'model' => \App\Models\ActivitySpeaker::class,
-                'column' => 'photo'
+                'column' => 'photo',
             ],
             [
                 'folder' => 'payment-proofs',
                 'model' => \App\Models\Payment::class,
-                'column' => 'proof_of_payment'
+                'column' => 'proof_of_payment',
             ],
             [
                 'folder' => 'id-card-backgrounds',
                 'model' => \App\Models\IdCardBackground::class,
-                'column' => 'filename'
+                'column' => 'filename',
             ],
-             [
+            [
                 'folder' => 'activity_materials',
                 'model' => \App\Models\ActivityMaterial::class,
-                'column' => 'file_path'
+                'column' => 'file_path',
             ],
             [
                 'folder' => 'pengurus',
                 'model' => \App\Models\Pengurus::class,
-                'column' => 'foto'
+                'column' => 'foto',
             ],
         ];
 
@@ -794,8 +795,9 @@ class MaintenanceController extends Controller
             // Penting: Activity (dan beberapa model) menyimpan HANYA nama file (mis. "abc.jpg").
             // Di disk path-nya "activities/abc.jpg". Tambahkan folder/path agar tidak terhapus.
             if ($folder && $p && ! str_contains($p, '/')) {
-                $variants[] = $folder . '/' . $p;
+                $variants[] = $folder.'/'.$p;
             }
+
             return array_unique($variants);
         };
 
@@ -803,7 +805,7 @@ class MaintenanceController extends Controller
         $queryFailedKeys = [];
         $allUsedFiles = [];
         foreach ($targets as $target) {
-            $key = $target['model'] . '_' . $target['column'];
+            $key = $target['model'].'_'.$target['column'];
             if (! isset($activeFiles[$key])) {
                 try {
                     $folder = $target['folder'];
@@ -812,7 +814,7 @@ class MaintenanceController extends Controller
                         return $normalizeUsedPaths($path, $folder);
                     })->unique()->values()->toArray();
                 } catch (\Exception $e) {
-                    $summary[] = "Error querying " . $target['model'] . ": " . $e->getMessage();
+                    $summary[] = 'Error querying '.$target['model'].': '.$e->getMessage();
                     $activeFiles[$key] = [];
                     $queryFailedKeys[$key] = true;
                 }
@@ -824,17 +826,19 @@ class MaintenanceController extends Controller
         foreach ($targets as $target) {
             $folder = $target['folder'];
             $type = $target['type'] ?? 'storage';
-            $key = $target['model'] . '_' . $target['column'];
+            $key = $target['model'].'_'.$target['column'];
             if (! empty($queryFailedKeys[$key])) {
-                $summary[] = "Folder '$folder' dilewati (query " . $target['model'] . " gagal, tidak menghapus apa pun).";
+                $summary[] = "Folder '$folder' dilewati (query ".$target['model'].' gagal, tidak menghapus apa pun).';
+
                 continue;
             }
 
             if ($type === 'legacy_public') {
                 $fullPath = public_path($folder);
-                if (!File::isDirectory($fullPath)) {
-                     $summary[] = "Legacy folder '$folder' not found (Skipped).";
-                     continue;
+                if (! File::isDirectory($fullPath)) {
+                    $summary[] = "Legacy folder '$folder' not found (Skipped).";
+
+                    continue;
                 }
 
                 $files = File::files($fullPath);
@@ -842,18 +846,18 @@ class MaintenanceController extends Controller
 
                 foreach ($files as $file) {
                     $filename = $file->getFilename();
-                    
+
                     if (str_contains(strtolower($filename), 'default')) {
                         continue;
                     }
-                    
-                    if (!in_array($filename, $allUsedFiles)) {
-                         $relativePath = $folder . '/' . $filename;
-                         if (in_array($relativePath, $allUsedFiles)) {
-                             continue;
-                         }
 
-                         try {
+                    if (! in_array($filename, $allUsedFiles)) {
+                        $relativePath = $folder.'/'.$filename;
+                        if (in_array($relativePath, $allUsedFiles)) {
+                            continue;
+                        }
+
+                        try {
                             File::delete($file->getPathname());
                             $deletedCount++;
                         } catch (\Exception $e) {
@@ -861,19 +865,21 @@ class MaintenanceController extends Controller
                         }
                     }
                 }
-                
+
                 $totalDeleted += $deletedCount;
                 if ($deletedCount > 0) {
                     $summary[] = "Legacy folder '$folder': deleted $deletedCount unused files.";
                 } else {
-                     $summary[] = "Legacy folder '$folder': clean.";
+                    $summary[] = "Legacy folder '$folder': clean.";
                 }
+
                 continue;
             }
 
-            if (!Storage::disk('public')->exists($folder)) {
-                 $summary[] = "Folder '$folder' not found (Skipped).";
-                 continue;
+            if (! Storage::disk('public')->exists($folder)) {
+                $summary[] = "Folder '$folder' not found (Skipped).";
+
+                continue;
             }
 
             // Get all files in directory (recursive)
@@ -884,19 +890,19 @@ class MaintenanceController extends Controller
                 // $file is relative path to public disk e.g. "activities/image.jpg"
                 $normalizedFile = str_replace('\\', '/', $file);
                 $filename = basename($normalizedFile);
-                
+
                 // Skip default files (protected)
                 if (str_contains(strtolower($filename), 'default')) {
                     continue;
                 }
-                
+
                 // Check if file is in used list
-                if (!in_array($normalizedFile, $allUsedFiles)) {
+                if (! in_array($normalizedFile, $allUsedFiles)) {
                     // Try to be safe: check if the filename exists at END of any used path
                     // (Handle case where DB stores 'image.jpg' but file is 'folder/image.jpg')
                     // Only apply this loose check if strict check failed.
                     $isUsedLoose = false;
-                    /* 
+                    /*
                     // LOOSE CHECK IS DANGEROUS because different folders might have same filename 'image.jpg'
                     // We only use strict path check as Laravel stores full relative path usually.
                     foreach ($allUsedFiles as $used) {
@@ -909,7 +915,7 @@ class MaintenanceController extends Controller
 
                     // Special case for Partners stored as 'partners/file.jpg' but existing in 'mitras/file.jpg' or vice versa?
                     // No, usually DB path matches storage path.
-                    
+
                     // Proceed to delete
                     try {
                         Storage::disk('public')->delete($file);
@@ -919,12 +925,12 @@ class MaintenanceController extends Controller
                     }
                 }
             }
-            
+
             $totalDeleted += $deletedCount;
             if ($deletedCount > 0) {
                 $summary[] = "Folder '$folder': deleted $deletedCount unused files.";
             } else {
-                 $summary[] = "Folder '$folder': clean.";
+                $summary[] = "Folder '$folder': clean.";
             }
         }
 
@@ -1100,7 +1106,6 @@ class MaintenanceController extends Controller
     }
 
     // Duplicate npmRunBuild removed
-
 
     private function runArtisan(string $command, array $params = [])
     {

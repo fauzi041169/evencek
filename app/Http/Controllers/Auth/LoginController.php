@@ -8,8 +8,8 @@ use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Laravel\Socialite\Facades\Socialite;
 use Inertia\Inertia;
+use Laravel\Socialite\Facades\Socialite;
 
 class LoginController extends Controller
 {
@@ -481,7 +481,7 @@ class LoginController extends Controller
 
         // Flash success message to the new session
         session()->flash('success', 'Anda berhasil logout.');
-        
+
         // Force hard reload to update CSRF token
         return Inertia::location('/');
     }

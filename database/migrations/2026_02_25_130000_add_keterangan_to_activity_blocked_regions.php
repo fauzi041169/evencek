@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('activity_blocked_regions')) {
+        if (! Schema::hasTable('activity_blocked_regions')) {
             return;
         }
         if (Schema::hasColumn('activity_blocked_regions', 'keterangan')) {

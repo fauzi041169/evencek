@@ -2,21 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\ActivityRecord;
 use App\Models\ActivityUser;
-use App\Models\Partner;
 use App\Models\News;
+use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\Pengurus;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Helpers\ImageHelper;
-use App\Models\Setting;
+use Inertia\Inertia;
 
 class HomeController extends Controller
 {
@@ -24,6 +24,40 @@ class HomeController extends Controller
     {
         $perfStart = microtime(true);
         $perfSteps = [];
+
+        if (! $this->isMysqlReachable()) {
+            $heroSlides = [asset('assets/images/hero/defoult.webp')];
+            $specialActivities = collect([]);
+            $latestActivities = collect([]);
+            $latestNews = collect([]);
+            $partners = collect([]);
+            $stats = [
+                'totalActivities' => 0,
+                'totalParticipants' => 0,
+                'totalUsers' => 0,
+                'totalCreators' => 0,
+                'totalPanitia' => 0,
+                'totalPayments' => 0,
+                'totalAttendanceRecords' => 0,
+                'upcomingActivities' => 0,
+            ];
+
+            $serverMs = (int) round((microtime(true) - $perfStart) * 1000);
+            $perfDebug = [
+                'serverMs' => $serverMs,
+                'steps' => $perfSteps,
+            ];
+
+            return Inertia::render('Home', [
+                'heroSlides' => $heroSlides,
+                'stats' => $stats,
+                'partners' => $partners,
+                'specialActivities' => $specialActivities,
+                'latestActivities' => $latestActivities,
+                'latestNews' => $latestNews,
+                'perfDebug' => $perfDebug,
+            ]);
+        }
 
         try {
             // Get activities with private status for the slider (legacy logic kept for fallback)
@@ -44,6 +78,7 @@ class HomeController extends Controller
                 ->get()
                 ->map(function ($activity) {
                     $activity->image = ImageHelper::getImageUrl($activity->image, asset('assets/images/hero/defoult.webp'), 'activities');
+
                     return $activity;
                 });
             $perfSteps['latest_activities'] = round((microtime(true) - $t0) * 1000);
@@ -61,6 +96,7 @@ class HomeController extends Controller
                 ->get()
                 ->map(function ($news) {
                     $news->image = ImageHelper::getImageUrl($news->image, asset('assets/images/hero/defoult.webp'));
+
                     return $news;
                 });
             $perfSteps['latest_news'] = round((microtime(true) - $t0) * 1000);
@@ -70,6 +106,7 @@ class HomeController extends Controller
             $partners = Partner::latest()->take(20)->get()
                 ->map(function ($partner) {
                     $partner->logo = ImageHelper::getImageUrl($partner->logo, asset('assets/images/logo.png'));
+
                     return $partner;
                 });
             $perfSteps['partners'] = round((microtime(true) - $t0) * 1000);
@@ -91,7 +128,7 @@ class HomeController extends Controller
             // Prepare Hero Slides
             $t0 = microtime(true);
             $heroSlides = [];
-            
+
             // Prioritize pinned activities
             $pinnedActivities = Activity::where('hero_pinned', true)
                 ->where('status', 'public') // Ensure only public activities are shown
@@ -112,7 +149,7 @@ class HomeController extends Controller
                         'id' => $activity->id,
                         'date' => $activity->date ? $activity->date->format('d M Y') : null,
                         'location' => $activity->location,
-                        'price' => $activity->price > 0 ? 'Rp ' . number_format($activity->price, 0, ',', '.') : 'Gratis',
+                        'price' => $activity->price > 0 ? 'Rp '.number_format($activity->price, 0, ',', '.') : 'Gratis',
                     ];
                 }
             } else {
@@ -120,24 +157,24 @@ class HomeController extends Controller
                 $cfg1 = Setting::get('home_hero_background_1') ?? Setting::get('home_hero_background');
                 $cfg2 = Setting::get('home_hero_background_2');
                 $cfg3 = Setting::get('home_hero_background_3');
-                
+
                 foreach ([$cfg1, $cfg2, $cfg3] as $img) {
-                    if (!empty($img)) {
+                    if (! empty($img)) {
                         $imageUrl = null;
-                        
+
                         // Scenario 1: Path already starts with assets/
                         if (Str::startsWith($img, 'assets/')) {
                             if (File::exists(public_path($img))) {
                                 $imageUrl = asset($img);
                             }
-                        } 
+                        }
                         // Scenario 2: Path starts with storage/
                         elseif (Str::startsWith($img, 'storage/')) {
                             $imageUrl = asset($img);
                         }
                         // Scenario 3: Raw storage path (stored by our new logic)
                         else {
-                            $imageUrl = asset('storage/' . $img);
+                            $imageUrl = asset('storage/'.$img);
                         }
 
                         if ($imageUrl) {
@@ -147,7 +184,7 @@ class HomeController extends Controller
                                 'title' => 'Platform Manajemen Event Digital Profesional',
                                 'description' => 'Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.',
                                 'link' => '/activity',
-                                'link_text' => 'Mulai Kelola Event'
+                                'link_text' => 'Mulai Kelola Event',
                             ];
                         }
                     }
@@ -155,18 +192,18 @@ class HomeController extends Controller
 
                 // Fallback if no settings
                 if (empty($heroSlides)) {
-                     // Check special private activities (legacy fallback)
+                    // Check special private activities (legacy fallback)
                     if ($specialActivities->isNotEmpty()) {
                         $defaultHeroSetting = Setting::get('home_hero_background');
                         $defaultHero = $defaultHeroSetting ? asset($defaultHeroSetting) : asset('assets/images/hero/defoult.webp');
-                        
+
                         foreach ($specialActivities as $activity) {
-                             $heroSlides[] = [
+                            $heroSlides[] = [
                                 'type' => 'activity',
                                 'image' => ImageHelper::getImageUrl($activity->image, $defaultHero, 'activities'),
                                 'title' => $activity->name,
                                 'description' => Str::limit(strip_tags($activity->description), 150),
-                                'id' => $activity->id
+                                'id' => $activity->id,
                             ];
                         }
                     } else {
@@ -176,7 +213,7 @@ class HomeController extends Controller
                             'title' => 'Platform Manajemen Event Digital Profesional',
                             'description' => 'Kelola pendaftaran, peserta, panitia, pembayaran, absensi, kartu, dan sertifikat dalam satu platform terintegrasi yang aman dan modern.',
                             'link' => '/activity',
-                            'link_text' => 'Mulai Kelola Event'
+                            'link_text' => 'Mulai Kelola Event',
                         ];
                     }
                 }
@@ -234,5 +271,36 @@ class HomeController extends Controller
             'latestNews' => $latestNews,
             'perfDebug' => $perfDebug,
         ]);
+    }
+
+    private function isMysqlReachable(): bool
+    {
+        $connection = config('database.default');
+        if ($connection !== 'mysql') {
+            return true;
+        }
+
+        $host = (string) config('database.connections.mysql.host');
+        $port = (int) (config('database.connections.mysql.port') ?: 3306);
+
+        if ($host === '') {
+            return true;
+        }
+
+        $candidates = [$host];
+        if (strtolower($host) === 'localhost') {
+            $candidates[] = '127.0.0.1';
+        }
+
+        foreach (array_values(array_unique($candidates)) as $candidate) {
+            $fp = @fsockopen($candidate, $port, $errno, $errstr, 0.35);
+            if (is_resource($fp)) {
+                fclose($fp);
+
+                return true;
+            }
+        }
+
+        return false;
     }
 }

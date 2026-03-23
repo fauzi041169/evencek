@@ -179,6 +179,7 @@ class RolePermission extends Model
             return false;
         }
         $map = $defaults[$role];
+
         return (bool) ($map[$permissionKey] ?? false);
     }
 

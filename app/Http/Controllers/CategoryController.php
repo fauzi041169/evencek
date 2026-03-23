@@ -45,7 +45,7 @@ class CategoryController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Kategori berhasil ditambahkan',
-                'category' => $category
+                'category' => $category,
             ]);
         }
 
@@ -73,7 +73,7 @@ class CategoryController extends Controller
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Kategori berhasil dihapus'
+                    'message' => 'Kategori berhasil dihapus',
                 ]);
             }
 
@@ -82,9 +82,10 @@ class CategoryController extends Controller
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Kategori tidak dapat dihapus karena masih digunakan'
+                    'message' => 'Kategori tidak dapat dihapus karena masih digunakan',
                 ], 422);
             }
+
             return back()->with('error', 'Kategori tidak dapat dihapus karena masih digunakan');
         }
     }

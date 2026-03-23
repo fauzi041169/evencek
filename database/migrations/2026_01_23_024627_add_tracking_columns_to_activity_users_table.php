@@ -15,11 +15,11 @@ return new class extends Migration
         foreach ($tables as $tableName) {
             if (Schema::hasTable($tableName)) {
                 Schema::table($tableName, function (Blueprint $table) use ($tableName) {
-                    if (!Schema::hasColumn($tableName, 'created_by')) {
-                         $table->char('created_by', 6)->nullable()->index();
+                    if (! Schema::hasColumn($tableName, 'created_by')) {
+                        $table->char('created_by', 6)->nullable()->index();
                     }
-                    if (!Schema::hasColumn($tableName, 'updated_by')) {
-                         $table->char('updated_by', 6)->nullable()->index();
+                    if (! Schema::hasColumn($tableName, 'updated_by')) {
+                        $table->char('updated_by', 6)->nullable()->index();
                     }
                 });
             }

@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class UserManagementController extends Controller
@@ -80,7 +80,9 @@ class UserManagementController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
         $limit = (int) ($request->input('limit') ?? 1000);
-        if ($limit < 1) $limit = 1000;
+        if ($limit < 1) {
+            $limit = 1000;
+        }
         $stats = ['success' => 0, 'failed' => 0, 'skipped' => 0, 'total' => 0];
         $query = User::with('profile')->whereHas('profile', function ($q) {
             $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-');
@@ -100,10 +102,12 @@ class UserManagementController extends Controller
             $profile = $user->profile;
             if (! $profile) {
                 $stats['skipped']++;
+
                 continue;
             }
             if (! empty($profile->jenis_kelamin) && $profile->jenis_kelamin !== '-') {
                 $stats['skipped']++;
+
                 continue;
             }
             $pred = \App\Helpers\GenderHelper::predict($user->name ?? '');
@@ -126,6 +130,7 @@ class UserManagementController extends Controller
         } catch (\Exception $e) {
             \Log::warning('Cache flush failed after fillGenderGlobal', ['error' => $e->getMessage()]);
         }
+
         return response()->json([
             'success' => true,
             'message' => "Berhasil mengisi {$stats['success']} jenis kelamin dari {$stats['total']} user yang diproses.",
@@ -143,7 +148,9 @@ class UserManagementController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
         $limit = (int) ($request->input('limit') ?? 100);
-        if ($limit < 1) $limit = 100;
+        if ($limit < 1) {
+            $limit = 100;
+        }
         $users = User::with('profile')
             ->whereHas('profile', function ($q) {
                 $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-');
@@ -154,6 +161,7 @@ class UserManagementController extends Controller
         $data = $users->map(function ($u) {
             $name = $u->name ?? '';
             $pred = \App\Helpers\GenderHelper::predict($name);
+
             return [
                 'id' => $u->id,
                 'name' => $name,
@@ -161,6 +169,7 @@ class UserManagementController extends Controller
                 'predicted' => $pred,
             ];
         });
+
         return response()->json([
             'success' => true,
             'count' => $data->count(),
@@ -223,7 +232,7 @@ class UserManagementController extends Controller
                     ],
                 ]);
             }
-            
+
             return back()->with('success', 'Role berhasil diubah');
 
         } catch (\Exception $e) {
@@ -240,7 +249,7 @@ class UserManagementController extends Controller
                     'message' => 'Terjadi kesalahan saat mengubah role: '.$e->getMessage(),
                 ], 500);
             }
-            
+
             return back()->with('error', 'Terjadi kesalahan saat mengubah role: '.$e->getMessage());
         }
     }
@@ -472,21 +481,31 @@ class UserManagementController extends Controller
 
                 // Delete Speakers Files
                 foreach ($activity->speakers as $speaker) {
-                    if ($speaker->photo) $this->deleteFile($speaker->photo);
-                    if ($speaker->cv) $this->deleteFile($speaker->cv);
+                    if ($speaker->photo) {
+                        $this->deleteFile($speaker->photo);
+                    }
+                    if ($speaker->cv) {
+                        $this->deleteFile($speaker->cv);
+                    }
                     $speaker->delete();
                 }
 
                 // Delete Materials Files
                 foreach ($activity->materials as $material) {
-                    if ($material->file_path) $this->deleteFile($material->file_path);
-                    if ($material->cover_image_path) $this->deleteFile($material->cover_image_path);
+                    if ($material->file_path) {
+                        $this->deleteFile($material->file_path);
+                    }
+                    if ($material->cover_image_path) {
+                        $this->deleteFile($material->cover_image_path);
+                    }
                     $material->delete();
                 }
 
                 // Delete Galleries Files
                 foreach ($activity->galleries as $gallery) {
-                    if ($gallery->image) $this->deleteFile($gallery->image);
+                    if ($gallery->image) {
+                        $this->deleteFile($gallery->image);
+                    }
                     $gallery->delete();
                 }
 
@@ -680,6 +699,7 @@ class UserManagementController extends Controller
         $usersData = $collection->map(function ($user) {
             $active = $user->activeSubscription;
             $plan = $active ? $active->plan : null;
+
             return [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -722,7 +742,7 @@ class UserManagementController extends Controller
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             abort(403);
         }
-        
+
         return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\UsersTemplateExport, 'users_template.xlsx');
     }
 
@@ -741,11 +761,12 @@ class UserManagementController extends Controller
 
         try {
             \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\UserUpdateImport, $request->file('file'));
-            
+
             return back()->with('success', 'Data user berhasil diimport/diupdate.');
         } catch (\Exception $e) {
             \Log::error($e);
-            return back()->with('error', 'Gagal mengimport data: ' . $e->getMessage());
+
+            return back()->with('error', 'Gagal mengimport data: '.$e->getMessage());
         }
     }
 
@@ -761,13 +782,13 @@ class UserManagementController extends Controller
         try {
             if (Storage::disk('public')->exists($path)) {
                 Storage::disk('public')->delete($path);
-            } elseif (file_exists(public_path('storage/' . $path))) {
-                @unlink(public_path('storage/' . $path));
+            } elseif (file_exists(public_path('storage/'.$path))) {
+                @unlink(public_path('storage/'.$path));
             } elseif (file_exists(public_path($path))) {
                 @unlink(public_path($path));
             }
         } catch (\Exception $e) {
-            Log::warning('Failed to delete file: ' . $path . ' - ' . $e->getMessage());
+            Log::warning('Failed to delete file: '.$path.' - '.$e->getMessage());
         }
     }
 }

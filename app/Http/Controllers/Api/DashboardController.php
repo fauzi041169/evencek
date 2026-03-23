@@ -48,7 +48,7 @@ class DashboardController extends Controller
         // Statistik absensi
         $pesertaHadir = 0;
         $recordUserIds = [];
-        
+
         if (Schema::hasTable('activity_records')) {
             $recordUserIds = DB::table('activity_records')
                 ->where('activity_id', $activityId)
@@ -94,19 +94,19 @@ class DashboardController extends Controller
         // Total panitia
         $totalPanitia = 0;
         $committeeStats = [];
-        
+
         if (Schema::hasTable('activity_committee_structures')) {
             $totalPanitia = DB::table('activity_committee_structures')
                 ->where('activity_id', $activityId)
                 ->count();
-                
+
             // Committee Stats (Best PIC & Action Graphs)
             $committees = \App\Models\ActivityCommitteeStructure::where('activity_id', $activityId)
                 ->with(['user'])
                 ->get();
-                
+
             $userIds = $committees->pluck('user_id')->filter()->unique();
-            
+
             // Count registrations by user (created_by), fallback to payment sender_name
             $registrations = [];
             if (Schema::hasColumn($tableName, 'created_by')) {
@@ -122,8 +122,8 @@ class DashboardController extends Controller
             // Count registrations by payment sender_name
             $paymentCounts = [];
             if (Schema::hasTable('payments') && Schema::hasColumn('payments', 'sender_name')) {
-                $committeeNames = $committees->map(function($member) {
-                    return strtolower(trim((string)($member->user ? $member->user->name : $member->name)));
+                $committeeNames = $committees->map(function ($member) {
+                    return strtolower(trim((string) ($member->user ? $member->user->name : $member->name)));
                 })->filter()->unique()->values();
 
                 $paymentCounts = DB::table('payments')
@@ -135,7 +135,7 @@ class DashboardController extends Controller
                     ->pluck('total', 'name')
                     ->toArray();
             }
-                
+
             // Count validations by user (updated_by), fallback: payments approved verified_by
             $validations = [];
             if (Schema::hasColumn($tableName, 'updated_by')) {
@@ -162,13 +162,13 @@ class DashboardController extends Controller
                     $validations[$uid] = ($validations[$uid] ?? 0) + (int) $cnt;
                 }
             }
-            
+
             // Map to committee members
             $committeeStats = $committees->map(function ($member) use ($registrations, $validations, $paymentCounts) {
                 $userId = $member->user_id;
                 $name = $member->user ? $member->user->name : $member->name;
-                $normalizedName = strtolower(trim((string)$name));
-                
+                $normalizedName = strtolower(trim((string) $name));
+
                 $regCount = (int) ($registrations[$userId] ?? 0);
                 $payCount = (int) ($paymentCounts[$normalizedName] ?? 0);
                 $totalReg = $regCount + $payCount;

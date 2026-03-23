@@ -25,6 +25,31 @@ class PerformanceLogger
             return $next($request);
         }
 
+        $dbReachable = true;
+        if (config('database.default') === 'mysql') {
+            $host = (string) config('database.connections.mysql.host');
+            $port = (int) (config('database.connections.mysql.port') ?: 3306);
+            $dbReachable = false;
+            if ($host !== '') {
+                $candidates = [$host];
+                if (strtolower($host) === 'localhost') {
+                    $candidates[] = '127.0.0.1';
+                }
+                foreach (array_values(array_unique($candidates)) as $candidate) {
+                    $fp = @fsockopen($candidate, $port, $errno, $errstr, 0.2);
+                    if (is_resource($fp)) {
+                        fclose($fp);
+                        $dbReachable = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (! $dbReachable) {
+            return $next($request);
+        }
+
         $start = microtime(true);
         DB::connection()->enableQueryLog();
 

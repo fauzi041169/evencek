@@ -152,7 +152,7 @@ class CertificateSettingsController extends Controller
         ]);
 
         $filename = ltrim($request->input('filename'), '/');
-        
+
         $existsInStorage = \Illuminate\Support\Facades\Storage::disk('public')->exists($filename);
         $legacyPath = public_path('assets/images/certificate/'.$filename);
         $existsInLegacy = file_exists($legacyPath);
@@ -188,6 +188,7 @@ class CertificateSettingsController extends Controller
             'deleted' => $filename,
         ]);
     }
+
     public function getBackgroundImages(Request $request, $activityId)
     {
         if (! auth()->check()) {
@@ -219,31 +220,35 @@ class CertificateSettingsController extends Controller
                 'filename' => $it->filename,
                 'original_name' => $it->original_name,
                 'url' => $url,
-                'type' => 'uploaded'
+                'type' => 'uploaded',
             ];
         }
 
         // 2. Default Images
-        // Ideally we check a 'defaults' folder. 
+        // Ideally we check a 'defaults' folder.
         // For certificates, let's assume assets/images/certificate/default or similar.
         $defaultPath = public_path('assets/images/certificate/background/default');
-        
+
         // Ensure directory exists
         if (file_exists($defaultPath) && is_dir($defaultPath)) {
             $files = scandir($defaultPath);
             foreach ($files as $file) {
-                if ($file === '.' || $file === '..') continue;
-                
-                $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                if (!in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) continue;
+                if ($file === '.' || $file === '..') {
+                    continue;
+                }
 
-                $filename = 'background/default/' . $file;
+                $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                if (! in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) {
+                    continue;
+                }
+
+                $filename = 'background/default/'.$file;
                 $images[] = [
-                    'id' => 'default_' . $file,
+                    'id' => 'default_'.$file,
                     'filename' => $filename,
-                    'original_name' => 'Default ' . $file,
-                    'url' => asset('assets/images/certificate/' . $filename),
-                    'type' => 'default'
+                    'original_name' => 'Default '.$file,
+                    'url' => asset('assets/images/certificate/'.$filename),
+                    'type' => 'default',
                 ];
             }
         }

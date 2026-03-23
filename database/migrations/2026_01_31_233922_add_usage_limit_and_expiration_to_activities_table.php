@@ -27,7 +27,7 @@ return new class extends Migration
             $table->dropColumn([
                 'committee_voucher_usage_limit',
                 'committee_voucher_usage_count',
-                'committee_voucher_valid_until'
+                'committee_voucher_valid_until',
             ]);
         });
     }

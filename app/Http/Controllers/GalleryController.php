@@ -84,7 +84,7 @@ class GalleryController extends Controller
         }
 
         $gallery = Gallery::where('activity_id', $activityId)->where('id', $galleryId)->firstOrFail();
-        
+
         // Try deleting from storage first
         if (Storage::disk('public')->exists('activities/gallery/'.$gallery->image)) {
             Storage::disk('public')->delete('activities/gallery/'.$gallery->image);

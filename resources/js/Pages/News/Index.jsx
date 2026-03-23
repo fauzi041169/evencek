@@ -602,7 +602,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                         </button>
                                     </form>
                                 </div>
-                                <div className="w-full md:w-1/2 h-64 md:h-auto bg-[url('/images/newsletter-bg.jpg')] bg-cover bg-center relative">
+                                <div className="w-full md:w-1/2 h-64 md:h-auto bg-[url('/assets/images/hero/default.webp')] bg-cover bg-center relative">
                                     <div className="absolute inset-0 bg-primary-900/40 backdrop-blur-[2px]"></div>
                                     <div className="absolute inset-0 flex items-center justify-center">
                                         <div className="text-center py-2 sm:py-6 bg-white rounded-xl shadow-sm">

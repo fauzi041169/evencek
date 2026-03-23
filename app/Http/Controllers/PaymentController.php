@@ -3,22 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ImageHelper;
+use App\Jobs\SendPaymentApprovedWhatsapp;
+use App\Jobs\SendPaymentReceiptMail;
 use App\Models\Activity;
+use App\Models\ActivityBatch;
 use App\Models\ActivityUser;
 use App\Models\FinancialSetting;
 use App\Models\Payment;
+use App\Models\PaymentChannel;
 use App\Models\PaymentMethod;
-use App\Models\User;
-use App\Models\ActivityBatch;
+use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\User;
 use App\Models\Voucher;
-use App\Models\Setting;
-use App\Models\PaymentChannel;
 use App\Models\WithdrawalRequest;
-use App\Http\Controllers\MidtransPaymentController;
-use App\Jobs\SendPaymentReceiptMail;
-use App\Jobs\SendPaymentApprovedWhatsapp;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -79,9 +78,10 @@ class PaymentController extends Controller
                 if (request()->expectsJson() || request()->boolean('modal')) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Anda tidak memiliki izin untuk melakukan pembayaran.'
+                        'message' => 'Anda tidak memiliki izin untuk melakukan pembayaran.',
                     ], 403);
                 }
+
                 return redirect()->route('activity.detail', $activity->id)
                     ->with('error', 'Anda tidak memiliki izin untuk melakukan pembayaran.');
             }
@@ -181,6 +181,7 @@ class PaymentController extends Controller
                     if (request()->wantsJson() || request()->boolean('modal')) {
                         // Return 422 for API (wantsJson), but 200 for modal to avoid console error noise
                         $status = request()->boolean('modal') ? 200 : 422;
+
                         return response()->json([
                             'success' => false,
                             'message' => $errorMsg,
@@ -241,7 +242,7 @@ class PaymentController extends Controller
             // CHECK FREE ACTIVITY / BATCH
             // Calculate effective price
             // Fix: If activity price is explicitly 0, treat as free (Master Override) regardless of batch price
-            if ((int)$activity->price === 0) {
+            if ((int) $activity->price === 0) {
                 $effectivePrice = 0;
             } else {
                 $effectivePrice = (int) $activity->price;
@@ -266,39 +267,38 @@ class PaymentController extends Controller
 
             // If price is 0, skip payment and ensure enrollment is active
             if ($effectivePrice <= 0) {
-                 // Check/Update Enrollment
-                 $enrollment = ActivityUser::where('user_id', auth()->id())
+                // Check/Update Enrollment
+                $enrollment = ActivityUser::where('user_id', auth()->id())
                     ->where('activity_id', $activity->id)
-                    ->when($targetBatchId, function($q) use ($targetBatchId) {
+                    ->when($targetBatchId, function ($q) use ($targetBatchId) {
                         return $q->where('activity_batch_id', $targetBatchId);
                     })
                     ->first();
 
-                 if (! $enrollment) {
-                     // Fix: Create enrollment if missing (e.g. skipped by EnrollmentController logic)
-                     $enrollment = ActivityUser::create([
-                         'user_id' => auth()->id(),
-                         'activity_id' => $activity->id,
-                         'activity_batch_id' => $targetBatchId,
-                         'status' => ActivityUser::STATUS_ACTIVE,
-                     ]);
-                 } elseif ($enrollment->status != ActivityUser::STATUS_ACTIVE) {
-                     $enrollment->status = ActivityUser::STATUS_ACTIVE;
-                     $enrollment->save();
-                 }
+                if (! $enrollment) {
+                    // Fix: Create enrollment if missing (e.g. skipped by EnrollmentController logic)
+                    $enrollment = ActivityUser::create([
+                        'user_id' => auth()->id(),
+                        'activity_id' => $activity->id,
+                        'activity_batch_id' => $targetBatchId,
+                        'status' => ActivityUser::STATUS_ACTIVE,
+                    ]);
+                } elseif ($enrollment->status != ActivityUser::STATUS_ACTIVE) {
+                    $enrollment->status = ActivityUser::STATUS_ACTIVE;
+                    $enrollment->save();
+                }
 
-                 if (request()->expectsJson() || request()->boolean('modal')) {
+                if (request()->expectsJson() || request()->boolean('modal')) {
                     return response()->json([
                         'success' => true,
                         'message' => 'Kegiatan gratis, tidak memerlukan pembayaran.',
-                        'redirect_url' => route('activity.show', $activity->id)
+                        'redirect_url' => route('activity.show', $activity->id),
                     ]);
                 }
+
                 return redirect()->route('activity.show', $activity->id)
                     ->with('info', 'Kegiatan gratis, tidak memerlukan pembayaran.');
             }
-
-
 
             if ($activity->user && $activity->user->isCreator() && ! $activity->user->hasActiveSubscription()) {
                 if ($activity->hasAutomaticPayment()) {
@@ -318,6 +318,7 @@ class PaymentController extends Controller
                                 'message' => $errorMsg,
                             ], 422);
                         }
+
                         return redirect()->route('activity.show', $activity->id)
                             ->with('error', $errorMsg);
                     }
@@ -330,9 +331,10 @@ class PaymentController extends Controller
                                     'is_bulk' => request()->boolean('is_bulk'),
                                     'batch_id' => request()->input('batch_id'),
                                     'channel_code' => request()->input('channel_code'),
-                                ])
+                                ]),
                             ]);
                         }
+
                         return redirect()->route('midtrans.payment.create', [
                             'activity' => $activity->id,
                             'is_bulk' => request()->boolean('is_bulk'),
@@ -347,9 +349,10 @@ class PaymentController extends Controller
                         return response()->json([
                             'success' => true,
                             'message' => 'Kegiatan gratis, tidak memerlukan pembayaran.',
-                            'redirect_url' => route('activity.detail', $activity->id)
+                            'redirect_url' => route('activity.detail', $activity->id),
                         ]);
                     }
+
                     return redirect()->route('activity.detail', $activity->id)
                         ->with('info', 'Kegiatan gratis, tidak memerlukan pembayaran.');
                 }
@@ -364,9 +367,10 @@ class PaymentController extends Controller
                             'is_bulk' => request()->boolean('is_bulk'),
                             'batch_id' => request()->input('batch_id'),
                             'channel_code' => request()->input('channel_code'),
-                        ])
+                        ]),
                     ]);
                 }
+
                 return redirect()->route('midtrans.payment.create', [
                     'activity' => $activity->id,
                     'is_bulk' => request()->boolean('is_bulk'),
@@ -424,8 +428,10 @@ class PaymentController extends Controller
                     if (empty($uidsRaw)) {
                         if (request()->expectsJson() || request()->boolean('modal')) {
                             $status = request()->boolean('modal') ? 200 : 422;
+
                             return response()->json(['success' => false, 'message' => 'Tidak ada peserta baru yang perlu ditagih.'], $status);
                         }
+
                         return redirect()->route('activity.participants.index', $activity->id)
                             ->with('error', 'Tidak ada peserta baru yang perlu ditagih.');
                     }
@@ -463,6 +469,7 @@ class PaymentController extends Controller
                                     'activity_id' => $activity->id,
                                     'payment_id' => $existingPayment->id,
                                 ]);
+
                                 continue;
                             }
 
@@ -516,42 +523,43 @@ class PaymentController extends Controller
                                     }
                                 }
 
-                                    $userPaymentMatch = [
-                                        'user_id' => $uid,
-                                        'activity_id' => $activity->id,
-                                    ];
-                                    if (isset($bulkMatch['activity_batch_id'])) {
-                                        $userPaymentMatch['activity_batch_id'] = $bulkMatch['activity_batch_id'];
+                                $userPaymentMatch = [
+                                    'user_id' => $uid,
+                                    'activity_id' => $activity->id,
+                                ];
+                                if (isset($bulkMatch['activity_batch_id'])) {
+                                    $userPaymentMatch['activity_batch_id'] = $bulkMatch['activity_batch_id'];
                                     $userPaymentMatch['activity_batch_id'] = null;
-                                    }
-
-                                    // Prevent overwriting APPROVED payments unless force update is needed
-                                    // For bulk import, we generally skip if already approved.
-                                    $existingMemberPayment = Payment::where('user_id', $uid)
-                                        ->where('activity_id', $activity->id)
-                                        ->when(isset($userPaymentMatch['activity_batch_id']), function($q) use ($userPaymentMatch) {
-                                            return $q->where('activity_batch_id', $userPaymentMatch['activity_batch_id']);
-                                        })
-                                        ->first();
-
-                                    if ($existingMemberPayment && $existingMemberPayment->status === 'approved') {
-                                        Log::info("Skipping bulk payment distribution for User $uid - Already Approved");
-                                        continue;
-                                    }
-
-                                    Payment::updateOrCreate(
-                                        $userPaymentMatch,
-                                        [
-                                            'payment_method_id' => $existingPayment->payment_method_id,
-                                            'amount' => $amount,
-                                            'proof_of_payment' => $uniquePathRelative,
-                                            'status' => 'pending',
-                                            'notes' => 'Distributed from bulk upload by user '.auth()->id(),
-                                            'verified_by' => null,
-                                            'verified_at' => null,
-                                        ]
-                                    );
                                 }
+
+                                // Prevent overwriting APPROVED payments unless force update is needed
+                                // For bulk import, we generally skip if already approved.
+                                $existingMemberPayment = Payment::where('user_id', $uid)
+                                    ->where('activity_id', $activity->id)
+                                    ->when(isset($userPaymentMatch['activity_batch_id']), function ($q) use ($userPaymentMatch) {
+                                        return $q->where('activity_batch_id', $userPaymentMatch['activity_batch_id']);
+                                    })
+                                    ->first();
+
+                                if ($existingMemberPayment && $existingMemberPayment->status === 'approved') {
+                                    Log::info("Skipping bulk payment distribution for User $uid - Already Approved");
+
+                                    continue;
+                                }
+
+                                Payment::updateOrCreate(
+                                    $userPaymentMatch,
+                                    [
+                                        'payment_method_id' => $existingPayment->payment_method_id,
+                                        'amount' => $amount,
+                                        'proof_of_payment' => $uniquePathRelative,
+                                        'status' => 'pending',
+                                        'notes' => 'Distributed from bulk upload by user '.auth()->id(),
+                                        'verified_by' => null,
+                                        'verified_at' => null,
+                                    ]
+                                );
+                            }
                         } catch (\Throwable $e) {
                             Log::error("Failed to enroll or distribute bulk payment to user $uid: ".$e->getMessage(), [
                                 'user_id' => $uid,
@@ -569,14 +577,14 @@ class PaymentController extends Controller
             }
             // Ambil rekening penerimaan milik creator kegiatan (semua jika ada)
             // Cek apakah ada pengaturan manual payment spesifik di activity
-            if (!empty($activity->manual_payment_details) && is_array($activity->manual_payment_details)) {
+            if (! empty($activity->manual_payment_details) && is_array($activity->manual_payment_details)) {
                 $creatorBankAccounts = $activity->manual_payment_details;
-                $creatorBank = !empty($creatorBankAccounts) ? $creatorBankAccounts[0] : null;
+                $creatorBank = ! empty($creatorBankAccounts) ? $creatorBankAccounts[0] : null;
             } else {
                 $creatorBank = $this->getSavedBankAccount($activity->user_id);
                 $creatorBankAccounts = $this->getSavedBankAccounts($activity->user_id) ?? [];
             }
-            
+
             if (! is_array($creatorBankAccounts)) {
                 $creatorBankAccounts = (array) $creatorBankAccounts;
             }
@@ -641,13 +649,14 @@ class PaymentController extends Controller
                             break;
                         }
                     }
+
                     return $method;
                 });
             } else {
-                // If creator has no keys, do not empty the list. 
+                // If creator has no keys, do not empty the list.
                 // Fallback to ALL active methods (System Default) or create a generic one.
                 if ($paymentMethods->isEmpty()) {
-                     PaymentMethod::firstOrCreate(
+                    PaymentMethod::firstOrCreate(
                         ['name' => 'Transfer Bank (Manual)'],
                         [
                             'account_number' => null,
@@ -700,9 +709,9 @@ class PaymentController extends Controller
                 'payment_method_type' => $activity->payment_method_type,
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             if (request()->expectsJson() || request()->boolean('modal')) {
-                return response('<div class="alert alert-danger">Terjadi kesalahan saat memuat halaman pembayaran: ' . $e->getMessage() . '</div>', 500);
+                return response('<div class="alert alert-danger">Terjadi kesalahan saat memuat halaman pembayaran: '.$e->getMessage().'</div>', 500);
             }
 
             return redirect()->route('activity.show', $activity->id)
@@ -714,9 +723,9 @@ class PaymentController extends Controller
     {
         try {
             // Replicate logic from create method
-            if (!empty($activity->manual_payment_details) && is_array($activity->manual_payment_details)) {
+            if (! empty($activity->manual_payment_details) && is_array($activity->manual_payment_details)) {
                 $creatorBankAccounts = $activity->manual_payment_details;
-                $creatorBank = !empty($creatorBankAccounts) ? $creatorBankAccounts[0] : null;
+                $creatorBank = ! empty($creatorBankAccounts) ? $creatorBankAccounts[0] : null;
             } else {
                 $creatorBank = $this->getSavedBankAccount($activity->user_id);
                 $creatorBankAccounts = $this->getSavedBankAccounts($activity->user_id) ?? [];
@@ -742,7 +751,9 @@ class PaymentController extends Controller
                 // Ensure generic methods exist
                 foreach ($creatorBanks as $bankNameRaw) {
                     $bankLabel = trim($bankNameRaw);
-                    if ($bankLabel === '') continue;
+                    if ($bankLabel === '') {
+                        continue;
+                    }
                     // Cari apakah sudah ada metode dengan nama mengandung bank tersebut
                     $exists = PaymentMethod::where('name', 'like', '%'.$bankLabel.'%')->exists();
                     if (! $exists) {
@@ -766,6 +777,7 @@ class PaymentController extends Controller
                             return true;
                         }
                     }
+
                     return false;
                 })->values();
 
@@ -779,13 +791,14 @@ class PaymentController extends Controller
                             break;
                         }
                     }
+
                     return $method;
                 });
             } else {
-                // If creator has no keys, do not empty the list. 
+                // If creator has no keys, do not empty the list.
                 // Fallback to ALL active methods (System Default) or create a generic one.
                 if ($paymentMethods->isEmpty()) {
-                     PaymentMethod::firstOrCreate(
+                    PaymentMethod::firstOrCreate(
                         ['name' => 'Transfer Bank (Manual)'],
                         [
                             'account_number' => null,
@@ -819,8 +832,9 @@ class PaymentController extends Controller
             ]);
 
         } catch (\Exception $e) {
-             Log::error('Error fetching payment methods: '.$e->getMessage());
-             return response()->json(['success' => false, 'message' => 'Error fetching payment methods'], 500);
+            Log::error('Error fetching payment methods: '.$e->getMessage());
+
+            return response()->json(['success' => false, 'message' => 'Error fetching payment methods'], 500);
         }
     }
 
@@ -862,6 +876,7 @@ class PaymentController extends Controller
                 if ($request->expectsJson() || $request->boolean('modal')) {
                     return response()->json(['success' => false, 'message' => 'Pendaftaran untuk kegiatan ini sedang ditutup (Tidak ada gelombang/sesi aktif).'], 422);
                 }
+
                 return redirect()->back()->with('error', 'Pendaftaran untuk kegiatan ini sedang ditutup (Tidak ada gelombang/sesi aktif).');
             }
 
@@ -945,7 +960,7 @@ class PaymentController extends Controller
                 // Merge required custom fields (activity.custom_fields with is_required)
                 $activity->append('custom_fields');
                 $customFields = $activity->custom_fields ?? [];
-                if (is_array($customFields) && !empty($customFields)) {
+                if (is_array($customFields) && ! empty($customFields)) {
                     $additional = ($user->profile && is_array($user->profile->additional_data)) ? $user->profile->additional_data : [];
                     foreach ($customFields as $cf) {
                         if (empty($cf['is_required']) || empty($cf['key'])) {
@@ -956,19 +971,20 @@ class PaymentController extends Controller
                         if ($val === null || trim((string) $val) === '') {
                             $label = $cf['label'] ?? ucwords(str_replace('_', ' ', $key));
                             $type = $cf['type'] ?? 'text';
-                            if (!in_array($label, $missingFields, true)) {
+                            if (! in_array($label, $missingFields, true)) {
                                 $missingFields[] = $label;
                             }
-                            if (!in_array($key, $missingFieldKeys, true)) {
+                            if (! in_array($key, $missingFieldKeys, true)) {
                                 $missingFieldKeys[] = $key;
                             }
                             $exists = false;
                             foreach ($missingProfileData as $md) {
                                 if (isset($md['key']) && strtolower($md['key']) === strtolower($key)) {
-                                    $exists = true; break;
+                                    $exists = true;
+                                    break;
                                 }
                             }
-                            if (!$exists) {
+                            if (! $exists) {
                                 $missingProfileData[] = [
                                     'key' => $key,
                                     'label' => $label,
@@ -988,9 +1004,10 @@ class PaymentController extends Controller
                             'success' => false,
                             'message' => $errorMsg,
                             'missing_fields' => array_values(array_unique($missingFields)),
-                            'missing_keys' => $missingFieldKeys
+                            'missing_keys' => $missingFieldKeys,
                         ], 422);
                     }
+
                     return redirect()->route('activity.detail', $activity->id)
                         ->with('error', $errorMsg)
                         ->with('missing_profile_fields', $missingFieldKeys);
@@ -1008,6 +1025,7 @@ class PaymentController extends Controller
                     if ($request->expectsJson() || $request->boolean('modal')) {
                         return response()->json(['success' => false, 'message' => $canAccept['message']], 422);
                     }
+
                     return redirect()->back()
                         ->with('error', $canAccept['message']);
                 }
@@ -1015,7 +1033,7 @@ class PaymentController extends Controller
 
             // Jika activity gratis, langsung daftarkan user tanpa validasi pembayaran
             $price = $activity->price;
-            if ((int)$activity->price === 0) {
+            if ((int) $activity->price === 0) {
                 $price = 0;
             } elseif ($activeBatch && $activeBatch->price !== null) {
                 $price = $activeBatch->price;
@@ -1044,7 +1062,7 @@ class PaymentController extends Controller
                     return response()->json([
                         'success' => true,
                         'message' => 'Anda berhasil mendaftar ke kegiatan gratis.',
-                        'redirect_url' => route('activity.show', $activity->id)
+                        'redirect_url' => route('activity.show', $activity->id),
                     ]);
                 }
 
@@ -1057,9 +1075,10 @@ class PaymentController extends Controller
                 if ($request->expectsJson() || $request->boolean('modal')) {
                     return response()->json([
                         'success' => true,
-                        'redirect_url' => route('midtrans.payment.create', $activity->id)
+                        'redirect_url' => route('midtrans.payment.create', $activity->id),
                     ]);
                 }
+
                 return redirect()->route('midtrans.payment.create', $activity->id);
             }
 
@@ -1101,9 +1120,10 @@ class PaymentController extends Controller
                         return response()->json([
                             'success' => true,
                             'message' => 'Anda sudah memiliki pembayaran untuk kegiatan ini.',
-                            'payment_id' => $existingPayment->id
+                            'payment_id' => $existingPayment->id,
                         ]);
                     }
+
                     return redirect()->route('activity.show', $activity->id)
                         ->with('info', 'Anda sudah memiliki pembayaran untuk kegiatan ini. Detail ditampilkan di popup pada halaman kegiatan.');
                 }
@@ -1116,8 +1136,6 @@ class PaymentController extends Controller
                 'activity_id' => $activity->id,
                 'user_id' => auth()->id(),
             ]);
-
-
 
             DB::beginTransaction();
 
@@ -1149,6 +1167,7 @@ class PaymentController extends Controller
                         ->get()
                         ->first(function ($p) {
                             $notes = json_decode($p->notes, true);
+
                             return is_array($notes) && ! empty($notes['bulk_import']);
                         });
                     if ($existingBulkPayment) {
@@ -1175,6 +1194,7 @@ class PaymentController extends Controller
                         } elseif ($returnTo === 'show') {
                             $routeTarget = route('activity.show', $activity->id);
                         }
+
                         return redirect($routeTarget)->with('success', 'Bukti pembayaran berhasil diperbarui. Silakan tunggu verifikasi.');
                     }
                 }
@@ -1189,6 +1209,7 @@ class PaymentController extends Controller
                     } elseif ($returnTo === 'show') {
                         $routeTarget = route('activity.show', $activity->id);
                     }
+
                     return redirect($routeTarget)
                         ->with('error', 'Sesi pembayaran massal telah berakhir. Silakan ulangi proses impor dari awal.');
                 }
@@ -1366,7 +1387,7 @@ class PaymentController extends Controller
                                     $ext = pathinfo($path, PATHINFO_EXTENSION);
                                     $uniqueName = 'payment_bulk_'.$activity->id.'_'.$uid.'_'.uniqid().'.'.$ext;
                                     $uniquePathRelative = 'payment-proofs/'.$uniqueName;
-                                    
+
                                     Storage::disk('public')->copy($path, $uniquePathRelative);
 
                                     // Create/Update Payment Record for User
@@ -1383,13 +1404,14 @@ class PaymentController extends Controller
                                     // Prevent overwriting APPROVED payments
                                     $existingMemberPayment = Payment::where('user_id', $uid)
                                         ->where('activity_id', $activity->id)
-                                        ->when(isset($userPaymentMatch['activity_batch_id']), function($q) use ($userPaymentMatch) {
+                                        ->when(isset($userPaymentMatch['activity_batch_id']), function ($q) use ($userPaymentMatch) {
                                             return $q->where('activity_batch_id', $userPaymentMatch['activity_batch_id']);
                                         })
                                         ->first();
 
                                     if ($existingMemberPayment && $existingMemberPayment->status === 'approved') {
                                         Log::info("Skipping bulk payment distribution for User $uid - Already Approved");
+
                                         continue;
                                     }
 
@@ -1434,7 +1456,7 @@ class PaymentController extends Controller
                     return response()->json([
                         'success' => true,
                         'message' => 'Bukti pembayaran berhasil dikirim. Silakan tunggu verifikasi dari admin.',
-                        'payment_id' => $existingPayment ? $existingPayment->id : ($payment ? $payment->id : null)
+                        'payment_id' => $existingPayment ? $existingPayment->id : ($payment ? $payment->id : null),
                     ]);
                 }
 
@@ -1577,13 +1599,13 @@ class PaymentController extends Controller
             if ($activity->price == 0) {
                 $isFree = true;
             }
-            
+
             // Check specific batch price if user is enrolled in one
             $activityUser = ActivityUser::where('activity_id', $activity->id)
                 ->where('user_id', $userId)
                 ->orderBy('id', 'desc')
                 ->first();
-                
+
             if ($activityUser && $activityUser->activity_batch_id) {
                 $batch = ActivityBatch::find($activityUser->activity_batch_id);
                 if ($batch && $batch->price !== null) {
@@ -1592,11 +1614,11 @@ class PaymentController extends Controller
             }
 
             if ($isFree) {
-                 return response()->json([
-                    'success' => true, 
+                return response()->json([
+                    'success' => true,
                     'message' => 'Kegiatan gratis (tidak memerlukan pembayaran)',
                     'is_free' => true,
-                    'payment' => null
+                    'payment' => null,
                 ]);
             }
 
@@ -1632,7 +1654,7 @@ class PaymentController extends Controller
                 $directPayment = $directPayments->first(function ($p) {
                     return in_array($p->status, ['approved', 'pending']);
                 });
-                
+
                 // If not found, take the latest one (even if rejected)
                 if (! $directPayment) {
                     $directPayment = $directPayments->first();
@@ -1644,9 +1666,9 @@ class PaymentController extends Controller
             $bulkCandidate = Payment::where('activity_id', $activity->id)
                 ->whereIn('status', ['approved', 'pending'])
                 ->whereNotNull('notes')
-                ->where(function($q) {
+                ->where(function ($q) {
                     $q->where('notes', 'like', '%"bulk_import"%')
-                      ->orWhere('notes', 'like', '%"user_ids"%');
+                        ->orWhere('notes', 'like', '%"user_ids"%');
                 })
                 ->orderByDesc('id')
                 ->get()
@@ -1656,26 +1678,28 @@ class PaymentController extends Controller
                         if (is_array($decoded)) {
                             // Check user_ids at root level (Store method format)
                             $uids = [];
-                            if (!empty($decoded['user_ids'])) {
+                            if (! empty($decoded['user_ids'])) {
                                 $uids = $decoded['user_ids'];
-                            } 
+                            }
                             // Check nested in bulk_import (Possible legacy format)
-                            elseif (!empty($decoded['bulk_import']) && is_array($decoded['bulk_import']) && !empty($decoded['bulk_import']['user_ids'])) {
+                            elseif (! empty($decoded['bulk_import']) && is_array($decoded['bulk_import']) && ! empty($decoded['bulk_import']['user_ids'])) {
                                 $uids = $decoded['bulk_import']['user_ids'];
                             }
 
-                            if (!empty($uids)) {
+                            if (! empty($uids)) {
                                 $uids = array_map('strval', (array) $uids);
+
                                 return in_array((string) $targetUserId, $uids, true);
                             }
                         }
                     }
+
                     return false;
                 });
-            
+
             // Strategy 3: Check via ActivityParticipantGroup
             if ($activityUser && $activityUser->activity_participant_group_id) {
-                 $groupUserIds = ActivityUser::where('activity_id', $activity->id)
+                $groupUserIds = ActivityUser::where('activity_id', $activity->id)
                     ->where('activity_participant_group_id', $activityUser->activity_participant_group_id)
                     ->pluck('user_id')
                     ->toArray();
@@ -1708,7 +1732,6 @@ class PaymentController extends Controller
                 return response()->json(['success' => false, 'message' => 'Pembayaran tidak ditemukan'], 404);
             }
 
-
             $isManual = (bool) ($payment->payment_method_id && ! $payment->midtrans_transaction_id);
             $proofPath = $payment->proof_of_payment;
             $proofUrl = null;
@@ -1716,7 +1739,7 @@ class PaymentController extends Controller
                 $fullPath = \Illuminate\Support\Str::startsWith($proofPath, 'assets/')
                     ? public_path($proofPath)
                     : public_path('storage/'.ltrim($proofPath, '/'));
-                
+
                 if (file_exists($fullPath)) {
                     $proofUrl = \Illuminate\Support\Str::startsWith($proofPath, 'assets/')
                         ? asset($proofPath)
@@ -1828,7 +1851,7 @@ class PaymentController extends Controller
                     'method_name' => $payment->paymentMethod->name ?? ($payment->midtrans_transaction_id ? 'Midtrans' : 'Gratis'),
                     'is_manual' => $isManual,
                     'proof_url' => $proofUrl,
-                    'has_proof_file' => !empty($payment->proof_of_payment) && $payment->proof_of_payment !== 'imported',
+                    'has_proof_file' => ! empty($payment->proof_of_payment) && $payment->proof_of_payment !== 'imported',
                     'midtrans_snap_token' => $payment->midtrans_snap_token,
                     'midtrans_transaction_id' => $payment->midtrans_transaction_id,
                     'verified_by' => $payment->verified_by,
@@ -1857,11 +1880,12 @@ class PaymentController extends Controller
     public function updateProof(Request $request, Payment $payment)
     {
         $canVerify = auth()->user()->canVerifyPayment($payment->activity);
-        
+
         if (! $canVerify) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
+
             return back()->with('error', 'Anda tidak memiliki akses untuk mengubah bukti pembayaran ini');
         }
 
@@ -1878,7 +1902,7 @@ class PaymentController extends Controller
                     'quality' => 80,
                     'format' => 'webp',
                 ]);
-                
+
                 // Delete old file if exists and not imported
                 if ($payment->proof_of_payment && $payment->proof_of_payment !== 'imported') {
                     if (Storage::disk('public')->exists($payment->proof_of_payment)) {
@@ -1894,7 +1918,7 @@ class PaymentController extends Controller
                 $activityUser = ActivityUser::where('activity_id', $payment->activity_id)
                     ->where('user_id', $payment->user_id)
                     ->first();
-                
+
                 $relatedUserIds = [];
 
                 // 1. Explicit Group
@@ -1908,75 +1932,76 @@ class PaymentController extends Controller
                     $decoded = $this->decodeNotesToArray($payment->notes);
                     if (is_array($decoded)) {
                         $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
-                        if (is_array($uids) && !empty($uids)) {
-                             // Verify current user is in the list
-                             if (in_array((string)$payment->user_id, array_map('strval', $uids))) {
-                                 $relatedUserIds = $uids;
-                             }
+                        if (is_array($uids) && ! empty($uids)) {
+                            // Verify current user is in the list
+                            if (in_array((string) $payment->user_id, array_map('strval', $uids))) {
+                                $relatedUserIds = $uids;
+                            }
                         }
                     }
                 }
 
                 $otherUserIds = array_diff($relatedUserIds, [$payment->user_id]);
-                
+
                 if (! empty($otherUserIds)) {
-                        Log::info('Cascading proof update to group members', [
-                            'parent_payment_id' => $payment->id,
-                            'group_type' => $activityUser && $activityUser->activity_participant_group_id ? 'explicit' : 'implicit',
-                            'affected_users' => $otherUserIds
-                        ]);
+                    Log::info('Cascading proof update to group members', [
+                        'parent_payment_id' => $payment->id,
+                        'group_type' => $activityUser && $activityUser->activity_participant_group_id ? 'explicit' : 'implicit',
+                        'affected_users' => $otherUserIds,
+                    ]);
 
-                        foreach ($otherUserIds as $uid) {
-                            try {
-                                // Find or create payment for this user
-                                $memberPayment = Payment::firstOrNew([
-                                    'user_id' => $uid,
-                                    'activity_id' => $payment->activity_id,
-                                    'activity_batch_id' => $payment->activity_batch_id
-                                ]);
+                    foreach ($otherUserIds as $uid) {
+                        try {
+                            // Find or create payment for this user
+                            $memberPayment = Payment::firstOrNew([
+                                'user_id' => $uid,
+                                'activity_id' => $payment->activity_id,
+                                'activity_batch_id' => $payment->activity_batch_id,
+                            ]);
 
-                                // Copy file to unique path for this user
-                                $ext = pathinfo($path, PATHINFO_EXTENSION);
-                                $uniqueName = 'payment_group_'.$payment->activity_id.'_'.$uid.'_'.uniqid().'.'.$ext;
-                                $uniquePathRelative = 'payment-proofs/'.$uniqueName;
-                                
-                                if (Storage::disk('public')->exists($path)) {
-                                    Storage::disk('public')->copy($path, $uniquePathRelative);
-                                    
-                                    // Delete old proof if exists
-                                    if ($memberPayment->exists && $memberPayment->proof_of_payment && $memberPayment->proof_of_payment !== 'imported') {
-                                        if (Storage::disk('public')->exists($memberPayment->proof_of_payment)) {
-                                            Storage::disk('public')->delete($memberPayment->proof_of_payment);
-                                        }
+                            // Copy file to unique path for this user
+                            $ext = pathinfo($path, PATHINFO_EXTENSION);
+                            $uniqueName = 'payment_group_'.$payment->activity_id.'_'.$uid.'_'.uniqid().'.'.$ext;
+                            $uniquePathRelative = 'payment-proofs/'.$uniqueName;
+
+                            if (Storage::disk('public')->exists($path)) {
+                                Storage::disk('public')->copy($path, $uniquePathRelative);
+
+                                // Delete old proof if exists
+                                if ($memberPayment->exists && $memberPayment->proof_of_payment && $memberPayment->proof_of_payment !== 'imported') {
+                                    if (Storage::disk('public')->exists($memberPayment->proof_of_payment)) {
+                                        Storage::disk('public')->delete($memberPayment->proof_of_payment);
                                     }
-
-                                    $memberPayment->proof_of_payment = $uniquePathRelative;
-                                    // Sync other fields if new
-                                    if (!$memberPayment->exists) {
-                                        $memberPayment->amount = $payment->amount;
-                                        $memberPayment->status = 'pending'; 
-                                        $memberPayment->payment_method_id = $payment->payment_method_id;
-                                    }
-                                    $memberPayment->save();
                                 }
-                            } catch (\Exception $e) {
-                                Log::error("Failed to cascade proof to user $uid: " . $e->getMessage());
+
+                                $memberPayment->proof_of_payment = $uniquePathRelative;
+                                // Sync other fields if new
+                                if (! $memberPayment->exists) {
+                                    $memberPayment->amount = $payment->amount;
+                                    $memberPayment->status = 'pending';
+                                    $memberPayment->payment_method_id = $payment->payment_method_id;
+                                }
+                                $memberPayment->save();
                             }
+                        } catch (\Exception $e) {
+                            Log::error("Failed to cascade proof to user $uid: ".$e->getMessage());
                         }
                     }
+                }
 
                 if ($request->expectsJson()) {
                     return response()->json([
                         'success' => true,
                         'message' => 'Bukti pembayaran berhasil diperbarui',
-                        'proof_url' => asset('storage/' . $path)
+                        'proof_url' => asset('storage/'.$path),
                     ]);
                 }
 
                 return back()->with('success', 'Bukti pembayaran berhasil diperbarui');
             } catch (\Exception $e) {
                 Log::error('Failed to update payment proof', ['error' => $e->getMessage()]);
-                return back()->with('error', 'Gagal mengunggah file: ' . $e->getMessage());
+
+                return back()->with('error', 'Gagal mengunggah file: '.$e->getMessage());
             }
         }
 
@@ -1987,7 +2012,7 @@ class PaymentController extends Controller
     {
         // Check permission
         $canVerify = auth()->user()->canVerifyPayment($payment->activity);
-        
+
         // Debug logging similar to verify
         if (auth()->user()->isCreator() || ($payment->activity && $payment->activity->canManageRegistration(auth()->id()))) {
             Log::info('Creator/Committee payment update check', [
@@ -1997,13 +2022,14 @@ class PaymentController extends Controller
             ]);
         }
 
-        if (!$canVerify) {
+        if (! $canVerify) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Anda tidak memiliki akses untuk mengubah data pembayaran ini',
                 ], 403);
             }
+
             return back()->with('error', 'Anda tidak memiliki akses untuk mengubah data pembayaran ini');
         }
 
@@ -2029,7 +2055,7 @@ class PaymentController extends Controller
                     'quality' => 80,
                     'format' => 'webp',
                 ]);
-                
+
                 // Delete old file if exists and not imported
                 if ($payment->proof_of_payment && $payment->proof_of_payment !== 'imported') {
                     if (Storage::disk('public')->exists($payment->proof_of_payment)) {
@@ -2081,7 +2107,7 @@ class PaymentController extends Controller
                 $updateData['status'] = 'pending';
             }
 
-            if (!empty($updateData)) {
+            if (! empty($updateData)) {
                 $payment->update($updateData);
             }
 
@@ -2096,7 +2122,7 @@ class PaymentController extends Controller
                 } else {
                     $auMatch['activity_batch_id'] = null;
                 }
-                
+
                 $auData = [
                     'status' => ActivityUser::STATUS_VERIFICATION,
                     'created_at' => now(),
@@ -2112,7 +2138,7 @@ class PaymentController extends Controller
 
                 ActivityUser::updateOrCreate($auMatch, $auData);
             }
-            
+
             // CASCADE UPDATE: Sync changes to all group members
             $activityUser = ActivityUser::where('activity_id', $payment->activity_id)
                 ->where('user_id', $payment->user_id)
@@ -2132,21 +2158,21 @@ class PaymentController extends Controller
                 $decoded = $this->decodeNotesToArray($payment->notes);
                 if (is_array($decoded)) {
                     $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
-                    if (is_array($uids) && !empty($uids)) {
-                         if (in_array((string)$payment->user_id, array_map('strval', $uids))) {
-                             $relatedUserIds = $uids;
-                         }
+                    if (is_array($uids) && ! empty($uids)) {
+                        if (in_array((string) $payment->user_id, array_map('strval', $uids))) {
+                            $relatedUserIds = $uids;
+                        }
                     }
                 }
             }
-            
+
             $otherUserIds = array_diff($relatedUserIds, [$payment->user_id]);
 
-            if (!empty($otherUserIds)) {
+            if (! empty($otherUserIds)) {
                 Log::info('Cascading payment details update to group members', [
                     'parent_payment_id' => $payment->id,
                     'group_type' => $activityUser && $activityUser->activity_participant_group_id ? 'explicit' : 'implicit',
-                    'affected_users' => $otherUserIds
+                    'affected_users' => $otherUserIds,
                 ]);
 
                 foreach ($otherUserIds as $uid) {
@@ -2154,7 +2180,7 @@ class PaymentController extends Controller
                         $memberPayment = Payment::firstOrNew([
                             'user_id' => $uid,
                             'activity_id' => $payment->activity_id,
-                            'activity_batch_id' => $payment->activity_batch_id
+                            'activity_batch_id' => $payment->activity_batch_id,
                         ]);
 
                         // Sync Amount
@@ -2171,11 +2197,11 @@ class PaymentController extends Controller
                         if (isset($updateData['sender_name'])) {
                             $memberPayment->sender_name = $updateData['sender_name'];
                         }
-                        
+
                         // Sync Notes - FORCE OVERWRITE to ensure consistency
                         // "samakan isi format dan nilai untk semua angoota jadi satu prsis"
                         if (isset($updateData['notes'])) {
-                             $memberPayment->notes = $updateData['notes'];
+                            $memberPayment->notes = $updateData['notes'];
                         }
 
                         // Sync Proof File if updated
@@ -2184,32 +2210,34 @@ class PaymentController extends Controller
                             $ext = pathinfo($sourcePath, PATHINFO_EXTENSION);
                             $uniqueName = 'payment_group_'.$payment->activity_id.'_'.$uid.'_'.uniqid().'.'.$ext;
                             $uniquePathRelative = 'payment-proofs/'.$uniqueName;
-                            
+
                             if (Storage::disk('public')->exists($sourcePath)) {
                                 Storage::disk('public')->copy($sourcePath, $uniquePathRelative);
-                                
+
                                 // Delete old proof
                                 if ($memberPayment->exists && $memberPayment->proof_of_payment && $memberPayment->proof_of_payment !== 'imported') {
                                     if (Storage::disk('public')->exists($memberPayment->proof_of_payment)) {
                                         Storage::disk('public')->delete($memberPayment->proof_of_payment);
                                     }
                                 }
-                                
+
                                 $memberPayment->proof_of_payment = $uniquePathRelative;
                             }
                         }
 
-                        if (!$memberPayment->exists) {
+                        if (! $memberPayment->exists) {
                             // Set defaults for new payment
                             $memberPayment->status = 'pending';
                             $memberPayment->payment_method_id = $payment->payment_method_id;
-                            if (!isset($memberPayment->amount)) $memberPayment->amount = $payment->amount;
+                            if (! isset($memberPayment->amount)) {
+                                $memberPayment->amount = $payment->amount;
+                            }
                         }
 
                         $memberPayment->save();
 
                     } catch (\Exception $e) {
-                        Log::error("Failed to cascade update to user $uid: " . $e->getMessage());
+                        Log::error("Failed to cascade update to user $uid: ".$e->getMessage());
                     }
                 }
             }
@@ -2221,21 +2249,22 @@ class PaymentController extends Controller
                     'success' => true,
                     'message' => 'Data pembayaran berhasil disimpan',
                     'payment' => $payment->fresh(),
-                    'proof_url' => isset($updateData['proof_of_payment']) ? asset('storage/' . $updateData['proof_of_payment']) : null
+                    'proof_url' => isset($updateData['proof_of_payment']) ? asset('storage/'.$updateData['proof_of_payment']) : null,
                 ]);
             }
 
             return back()->with('success', 'Data pembayaran berhasil disimpan');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error updating payment: ' . $e->getMessage());
-            
+            Log::error('Error updating payment: '.$e->getMessage());
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal menyimpan data: ' . $e->getMessage()
+                    'message' => 'Gagal menyimpan data: '.$e->getMessage(),
                 ], 500);
             }
+
             return back()->with('error', 'Gagal menyimpan data');
         }
     }
@@ -2369,55 +2398,58 @@ class PaymentController extends Controller
                     ->where('activity_participant_group_id', $activityUser->activity_participant_group_id)
                     ->pluck('user_id')
                     ->toArray();
-                
+
                 Log::info('Group members identified for cascading validation', [
                     'group_id' => $activityUser->activity_participant_group_id,
                     'count' => count($relatedUserIds),
-                    'user_ids' => $relatedUserIds
+                    'user_ids' => $relatedUserIds,
                 ]);
             }
 
             // 2. Fallback to implicit/bulk-import notes
             if ($registrationMethod === 'mandiri') {
                 $decoded = $this->decodeNotesToArray($payment->notes);
-                if (is_array($decoded) && (!empty($decoded['user_ids']) || !empty($decoded['bulk_import']['user_ids']))) {
+                if (is_array($decoded) && (! empty($decoded['user_ids']) || ! empty($decoded['bulk_import']['user_ids']))) {
                     // Start from THIS payment if it has the list
                     $uidsMeta = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
-                    if (!empty($uidsMeta)) {
-                         $registrationMethod = 'kelompok';
-                         $meta = $decoded;
-                         $shouldActivateUploader = in_array($payment->user_id, $uidsMeta);
-                         $relatedUserIds = $uidsMeta;
+                    if (! empty($uidsMeta)) {
+                        $registrationMethod = 'kelompok';
+                        $meta = $decoded;
+                        $shouldActivateUploader = in_array($payment->user_id, $uidsMeta);
+                        $relatedUserIds = $uidsMeta;
                     }
                 } else {
                     // SEARCH FOR PARENT PAYMENT: If this payment doesn't have the list, maybe another payment (the parent) has THIS user in its list
-                     try {
+                    try {
                         $parentPayment = Payment::where('activity_id', $payment->activity_id)
                             ->where('notes', 'like', '%user_ids%')
                             ->get()
-                            ->first(function($p) use ($payment) {
+                            ->first(function ($p) use ($payment) {
                                 $notes = json_decode($p->notes, true);
-                                if (!is_array($notes)) return false;
-                                
+                                if (! is_array($notes)) {
+                                    return false;
+                                }
+
                                 $uids = $notes['user_ids'] ?? ($notes['bulk_import']['user_ids'] ?? []);
                                 if (is_array($uids)) {
-                                    return in_array((string)$payment->user_id, array_map('strval', $uids));
+                                    return in_array((string) $payment->user_id, array_map('strval', $uids));
                                 }
+
                                 return false;
                             });
-                        
+
                         if ($parentPayment) {
-                             $notes = json_decode($parentPayment->notes, true);
-                             $groupUids = $notes['user_ids'] ?? ($notes['bulk_import']['user_ids'] ?? []);
-                             if (!empty($groupUids)) {
-                                 $registrationMethod = 'kelompok';
-                                 $meta = $notes;
-                                 $shouldActivateUploader = in_array($payment->user_id, $groupUids);
-                                 $relatedUserIds = $groupUids;
-                             }
+                            $notes = json_decode($parentPayment->notes, true);
+                            $groupUids = $notes['user_ids'] ?? ($notes['bulk_import']['user_ids'] ?? []);
+                            if (! empty($groupUids)) {
+                                $registrationMethod = 'kelompok';
+                                $meta = $notes;
+                                $shouldActivateUploader = in_array($payment->user_id, $groupUids);
+                                $relatedUserIds = $groupUids;
+                            }
                         }
                     } catch (\Exception $e) {
-                        \Log::warning('Error searching parent payment in verify: ' . $e->getMessage());
+                        \Log::warning('Error searching parent payment in verify: '.$e->getMessage());
                     }
                 }
             }
@@ -2486,7 +2518,7 @@ class PaymentController extends Controller
                 // Process Related Members (Auto-Approve Payments & Activate Enrollment)
                 if (! empty($relatedUserIds)) {
                     $uids = $relatedUserIds;
-                    
+
                     // Update Payments for related users
                     // STRICTLY LIMIT to this activity and these specific user IDs
                     $otherUserIds = array_diff($uids, [$payment->user_id]);
@@ -2499,7 +2531,7 @@ class PaymentController extends Controller
                         foreach ($paymentsToUpdate as $pToUpdate) {
                             $pNote = $pToUpdate->notes;
                             $suffix = " | Auto-approved via group member #{$payment->id}";
-                            
+
                             // Safe merge
                             $pDecoded = null;
                             if (is_string($pNote)) {
@@ -2511,10 +2543,10 @@ class PaymentController extends Controller
 
                             if ($pDecoded) {
                                 $currentV = $pDecoded['verifier_note'] ?? '';
-                                $pDecoded['verifier_note'] = $currentV . $suffix;
+                                $pDecoded['verifier_note'] = $currentV.$suffix;
                                 $pNote = json_encode($pDecoded);
                             } else {
-                                $pNote = ((string)$pNote) . $suffix;
+                                $pNote = ((string) $pNote).$suffix;
                             }
 
                             $pUpdateData = [
@@ -2531,7 +2563,7 @@ class PaymentController extends Controller
                             } else {
                                 $pUpdateData['amount'] = $payment->amount;
                             }
-                            
+
                             $pToUpdate->update($pUpdateData);
                         }
 
@@ -2543,14 +2575,14 @@ class PaymentController extends Controller
 
                     // Activate Enrollment for all related users
                     // Activate Enrollment for all related users
-                    // Fix: When manually verifying, we trust the admin's approval. 
+                    // Fix: When manually verifying, we trust the admin's approval.
                     // Use the greater of allowed_count OR the total number of linked users.
                     // This fixes issues where re-uploads add members but the old payment record has a stale loop limit.
                     $limit = (is_array($meta) ? (int) ($meta['allowed_count'] ?? count($uids)) : count($uids));
                     if (count($uids) > $limit) {
                         $limit = count($uids);
                     }
-                    
+
                     $count = 0;
                     foreach ($uids as $uid) {
                         if ($uid == $payment->user_id) {
@@ -2679,10 +2711,10 @@ class PaymentController extends Controller
 
                         if ($pDecoded) {
                             $currentV = $pDecoded['verifier_note'] ?? '';
-                            $pDecoded['verifier_note'] = $currentV . $suffix;
+                            $pDecoded['verifier_note'] = $currentV.$suffix;
                             $pNote = json_encode($pDecoded);
                         } else {
-                            $pNote = ((string)$pNote) . $suffix;
+                            $pNote = ((string) $pNote).$suffix;
                         }
 
                         $pRejectData = [
@@ -2921,27 +2953,27 @@ class PaymentController extends Controller
             // Terapkan aturan potongan biaya admin untuk Creator (saldo = netto)
             $settings = FinancialSetting::current();
             $isAdmin = $currentUser->hasRole('admin') || $currentUser->hasRole('superadmin') || $currentUser->hasPermission('view_payments');
-            $isRestrictedView = !$isAdmin;
+            $isRestrictedView = ! $isAdmin;
 
             // Hitung Pendapatan Berdasarkan Peserta Aktif (bukan panitia) * Harga Kegiatan
             $grossIncome = (float) \App\Models\ActivityUser::query()
                 ->where('activity_users.status', 1)
-                ->whereHas('participationType', function($q) {
+                ->whereHas('participationType', function ($q) {
                     $q->where('name', 'Peserta');
                 })
-                ->where(function($q) use ($isRestrictedView, $currentUser, $userProfile) {
+                ->where(function ($q) use ($isRestrictedView, $currentUser, $userProfile) {
                     if ($isRestrictedView) {
-                        $q->whereHas('activity', function($aq) use ($currentUser, $userProfile) {
+                        $q->whereHas('activity', function ($aq) use ($currentUser, $userProfile) {
                             $aq->where('activities.user_id', $currentUser->id)
-                              ->orWhereHas('committeeStructures', function ($cq) use ($currentUser) {
-                                  $cq->where('user_id', $currentUser->id);
-                              })
-                              ->orWhereHas('divisions', function ($dq) use ($currentUser, $userProfile) {
-                                  $dq->where('leader_name', $currentUser->name);
-                                  if ($userProfile && $userProfile->no_hp) {
-                                      $dq->orWhere('leader_phone', $userProfile->no_hp);
-                                  }
-                              });
+                                ->orWhereHas('committeeStructures', function ($cq) use ($currentUser) {
+                                    $cq->where('user_id', $currentUser->id);
+                                })
+                                ->orWhereHas('divisions', function ($dq) use ($currentUser, $userProfile) {
+                                    $dq->where('leader_name', $currentUser->name);
+                                    if ($userProfile && $userProfile->no_hp) {
+                                        $dq->orWhere('leader_phone', $userProfile->no_hp);
+                                    }
+                                });
                         });
                     }
                 })
@@ -2954,7 +2986,7 @@ class PaymentController extends Controller
                 ->sum('amount');
 
             if ($isRestrictedView) {
-                // Untuk creator, kita gunakan netto (setelah biaya admin jika ada) 
+                // Untuk creator, kita gunakan netto (setelah biaya admin jika ada)
                 // Namun user minta "Harga * Jumlah Peserta", kita asumsikan ini adalah Pendapatan Bruto yang ia lihat.
                 // Jika ingin tetap menampilkan saldo netto:
                 $stats['income_amount'] = $grossIncome;
@@ -2969,29 +3001,29 @@ class PaymentController extends Controller
             // Transform payments to include calculated income per row
             $userIds = $payments->pluck('user_id')->unique();
             $activityIds = $payments->pluck('activity_id')->unique();
-            
+
             $activityUsers = \App\Models\ActivityUser::with('participationType')
                 ->whereIn('user_id', $userIds)
                 ->whereIn('activity_id', $activityIds)
                 ->get()
-                ->groupBy(function($au) {
-                    return $au->user_id . '_' . $au->activity_id;
+                ->groupBy(function ($au) {
+                    return $au->user_id.'_'.$au->activity_id;
                 });
 
             $payments->getCollection()->transform(function ($payment) use ($activityUsers) {
                 // Get pre-fetched activity user record
-                $key = $payment->user_id . '_' . $payment->activity_id;
+                $key = $payment->user_id.'_'.$payment->activity_id;
                 $au = $activityUsers->get($key)?->first();
-                
+
                 $isPeserta = $au && $au->participationType && $au->participationType->name === 'Peserta';
                 $isActive = $au && $au->status === 1; // STATUS_ACTIVE
 
                 // Check for Bulk Payment in Notes
                 $notes = json_decode($payment->notes, true);
-                $isBulk = is_array($notes) && !empty($notes['bulk_import']);
-                
+                $isBulk = is_array($notes) && ! empty($notes['bulk_import']);
+
                 $participantCount = 1;
-                
+
                 if ($isBulk) {
                     // For bulk payments, get count from notes
                     if (isset($notes['successfully_imported_count'])) {
@@ -3003,7 +3035,7 @@ class PaymentController extends Controller
                     }
                 } else {
                     // For single payment, only count if it's a valid 'Peserta' and 'Active'
-                    // If not active/peserta, count is still 1 for display "1 person", 
+                    // If not active/peserta, count is still 1 for display "1 person",
                     // but income calculation might treat it as 0 if we strictly follow "Pendapatan = Valid Participants * Price"
                     // However, user said "Pendapatan = Jumlah Peserta * Harga".
                     // Let's stick to: Count = 1.
@@ -3019,22 +3051,22 @@ class PaymentController extends Controller
                     // User request: "Pendapatan adalah perkalian jumlah peserta dengan harga kegiatan"
                     // If the user isn't Active yet (pending payment), maybe we show potential income?
                     // The previous code showed 0 if not active. Let's keep that logic for single users to avoid confusing "Potential" with "Real" income,
-                    // unless the user specifically wants "Potential" income. 
+                    // unless the user specifically wants "Potential" income.
                     // Given "Total Pendapatan" stats usually imply realized income, we should probably stick to realized.
                     // BUT, if the status is 'approved', they SHOULD be active.
-                    
+
                     // Let's use the Payment Status as a proxy if AU status is missing/lagging?
                     // Or trust the previous logic.
-                    
+
                     $validIncome = ($isActive && $isPeserta);
                     if ($payment->status === 'approved') {
-                         // If payment is approved, we assume they are/will be active.
-                         $validIncome = true; 
+                        // If payment is approved, we assume they are/will be active.
+                        $validIncome = true;
                     }
-                    
+
                     $payment->calculated_income = $validIncome ? (float) ($payment->activity->price ?? 0) : 0;
                 }
-                
+
                 return $payment;
             });
 
@@ -3141,7 +3173,7 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error submitting withdrawal request: '.$e->getMessage());
 
-            $errorMessage = 'Terjadi kesalahan saat mengirim permintaan penarikan dana: ' . $e->getMessage();
+            $errorMessage = 'Terjadi kesalahan saat mengirim permintaan penarikan dana: '.$e->getMessage();
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -3594,7 +3626,7 @@ class PaymentController extends Controller
             if ($proofPath) {
                 $currentNotes = $withdrawal->notes;
                 $notesArray = [];
-                
+
                 // Try to decode as JSON if it looks like JSON
                 if (is_string($currentNotes) && (str_starts_with(trim($currentNotes), '{') || str_starts_with(trim($currentNotes), '['))) {
                     $decoded = json_decode($currentNotes, true);
@@ -3602,19 +3634,19 @@ class PaymentController extends Controller
                         $notesArray = $decoded;
                     }
                 }
-                
+
                 // If decoding failed or it wasn't JSON, and it has content, preserve it as 'notes'
-                if (empty($notesArray) && !empty($currentNotes) && is_string($currentNotes)) {
+                if (empty($notesArray) && ! empty($currentNotes) && is_string($currentNotes)) {
                     // Check if it's not the JSON we just failed to parse (double check)
                     // Actually if we are here, either it's not JSON or decode failed.
                     // Just treat as string note.
                     $notesArray['notes'] = $currentNotes;
                 }
-                
+
                 $notesArray['proof_path'] = $proofPath;
                 $withdrawal->notes = json_encode($notesArray);
             }
-            
+
             $withdrawal->save();
             DB::commit();
 
@@ -3622,9 +3654,11 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error marking withdrawal as paid: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
+
     /**
      * Neraca Keuangan: gabungkan pendapatan (pembayaran kegiatan, langganan) dan pengeluaran (penarikan)
      */
@@ -3640,7 +3674,7 @@ class PaymentController extends Controller
 
         // Base query untuk pembayaran (Semua status)
         $paymentsQuery = Payment::with(['user', 'activity']);
-            // ->where('status', 'approved'); // Removed specific status filter
+        // ->where('status', 'approved'); // Removed specific status filter
 
         if (! $user->isAdmin() && ! $user->isSuperAdmin()) {
             // Creator/owner/panitia hanya melihat pembayaran dari kegiatan yang mereka pegang
@@ -3671,7 +3705,7 @@ class PaymentController extends Controller
             $subscriptions = Subscription::with(['user', 'plan'])
                 ->where(function ($q) {
                     $q->whereNotNull('midtrans_order_id')
-                      ->orWhere('status', 'active');
+                        ->orWhere('status', 'active');
                 })
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -3679,7 +3713,7 @@ class PaymentController extends Controller
 
         // Withdrawal (pengeluaran) - Semua status
         $withdrawalsQuery = WithdrawalRequest::with(['user', 'verifier']);
-            // ->where('status', 'paid'); // Removed status filter
+        // ->where('status', 'paid'); // Removed status filter
         if ($user->isCreator()) {
             $withdrawalsQuery->where('user_id', $user->id);
         }
@@ -3718,28 +3752,28 @@ class PaymentController extends Controller
 
         foreach ($subscriptions as $s) {
             $planPrice = (float) ($s->plan->price ?? 0);
-            
+
             // Logic for Amount (Net Income): Only count if active (paid/manually granted)
             // Allow manual active subs to count as income? Assuming 0 if no payment record, or plan price if active?
             // If Midtrans ID exists, we assume real money flow if active/settled.
-            // If manual (no midtrans) but active, usually it's a grant (0 income) or offline payment. 
+            // If manual (no midtrans) but active, usually it's a grant (0 income) or offline payment.
             // We'll stick to: If Active, assume it is Income (Plan Price), unless Manual (no midtrans) -> 0?
             // Existing logic was "If !hasPaid { amount = 0 }".
             // Let's keep Amount = 0 for Manual Assignments (No Midtrans) to correspond to "System Money".
-            
+
             $hasMidtrans = ! empty($s->midtrans_order_id) || ! empty($s->midtrans_payment_token);
             $amount = $hasMidtrans ? $planPrice : 0.0;
-            
+
             // If strictly pending or cancelled/failed, amount should be 0 for Summation purposes?
-            // We handle summation by filtering 'status' later. 
+            // We handle summation by filtering 'status' later.
             // So here we set the "Potential" amount or "Real" amount?
             // Ledger usually shows the amount of the transaction.
-            
+
             $ledgerEntries->push([
                 'date' => $s->created_at,
                 'type' => 'subscription',
                 'category' => 'income',
-                'amount' => $amount, 
+                'amount' => $amount,
                 'total' => $planPrice, // Always show plan price as Total Value
                 'title' => 'Pembayaran Langganan',
                 'description' => ($s->plan->name ?? 'Paket').' (User: '.($s->user->name ?? '-').')',
@@ -3766,22 +3800,22 @@ class PaymentController extends Controller
 
         // Hitung ringkasan Umum (General) - Only Realized Transactions
         $totalIncome = $ledgerEntries->where('category', 'income')
-            ->filter(fn($e) => in_array($e['status'], ['approved', 'active', 'paid']))
+            ->filter(fn ($e) => in_array($e['status'], ['approved', 'active', 'paid']))
             ->sum('amount');
-            
+
         $totalExpense = $ledgerEntries->where('category', 'expense')
-            ->filter(fn($e) => in_array($e['status'], ['paid']))
+            ->filter(fn ($e) => in_array($e['status'], ['paid']))
             ->sum('amount');
-            
+
         $balance = $totalIncome - $totalExpense;
 
         // Hitung ringkasan Khusus (Special - Gateway/System Only)
         $specialIncome = $ledgerEntries->where('category', 'income')
             ->where('is_automatic', true)
-            ->filter(fn($e) => in_array($e['status'], ['approved', 'active', 'paid']))
+            ->filter(fn ($e) => in_array($e['status'], ['approved', 'active', 'paid']))
             ->sum('amount');
-            
-        $specialExpense = $totalExpense; 
+
+        $specialExpense = $totalExpense;
         $specialBalance = $specialIncome - $specialExpense;
 
         // Urutkan entri berdasarkan tanggal desc
@@ -3813,7 +3847,7 @@ class PaymentController extends Controller
         // Logic Duplication from financialLedger to ensure consistency
         // Base query
         $paymentsQuery = Payment::with(['user', 'activity']);
-        
+
         if (! $user->isAdmin() && ! $user->isSuperAdmin()) {
             $userProfile = $user->profile;
             $paymentsQuery->whereHas('activity', function ($aq) use ($user, $userProfile) {
@@ -3839,7 +3873,7 @@ class PaymentController extends Controller
             $subscriptions = Subscription::with(['user', 'plan'])
                 ->where(function ($q) {
                     $q->whereNotNull('midtrans_order_id')
-                      ->orWhere('status', 'active');
+                        ->orWhere('status', 'active');
                 })
                 ->orderBy('created_at', 'asc')
                 ->get();
@@ -3880,7 +3914,7 @@ class PaymentController extends Controller
             $planPrice = (float) ($s->plan->price ?? 0);
             $hasMidtrans = ! empty($s->midtrans_order_id) || ! empty($s->midtrans_payment_token);
             $amount = $hasMidtrans ? $planPrice : 0.0;
-            
+
             $ledgerEntries->push([
                 'date' => $s->created_at,
                 'type' => 'subscription',
@@ -3908,22 +3942,22 @@ class PaymentController extends Controller
 
         // Apply View Type Filter if passed (optional, default to general)
         $viewType = $request->input('view_type', 'general');
-        
+
         if ($viewType === 'special') {
-           $ledgerEntries = $ledgerEntries->filter(function($entry) {
-               return $entry['is_automatic'] === true || $entry['type'] === 'withdrawal';
-           });
+            $ledgerEntries = $ledgerEntries->filter(function ($entry) {
+                return $entry['is_automatic'] === true || $entry['type'] === 'withdrawal';
+            });
         }
 
         // Summary Calculation
         $totalIncome = $ledgerEntries->where('category', 'income')
-            ->filter(fn($e) => in_array($e['status'], ['approved', 'active', 'paid']))
+            ->filter(fn ($e) => in_array($e['status'], ['approved', 'active', 'paid']))
             ->sum('amount');
-            
+
         $totalExpense = $ledgerEntries->where('category', 'expense')
-            ->filter(fn($e) => in_array($e['status'], ['paid']))
+            ->filter(fn ($e) => in_array($e['status'], ['paid']))
             ->sum('amount');
-            
+
         $balance = $totalIncome - $totalExpense;
 
         // Generate PDF
@@ -3982,14 +4016,16 @@ class PaymentController extends Controller
 
         foreach ($paymentsByActivity as $activityId => $activityPayments) {
             $activity = $activityPayments->first()->activity;
-            if (!$activity) continue;
+            if (! $activity) {
+                continue;
+            }
 
             // Hitung total pendapatan untuk kegiatan ini
             $totalActivityIncome = 0; // Net income (after admin fee)
             $totalActivityIncomeManual = 0;
             $totalActivityIncomeGateway = 0;
             $totalGrossIncome = 0; // Gross income (before admin fee)
-            
+
             // Ambil ID Panitia untuk pengecualian
             $committeeUserIds = DB::table('activity_committee_structures')
                 ->where('activity_id', $activityId)
@@ -4013,7 +4049,7 @@ class PaymentController extends Controller
                     $totalActivityIncomeManual += $netAmount;
                 }
                 $totalGrossIncome += $amount; // Total before admin fee
-                
+
                 $paymentMap[$p->user_id] = [
                     'net_amount' => $netAmount,
                     'gross_amount' => $amount,
@@ -4034,7 +4070,7 @@ class PaymentController extends Controller
 
             foreach ($activityUsers as $au) {
                 $pData = $paymentMap[$au->user_id] ?? null;
-                
+
                 // Jika tidak ada data pembayaran TAPI user statusnya AKTIF (1),
                 // Asumsikan ini adalah pembayaran MANUAL (Lunas)
                 // Kecuali jika harga 0 (gratis)
@@ -4061,7 +4097,7 @@ class PaymentController extends Controller
                     'email' => $au->user->email ?? '-',
                     'amount' => $pData ? $pData['net_amount'] : 0,
                     'gross_amount' => $pData ? $pData['gross_amount'] : 0,
-                    'status' => $pData ? $pData['status'] : ($au->status == 1 ? 'Lunas' : 'Belum Lunas'), 
+                    'status' => $pData ? $pData['status'] : ($au->status == 1 ? 'Lunas' : 'Belum Lunas'),
                     'is_automatic' => $pData ? $pData['is_automatic'] : false,
                 ];
             }
@@ -4069,25 +4105,25 @@ class PaymentController extends Controller
             $participantCount = count($participants);
             $calculatedTotal = $activityPrice * $participantCount; // Harga Kegiatan × Jumlah Peserta (Bukan Panitia)
 
-        // Tambahkan satu entri per kegiatan (bukan per pembayaran)
-        $entries->push([
-            'date' => $activityPayments->first()->created_at->format('Y-m-d H:i:s'),
-            'type' => 'payment',
-            'category' => 'income',
-            'amount' => $totalActivityIncome,
-            'amount_manual' => $totalActivityIncomeManual,
-            'amount_gateway' => $totalActivityIncomeGateway,
-            'title' => 'Pembayaran Kegiatan',
-            'description' => $activity->name . ' (' . $participantCount . ' peserta)',
-            'status' => 'approved',
-            'activity_id' => $activityId,
-            'activity_name' => $activity->name,
-            'activity_code' => $activity->code,
-            'total_income' => $calculatedTotal, // Harga Kegiatan × Jumlah Peserta
-            'average_price' => $activityPrice,
-            'participant_count' => $participantCount,
-            'participants' => $participants,
-        ]);
+            // Tambahkan satu entri per kegiatan (bukan per pembayaran)
+            $entries->push([
+                'date' => $activityPayments->first()->created_at->format('Y-m-d H:i:s'),
+                'type' => 'payment',
+                'category' => 'income',
+                'amount' => $totalActivityIncome,
+                'amount_manual' => $totalActivityIncomeManual,
+                'amount_gateway' => $totalActivityIncomeGateway,
+                'title' => 'Pembayaran Kegiatan',
+                'description' => $activity->name.' ('.$participantCount.' peserta)',
+                'status' => 'approved',
+                'activity_id' => $activityId,
+                'activity_name' => $activity->name,
+                'activity_code' => $activity->code,
+                'total_income' => $calculatedTotal, // Harga Kegiatan × Jumlah Peserta
+                'average_price' => $activityPrice,
+                'participant_count' => $participantCount,
+                'participants' => $participants,
+            ]);
         }
 
         foreach ($withdrawals as $w) {
@@ -4111,7 +4147,7 @@ class PaymentController extends Controller
         $totalIncomeManual = $entries->where('category', 'income')->sum('amount_manual');
         $totalIncomeGateway = $entries->where('category', 'income')->sum('amount_gateway');
         $totalExpense = $entries->where('category', 'expense')->where('status', 'paid')->sum('amount');
-        
+
         // Balance available for withdrawal (Only Gateway Income - Expenses)
         $balance = $totalIncomeGateway - $totalExpense;
 
@@ -4119,7 +4155,7 @@ class PaymentController extends Controller
         // Kita urutkan dulu dari yang terlama (ASC) untuk menghitung saldo kumulatif
         $sortedEntries = $entries->sortBy('date')->values();
         $runningBalance = 0;
-        
+
         // Transformasi entries untuk menambahkan running_balance
         $entriesWithBalance = $sortedEntries->map(function ($entry) use (&$runningBalance) {
             // Logika saldo:
@@ -4130,12 +4166,12 @@ class PaymentController extends Controller
             // Jika kita hanya pakai Gateway, maka transaksi Manual akan punya Debit tapi Saldo tidak naik. Ini aneh di tabel.
             // Jadi untuk Tabel Neraca, kita gunakan "Total Balance" (Semua Income - Semua Expense).
             // Tapi kita harus ingat bahwa saldo ini mungkin berbeda dengan "Saldo Bisa Ditarik".
-            
+
             // Opsi: Kita gunakan logic "Saldo Bisa Ditarik" agar konsisten dengan card di atas.
             // Artinya: Manual Income TIDAK menambah saldo di tabel ini.
             // Tapi nanti kolom Debit ada angka, saldo tetap. User mungkin bingung.
             // Solusi: Kita hitung saldo total (Manual + Gateway).
-            
+
             if ($entry['category'] === 'income') {
                 $runningBalance += $entry['amount']; // Total Income (Manual + Gateway)
             } elseif ($entry['category'] === 'expense') {
@@ -4143,12 +4179,13 @@ class PaymentController extends Controller
                 // Atau saat request dibuat? Dalam akuntansi, saat uang keluar.
                 // Jika status pending, uang belum keluar dari saldo riil, tapi sudah "dicadangkan" atau "hutang".
                 // Untuk simplifikasi tampilan, kita kurangi jika status bukan 'rejected'/'cancelled'.
-                if (!in_array($entry['status'], ['rejected', 'cancelled', 'failed'])) {
-                     $runningBalance -= $entry['amount'];
+                if (! in_array($entry['status'], ['rejected', 'cancelled', 'failed'])) {
+                    $runningBalance -= $entry['amount'];
                 }
             }
-            
+
             $entry['running_balance'] = $runningBalance;
+
             return $entry;
         });
 
@@ -4163,7 +4200,7 @@ class PaymentController extends Controller
                 'income_gateway' => $totalIncomeGateway,
                 'expense' => $totalExpense,
                 'balance' => $balance,
-            ]
+            ],
         ];
     }
 
@@ -4191,7 +4228,7 @@ class PaymentController extends Controller
         }
 
         $data = $this->getCreatorFinanceData($user);
-        
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.ledger', [
             'entries' => $data['entries'],
             'summary' => $data['summary'],
@@ -4669,6 +4706,7 @@ class PaymentController extends Controller
     public function destroy(Payment $payment)
     {
         $payment->delete();
+
         return redirect()->back()->with('success', 'Pembayaran berhasil dihapus.');
     }
 

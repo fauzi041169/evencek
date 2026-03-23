@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         // Check if table exists
-        if (!Schema::hasTable('activity_chats')) {
+        if (! Schema::hasTable('activity_chats')) {
             return; // Table doesn't exist, skip this migration
         }
 

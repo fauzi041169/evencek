@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -20,7 +19,7 @@ return new class extends Migration
             } catch (\Exception $e) {
                 // Index likely exists
             }
-            
+
             // Index for creator dashboard charts
             try {
                 $table->index(['user_id', 'created_at'], 'activities_user_id_created_at_index');
@@ -45,7 +44,7 @@ return new class extends Migration
         foreach ($auTables as $tableName) {
             if (Schema::hasTable($tableName)) {
                 Schema::table($tableName, function (Blueprint $table) use ($tableName) {
-                    $indexName = $tableName . '_user_id_created_at_index';
+                    $indexName = $tableName.'_user_id_created_at_index';
                     try {
                         $table->index(['user_id', 'created_at'], $indexName);
                     } catch (\Exception $e) {
@@ -64,18 +63,21 @@ return new class extends Migration
         Schema::table('activities', function (Blueprint $table) {
             try {
                 $table->dropIndex('activities_created_at_index');
-            } catch (\Exception $e) {}
-            
+            } catch (\Exception $e) {
+            }
+
             try {
                 $table->dropIndex('activities_user_id_created_at_index');
-            } catch (\Exception $e) {}
+            } catch (\Exception $e) {
+            }
         });
 
         if (Schema::hasTable('news')) {
             Schema::table('news', function (Blueprint $table) {
                 try {
                     $table->dropIndex('news_created_at_index');
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
             });
         }
 
@@ -83,10 +85,11 @@ return new class extends Migration
         foreach ($auTables as $tableName) {
             if (Schema::hasTable($tableName)) {
                 Schema::table($tableName, function (Blueprint $table) use ($tableName) {
-                    $indexName = $tableName . '_user_id_created_at_index';
+                    $indexName = $tableName.'_user_id_created_at_index';
                     try {
                         $table->dropIndex($indexName);
-                    } catch (\Exception $e) {}
+                    } catch (\Exception $e) {
+                    }
                 });
             }
         }

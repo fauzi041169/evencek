@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\HasCustomUid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\HasCustomUid;
 
 class EventActivity extends Model
 {
-    use HasFactory, HasCustomUid;
+    use HasCustomUid, HasFactory;
 
     protected $fillable = [
         'activity_id',
