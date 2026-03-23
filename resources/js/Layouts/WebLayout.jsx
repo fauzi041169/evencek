@@ -138,7 +138,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     --color-navbar-cap-end: ${settings.colors?.color_navbar_cap_end || '#111827'};
                     --color-navbar-start: ${settings.colors?.color_navbar_start || '#4973ec'};
                     --color-navbar-end: ${settings.colors?.color_navbar_end || '#6600ff'};
-                    --color-navbar-link-text: ${settings.colors?.color_navbar_link_text || '#330000'};
+                    --color-navbar-link-text: ${settings.colors?.color_navbar_link_text || '#f8fafc'};
                     --color-navbar-link-hover-bg: ${settings.colors?.color_navbar_link_hover_bg || '#db0a99'};
                     --color-navbar-link-active-card: ${settings.colors?.color_navbar_link_active_card || '#fa9200'};
                     --color-navbar-link-active-border: ${settings.colors?.color_navbar_link_active_border || '#ffcf66'};
@@ -266,38 +266,48 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                 </Link>
                             </div>
 
-                            <nav className="hidden md:flex seg-nav">
+                            <nav className="hidden md:flex items-center gap-2">
                                 {[
                                     { name: t('nav.home'), href: '/', icon: 'fa-home' },
                                     { name: t('nav.about'), href: '/about', icon: 'fa-info-circle' },
                                     { name: t('nav.news'), href: '/news', icon: 'fa-newspaper' },
                                     { name: t('nav.activities'), href: '/activity', icon: 'fa-calendar-alt' },
-                                    ...(settings.subscription_service_enabled ? [{ name: 'Langganan', href: '/subscriptions/pricing', icon: 'fa-crown' }] : [])
-                                ].map((link, idx) => {
+                                    ...(settings.subscription_service_enabled ? [{ name: 'Langganan', href: '/subscriptions/pricing', icon: 'fa-crown' }] : []),
+                                ].map((link) => {
                                     const isActive = url === link.href || (link.href !== '/' && url.startsWith(link.href));
                                     const c = settings.colors || {};
-                                    const navStart = c['color_navbar_start'] || '#4973ec';
-                                    const navEnd = c['color_navbar_end'] || '#6600ff';
                                     const linkText = c['color_navbar_brand_text'] || c['color_navbar_link_text'] || '#ffffff';
-                                    const linkHover = c['color_navbar_link_hover_bg'] || '#db0a99';
                                     const linkActiveCard = c['color_navbar_link_active_card'] || '#fa9200';
                                     const linkActiveBorder = c['color_navbar_link_active_border'] || '#ffcf66';
-                                    const bgStyle = {
-                                        '--seg-bg': `linear-gradient(to right, ${navStart}, ${navEnd})`,
-                                        '--seg-bg-hover': gradientFrom(linkHover),
-                                        '--seg-bg-active': gradientFrom(linkActiveCard),
-                                        '--seg-text': linkText,
-                                        '--seg-border': 'transparent',
-                                        '--seg-active-border': linkActiveBorder
-                                    };
+                                    const isTransparent = transparentNavbar && !scrolled;
+                                    const baseTextClass = isTransparent ? 'text-white/90 hover:text-white' : 'text-navbar-link-text';
+                                    const hoverClass = isTransparent ? 'hover:bg-white/10' : 'hover:bg-white/5';
+                                    const bgStyle = isActive
+                                        ? {
+                                            background: gradientFrom(linkActiveCard),
+                                            borderColor: linkActiveBorder,
+                                            color: linkText,
+                                        }
+                                        : {
+                                            borderColor: isTransparent ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.10)',
+                                        };
+
                                     return (
                                         <Link
-                                            key={link.name}
+                                            key={link.href}
                                             href={link.href}
-                                            className={`seg-tab ${isActive ? 'active' : ''}`}
+                                            className={[
+                                                'group inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 border',
+                                                baseTextClass,
+                                                !isActive ? hoverClass : '',
+                                                isActive ? 'shadow-sm' : '',
+                                            ].join(' ')}
                                             style={bgStyle}
                                         >
-                                            <span>{link.name}</span>
+                                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/10 border border-white/10">
+                                                <i className={`fas ${link.icon}`}></i>
+                                            </span>
+                                            <span className="tracking-tight">{link.name}</span>
                                         </Link>
                                     );
                                 })}

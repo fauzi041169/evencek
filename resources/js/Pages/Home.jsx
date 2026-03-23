@@ -497,18 +497,40 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                             <div id="heroContent" className="relative z-10">
                                 {currentSlide % 3 === 1 ? (
                                     <>
-                                        <h1 className={`text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-6 ${heroTitleFont}`}>
-                                            {heroTitle}
+                                        <div className="flex flex-wrap items-center gap-2 mb-6">
+                                            <span
+                                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md"
+                                            >
+                                                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                                {t('home.trusted')}
+                                            </span>
+                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md">
+                                                <i className="fas fa-shield-alt text-blue-300"></i>
+                                                {t('home.secure_data')}
+                                            </span>
+                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md">
+                                                <i className="fas fa-bolt text-amber-300"></i>
+                                                {t('home.real_time')}
+                                            </span>
+                                        </div>
+                                        <h1 className={`text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight mb-6 ${heroTitleFont}`}>
+                                            <span className="text-white">{heroTitle}</span>
                                         </h1>
                                         <p className={`text-lg sm:text-xl md:text-2xl text-white/90 mb-8 leading-relaxed max-w-2xl ${currentStyle.descMargin} ${heroDescFont}`}>
                                             {heroDesc}
                                         </p>
-                                        <div className={`flex gap-4 ${currentStyle.cta}`}>
-                                            <Link href={heroLink} className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-lg bg-white text-slate-900 font-semibold text-base sm:text-lg shadow-sm hover:shadow-md transition-all">
+                                        <div className={`flex flex-wrap gap-4 ${currentStyle.cta}`}>
+                                            <Link
+                                                href={heroLink}
+                                                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-white text-slate-900 font-semibold text-base sm:text-lg shadow-sm hover:shadow-md transition-all"
+                                            >
                                                 <i className="fas fa-rocket"></i>
                                                 {heroLinkText}
                                             </Link>
-                                            <a href="#video" className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-lg border border-white/30 text-white font-semibold text-base sm:text-lg hover:bg-white/10 transition-all">
+                                            <a
+                                                href="#fitur"
+                                                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl border border-white/20 bg-white/5 text-white font-semibold text-base sm:text-lg hover:bg-white/10 transition-all backdrop-blur-md"
+                                            >
                                                 <i className="fas fa-play-circle"></i>
                                                 {t('home.explore_features')}
                                             </a>
@@ -570,21 +592,40 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                     </>
                                 ) : (
                                     <>
-                                        <h1 className={`relative text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-8 ${heroTitleFont}`}>
-                                            {heroTitle}
+                                        <div className="relative mb-6 flex flex-wrap justify-center items-center gap-2">
+                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md">
+                                                <span
+                                                    className="w-2.5 h-2.5 rounded-full"
+                                                    style={{
+                                                        background: `linear-gradient(135deg, ${appSettings?.colors?.primary || '#7c3aed'}, ${appSettings?.colors?.secondary || '#db2777'})`,
+                                                    }}
+                                                ></span>
+                                                {t('nav.home')}
+                                            </span>
+                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md">
+                                                <i className="fas fa-calendar-check text-white/80"></i>
+                                                {t('activities.latest_activities')}
+                                            </span>
+                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md">
+                                                <i className="fas fa-newspaper text-white/80"></i>
+                                                {t('nav.news')}
+                                            </span>
+                                        </div>
+                                        <h1 className={`relative text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight mb-8 ${heroTitleFont}`}>
+                                            <span className="text-white">{heroTitle}</span>
                                         </h1>
                                         <p className={`relative text-lg sm:text-xl md:text-2xl text-white/90 mb-10 leading-relaxed max-w-3xl ${currentStyle.descMargin} ${heroDescFont}`}>
                                             {heroDesc}
                                         </p>
                                         <div className={`relative flex flex-wrap gap-5 ${currentStyle.cta}`}>
                                             <Link href={heroLink}
-                                                className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-lg bg-white text-slate-900 font-semibold text-lg shadow-sm hover:shadow-md transition-all"
+                                                className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-white text-slate-900 font-semibold text-lg shadow-sm hover:shadow-md transition-all"
                                             >
                                                 <i className="fas fa-rocket text-indigo-600"></i>
                                                 {heroLinkText}
                                             </Link>
                                             <a href="#fitur"
-                                                className="group inline-flex items-center gap-3 px-8 py-4 rounded-lg border border-white/30 bg-white/5 text-white backdrop-blur-md hover:bg-white/10 font-semibold text-lg transition-all"
+                                                className="group inline-flex items-center gap-3 px-8 py-4 rounded-xl border border-white/20 bg-white/5 text-white backdrop-blur-md hover:bg-white/10 font-semibold text-lg transition-all"
                                             >
                                                 <i className="fas fa-layer-group"></i>
                                                 {t('home.explore_features')}
