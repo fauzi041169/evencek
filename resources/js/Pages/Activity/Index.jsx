@@ -326,7 +326,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                         </div>
                     )}
 
-                    <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-6">
+                    <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-32 pb-12">
                         {sliderActivities && sliderActivities.length > 0 ? (
                             <div className="relative">
                                 {/* Slider Content */}
@@ -353,7 +353,6 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
                                                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                                                     </span>
-                                                                    SEDANG BERLANGSUNG
                                                                     {t('activities.ongoing')}
                                                                 </span>
                                                             )}
