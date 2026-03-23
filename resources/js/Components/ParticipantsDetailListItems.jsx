@@ -33,7 +33,7 @@ export default function ParticipantsDetailListItems({
             case STATUS_REJECTED:
                 return { text: 'Ditolak', class: 'bg-red-100 text-red-800 border-red-200' };
             default:
-                return { text: '-', class: 'bg-gray-100 text-gray-800 border-gray-200' };
+                return { text: 'Menunggu Pembayaran', class: 'bg-sky-100 text-sky-800 border-sky-200' };
         }
     };
 

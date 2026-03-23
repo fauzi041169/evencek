@@ -513,7 +513,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                                 {t('home.real_time')}
                                             </span>
                                         </div>
-                                        <h1 className={`text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight mb-6 ${heroTitleFont}`}>
+                                        <h1 className={`text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight mb-6 ${heroTitleFont}`}>
                                             <span className="text-white">{heroTitle}</span>
                                         </h1>
                                         <p className={`text-lg sm:text-xl md:text-2xl text-white/90 mb-8 leading-relaxed max-w-2xl ${currentStyle.descMargin} ${heroDescFont}`}>
@@ -546,7 +546,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                                         <i className="fas fa-star mr-2" style={{ color: appSettings?.colors?.secondary || '#3b82f6' }}></i>
                                                         <span className="font-semibold">{t('home.featured')}</span>
                                                     </div>
-                                                    <h1 className={`text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-5 ${heroTitleFont}`}>{heroTitle}</h1>
+                                                    <h1 className={`text-5xl sm:text-6xl md:text-7xl font-bold text-white tracking-tight mb-5 ${heroTitleFont}`}>{heroTitle}</h1>
                                                     <p className={`text-lg sm:text-xl md:text-2xl text-white/90 leading-relaxed mb-8 max-w-2xl ${heroDescFont}`}>{heroDesc}</p>
                                                     <div className="flex flex-wrap gap-4 justify-start">
                                                         <Link href={heroLink} className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-slate-900 font-semibold shadow-sm hover:shadow-md transition-all">
@@ -611,7 +611,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                                                 {t('nav.news')}
                                             </span>
                                         </div>
-                                        <h1 className={`relative text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight mb-8 ${heroTitleFont}`}>
+                                        <h1 className={`relative text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight mb-8 ${heroTitleFont}`}>
                                             <span className="text-white">{heroTitle}</span>
                                         </h1>
                                         <p className={`relative text-lg sm:text-xl md:text-2xl text-white/90 mb-10 leading-relaxed max-w-3xl ${currentStyle.descMargin} ${heroDescFont}`}>

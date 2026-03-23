@@ -1360,11 +1360,11 @@ export default function Detail({
 
                         {/* Participants List */}
                         {isVisible('detail_participants') && (
-                            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 flex flex-col h-[500px] overflow-hidden transition-all duration-300 hover:shadow-2xl">
+                            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 flex flex-col overflow-hidden transition-all duration-300 hover:shadow-2xl">
                                 <div className="px-3 py-3 sm:px-6 sm:py-4 border-b flex items-center justify-between bg-indigo-600 border-indigo-700">
                                     <h5 className="m-0 font-bold text-white">{t('activities.participants_list')}</h5>
                                 </div>
-                                <div className="px-3 py-3 sm:px-6 sm:py-5 flex-1 flex flex-col min-h-0">
+                                <div className="px-3 py-3 sm:px-6 sm:py-5 flex flex-col">
                                     <div className="mb-4 flex flex-col sm:flex-row gap-3">
                                         <div className="relative flex-1 group">
                                             <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
@@ -1393,30 +1393,55 @@ export default function Detail({
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                                    <div className="overflow-y-auto pr-1 max-h-[60vh]">
                                         {filteredParticipants && filteredParticipants.length > 0 ? (
                                             <ul className="space-y-3">
-                                                {filteredParticipants.map((participant, index) => (
-                                                    <li key={participant.id || index} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                                                        <div className="flex-shrink-0">
-                                                            <img
-                                                                src={participant.profile_photo_url || DEFAULT_PROFILE_IMAGE}
-                                                                alt={participant.name}
-                                                                className="w-10 h-10 rounded-full object-cover"
-                                                                loading="lazy"
-                                                                onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
-                                                            />
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="text-sm font-medium text-gray-900 truncate">
-                                                                {participant.name || 'Peserta'}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500 truncate">
-                                                                {participant.pivot?.created_at ? new Date(participant.pivot.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (participant.created_at ? new Date(participant.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '')}
-                                                            </p>
-                                                        </div>
-                                                    </li>
-                                                ))}
+                                                {filteredParticipants.map((participant, index) => {
+                                                    const isFreeActivity = parseInt(activity?.price || 0, 10) === 0;
+                                                    let status = parseInt(participant?.pivot?.status ?? -1, 10);
+                                                    let statusText = '-';
+                                                    let statusClass = 'text-gray-500';
+
+                                                    if (isFreeActivity && status === 0) {
+                                                        status = 1;
+                                                    }
+
+                                                    if (status === 1) {
+                                                        statusText = t('activities.active');
+                                                        statusClass = 'text-emerald-700 font-semibold';
+                                                    } else if (status === 0) {
+                                                        statusText = t('activities.menunggu_verifikasi');
+                                                        statusClass = 'text-amber-700 font-semibold';
+                                                    } else if (status === 2) {
+                                                        statusText = t('activities.rejected');
+                                                        statusClass = 'text-red-700 font-semibold';
+                                                    } else {
+                                                        statusText = t('activities.menunggu_pembayaran');
+                                                        statusClass = 'text-sky-700 font-semibold';
+                                                    }
+
+                                                    return (
+                                                        <li key={participant.id || index} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                                                            <div className="flex-shrink-0">
+                                                                <img
+                                                                    src={participant.profile_photo_url || DEFAULT_PROFILE_IMAGE}
+                                                                    alt={participant.name}
+                                                                    className="w-10 h-10 rounded-full object-cover"
+                                                                    loading="lazy"
+                                                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_PROFILE_IMAGE; }}
+                                                                />
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-sm font-medium text-gray-900 truncate">
+                                                                    {participant.name || 'Peserta'}
+                                                                </p>
+                                                                <p className={`text-xs truncate ${statusClass}`}>
+                                                                    {statusText}
+                                                                </p>
+                                                            </div>
+                                                        </li>
+                                                    );
+                                                })}
                                             </ul>
                                         ) : (
                                             <div className="text-center py-8 text-gray-500">

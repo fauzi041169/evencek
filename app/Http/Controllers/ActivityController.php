@@ -4537,7 +4537,7 @@ class ActivityController extends Controller
 
         $requiredProfileLabels = array_unique($requiredProfileLabels);
 
-        $provinces = Province::orderBy('name')->get();
+        $provinces = Province::orderBy('name')->get(['id', 'name']);
 
         // Prepare Contact Persons (Narahubung)
         $contactPersons = $activity->committeeStructures->map(function ($committee) {

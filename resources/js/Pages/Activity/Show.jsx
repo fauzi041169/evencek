@@ -1280,9 +1280,16 @@ export default function Show({
                                                     const fotoUrl = (participant.profile?.foto_url && participant.profile.foto_url !== 'undefined')
                                                         ? participant.profile.foto_url
                                                         : '/assets/images/profilefoto/default-profile.png';
-                                                    const status = parseInt(participant.pivot?.status || -1);
-                                                    let statusText = '-';
-                                                    let statusClass = 'bg-gray-100 text-gray-600';
+                                                    const isFreeActivity = parseInt(activity?.price || 0, 10) === 0;
+                                                    let status = parseInt(participant?.pivot?.status ?? -1, 10);
+                                                    if (Number.isNaN(status)) status = -1;
+
+                                                    if (isFreeActivity && status === 0) {
+                                                        status = 1;
+                                                    }
+
+                                                    let statusText = t('activities.menunggu_pembayaran');
+                                                    let statusClass = 'bg-sky-100 text-sky-700 border-sky-200';
 
                                                     if (status === 1) { // ACTIVE
                                                         statusText = t('activities.active');
