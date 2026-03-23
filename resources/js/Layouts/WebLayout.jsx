@@ -8,7 +8,7 @@ import Modal from '../Components/Modal';
 import FloatingAI from '../Components/FloatingAI';
 
 
-export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = true, noPadding = false, fluid = false }) {
+export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = false, noPadding = false, fluid = false }) {
     const { props, url } = usePage();
     const { t: tOrig, i18n } = useTranslation();
     const t = tOrig || ((key) => key); // Fallback to avoid crash
@@ -595,7 +595,13 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
             </nav>
 
             {/* Children Content */}
-            <main className={`${(hasHeaderSpacer || transparentNavbar) ? 'pt-32 sm:pt-40 lg:pt-48' : 'pt-0'} ${noPadding ? 'p-0' : 'p-3 sm:p-6 lg:p-8'} ${fluid ? 'max-w-none' : 'max-w-7xl mx-auto'}`}>
+            <main
+                className={[
+                    noPadding ? 'p-0' : 'p-3 sm:p-6 lg:p-8',
+                    fluid ? 'max-w-none' : 'max-w-7xl mx-auto',
+                    hasHeaderSpacer ? 'pt-24 sm:pt-28 lg:pt-32' : 'pt-0',
+                ].join(' ')}
+            >
                 {children}
             </main>
 

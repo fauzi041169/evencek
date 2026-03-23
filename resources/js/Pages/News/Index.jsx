@@ -151,7 +151,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
     };
 
     return (
-        <WebLayout hasHeaderSpacer={false} fluid={true} noPadding={true}>
+        <WebLayout hasHeaderSpacer={false} transparentNavbar={true} fluid={true} noPadding={true}>
             <Head title="Berita & Artikel" />
             <style>{`
                 .reveal{opacity:0;transform:translateY(16px) scale(.98);transition:opacity .6s ease,transform .6s ease}

@@ -26,7 +26,7 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
     const currentCsrfToken = getCsrfToken();
 
     return (
-        <WebLayout hasHeaderSpacer={false} fluid={true} noPadding={true}>
+        <WebLayout hasHeaderSpacer={false} transparentNavbar={true} fluid={true} noPadding={true}>
             <Head>
                 <title>Paket Berlangganan</title>
             </Head>
@@ -355,4 +355,3 @@ export default function Subscription({ plans, activePlanIds, heroAnim, midtransS
         </WebLayout>
     );
 }
-

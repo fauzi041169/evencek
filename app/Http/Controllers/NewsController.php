@@ -343,7 +343,36 @@ class NewsController extends Controller
                     ->value('rating');
             }
 
-            return Inertia::render('News/Show', compact('news', 'averageRating', 'ratingCounts', 'totalRatings', 'userRating'));
+            $relatedNews = News::query()
+                ->with('category')
+                ->where(function ($query) {
+                    $query->whereNotNull('published_at')
+                        ->where('published_at', '<=', now())
+                        ->orWhereNull('published_at');
+                })
+                ->where('id', '!=', $news->id)
+                ->when($news->category_id, function ($query) use ($news) {
+                    $query->where('category_id', $news->category_id);
+                })
+                ->orderByDesc('published_at')
+                ->orderByDesc('created_at')
+                ->limit(6)
+                ->get();
+
+            $latestNews = News::query()
+                ->with('category')
+                ->where(function ($query) {
+                    $query->whereNotNull('published_at')
+                        ->where('published_at', '<=', now())
+                        ->orWhereNull('published_at');
+                })
+                ->where('id', '!=', $news->id)
+                ->orderByDesc('published_at')
+                ->orderByDesc('created_at')
+                ->limit(6)
+                ->get();
+
+            return Inertia::render('News/Show', compact('news', 'averageRating', 'ratingCounts', 'totalRatings', 'userRating', 'relatedNews', 'latestNews'));
         } catch (\Exception $e) {
             return redirect()->route('news.list')
                 ->with('error', 'Berita tidak ditemukan');

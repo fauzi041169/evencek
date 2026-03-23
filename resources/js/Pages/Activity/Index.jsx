@@ -184,7 +184,7 @@ export default function Index({ latestActivities, sliderActivities, enrolledActi
     };
 
     return (
-        <WebLayout hasHeaderSpacer={false} fluid={true} noPadding={true}>
+        <WebLayout hasHeaderSpacer={false} transparentNavbar={true} fluid={true} noPadding={true}>
             <Head title={t('activities.title')} />
 
 

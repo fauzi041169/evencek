@@ -36,6 +36,10 @@ createInertiaApp({
         router.on('error', (event) => {
             const status = event.detail.page?.status ?? event.detail.response?.status;
             const response = event.detail?.response;
+            const validationErrors = event.detail?.errors;
+            if (status === 422 || (validationErrors && Object.keys(validationErrors).length > 0)) {
+                return;
+            }
             if (status === 419) {
                 window.location.reload();
                 return;

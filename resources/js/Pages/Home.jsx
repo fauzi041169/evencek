@@ -298,7 +298,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     };
 
     return (
-        <WebLayout hasHeaderSpacer={false} fluid={true} noPadding={true}>
+        <WebLayout hasHeaderSpacer={false} transparentNavbar={true} fluid={true} noPadding={true}>
             <Head title="Home" />
 
             <style dangerouslySetInnerHTML={{

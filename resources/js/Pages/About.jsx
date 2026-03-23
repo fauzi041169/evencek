@@ -55,7 +55,7 @@ export default function About() {
     }, []);
 
     return (
-        <WebLayout hasHeaderSpacer={false} fluid={true} noPadding={true}>
+        <WebLayout hasHeaderSpacer={false} transparentNavbar={true} fluid={true} noPadding={true}>
             <Head title={`${t('nav.about')} - ${t('about.hero_badge')}`} />
             <style dangerouslySetInnerHTML={{
                 __html: `
