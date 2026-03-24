@@ -211,16 +211,30 @@ class DashboardController extends Controller
         }
 
         // Distribusi jenis kelamin
+        $genderKeySql = "CASE
+            WHEN profiles.jenis_kelamin IS NULL OR TRIM(profiles.jenis_kelamin) = '' OR TRIM(profiles.jenis_kelamin) = '-' THEN 'Tidak Disebutkan'
+            WHEN LOWER(REPLACE(REPLACE(TRIM(profiles.jenis_kelamin), ' ', ''), '-', '')) IN ('l','lakilaki','pria','male','m') THEN 'L'
+            WHEN LOWER(REPLACE(REPLACE(TRIM(profiles.jenis_kelamin), ' ', ''), '-', '')) IN ('p','perempuan','wanita','female','f') THEN 'P'
+            ELSE 'Tidak Disebutkan'
+        END";
+
         $genderStats = DB::table($tableName)
             ->join('profiles', 'profiles.user_id', '=', $tableName.'.user_id')
-            ->select('profiles.jenis_kelamin', DB::raw('COUNT(*) as total'))
+            ->selectRaw("$genderKeySql as gender_key, COUNT(*) as total")
             ->where($tableName.'.activity_id', $activityId)
-            ->whereNotNull('profiles.jenis_kelamin')
-            ->groupBy('profiles.jenis_kelamin')
+            ->groupBy('gender_key')
             ->get();
 
-        $genderLabels = $genderStats->pluck('jenis_kelamin')->toArray();
-        $genderData = $genderStats->pluck('total')->toArray();
+        $genderCounts = $genderStats->pluck('total', 'gender_key')->toArray();
+        $genderLabels = [];
+        $genderData = [];
+        foreach (['L', 'P', 'Tidak Disebutkan'] as $key) {
+            $count = (int) ($genderCounts[$key] ?? 0);
+            if ($count > 0) {
+                $genderLabels[] = $key;
+                $genderData[] = $count;
+            }
+        }
 
         // Status peserta
         $statusPesertaData = [

@@ -874,33 +874,33 @@ class DashboardController extends Controller
         });
 
         // Gender chart data - Cached and Optimized
-        $profileStatsKey = 'dashboard_profile_stats_'.md5(json_encode([
+        $profileStatsKey = 'dashboard_profile_stats_v2_'.md5(json_encode([
             'act' => $selectedActivity,
             'prov' => $selectedProvince,
         ]));
 
         $profileStats = Cache::remember($profileStatsKey, 3600, function () use ($userQuery) {
-            $genderQuery = Profile::select('jenis_kelamin', DB::raw('COUNT(profiles.id) as total'))
-                ->whereNotNull('jenis_kelamin')
-                ->where('jenis_kelamin', '!=', '')
-                ->groupBy('jenis_kelamin')
-                ->orderBy('jenis_kelamin');
+            $genderKeySql = "CASE
+                WHEN profiles.jenis_kelamin IS NULL OR TRIM(profiles.jenis_kelamin) = '' OR TRIM(profiles.jenis_kelamin) = '-' THEN 'Tidak Disebutkan'
+                WHEN LOWER(REPLACE(REPLACE(TRIM(profiles.jenis_kelamin), ' ', ''), '-', '')) IN ('l','lakilaki','pria','male','m') THEN 'L'
+                WHEN LOWER(REPLACE(REPLACE(TRIM(profiles.jenis_kelamin), ' ', ''), '-', '')) IN ('p','perempuan','wanita','female','f') THEN 'P'
+                ELSE 'Tidak Disebutkan'
+            END";
 
-            // Optimize: Use subquery instead of pluck('id')
-            $genderQuery->whereIn('user_id', $userQuery->clone()->select('id'));
+            $genderStats = Profile::selectRaw("$genderKeySql as gender_key, COUNT(profiles.id) as total")
+                ->whereIn('user_id', $userQuery->clone()->select('id'))
+                ->groupBy('gender_key')
+                ->get();
 
-            $genderStats = $genderQuery->get();
-
-            $genderLabels = $genderStats->pluck('jenis_kelamin')->toArray();
-            $genderData = $genderStats->pluck('total')->toArray();
-
-            $unspecifiedCount = $userQuery->clone()->whereHas('profile', function ($q) {
-                $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '');
-            })->count();
-
-            if ($unspecifiedCount > 0) {
-                $genderLabels[] = 'Tidak Disebutkan';
-                $genderData[] = $unspecifiedCount;
+            $genderCounts = $genderStats->pluck('total', 'gender_key')->toArray();
+            $genderLabels = [];
+            $genderData = [];
+            foreach (['L', 'P', 'Tidak Disebutkan'] as $key) {
+                $count = (int) ($genderCounts[$key] ?? 0);
+                if ($count > 0) {
+                    $genderLabels[] = $key;
+                    $genderData[] = $count;
+                }
             }
 
             // Top provinces chart - Optimized

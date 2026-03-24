@@ -169,6 +169,21 @@ const FloatingAI = () => {
         const msgToSend = msgOverride || message.trim();
         if (!msgToSend || isLoading) return;
 
+        const trimmed = msgToSend.trim();
+        if (trimmed.length > 1500) {
+            setChatHistory(prev => [...prev, { role: 'assistant', content: 'Pesan terlalu panjang. Ringkas dulu ya (maksimal 1500 karakter).' }]);
+            setMessage('');
+            return;
+        }
+
+        const compact = trimmed.toLowerCase().replace(/[\s\-_.,!?'"`]/g, '');
+        const blocked = ['bodoh', 'goblok', 'tolol', 'idiot', 'anjing', 'bangsat', 'bajingan', 'kontol', 'memek', 'ngentot'];
+        if (blocked.some(w => compact.includes(w))) {
+            setChatHistory(prev => [...prev, { role: 'assistant', content: 'Saya siap bantu, tapi mohon gunakan bahasa yang sopan. Jelaskan pertanyaannya tentang EventCek ya.' }]);
+            setMessage('');
+            return;
+        }
+
         const userMessage = { role: 'user', content: msgToSend };
         setChatHistory(prev => [...prev, userMessage]);
         setMessage('');
@@ -187,6 +202,15 @@ const FloatingAI = () => {
                 speakMessage(response.data.response);
             }
         } catch (error) {
+            if (error?.response?.status === 429) {
+                const retryAfter = error.response.data?.retry_after;
+                setChatHistory(prev => [...prev, {
+                    role: 'assistant',
+                    content: `Terlalu banyak permintaan. Coba lagi${retryAfter ? ` dalam ${retryAfter} detik` : ' sebentar'} ya.`
+                }]);
+                setIsContinuous(false);
+                return;
+            }
             setChatHistory(prev => [...prev, {
                 role: 'assistant',
                 content: 'Terjadi kendala koneksi. Mohon coba lagi.'

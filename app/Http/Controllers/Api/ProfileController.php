@@ -119,6 +119,18 @@ class ProfileController extends Controller
                 }
             }
 
+            if ($request->has('jenis_kelamin')) {
+                $jk = strtolower(trim((string) $request->jenis_kelamin));
+                $jk = str_replace([' ', '-', '_'], '', $jk);
+                if (in_array($jk, ['l', 'lakilaki', 'pria', 'male', 'm'], true)) {
+                    $profile->jenis_kelamin = 'L';
+                } elseif (in_array($jk, ['p', 'perempuan', 'wanita', 'female', 'f'], true)) {
+                    $profile->jenis_kelamin = 'P';
+                } else {
+                    $profile->jenis_kelamin = null;
+                }
+            }
+
             // Handle aliases
             if ($request->has('tanggal_lahir')) {
                 $profile->birth_date = $request->tanggal_lahir;

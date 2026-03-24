@@ -6767,29 +6767,28 @@ class ActivityController extends Controller
             ->where('status', 1)
             ->pluck('user_id');
 
+        $genderKeySql = "CASE
+            WHEN jenis_kelamin IS NULL OR TRIM(jenis_kelamin) = '' OR TRIM(jenis_kelamin) = '-' THEN 'Tidak Disebutkan'
+            WHEN LOWER(REPLACE(REPLACE(TRIM(jenis_kelamin), ' ', ''), '-', '')) IN ('l','lakilaki','pria','male','m') THEN 'L'
+            WHEN LOWER(REPLACE(REPLACE(TRIM(jenis_kelamin), ' ', ''), '-', '')) IN ('p','perempuan','wanita','female','f') THEN 'P'
+            ELSE 'Tidak Disebutkan'
+        END";
+
         $genderStats = DB::table('profiles')
             ->whereIn('user_id', $participantUserIds)
-            ->select('jenis_kelamin', DB::raw('COUNT(*) as total'))
-            ->whereNotNull('jenis_kelamin')
-            ->where('jenis_kelamin', '!=', '')
-            ->groupBy('jenis_kelamin')
+            ->selectRaw("$genderKeySql as gender_key, COUNT(*) as total")
+            ->groupBy('gender_key')
             ->get();
 
-        $genderLabels = $genderStats->pluck('jenis_kelamin')->map(function ($item) {
-            return ucfirst(strtolower($item));
-        })->toArray();
-        $genderData = $genderStats->pluck('total')->toArray();
-
-        $unspecifiedCount = DB::table('profiles')
-            ->whereIn('user_id', $participantUserIds)
-            ->where(function ($q) {
-                $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '');
-            })
-            ->count();
-
-        if ($unspecifiedCount > 0) {
-            $genderLabels[] = 'Tidak Disebutkan';
-            $genderData[] = $unspecifiedCount;
+        $genderCounts = $genderStats->pluck('total', 'gender_key')->toArray();
+        $genderLabels = [];
+        $genderData = [];
+        foreach (['L', 'P', 'Tidak Disebutkan'] as $key) {
+            $count = (int) ($genderCounts[$key] ?? 0);
+            if ($count > 0) {
+                $genderLabels[] = $key;
+                $genderData[] = $count;
+            }
         }
 
         // Statistik berdasarkan provinsi

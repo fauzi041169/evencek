@@ -317,18 +317,25 @@ class NewsController extends Controller
     public function show(News $news)
     {
         try {
-            $news->load(['category', 'author', 'comments.user', 'comments.children.user']);
+            $news->load(['category', 'author']);
             $viewerKey = auth()->id() ? ('u:'.auth()->id()) : ('ip:'.request()->ip());
             $throttleKey = 'news-view:'.$news->id.':'.$viewerKey;
             if (Cache::add($throttleKey, 1, now()->addMinutes(5))) {
                 $news->increment('views_count');
             }
             // Rating statistics (only top-level comments with rating)
-            $ratingsQuery = $news->allComments()->whereNull('parent_id')->whereNotNull('rating');
             $averageRating = $news->averageRating();
+            $ratingCountsRaw = $news->allComments()
+                ->whereNull('parent_id')
+                ->whereNotNull('rating')
+                ->select('rating', DB::raw('COUNT(*) as count'))
+                ->groupBy('rating')
+                ->pluck('count', 'rating')
+                ->toArray();
+
             $ratingCounts = [];
             for ($i = 1; $i <= 5; $i++) {
-                $ratingCounts[$i] = (clone $ratingsQuery)->where('rating', $i)->count();
+                $ratingCounts[$i] = (int) ($ratingCountsRaw[$i] ?? 0);
             }
             $totalRatings = array_sum($ratingCounts);
 
@@ -342,6 +349,11 @@ class NewsController extends Controller
                     ->whereNotNull('rating')
                     ->value('rating');
             }
+
+            $comments = $news->comments()
+                ->with(['user', 'children.user'])
+                ->paginate(10)
+                ->withQueryString();
 
             $relatedNews = News::query()
                 ->with('category')
@@ -372,7 +384,7 @@ class NewsController extends Controller
                 ->limit(6)
                 ->get();
 
-            return Inertia::render('News/Show', compact('news', 'averageRating', 'ratingCounts', 'totalRatings', 'userRating', 'relatedNews', 'latestNews'));
+            return Inertia::render('News/Show', compact('news', 'comments', 'averageRating', 'ratingCounts', 'totalRatings', 'userRating', 'relatedNews', 'latestNews'));
         } catch (\Exception $e) {
             return redirect()->route('news.list')
                 ->with('error', 'Berita tidak ditemukan');

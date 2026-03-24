@@ -292,6 +292,18 @@ class ProfileController extends Controller
                 return $value !== null;
             });
 
+            if (array_key_exists('jenis_kelamin', $profileData)) {
+                $jk = strtolower(trim((string) $profileData['jenis_kelamin']));
+                $jk = str_replace([' ', '-', '_'], '', $jk);
+                if (in_array($jk, ['l', 'lakilaki', 'pria', 'male', 'm'], true)) {
+                    $profileData['jenis_kelamin'] = 'L';
+                } elseif (in_array($jk, ['p', 'perempuan', 'wanita', 'female', 'f'], true)) {
+                    $profileData['jenis_kelamin'] = 'P';
+                } else {
+                    $profileData['jenis_kelamin'] = null;
+                }
+            }
+
             // Explicitly handle region fields if they are null in the request (clearing the selection)
             if ($request->has('province_id') && is_null($request->province_id)) {
                 $profileData['province_id'] = null;

@@ -3,20 +3,46 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AIController extends Controller
 {
     public function chat(Request $request)
     {
         $request->validate([
-            'message' => 'required|string',
-            'history' => 'nullable|array',
+            'message' => 'required|string|max:1500',
+            'history' => 'nullable|array|max:12',
         ]);
 
-        $message = $request->input('message');
-        $history = $request->input('history', []);
+        $userId = optional($request->user())->id;
+        $rateKey = 'ai-chat:'.($userId ? 'u:'.$userId : 'ip:'.$request->ip());
+        if (RateLimiter::tooManyAttempts($rateKey, 20)) {
+            $seconds = RateLimiter::availableIn($rateKey);
+            return response()->json([
+                'error' => 'Terlalu banyak permintaan. Coba lagi sebentar ya.',
+                'retry_after' => $seconds,
+            ], 429);
+        }
+        RateLimiter::hit($rateKey, 60);
+
+        $message = trim((string) $request->input('message'));
+        $history = $this->normalizeHistory($request->input('history', []));
+
+        if ($message === '') {
+            return response()->json([
+                'error' => 'Pesan tidak boleh kosong.',
+            ], 422);
+        }
+
+        if ($this->isToxic($message)) {
+            return response()->json([
+                'response' => 'Saya siap bantu, tapi mohon gunakan bahasa yang sopan. Jelaskan pertanyaan kamu tentang EventCek (contoh: cara buat kegiatan, absensi QR, sertifikat, pembayaran, atau berita).',
+                'model' => 'Safety',
+            ]);
+        }
 
         $context = $this->getAppContext();
 
@@ -26,11 +52,13 @@ class AIController extends Controller
         1. Concise & helpful answers.
         2. Speak same language as user.
         3. Features: Event mgmt, Membership, Certificates, Payments (Midtrans), Attendance QR, News.
+        4. Be polite. Never insult the user. If user is rude, de-escalate and ask for a clear question.
+        5. Do not request or expose secrets (API keys, passwords). If asked, refuse.
         App: ".config('app.name');
 
         try {
             // Prioritize Gemini if API Key exists, even in dev, for much better speed/performance
-            if (env('GEMINI_API_KEY')) {
+            if (config('services.gemini.key') || env('GEMINI_API_KEY')) {
                 return $this->chatWithGemini($systemPrompt, $message, $history);
             }
 
@@ -49,22 +77,22 @@ class AIController extends Controller
 
     private function getAppContext()
     {
-        // Gather some basic info about the app to give to AI
-        $settings = \App\Models\Setting::first();
-        $appName = $settings->app_name ?? config('app.name');
+        return Cache::remember('ai_app_context_v1', 3600, function () {
+            $settings = \App\Models\Setting::first();
+            $appName = $settings->app_name ?? config('app.name');
 
-        // You could add more info here like available routes, features, etc.
-        $features = [
-            'Manajemen Kegiatan (Activity Management)',
-            'Pendaftaran Anggota (Membership Registration)',
-            'Sertifikat Otomatis (Automatic Certificates)',
-            'Pembayaran Online (Midtrans Integration)',
-            'Absensi QR Code (QR Attendance)',
-            'Laporan Keuangan (Financial Reports)',
-            'Manajemen Berita (News/Blog)',
-        ];
+            $features = [
+                'Manajemen Kegiatan (Activity Management)',
+                'Pendaftaran Anggota (Membership Registration)',
+                'Sertifikat Otomatis (Automatic Certificates)',
+                'Pembayaran Online (Midtrans Integration)',
+                'Absensi QR Code (QR Attendance)',
+                'Laporan Keuangan (Financial Reports)',
+                'Manajemen Berita (News/Blog)',
+            ];
 
-        return "App Name: $appName\nFeatures: ".implode(', ', $features);
+            return "App Name: $appName\nFeatures: ".implode(', ', $features);
+        });
     }
 
     private function chatWithOllama($systemPrompt, $message, $history)
@@ -83,7 +111,7 @@ class AIController extends Controller
         $messages[] = ['role' => 'user', 'content' => $message];
 
         try {
-            $response = Http::timeout(60)->post($ollamaUrl, [
+            $response = Http::retry(2, 250)->timeout(60)->post($ollamaUrl, [
                 'model' => $model,
                 'messages' => $messages,
                 'stream' => false,
@@ -110,7 +138,7 @@ class AIController extends Controller
 
     private function chatWithGemini($systemPrompt, $message, $history)
     {
-        $apiKey = env('GEMINI_API_KEY');
+        $apiKey = config('services.gemini.key') ?: env('GEMINI_API_KEY');
         if (! $apiKey) {
             throw new \Exception('GEMINI_API_KEY not configured in production.');
         }
@@ -138,7 +166,7 @@ class AIController extends Controller
             'parts' => [['text' => $message]],
         ];
 
-        $response = Http::timeout(30)->post($url, [
+        $response = Http::retry(2, 250)->timeout(25)->post($url, [
             'contents' => $contents,
             'system_instruction' => $systemInstruction,
         ]);
@@ -154,5 +182,49 @@ class AIController extends Controller
             'response' => $aiResponse,
             'model' => 'Gemini 1.5 Flash',
         ]);
+    }
+
+    private function normalizeHistory($history)
+    {
+        if (! is_array($history)) {
+            return [];
+        }
+
+        $out = [];
+        foreach (array_slice($history, -8) as $h) {
+            if (! is_array($h)) {
+                continue;
+            }
+            $role = isset($h['role']) ? (string) $h['role'] : '';
+            if (! in_array($role, ['user', 'assistant'], true)) {
+                continue;
+            }
+            $content = isset($h['content']) ? trim((string) $h['content']) : '';
+            if ($content === '') {
+                continue;
+            }
+            $out[] = [
+                'role' => $role,
+                'content' => mb_substr($content, 0, 2000),
+            ];
+        }
+        return $out;
+    }
+
+    private function isToxic($text)
+    {
+        $t = mb_strtolower($text);
+        $t = str_replace([' ', '-', '_', '.', ',', '!', '?', '"', "'", '`'], '', $t);
+
+        $bad = [
+            'bodoh', 'goblok', 'tolol', 'idiot', 'anjing', 'bangsat', 'bajingan', 'kontol', 'memek', 'ngentot',
+        ];
+
+        foreach ($bad as $w) {
+            if ($w !== '' && str_contains($t, $w)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

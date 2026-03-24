@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import Swal from 'sweetalert2';
 
-export default function Show({ news, averageRating, ratingCounts, totalRatings, userRating, relatedNews = [], latestNews = [] }) {
+export default function Show({ news, comments, averageRating, ratingCounts, totalRatings, userRating, relatedNews = [], latestNews = [] }) {
     const { auth } = usePage().props;
     const [rating, setRating] = useState(userRating || 0);
     const [hoverRating, setHoverRating] = useState(0);
@@ -92,6 +92,10 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
             .trim();
         return /[A-Za-z0-9\u00C0-\u024F\u1E00-\u1EFF\u0400-\u04FF\u0600-\u06FF]/.test(text);
     };
+
+    const commentsList = Array.isArray(comments?.data)
+        ? comments.data
+        : (Array.isArray(news?.comments) ? news.comments : []);
 
     const NewsListCard = ({ title, items, showEmpty = false }) => {
         if ((!items || items.length === 0) && !showEmpty) return null;
@@ -249,8 +253,8 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
                                     )}
 
                                     <div className="space-y-4 sm:space-y-6">
-                                        {(news.comments || []).filter((comment) => isMeaningfulHtml(comment.body)).length > 0 ? (
-                                            (news.comments || []).filter((comment) => isMeaningfulHtml(comment.body)).map((comment) => (
+                                        {commentsList.filter((comment) => isMeaningfulHtml(comment.body)).length > 0 ? (
+                                            commentsList.filter((comment) => isMeaningfulHtml(comment.body)).map((comment) => (
                                                 <div key={comment.id} className="flex space-x-4 border-b border-gray-100 pb-4 last:border-0">
                                                     <img
                                                         src={comment.user?.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
@@ -273,6 +277,33 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
                                             <div className="text-center text-gray-500 py-4">Belum ada komentar. Jadilah yang pertama!</div>
                                         )}
                                     </div>
+
+                                    {comments?.links && comments.links.length > 3 && (
+                                        <div className="mt-6 flex flex-wrap justify-center gap-1">
+                                            {comments.links.map((link, i) => (
+                                                link.url ? (
+                                                    <Link
+                                                        key={i}
+                                                        href={link.url}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${link.active
+                                                            ? 'bg-secondary text-white shadow-md'
+                                                            : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+                                                            }`}
+                                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                                        preserveScroll={true}
+                                                        preserveState={true}
+                                                        only={['comments', 'averageRating', 'ratingCounts', 'totalRatings', 'userRating', 'news']}
+                                                    />
+                                                ) : (
+                                                    <span
+                                                        key={i}
+                                                        className="px-2 py-1 rounded text-xs text-gray-400 bg-gray-50 border border-gray-200 cursor-not-allowed"
+                                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                                    />
+                                                )
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </aside>
