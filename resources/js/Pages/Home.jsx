@@ -665,7 +665,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 </section>
 
                 {/* Statistics Section */}
-                <section id="stats" className="py-2 sm:py-6 bg-white relative overflow-hidden">
+                <section id="stats" className="py-10 sm:py-14 bg-white relative overflow-hidden">
                     <div className="absolute inset-0 opacity-[0.08]">
                         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #3b82f6 1px, transparent 0)', backgroundSize: '36px 36px' }}></div>
                     </div>
@@ -700,7 +700,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 </section>
 
                 {/* Mitra Section */}
-                <section id="mitra" className="py-2 sm:py-8 bg-white relative">
+                <section id="mitra" className="py-10 sm:py-14 bg-white relative">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                         <div className="mb-4 sm:mb-8 reveal">
                             <h3 className="text-3xl font-black text-gray-900 text-center">{t('home.our_partners')}</h3>
@@ -741,7 +741,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 </section>
 
                 {/* Features Section */}
-                <section id="fitur" className="py-0 sm:py-10 bg-white relative overflow-hidden">
+                <section id="fitur" className="py-10 sm:py-16 bg-white relative overflow-hidden">
                     <div className="absolute inset-0 opacity-5">
                         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #7c3aed 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
                     </div>
@@ -809,7 +809,7 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 </section>
 
                 {/* CTA Section */}
-                <section className="py-0 sm:py-8 bg-white relative overflow-hidden">
+                <section className="py-10 sm:py-16 bg-white relative overflow-hidden">
                     <div className="absolute inset-0 opacity-5">
                         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #7c3aed 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
                     </div>
@@ -843,10 +843,10 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
 
 function StatCard({ icon, fromColor, toColor, count, label, className }) {
     return (
-        <div className={`group bg-gradient-to-br from-white to-indigo-50 rounded-3xl p-6 border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-500 transform hover:-translate-y-1 shadow-lg hover:shadow-xl ${className}`}>
+        <div className={`group bg-gradient-to-br from-white to-indigo-50 rounded-3xl p-5 sm:p-6 border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-500 transform hover:-translate-y-1 shadow-lg hover:shadow-xl ${className}`}>
             <div className="flex items-center gap-4">
                 <div
-                    className="inline-flex items-center justify-center w-16 h-16 rounded-2xl text-white"
+                    className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl text-white"
                     style={{ background: `linear-gradient(135deg, ${fromColor}, ${toColor})` }}
                 >
                     <i className={`${icon} text-2xl`}></i>
@@ -864,12 +864,12 @@ function StatCard({ icon, fromColor, toColor, count, label, className }) {
 
 function FeatureCard({ icon, title, description, points, className }) {
     return (
-        <div className={`group bg-gradient-to-br from-white to-indigo-50 rounded-3xl p-8 border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-500 transform hover:-translate-y-1 shadow-lg hover:shadow-xl ${className}`}>
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-[#7c3aed] to-[#3b82f6] rounded-3xl mb-6 group-hover:from-[#6d28d9] group-hover:to-[#2563eb] transition-all duration-500 transform hover:-translate-y-1 shadow-lg group-hover:shadow-indigo-500/40">
-                <i className={`${icon} text-3xl text-white`}></i>
+        <div className={`group bg-gradient-to-br from-white to-indigo-50 rounded-3xl p-6 sm:p-8 border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-500 transform hover:-translate-y-1 shadow-lg hover:shadow-xl h-full ${className}`}>
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#7c3aed] to-[#3b82f6] rounded-3xl mb-6 group-hover:from-[#6d28d9] group-hover:to-[#2563eb] transition-all duration-500 transform hover:-translate-y-1 shadow-lg group-hover:shadow-indigo-500/40">
+                <i className={`${icon} text-2xl sm:text-3xl text-white`}></i>
             </div>
-            <h3 className="text-2xl font-black text-gray-900 mb-4 group-hover:text-[#7c3aed] transition-colors duration-300">{title}</h3>
-            <p className="text-gray-700 text-lg leading-relaxed mb-4">
+            <h3 className="text-xl sm:text-2xl font-black text-gray-900 mb-4 group-hover:text-[#7c3aed] transition-colors duration-300">{title}</h3>
+            <p className="text-gray-700 text-base sm:text-lg leading-relaxed mb-4">
                 {description}
             </p>
             <ul className="text-sm text-gray-600 space-y-2">
@@ -886,11 +886,11 @@ function FeatureCard({ icon, title, description, points, className }) {
 
 function WorkflowStep({ number, title, description, className }) {
     return (
-        <div className={`text-center group ${className}`}>
-            <div className="bg-white rounded-3xl p-8 border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-500 transform hover:-translate-y-1 shadow-lg hover:shadow-xl h-full">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#7c3aed] to-[#3b82f6] rounded-full mb-6 text-white font-black text-2xl">{number}</div>
-                <h3 className="text-2xl font-black text-gray-900 mb-4">{title}</h3>
-                <p className="text-gray-700 leading-relaxed">{description}</p>
+        <div className={`text-center group h-full ${className}`}>
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-500 transform hover:-translate-y-1 shadow-lg hover:shadow-xl h-full">
+                <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-[#7c3aed] to-[#3b82f6] rounded-full mb-6 text-white font-black text-xl sm:text-2xl">{number}</div>
+                <h3 className="text-xl sm:text-2xl font-black text-gray-900 mb-4">{title}</h3>
+                <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{description}</p>
             </div>
         </div>
     );
