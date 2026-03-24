@@ -408,7 +408,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
                                     {featuredNews.map((news, index) => (
                                         <div key={news.id} className={`group bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 ${index === 0 ? 'col-span-2 md:col-span-2 md:row-span-2' : ''}`}>
-                                            <div className={`relative ${index === 0 ? 'aspect-video md:h-96' : 'aspect-video md:h-48'}`}>
+                                            <Link href={route('news.show', news.slug)} className={`block relative ${index === 0 ? 'aspect-video md:h-96' : 'aspect-video md:h-48'}`}>
                                                 <img
                                                     src={getImageUrl(news.image)}
                                                     alt={news.title}
@@ -429,7 +429,7 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                         {formatDate(news.published_at || news.created_at)}
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </Link>
                                             <div className="p-6 hidden md:block">
                                                 <div className="flex items-center text-sm text-gray-500 mb-2">
                                                     <i className="far fa-calendar-alt mr-2"></i>
@@ -504,22 +504,23 @@ export default function Index({ featuredNews, allNews, totalNews, categories, la
                                                 </div>
                                             )}
                                             <div className="relative aspect-video md:h-48">
-                                                <img
-                                                    src={getImageUrl(news.image)}
-                                                    alt={news.title}
-                                                    loading="lazy"
-                                                    className="w-full h-full object-cover"
-                                                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/hero/default.webp'; }}
-                                                />
-                                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 hidden md:block">
-                                                    <span className="text-white text-xs bg-primary px-2 py-1 rounded inline-block">
-                                                        {news.category?.name || 'Umum'}
-                                                    </span>
-                                                </div>
-                                                {/* Category Overlay for Mobile */}
-                                                <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/50 backdrop-blur-md rounded text-[8px] text-white font-medium md:hidden">
-                                                    {news.category?.name || 'Berita'}
-                                                </div>
+                                                <Link href={route('news.show', news.slug)} className="block h-full">
+                                                    <img
+                                                        src={getImageUrl(news.image)}
+                                                        alt={news.title}
+                                                        loading="lazy"
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => { e.target.onerror = null; e.target.src = '/assets/images/hero/default.webp'; }}
+                                                    />
+                                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 hidden md:block">
+                                                        <span className="text-white text-xs bg-primary px-2 py-1 rounded inline-block">
+                                                            {news.category?.name || 'Umum'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/50 backdrop-blur-md rounded text-[8px] text-white font-medium md:hidden">
+                                                        {news.category?.name || 'Berita'}
+                                                    </div>
+                                                </Link>
                                             </div>
                                             <div className="p-5 flex-1 hidden md:flex flex-col">
                                                 <div className="text-xs text-gray-500 mb-2 flex items-center">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 import { format } from 'date-fns';
@@ -10,6 +10,21 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
     const [rating, setRating] = useState(userRating || 0);
     const [hoverRating, setHoverRating] = useState(0);
     const [ratingSubmitting, setRatingSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const originalBodyOverflow = document.body.style.overflow;
+        const originalHtmlOverflow = document.documentElement.style.overflow;
+
+        document.body.style.overflow = 'auto';
+        document.documentElement.style.overflow = 'auto';
+
+        return () => {
+            document.body.style.overflow = originalBodyOverflow;
+            document.documentElement.style.overflow = originalHtmlOverflow;
+        };
+    }, []);
 
     // Comment Form
     const { data, setData, post, processing, reset, errors } = useForm({
@@ -146,7 +161,7 @@ export default function Show({ news, averageRating, ratingCounts, totalRatings, 
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                         <aside className="order-2 lg:order-1 lg:col-span-3">
-                            <div className="lg:sticky lg:top-32 lg:max-h-[calc(100vh-9rem)] lg:overflow-auto space-y-6">
+                            <div className="lg:sticky lg:top-32 space-y-6">
                                 <div className="bg-white rounded-2xl shadow-lg p-3 sm:p-6">
                                     <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center">
                                         <i className="far fa-comments mr-3 text-secondary"></i>
