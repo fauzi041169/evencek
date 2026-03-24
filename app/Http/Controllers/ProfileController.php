@@ -293,15 +293,7 @@ class ProfileController extends Controller
             });
 
             if (array_key_exists('jenis_kelamin', $profileData)) {
-                $jk = strtolower(trim((string) $profileData['jenis_kelamin']));
-                $jk = str_replace([' ', '-', '_'], '', $jk);
-                if (in_array($jk, ['l', 'lakilaki', 'pria', 'male', 'm'], true)) {
-                    $profileData['jenis_kelamin'] = 'L';
-                } elseif (in_array($jk, ['p', 'perempuan', 'wanita', 'female', 'f'], true)) {
-                    $profileData['jenis_kelamin'] = 'P';
-                } else {
-                    $profileData['jenis_kelamin'] = null;
-                }
+                $profileData['jenis_kelamin'] = \App\Helpers\GenderHelper::normalize($profileData['jenis_kelamin']);
             }
 
             // Explicitly handle region fields if they are null in the request (clearing the selection)

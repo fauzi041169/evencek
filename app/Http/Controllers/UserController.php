@@ -203,17 +203,7 @@ class UserController extends Controller
                 $newPhoto = null;
             }
 
-            $jkRaw = (string) $request->jenis_kelamin;
-            $jk = strtolower(trim($jkRaw));
-            $jk = str_replace([' ', '-', '_'], '', $jk);
-
-            if (in_array($jk, ['l', 'lakilaki', 'pria', 'male', 'm'], true)) {
-                $jenis_kelamin = 'L';
-            } elseif (in_array($jk, ['p', 'perempuan', 'wanita', 'female', 'f'], true)) {
-                $jenis_kelamin = 'P';
-            } else {
-                $jenis_kelamin = null;
-            }
+            $jenis_kelamin = \App\Helpers\GenderHelper::normalize($request->jenis_kelamin);
 
             // Update or create profile
             $profileData = [

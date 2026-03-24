@@ -19,24 +19,30 @@ class GenderHelper
             return null;
         }
 
-        $gender = trim(strtoupper($gender));
+        $gender = trim((string) $gender);
+        if ($gender === '') {
+            return null;
+        }
+
+        $lower = mb_strtolower($gender);
+        $lower = preg_replace('/[^\p{L}]+/u', '', $lower);
+        $lower = (string) $lower;
+
+        if ($lower === '' || $lower === 'lp' || $lower === 'lakiatauperempuan' || $lower === 'lakiperempuan') {
+            return null;
+        }
 
         // Normalisasi Laki-laki
-        if (in_array($gender, ['L', 'LAKI', 'LAKI-LAKI', 'LAKI LAKI', 'PRIA', 'COWOK', 'MAN', 'MALE', 'M', 'LK'])) {
+        if (in_array($lower, ['l', 'laki', 'lakilaki', 'pria', 'cowok', 'lelaki', 'man', 'male', 'm', 'lk'], true)) {
             return 'L';
         }
 
         // Normalisasi Perempuan
-        if (in_array($gender, ['P', 'PEREMPUAN', 'WANITA', 'CEWEK', 'WOMAN', 'FEMALE', 'F', 'W', 'PR'])) {
+        if (in_array($lower, ['p', 'perempuan', 'wanita', 'cewek', 'perempu', 'woman', 'female', 'f', 'w', 'pr'], true)) {
             return 'P';
         }
 
-        // Jika input sudah L atau P, kembalikan
-        if ($gender === 'L' || $gender === 'P') {
-            return $gender;
-        }
-
-        return $gender; // Kembalikan nilai asli jika tidak dikenali, atau bisa return null
+        return null;
     }
 
     /**
