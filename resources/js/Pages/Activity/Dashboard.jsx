@@ -659,7 +659,13 @@ export default function Dashboard({
 
     // Region Chart (Province/Regency/District)
     const [regionLevel, setRegionLevel] = useState('province'); // province, regency, district
-    const makeColors = (count) => Array.from({ length: Math.max(count, 1) }, (_, i) => `hsl(${Math.round((i * 360) / Math.max(count, 1))}, 70%, 55%)`);
+    const BAR_COLORS = [
+        '#ef4444','#f97316','#f59e0b','#eab308','#84cc16','#22c55e','#10b981',
+        '#14b8a6','#06b6d4','#0ea5e9','#3b82f6','#6366f1','#8b5cf6','#a855f7',
+        '#d946ef','#ec4899','#f43f5e','#fb7185','#2dd4bf','#34d399','#a3e635',
+        '#fde047','#fdba74','#fca5a5'
+    ];
+    const makeColors = (count) => Array.from({ length: Math.max(count, 1) }, (_, i) => BAR_COLORS[i % BAR_COLORS.length]);
     const [regionChartDataState, setRegionChartDataState] = useState({
         labels: provinceStats.map(item => item.name),
         datasets: [{
@@ -711,6 +717,8 @@ export default function Dashboard({
                     label: 'User',
                     data: data.map(item => item.total),
                     backgroundColor: colors,
+                    borderColor: '#374151',
+                    borderWidth: 1,
                     borderRadius: 4,
                     barThickness: 20
                 }]
