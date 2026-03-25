@@ -7224,6 +7224,7 @@ class ActivityController extends Controller
 
         // Statistik Kamar (Hotel Rooms)
         $roomStats = null;
+        $roomByRegionStats = null;
         if (Schema::hasTable('activity_hotel_rooms')) {
             $roomsAll = \DB::table('activity_hotel_rooms')
                 ->where('activity_id', $activityId)
@@ -7253,7 +7254,6 @@ class ActivityController extends Controller
                                 ->on('au.activity_id', '=', 'a.activity_id');
                         })
                         ->where('a.activity_id', $activityId)
-                        ->where('r.is_active', 1)
                         ->where('au.status', 1)
                         ->whereNotIn('au.user_id', $committeeUserIds)
                         ->distinct()
@@ -7297,6 +7297,136 @@ class ActivityController extends Controller
                         ];
                     })->take(12)->values()->toArray(),
                 ];
+
+                if (Schema::hasTable('activity_hotel_room_assignments')) {
+                    $assignedUserIds = \DB::table('activity_hotel_room_assignments as a')
+                        ->join('activity_hotel_rooms as r', function ($join) {
+                            $join->on('r.id', '=', 'a.room_id')
+                                ->on('r.activity_id', '=', 'a.activity_id');
+                        })
+                        ->join($tableName.' as au', function ($join) {
+                            $join->on('au.user_id', '=', 'a.user_id')
+                                ->on('au.activity_id', '=', 'a.activity_id');
+                        })
+                        ->where('a.activity_id', $activityId)
+                        ->where('r.is_active', 1)
+                        ->where('au.status', 1)
+                        ->whereNotIn('au.user_id', $committeeUserIds)
+                        ->pluck('a.user_id')
+                        ->unique()
+                        ->toArray();
+
+                    $provinceAssigned = DB::table('activity_hotel_room_assignments as a')
+                        ->join('activity_hotel_rooms as r', function ($join) {
+                            $join->on('r.id', '=', 'a.room_id')
+                                ->on('r.activity_id', '=', 'a.activity_id');
+                        })
+                        ->join($tableName.' as au', function ($join) {
+                            $join->on('au.user_id', '=', 'a.user_id')
+                                ->on('au.activity_id', '=', 'a.activity_id');
+                        })
+                        ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
+                        ->join('provinces', 'profiles.province_id', '=', 'provinces.id')
+                        ->where('a.activity_id', $activityId)
+                        ->where('au.status', 1)
+                        ->whereNotIn('au.user_id', $committeeUserIds)
+                        ->select('provinces.id', 'provinces.name', DB::raw('COUNT(DISTINCT a.user_id) as assigned'))
+                        ->groupBy('provinces.id', 'provinces.name')
+                        ->get()
+                        ->keyBy(function ($row) {
+                            return (string) $row->id;
+                        });
+
+                    $regencyAssigned = DB::table('activity_hotel_room_assignments as a')
+                        ->join('activity_hotel_rooms as r', function ($join) {
+                            $join->on('r.id', '=', 'a.room_id')
+                                ->on('r.activity_id', '=', 'a.activity_id');
+                        })
+                        ->join($tableName.' as au', function ($join) {
+                            $join->on('au.user_id', '=', 'a.user_id')
+                                ->on('au.activity_id', '=', 'a.activity_id');
+                        })
+                        ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
+                        ->join('regencies', 'profiles.regency_id', '=', 'regencies.id')
+                        ->where('a.activity_id', $activityId)
+                        ->where('au.status', 1)
+                        ->whereNotIn('au.user_id', $committeeUserIds)
+                        ->select('regencies.id', 'regencies.name', DB::raw('COUNT(DISTINCT a.user_id) as assigned'))
+                        ->groupBy('regencies.id', 'regencies.name')
+                        ->get()
+                        ->keyBy(function ($row) {
+                            return (string) $row->id;
+                        });
+
+                    $districtAssigned = DB::table('activity_hotel_room_assignments as a')
+                        ->join('activity_hotel_rooms as r', function ($join) {
+                            $join->on('r.id', '=', 'a.room_id')
+                                ->on('r.activity_id', '=', 'a.activity_id');
+                        })
+                        ->join($tableName.' as au', function ($join) {
+                            $join->on('au.user_id', '=', 'a.user_id')
+                                ->on('au.activity_id', '=', 'a.activity_id');
+                        })
+                        ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
+                        ->join('districts', 'profiles.district_id', '=', 'districts.id')
+                        ->where('a.activity_id', $activityId)
+                        ->where('au.status', 1)
+                        ->whereNotIn('au.user_id', $committeeUserIds)
+                        ->select('districts.id', 'districts.name', DB::raw('COUNT(DISTINCT a.user_id) as assigned'))
+                        ->groupBy('districts.id', 'districts.name')
+                        ->get()
+                        ->keyBy(function ($row) {
+                            return (string) $row->id;
+                        });
+
+                    $provinceRoom = $provinceStats->map(function ($row) use ($provinceAssigned) {
+                        $key = (string) $row->id;
+                        $assigned = (int) (optional($provinceAssigned->get($key))->assigned ?? 0);
+                        $unassigned = max(0, (int) $row->total - $assigned);
+
+                        return [
+                            'id' => $row->id,
+                            'name' => $row->name,
+                            'assigned' => $assigned,
+                            'unassigned' => $unassigned,
+                            'total' => (int) $row->total,
+                        ];
+                    })->sortByDesc('total')->values();
+
+                    $regencyRoom = $regencyStats->map(function ($row) use ($regencyAssigned) {
+                        $key = (string) $row->id;
+                        $assigned = (int) (optional($regencyAssigned->get($key))->assigned ?? 0);
+                        $unassigned = max(0, (int) $row->total - $assigned);
+
+                        return [
+                            'id' => $row->id,
+                            'name' => $row->name,
+                            'assigned' => $assigned,
+                            'unassigned' => $unassigned,
+                            'total' => (int) $row->total,
+                        ];
+                    })->sortByDesc('total')->values();
+
+                    $districtRoom = $districtStats->map(function ($row) use ($districtAssigned) {
+                        $key = (string) $row->id;
+                        $assigned = (int) (optional($districtAssigned->get($key))->assigned ?? 0);
+                        $unassigned = max(0, (int) $row->total - $assigned);
+
+                        return [
+                            'id' => $row->id,
+                            'name' => $row->name,
+                            'assigned' => $assigned,
+                            'unassigned' => $unassigned,
+                            'total' => (int) $row->total,
+                        ];
+                    })->sortByDesc('total')->values();
+
+                    $roomByRegionStats = [
+                        'province' => $provinceRoom,
+                        'regency' => $regencyRoom,
+                        'district' => $districtRoom,
+                    ];
+                }
             }
         }
 
@@ -7383,6 +7513,7 @@ class ActivityController extends Controller
             'topRegencyStats',
             'statusPesertaData',
             'roomStats',
+            'roomByRegionStats',
             'groupStats',
             'totalChats',
             'totalChatHubungiPanitia',

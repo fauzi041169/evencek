@@ -61,6 +61,7 @@ export default function Dashboard({
     topRegencyStats,
     statusPesertaData,
     roomStats,
+    roomByRegionStats,
     groupStats,
     totalChats,
     totalChatHubungiPanitia,
@@ -658,12 +659,13 @@ export default function Dashboard({
 
     // Region Chart (Province/Regency/District)
     const [regionLevel, setRegionLevel] = useState('province'); // province, regency, district
+    const makeColors = (count) => Array.from({ length: Math.max(count, 1) }, (_, i) => `hsl(${Math.round((i * 360) / Math.max(count, 1))}, 70%, 55%)`);
     const [regionChartDataState, setRegionChartDataState] = useState({
-        labels: topProvinceStats.map(item => item.name),
+        labels: provinceStats.map(item => item.name),
         datasets: [{
             label: 'User',
-            data: topProvinceStats.map(item => item.total),
-            backgroundColor: '#696cff',
+            data: provinceStats.map(item => item.total),
+            backgroundColor: makeColors(provinceStats.length),
             borderRadius: 4,
             barThickness: 20
         }]
@@ -677,9 +679,9 @@ export default function Dashboard({
     useEffect(() => {
         let data = [];
         if (regionLevel === 'province') {
-            data = topProvinceStats;
+            data = provinceStats;
         } else if (regionLevel === 'regency') {
-            data = topRegencyStats; // Or all regency stats? The blade passed `topRegencyStats`
+            data = regencyStats; // gunakan seluruh kabupaten/kota yang terdaftar
         } else {
             data = districtStats; // Or limited district stats?
         }
@@ -701,19 +703,21 @@ export default function Dashboard({
         // Let's assume they are ready to display.
 
         if (data) {
+            const labels = data.map(item => item.name);
+            const colors = makeColors(labels.length);
             setRegionChartDataState({
-                labels: data.map(item => item.name),
+                labels,
                 datasets: [{
                     label: 'User',
                     data: data.map(item => item.total),
-                    backgroundColor: '#696cff',
+                    backgroundColor: colors,
                     borderRadius: 4,
                     barThickness: 20
                 }]
             });
         }
 
-    }, [regionLevel, topProvinceStats, topRegencyStats, districtStats]);
+    }, [regionLevel, provinceStats, regencyStats, districtStats]);
 
     // Plugin sederhana untuk menampilkan nilai di atas batang chart wilayah
     const regionBarValuePlugin = {
@@ -756,6 +760,9 @@ export default function Dashboard({
     const regionChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+            padding: { top: 24, right: 8, left: 8, bottom: 0 }
+        },
         plugins: {
             legend: { display: false },
             tooltip: {
@@ -769,6 +776,7 @@ export default function Dashboard({
         scales: {
             y: {
                 beginAtZero: true,
+                grace: '12%',
                 grid: { color: '#e7eaf3' },
                 ticks: { stepSize: 1, font: { size: 10 } }
             },
@@ -778,6 +786,76 @@ export default function Dashboard({
             }
         }
     };
+
+    const [roomRegionLevel, setRoomRegionLevel] = useState('province');
+    const [roomRegionChartData, setRoomRegionChartData] = useState({
+        labels: (roomByRegionStats?.province || []).map(r => r.name),
+        datasets: [
+            {
+                label: 'Sudah Dapat Kamar',
+                data: (roomByRegionStats?.province || []).map(r => r.assigned),
+                backgroundColor: '#3b82f6',
+                borderRadius: 4,
+                barThickness: 18
+            },
+            {
+                label: 'Belum Dapat Kamar',
+                data: (roomByRegionStats?.province || []).map(r => r.unassigned),
+                backgroundColor: '#f59e0b',
+                borderRadius: 4,
+                barThickness: 18
+            }
+        ]
+    });
+
+    useEffect(() => {
+        const src = roomRegionLevel === 'province'
+            ? (roomByRegionStats?.province || [])
+            : roomRegionLevel === 'regency'
+                ? (roomByRegionStats?.regency || [])
+                : (roomByRegionStats?.district || []);
+        setRoomRegionChartData({
+            labels: src.map(r => r.name),
+            datasets: [
+                {
+                    label: 'Sudah Dapat Kamar',
+                    data: src.map(r => r.assigned),
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 4,
+                    barThickness: 18
+                },
+                {
+                    label: 'Belum Dapat Kamar',
+                    data: src.map(r => r.unassigned),
+                    backgroundColor: '#f59e0b',
+                    borderRadius: 4,
+                    barThickness: 18
+                }
+            ]
+        });
+    }, [roomRegionLevel, roomByRegionStats]);
+
+    const roomRegionChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: true, position: 'bottom' },
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: '#e7eaf3' },
+                ticks: { font: { size: 10 } }
+            },
+            x: {
+                grid: { display: false },
+                ticks: { font: { size: 10 }, autoSkip: false, maxRotation: 90 }
+            }
+        }
+    };
+
+    const regionCanvasWidth = Math.max(900, (regionChartDataState?.labels?.length || 0) * 60);
+    const roomRegionCanvasWidth = Math.max(900, (roomRegionChartData?.labels?.length || 0) * 60);
 
 
     return (
@@ -1217,12 +1295,14 @@ export default function Dashboard({
                                 </select>
                             </div>
                         </div>
-                        <div className="relative h-80">
-                            <Bar
-                                data={regionChartDataState}
-                                options={regionChartOptions}
-                                plugins={[regionBarValuePlugin]}
-                            />
+                        <div className="relative h-80 overflow-x-auto">
+                            <div style={{ width: regionCanvasWidth }}>
+                                <Bar
+                                    data={regionChartDataState}
+                                    options={regionChartOptions}
+                                    plugins={[regionBarValuePlugin]}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1292,6 +1372,27 @@ export default function Dashboard({
                                     <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.unassigned?.toLocaleString() || 0}</div>
                                 </div>
                             </div>
+                            {roomByRegionStats && (
+                                <div className="mt-2">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h6 className="text-sm font-semibold text-gray-700">Distribusi Kamar per Wilayah</h6>
+                                        <select
+                                            value={roomRegionLevel}
+                                            onChange={(e) => setRoomRegionLevel(e.target.value)}
+                                            className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                        >
+                                            <option value="province">Provinsi</option>
+                                            <option value="regency">Kabupaten/Kota</option>
+                                            <option value="district">Kecamatan</option>
+                                        </select>
+                                    </div>
+                                    <div className="relative h-80 overflow-x-auto">
+                                        <div style={{ width: roomRegionCanvasWidth }}>
+                                            <Bar data={roomRegionChartData} options={roomRegionChartOptions} plugins={[regionBarValuePlugin]} />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

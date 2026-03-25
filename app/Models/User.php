@@ -417,6 +417,7 @@ class User extends Authenticatable
             'max_users' => null,
             'max_news' => null,
             'max_participants_per_activity' => $creatorFree['max_participants_per_activity'] ?? null,
+            'auto_max_participants_per_activity' => null,
             'max_committees_per_activity' => null,
             'has_analytics' => false,
             'has_auto_payment' => true,
