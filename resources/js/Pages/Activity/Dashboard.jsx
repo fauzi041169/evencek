@@ -732,29 +732,61 @@ export default function Dashboard({
         id: 'regionBarValuePlugin',
         afterDatasetsDraw(chart) {
             const { ctx } = chart;
+            const chartArea = chart.chartArea;
+            if (!chartArea) return;
             ctx.save();
-            ctx.font = 'bold 11px "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
 
             (chart.data.datasets || []).forEach((dataset, di) => {
                 const meta = chart.getDatasetMeta(di);
                 if (!meta || meta.hidden) return;
                 (dataset.data || []).forEach((value, index) => {
                     if (value == null) return;
-                    const pos = typeof meta.data?.[index]?.tooltipPosition === 'function'
-                        ? meta.data[index].tooltipPosition()
-                        : { x: meta.data?.[index]?.x, y: meta.data?.[index]?.y };
+                    const el = meta.data?.[index];
+                    if (!el) return;
+                    const pos = typeof el.tooltipPosition === 'function' ? el.tooltipPosition() : { x: el.x, y: el.y };
                     const x = pos?.x;
-                    const y = pos?.y;
-                    if (x == null || y == null) return;
-                    const textY = y - 4;
+                    if (x == null) return;
+
+                    const baseY = typeof el.base === 'number' ? el.base : chartArea.bottom;
+                    const topY = typeof el.y === 'number' ? el.y : baseY;
+                    const barHeight = Math.abs(baseY - topY);
+                    const barWidth = typeof el.width === 'number' ? el.width : 12;
+                    const fontSize = Math.max(9, Math.min(12, Math.round(Math.min(barWidth, barHeight || barWidth) * 0.6)));
+                    ctx.font = `bold ${fontSize}px "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+
+                    const v = Number(value);
+                    const text = Number.isFinite(v) ? v.toLocaleString() : String(value);
+
+                    if (v === 0) {
+                        ctx.textBaseline = 'bottom';
+                        const yText = Math.min(chartArea.bottom - 2, chartArea.bottom - 2);
+                        ctx.lineWidth = 3;
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.fillStyle = '#4b5563';
+                        ctx.strokeText(text, x, yText);
+                        ctx.fillText(text, x, yText);
+                        return;
+                    }
+
+                    if (barHeight >= fontSize + 10) {
+                        ctx.textBaseline = 'top';
+                        const yText = Math.min(Math.max(topY + 2, chartArea.top + 2), chartArea.bottom - fontSize - 2);
+                        ctx.lineWidth = 3;
+                        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+                        ctx.fillStyle = '#ffffff';
+                        ctx.strokeText(text, x, yText);
+                        ctx.fillText(text, x, yText);
+                        return;
+                    }
+
+                    ctx.textBaseline = 'bottom';
+                    const yText = Math.min(Math.max(topY - 2, chartArea.top + fontSize + 2), chartArea.bottom - 2);
                     ctx.lineWidth = 3;
                     ctx.strokeStyle = '#ffffff';
                     ctx.fillStyle = '#4b5563';
-                    const text = String(value);
-                    ctx.strokeText(text, x, textY);
-                    ctx.fillText(text, x, textY);
+                    ctx.strokeText(text, x, yText);
+                    ctx.fillText(text, x, yText);
                 });
             });
             ctx.restore();
