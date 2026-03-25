@@ -1430,11 +1430,6 @@ export default function Dashboard({
                                             <option value="district">Kecamatan</option>
                                         </select>
                                     </div>
-                                    {roomRegionLevel === 'province' && dkiRoomProvinceRow && (
-                                        <div className="mb-3 text-xs text-gray-600">
-                                            DKI Jakarta: sudah dapat kamar {Number(dkiRoomProvinceRow.assigned || 0).toLocaleString()} • belum {Number(dkiRoomProvinceRow.unassigned || 0).toLocaleString()} • total {Number(dkiRoomProvinceRow.total || 0).toLocaleString()}
-                                        </div>
-                                    )}
                                     <div className="relative h-80 overflow-x-auto">
                                         <div style={{ width: roomRegionCanvasWidth, height: '100%' }}>
                                             <Bar data={roomRegionChartData} options={roomRegionChartOptions} plugins={[regionBarValuePlugin]} />
