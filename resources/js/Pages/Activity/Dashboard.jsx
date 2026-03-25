@@ -732,35 +732,31 @@ export default function Dashboard({
         id: 'regionBarValuePlugin',
         afterDatasetsDraw(chart) {
             const { ctx } = chart;
-            const yScale = chart.scales?.y;
-            const xScale = chart.scales?.x;
-            if (!yScale || !xScale) return;
-
-            const dataset = chart.data.datasets?.[0];
-            const data = dataset?.data || [];
-
             ctx.save();
             ctx.font = 'bold 11px "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
 
-            data.forEach((value, index) => {
-                if (value == null) return;
-                const x = xScale.getPixelForTick(index);
-                const y = yScale.getPixelForValue(value);
-
-                // Sedikit buffer di atas batang
-                const textY = y - 4;
-
-                // Outline putih tipis agar terbaca di atas grid
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = '#ffffff';
-                ctx.fillStyle = '#4b5563';
-                const text = value.toString();
-                ctx.strokeText(text, x, textY);
-                ctx.fillText(text, x, textY);
+            (chart.data.datasets || []).forEach((dataset, di) => {
+                const meta = chart.getDatasetMeta(di);
+                if (!meta || meta.hidden) return;
+                (dataset.data || []).forEach((value, index) => {
+                    if (value == null) return;
+                    const pos = typeof meta.data?.[index]?.tooltipPosition === 'function'
+                        ? meta.data[index].tooltipPosition()
+                        : { x: meta.data?.[index]?.x, y: meta.data?.[index]?.y };
+                    const x = pos?.x;
+                    const y = pos?.y;
+                    if (x == null || y == null) return;
+                    const textY = y - 4;
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.fillStyle = '#4b5563';
+                    const text = String(value);
+                    ctx.strokeText(text, x, textY);
+                    ctx.fillText(text, x, textY);
+                });
             });
-
             ctx.restore();
         }
     };
