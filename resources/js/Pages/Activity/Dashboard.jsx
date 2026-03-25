@@ -865,6 +865,14 @@ export default function Dashboard({
     const regionCanvasWidth = Math.max(900, (regionChartDataState?.labels?.length || 0) * 60);
     const roomRegionCanvasWidth = Math.max(900, (roomRegionChartData?.labels?.length || 0) * 60);
 
+    const dkiRoomProvinceRow = (roomByRegionStats?.province || []).find((r) => {
+        const n = String(r?.name || '')
+            .toUpperCase()
+            .replace(/[^\p{L}\p{N}]+/gu, ' ')
+            .trim();
+        return n.includes('DKI') && n.includes('JAKARTA');
+    });
+
 
     return (
         <AcaraLayout
@@ -1304,7 +1312,7 @@ export default function Dashboard({
                             </div>
                         </div>
                         <div className="relative h-80 overflow-x-auto">
-                            <div style={{ width: regionCanvasWidth }}>
+                            <div style={{ width: regionCanvasWidth, height: '100%' }}>
                                 <Bar
                                     data={regionChartDataState}
                                     options={regionChartOptions}
@@ -1394,8 +1402,13 @@ export default function Dashboard({
                                             <option value="district">Kecamatan</option>
                                         </select>
                                     </div>
+                                    {roomRegionLevel === 'province' && dkiRoomProvinceRow && (
+                                        <div className="mb-3 text-xs text-gray-600">
+                                            DKI Jakarta: sudah dapat kamar {Number(dkiRoomProvinceRow.assigned || 0).toLocaleString()} • belum {Number(dkiRoomProvinceRow.unassigned || 0).toLocaleString()} • total {Number(dkiRoomProvinceRow.total || 0).toLocaleString()}
+                                        </div>
+                                    )}
                                     <div className="relative h-80 overflow-x-auto">
-                                        <div style={{ width: roomRegionCanvasWidth }}>
+                                        <div style={{ width: roomRegionCanvasWidth, height: '100%' }}>
                                             <Bar data={roomRegionChartData} options={roomRegionChartOptions} plugins={[regionBarValuePlugin]} />
                                         </div>
                                     </div>
