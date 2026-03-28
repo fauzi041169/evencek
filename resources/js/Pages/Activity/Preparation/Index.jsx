@@ -105,6 +105,7 @@ export default function PreparationIndex({
                             divisions={divisionsList}
                             participants={participants}
                             vouchers={vouchers}
+                            provinces={provinces}
                         />
 
                         {/* Rundown */}

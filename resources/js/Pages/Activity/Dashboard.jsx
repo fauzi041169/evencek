@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 import {
@@ -28,6 +28,12 @@ ChartJS.register(
     ArcElement,
     Filler
 );
+
+const normalizeProvinceKey = (value) => String(value || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
 
 export default function Dashboard({
     activity,
@@ -62,7 +68,6 @@ export default function Dashboard({
     statusPesertaData,
     roomStats,
     roomByRegionStats,
-    groupStats,
     totalChats,
     totalChatHubungiPanitia,
     totalUserKomentar,
@@ -666,8 +671,84 @@ export default function Dashboard({
         '#fde047','#fdba74','#fca5a5'
     ];
     const makeColors = (count) => Array.from({ length: Math.max(count, 1) }, (_, i) => BAR_COLORS[i % BAR_COLORS.length]);
+    const provincePicMap = useMemo(() => {
+        const map = new Map();
+        const list = activity?.committee_structures || activity?.committeeStructures || [];
+        for (const member of list) {
+            const position = (member?.position || '').toString().toLowerCase();
+            if (!position.includes('pic')) continue;
+            const daerah = (member?.daerah_layanan || '').toString();
+            if (!daerah.trim()) continue;
+            const picName = member?.user?.name || member?.name;
+            if (!picName) continue;
+            const provinces = daerah.split(',').map(s => normalizeProvinceKey(s)).filter(Boolean);
+            for (const prov of provinces) {
+                const key = normalizeProvinceKey(prov);
+                const prev = map.get(key) || [];
+                if (!prev.includes(picName)) prev.push(picName);
+                map.set(key, prev);
+            }
+        }
+        return map;
+    }, [activity]);
+    const picToProvinceKeysMap = useMemo(() => {
+        const map = new Map();
+        const list = activity?.committee_structures || activity?.committeeStructures || [];
+        for (const member of list) {
+            const position = (member?.position || '').toString().toLowerCase();
+            if (!position.includes('pic')) continue;
+            const daerah = (member?.daerah_layanan || '').toString();
+            if (!daerah.trim()) continue;
+            const picName = (member?.user?.name || member?.name || '').toString().trim();
+            if (!picName) continue;
+            const provinces = daerah.split(',').map(s => normalizeProvinceKey(s)).filter(Boolean);
+            const prev = map.get(picName) || [];
+            for (const provKey of provinces) {
+                if (!prev.includes(provKey)) prev.push(provKey);
+            }
+            map.set(picName, prev);
+        }
+        return map;
+    }, [activity]);
+    const provinceNameByKeyFromPic = useMemo(() => {
+        const map = new Map();
+        const list = activity?.committee_structures || activity?.committeeStructures || [];
+        for (const member of list) {
+            const position = (member?.position || '').toString().toLowerCase();
+            if (!position.includes('pic')) continue;
+            const daerah = (member?.daerah_layanan || '').toString();
+            if (!daerah.trim()) continue;
+            const parts = daerah.split(',').map(s => s.trim()).filter(Boolean);
+            for (const name of parts) {
+                const key = normalizeProvinceKey(name);
+                if (!key) continue;
+                if (!map.has(key)) map.set(key, name);
+            }
+        }
+        return map;
+    }, [activity]);
+    const allProvinceKeysFromPic = useMemo(() => {
+        const keys = Array.from(provinceNameByKeyFromPic.keys());
+        keys.sort((a, b) => {
+            const aName = provinceNameByKeyFromPic.get(a) || a;
+            const bName = provinceNameByKeyFromPic.get(b) || b;
+            return aName.localeCompare(bName);
+        });
+        return keys;
+    }, [provinceNameByKeyFromPic]);
+    const picOptions = useMemo(() => {
+        return Array.from(picToProvinceKeysMap.keys()).sort((a, b) => a.localeCompare(b));
+    }, [picToProvinceKeysMap]);
+    const formatProvinceLabelWithPic = (provinceName) => {
+        const raw = (provinceName || '').toString();
+        const key = normalizeProvinceKey(raw);
+        if (!key) return raw;
+        const pics = provincePicMap.get(key);
+        if (!pics || pics.length === 0) return raw;
+        return `${raw} - ${pics.join(' & ')}`;
+    };
     const [regionChartDataState, setRegionChartDataState] = useState({
-        labels: provinceStats.map(item => item.name),
+        labels: provinceStats.map(item => formatProvinceLabelWithPic(item.name)),
         datasets: [{
             label: 'User',
             data: provinceStats.map(item => item.total),
@@ -709,7 +790,7 @@ export default function Dashboard({
         // Let's assume they are ready to display.
 
         if (data) {
-            const labels = data.map(item => item.name);
+            const labels = data.map(item => regionLevel === 'province' ? formatProvinceLabelWithPic(item.name) : item.name);
             const colors = makeColors(labels.length);
             setRegionChartDataState({
                 labels,
@@ -824,6 +905,7 @@ export default function Dashboard({
     };
 
     const [roomRegionLevel, setRoomRegionLevel] = useState('province');
+    const [roomPicFilter, setRoomPicFilter] = useState('all');
     const [roomRegionChartData, setRoomRegionChartData] = useState({
         labels: (roomByRegionStats?.province || []).map(r => r.name),
         datasets: [
@@ -845,11 +927,42 @@ export default function Dashboard({
     });
 
     useEffect(() => {
-        const src = roomRegionLevel === 'province'
+        const srcAllRaw = roomRegionLevel === 'province'
             ? (roomByRegionStats?.province || [])
             : roomRegionLevel === 'regency'
                 ? (roomByRegionStats?.regency || [])
                 : (roomByRegionStats?.district || []);
+
+        const srcAll = roomRegionLevel !== 'province'
+            ? srcAllRaw
+            : (() => {
+                const keysWanted = roomPicFilter === 'all'
+                    ? allProvinceKeysFromPic
+                    : (picToProvinceKeysMap.get(roomPicFilter) || []);
+                if (!Array.isArray(keysWanted) || keysWanted.length === 0) return srcAllRaw;
+
+                const byKey = new Map(
+                    srcAllRaw.map((row) => [normalizeProvinceKey(row?.name), row]).filter(([k]) => Boolean(k))
+                );
+
+                return keysWanted.map((key) => {
+                    const existing = byKey.get(key);
+                    if (existing) return existing;
+                    const name = provinceNameByKeyFromPic.get(key) || key;
+                    return { id: `missing:${key}`, name, assigned: 0, unassigned: 0, total: 0 };
+                });
+            })();
+
+        const provinceKeys = roomPicFilter === 'all' ? null : (picToProvinceKeysMap.get(roomPicFilter) || []);
+        const src = (roomRegionLevel === 'province' || !provinceKeys)
+            ? srcAll
+            : (provinceKeys.length === 0
+                ? []
+                : srcAll.filter((r) => {
+                    const provinceName = roomRegionLevel === 'province' ? r?.name : r?.province_name;
+                    const pKey = normalizeProvinceKey(provinceName);
+                    return pKey && provinceKeys.includes(pKey);
+                }));
         setRoomRegionChartData({
             labels: src.map(r => r.name),
             datasets: [
@@ -869,7 +982,7 @@ export default function Dashboard({
                 }
             ]
         });
-    }, [roomRegionLevel, roomByRegionStats]);
+    }, [roomRegionLevel, roomByRegionStats, roomPicFilter, picToProvinceKeysMap, allProvinceKeysFromPic, provinceNameByKeyFromPic]);
 
     const roomRegionChartOptions = {
         responsive: true,
@@ -1419,16 +1532,37 @@ export default function Dashboard({
                             {roomByRegionStats && (
                                 <div className="mt-2">
                                     <div className="flex items-center justify-between mb-3">
-                                        <h6 className="text-sm font-semibold text-gray-700">Distribusi Kamar per Wilayah</h6>
-                                        <select
-                                            value={roomRegionLevel}
-                                            onChange={(e) => setRoomRegionLevel(e.target.value)}
-                                            className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-                                        >
-                                            <option value="province">Provinsi</option>
-                                            <option value="regency">Kabupaten/Kota</option>
-                                            <option value="district">Kecamatan</option>
-                                        </select>
+                                        <h6 className="text-sm font-semibold text-gray-700">
+                                            Distribusi Kamar per Wilayah
+                                            {roomPicFilter !== 'all' && String(roomPicFilter || '').trim() !== '' && (
+                                                <>
+                                                    {' '}
+                                                    - <span className="font-extrabold">{roomPicFilter}</span>
+                                                </>
+                                            )}
+                                        </h6>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                value={roomPicFilter}
+                                                onChange={(e) => setRoomPicFilter(e.target.value)}
+                                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                                disabled={picOptions.length === 0}
+                                            >
+                                                <option value="all">Semua PIC</option>
+                                                {picOptions.map((name) => (
+                                                    <option key={name} value={name}>{name}</option>
+                                                ))}
+                                            </select>
+                                            <select
+                                                value={roomRegionLevel}
+                                                onChange={(e) => setRoomRegionLevel(e.target.value)}
+                                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                            >
+                                                <option value="province">Provinsi</option>
+                                                <option value="regency">Kabupaten/Kota</option>
+                                                <option value="district">Kecamatan</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div className="relative h-80 overflow-x-auto">
                                         <div style={{ width: roomRegionCanvasWidth, height: '100%' }}>
@@ -1437,32 +1571,6 @@ export default function Dashboard({
                                     </div>
                                 </div>
                             )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Statistik Kelompok (jika ada data kelompok) */}
-                {groupStats && (
-                    <div className="mb-6">
-                        <div className="bg-white rounded-xl shadow-md p-6">
-                            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-                                <h5 className="text-base font-semibold text-gray-700">Statistik Kelompok Peserta</h5>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kelompok</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{groupStats.total_groups?.toLocaleString() || 0}</div>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Tanpa Kelompok</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{groupStats.ungrouped?.toLocaleString() || 0}</div>
-                                </div>
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Peserta Aktif</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{pesertaAktif.toLocaleString()}</div>
-                                </div>
-                            </div>
-                            {/* Chart for groups could go here if data structure allows */}
                         </div>
                     </div>
                 )}

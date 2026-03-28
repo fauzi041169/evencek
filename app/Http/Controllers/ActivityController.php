@@ -6803,18 +6803,21 @@ class ActivityController extends Controller
         // Statistik berdasarkan kabupaten/kota
         $regencyStats = DB::table('profiles')
             ->join('regencies', 'profiles.regency_id', '=', 'regencies.id')
+            ->join('provinces', 'regencies.province_id', '=', 'provinces.id')
             ->whereIn('profiles.user_id', $participantUserIds)
-            ->select('regencies.id', 'regencies.name', DB::raw('COUNT(profiles.id) as total'))
-            ->groupBy('regencies.id', 'regencies.name')
+            ->select('regencies.id', 'regencies.name', 'provinces.name as province_name', DB::raw('COUNT(profiles.id) as total'))
+            ->groupBy('regencies.id', 'regencies.name', 'provinces.name')
             ->orderByDesc('total')
             ->get();
 
         // Statistik berdasarkan kecamatan
         $districtStats = DB::table('profiles')
             ->join('districts', 'profiles.district_id', '=', 'districts.id')
+            ->join('regencies', 'districts.regency_id', '=', 'regencies.id')
+            ->join('provinces', 'regencies.province_id', '=', 'provinces.id')
             ->whereIn('profiles.user_id', $participantUserIds)
-            ->select('districts.id', 'districts.name', DB::raw('COUNT(profiles.id) as total'))
-            ->groupBy('districts.id', 'districts.name')
+            ->select('districts.id', 'districts.name', 'provinces.name as province_name', DB::raw('COUNT(profiles.id) as total'))
+            ->groupBy('districts.id', 'districts.name', 'provinces.name')
             ->orderByDesc('total')
             ->get();
 
@@ -7401,6 +7404,7 @@ class ActivityController extends Controller
                         return [
                             'id' => $row->id,
                             'name' => $row->name,
+                            'province_name' => $row->province_name ?? null,
                             'assigned' => $assigned,
                             'unassigned' => $unassigned,
                             'total' => (int) $row->total,
@@ -7415,6 +7419,7 @@ class ActivityController extends Controller
                         return [
                             'id' => $row->id,
                             'name' => $row->name,
+                            'province_name' => $row->province_name ?? null,
                             'assigned' => $assigned,
                             'unassigned' => $unassigned,
                             'total' => (int) $row->total,

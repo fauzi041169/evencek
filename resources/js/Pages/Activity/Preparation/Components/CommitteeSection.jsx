@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 
-export default function CommitteeSection({ activity, committeeStructure, refPositions, divisions, participants = [], vouchers = [] }) {
+export default function CommitteeSection({ activity, committeeStructure, refPositions, divisions, participants = [], vouchers = [], provinces = [] }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingMember, setEditingMember] = useState(null);
     const [data, setData] = useState({
@@ -11,6 +11,28 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
         daerah_layanan: ''
     });
     const [processing, setProcessing] = useState(false);
+    const [selectedProvinces, setSelectedProvinces] = useState([]);
+    const [provinceQuery, setProvinceQuery] = useState('');
+    const [showRegionPicker, setShowRegionPicker] = useState(false);
+
+    const normalizedProvinceQuery = (provinceQuery || '').trim().toLowerCase();
+    const provincesSorted = Array.isArray(provinces)
+        ? [...provinces].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'id-ID'))
+        : [];
+    const provincesFiltered = normalizedProvinceQuery
+        ? provincesSorted.filter((p) => (p?.name || '').toLowerCase().includes(normalizedProvinceQuery))
+        : provincesSorted;
+
+    useEffect(() => {
+        if (!isPicPosition(data.position)) return;
+        if (selectedProvinces.length > 0) return;
+        if (!data.user_id) return;
+        const p = participants.find((x) => String(x.user_id) === String(data.user_id));
+        const provName = p?.user?.profile?.province?.name;
+        if (provName) {
+            setSelectedProvinces([provName]);
+        }
+    }, [data.position, data.user_id]);
 
     // Voucher State
     const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
@@ -98,6 +120,12 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                 user_id: member.user_id,
                 daerah_layanan: member.daerah_layanan || ''
             });
+            const existing = (member.daerah_layanan || '')
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean);
+            setSelectedProvinces(existing);
+            setProvinceQuery('');
         } else {
             setEditingMember(null);
             setData({
@@ -105,6 +133,8 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                 user_id: '',
                 daerah_layanan: ''
             });
+            setSelectedProvinces([]);
+            setProvinceQuery('');
         }
         setIsModalOpen(true);
     };
@@ -112,19 +142,28 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!data.position || !data.user_id) return;
+        if (isPicPosition(data.position) && selectedProvinces.length === 0) return;
 
         setProcessing(true);
+        const payload = {
+            ...data,
+            daerah_layanan: isPicPosition(data.position)
+                ? (selectedProvinces.join(', ') || '')
+                : ''
+        };
 
         if (editingMember) {
             router.put(route('activity.preparation.update-committee', {
                 activityId: activity.uid || activity.id,
                 committeeId: editingMember.id
-            }), data, {
+            }), payload, {
                 onSuccess: () => {
                     setIsModalOpen(false);
                     setEditingMember(null);
                     setData({ position: '', user_id: '', daerah_layanan: '' });
                     setProcessing(false);
+                    setSelectedProvinces([]);
+                    setProvinceQuery('');
                     Swal.fire({
                         title: 'Berhasil',
                         text: 'Data panitia berhasil diperbarui.',
@@ -140,11 +179,13 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                 }
             });
         } else {
-            router.post(route('activity.preparation.store-committee', activity.uid || activity.id), data, {
+            router.post(route('activity.preparation.store-committee', activity.uid || activity.id), payload, {
                 onSuccess: () => {
                     setIsModalOpen(false);
                     setData({ position: '', user_id: '', daerah_layanan: '' });
                     setProcessing(false);
+                    setSelectedProvinces([]);
+                    setProvinceQuery('');
                     Swal.fire({
                         title: 'Berhasil',
                         text: 'Panitia berhasil ditambahkan.',
@@ -459,19 +500,95 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                     </div>
 
                                     {isPicPosition(data.position) && (
-                                        <div className="relative group">
-                                            <label htmlFor="daerah_layanan" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Daerah Tugas / Layanan</label>
-                                            <div className="relative">
-                                                <i className="fas fa-map-marker-alt absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
-                                                <input
-                                                    id="daerah_layanan"
-                                                    type="text"
-                                                    placeholder="Contoh: Jakarta Barat, Bandung, dll."
-                                                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-primary shadow-inner font-medium"
-                                                    value={data.daerah_layanan}
-                                                    onChange={(e) => setData({ ...data, daerah_layanan: e.target.value })}
-                                                />
+                                        <div className="relative">
+                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Daerah Tugas / Layanan</label>
+                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                {selectedProvinces.length > 0 ? (
+                                                    selectedProvinces.map((name) => (
+                                                        <span key={name} className="inline-flex items-center gap-2 px-3 py-1 rounded-2xl bg-primary/10 text-primary border border-primary/20 text-xs font-bold">
+                                                            <span>{name}</span>
+                                                            <button
+                                                                type="button"
+                                                                className="h-5 w-5 flex items-center justify-center rounded-full bg-primary text-white"
+                                                                onClick={() => setSelectedProvinces(selectedProvinces.filter((n) => n !== name))}
+                                                            >
+                                                                <i className="fas fa-times text-[10px]"></i>
+                                                            </button>
+                                                        </span>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-xs text-gray-500">Belum ada provinsi dipilih</span>
+                                                )}
                                             </div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowRegionPicker(!showRegionPicker)}
+                                                    className="px-4 py-2 rounded-xl bg-primary text-white hover:bg-primary/90 text-xs font-bold"
+                                                >
+                                                    {showRegionPicker ? 'Tutup pilihan daerah' : 'Tambah daerah tugas'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold"
+                                                    onClick={() => setSelectedProvinces([])}
+                                                >
+                                                    Hapus semua
+                                                </button>
+                                            </div>
+                                            {showRegionPicker && (
+                                                <div className="rounded-2xl bg-gray-50 border border-gray-200 overflow-hidden">
+                                                    <div className="p-3 border-b border-gray-200">
+                                                        <div className="relative">
+                                                            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"></i>
+                                                            <input
+                                                                type="text"
+                                                                className="w-full pl-12 pr-20 py-3 bg-transparent border-none focus:ring-0 font-medium"
+                                                                placeholder="Cari provinsi..."
+                                                                value={provinceQuery}
+                                                                onChange={(e) => setProvinceQuery(e.target.value)}
+                                                            />
+                                                            {provinceQuery && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setProvinceQuery('')}
+                                                                    className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl bg-white text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors font-bold text-xs border border-gray-200"
+                                                                >
+                                                                    Reset
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="max-h-64 overflow-y-auto">
+                                                        {provincesFiltered.map((prov) => {
+                                                            const alreadySelected = selectedProvinces.includes(prov.name);
+                                                            return (
+                                                                <button
+                                                                    key={prov.id}
+                                                                    type="button"
+                                                                    disabled={alreadySelected}
+                                                                    onClick={() => {
+                                                                        setSelectedProvinces((prev) => (prev.includes(prov.name) ? prev : [...prev, prov.name]));
+                                                                        setProvinceQuery('');
+                                                                    }}
+                                                                    className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors ${alreadySelected ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                                                                >
+                                                                    <span className="font-medium">{prov.name}</span>
+                                                                    {alreadySelected && <i className="fas fa-check text-gray-300"></i>}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                        {normalizedProvinceQuery && provincesFiltered.length === 0 && (
+                                                            <div className="px-4 py-3 text-xs text-gray-400">
+                                                                Tidak ada hasil untuk "{provinceQuery}"
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="px-4 py-3 text-[11px] font-semibold text-amber-600 border-t border-gray-200">
+                                                        Wajib pilih minimal 1 provinsi untuk posisi PIC.
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -492,7 +609,7 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={processing || !data.position || !data.user_id}
+                                    disabled={processing || !data.position || !data.user_id || (isPicPosition(data.position) && selectedProvinces.length === 0)}
                                     className="flex-[2] py-4 bg-primary text-white rounded-2xl text-sm font-bold shadow-lg shadow-primary/25 hover:bg-primary/90 disabled:opacity-50 disabled:shadow-none active:scale-95 transition-all"
                                 >
                                     {processing ? (

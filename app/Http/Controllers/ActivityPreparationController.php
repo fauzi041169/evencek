@@ -5545,11 +5545,13 @@ class ActivityPreparationController extends Controller
             }
         }
 
-        $request->validate([
+        $isPic = stripos((string) $request->position, 'pic') !== false;
+        $rules = [
             'user_id' => 'required|exists:users,id',
             'position' => 'required|string|max:255',
-            'daerah_layanan' => 'nullable|string|max:255',
-        ]);
+            'daerah_layanan' => $isPic ? 'required|string|max:255' : 'nullable|string|max:255',
+        ];
+        $request->validate($rules);
 
         // Check for duplicates
         $isDuplicate = ActivityCommitteeStructure::where('activity_id', $activityIdValue)
@@ -5641,11 +5643,13 @@ class ActivityPreparationController extends Controller
             }
         }
 
-        $request->validate([
+        $isPic = stripos((string) $request->position, 'pic') !== false;
+        $rules = [
             'user_id' => 'required|exists:users,id',
             'position' => 'required|string|max:255',
-            'daerah_layanan' => 'nullable|string|max:255',
-        ]);
+            'daerah_layanan' => $isPic ? 'required|string|max:255' : 'nullable|string|max:255',
+        ];
+        $request->validate($rules);
 
         // Check for duplicates (excluding current record)
         $isDuplicate = ActivityCommitteeStructure::where('activity_id', $activityIdValue)
