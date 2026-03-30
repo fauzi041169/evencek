@@ -68,6 +68,8 @@ export default function Dashboard({
     statusPesertaData,
     roomStats,
     roomByRegionStats,
+    roomStatsByType,
+    roomByRegionStatsByType,
     totalChats,
     totalChatHubungiPanitia,
     totalUserKomentar,
@@ -906,19 +908,37 @@ export default function Dashboard({
 
     const [roomRegionLevel, setRoomRegionLevel] = useState('province');
     const [roomPicFilter, setRoomPicFilter] = useState('all');
+    const [roomUserTypeFilter, setRoomUserTypeFilter] = useState('peserta');
+
+    const roomStatsView = useMemo(() => {
+        const byType = roomStatsByType && typeof roomStatsByType === 'object' ? roomStatsByType : null;
+        return (byType && byType[roomUserTypeFilter]) ? byType[roomUserTypeFilter] : roomStats;
+    }, [roomStats, roomStatsByType, roomUserTypeFilter]);
+
+    const roomByRegionStatsView = useMemo(() => {
+        const byType = roomByRegionStatsByType && typeof roomByRegionStatsByType === 'object' ? roomByRegionStatsByType : null;
+        return (byType && byType[roomUserTypeFilter]) ? byType[roomUserTypeFilter] : roomByRegionStats;
+    }, [roomByRegionStats, roomByRegionStatsByType, roomUserTypeFilter]);
+
+    const roomUserTypeLabel = useMemo(() => {
+        if (roomUserTypeFilter === 'panitia') return 'Panitia';
+        if (roomUserTypeFilter === 'all') return 'Semua';
+        return 'Peserta';
+    }, [roomUserTypeFilter]);
+
     const [roomRegionChartData, setRoomRegionChartData] = useState({
-        labels: (roomByRegionStats?.province || []).map(r => r.name),
+        labels: (roomByRegionStatsView?.province || []).map(r => r.name),
         datasets: [
             {
                 label: 'Sudah Dapat Kamar',
-                data: (roomByRegionStats?.province || []).map(r => r.assigned),
+                data: (roomByRegionStatsView?.province || []).map(r => r.assigned),
                 backgroundColor: '#3b82f6',
                 borderRadius: 4,
                 barThickness: 18
             },
             {
                 label: 'Belum Dapat Kamar',
-                data: (roomByRegionStats?.province || []).map(r => r.unassigned),
+                data: (roomByRegionStatsView?.province || []).map(r => r.unassigned),
                 backgroundColor: '#f59e0b',
                 borderRadius: 4,
                 barThickness: 18
@@ -928,10 +948,10 @@ export default function Dashboard({
 
     useEffect(() => {
         const srcAllRaw = roomRegionLevel === 'province'
-            ? (roomByRegionStats?.province || [])
+            ? (roomByRegionStatsView?.province || [])
             : roomRegionLevel === 'regency'
-                ? (roomByRegionStats?.regency || [])
-                : (roomByRegionStats?.district || []);
+                ? (roomByRegionStatsView?.regency || [])
+                : (roomByRegionStatsView?.district || []);
 
         const srcAll = roomRegionLevel !== 'province'
             ? srcAllRaw
@@ -982,7 +1002,7 @@ export default function Dashboard({
                 }
             ]
         });
-    }, [roomRegionLevel, roomByRegionStats, roomPicFilter, picToProvinceKeysMap, allProvinceKeysFromPic, provinceNameByKeyFromPic]);
+    }, [roomRegionLevel, roomByRegionStatsView, roomPicFilter, picToProvinceKeysMap, allProvinceKeysFromPic, provinceNameByKeyFromPic]);
 
     const roomRegionChartOptions = {
         responsive: true,
@@ -1499,7 +1519,7 @@ export default function Dashboard({
                 )}
 
                 {/* Statistik Kamar (jika ada data kamar) */}
-                {roomStats && (
+                {roomStatsView && (
                     <div className="mb-6">
                         <div className="bg-white rounded-xl shadow-md p-6">
                             <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
@@ -1508,32 +1528,34 @@ export default function Dashboard({
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kamar Aktif</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.total_rooms?.toLocaleString() || 0}</div>
-                                    {roomStats.total_rooms_all != null && roomStats.total_rooms_all !== roomStats.total_rooms && (
-                                        <div className="text-[10px] text-gray-400 mt-1">Total semua kamar: {roomStats.total_rooms_all?.toLocaleString()}</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsView.total_rooms?.toLocaleString() || 0}</div>
+                                    {roomStatsView.total_rooms_all != null && roomStatsView.total_rooms_all !== roomStatsView.total_rooms && (
+                                        <div className="text-[10px] text-gray-400 mt-1">Total semua kamar: {roomStatsView.total_rooms_all?.toLocaleString()}</div>
                                     )}
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kapasitas</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.has_unlimited ? '∞' : (roomStats.total_capacity?.toLocaleString() || 0)}</div>
-                                    {roomStats.has_unlimited && (
+                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsView.has_unlimited ? '∞' : (roomStatsView.total_capacity?.toLocaleString() || 0)}</div>
+                                    {roomStatsView.has_unlimited && (
                                         <div className="text-[10px] text-gray-400 mt-1">Ada kamar kapasitas tak terbatas</div>
                                     )}
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Terisi</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.assigned?.toLocaleString() || 0}</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsView.assigned?.toLocaleString() || 0}</div>
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Belum Dapat Kamar</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStats.unassigned?.toLocaleString() || 0}</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsView.unassigned?.toLocaleString() || 0}</div>
                                 </div>
                             </div>
-                            {roomByRegionStats && (
+                            {roomByRegionStatsView && (
                                 <div className="mt-2">
                                     <div className="flex items-center justify-between mb-3">
                                         <h6 className="text-sm font-semibold text-gray-700">
                                             Distribusi Kamar per Wilayah
+                                            {' '}
+                                            - <span className="font-extrabold">{roomUserTypeLabel}</span>
                                             {roomPicFilter !== 'all' && String(roomPicFilter || '').trim() !== '' && (
                                                 <>
                                                     {' '}
@@ -1542,6 +1564,15 @@ export default function Dashboard({
                                             )}
                                         </h6>
                                         <div className="flex items-center gap-2">
+                                            <select
+                                                value={roomUserTypeFilter}
+                                                onChange={(e) => setRoomUserTypeFilter(e.target.value)}
+                                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                            >
+                                                <option value="peserta">Peserta</option>
+                                                <option value="panitia">Panitia</option>
+                                                <option value="all">Semua</option>
+                                            </select>
                                             <select
                                                 value={roomPicFilter}
                                                 onChange={(e) => setRoomPicFilter(e.target.value)}
