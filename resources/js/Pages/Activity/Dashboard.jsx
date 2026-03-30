@@ -35,6 +35,55 @@ const normalizeProvinceKey = (value) => String(value || '')
     .trim()
     .replace(/\s+/g, ' ');
 
+const normalizeProvinceKeyCompact = (value) => String(value || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '')
+    .trim();
+
+const MASTER_PROVINCES = [
+    'Aceh',
+    'Sumatera Utara',
+    'Sumatera Barat',
+    'Riau',
+    'Kepulauan Riau',
+    'Jambi',
+    'Sumatera Selatan',
+    'Kepulauan Bangka Belitung',
+    'Bengkulu',
+    'Lampung',
+    'DKI Jakarta',
+    'Jawa Barat',
+    'Banten',
+    'Jawa Tengah',
+    'DI Yogyakarta',
+    'Jawa Timur',
+    'Bali',
+    'Nusa Tenggara Barat',
+    'Nusa Tenggara Timur',
+    'Kalimantan Barat',
+    'Kalimantan Tengah',
+    'Kalimantan Selatan',
+    'Kalimantan Timur',
+    'Kalimantan Utara',
+    'Sulawesi Utara',
+    'Gorontalo',
+    'Sulawesi Tengah',
+    'Sulawesi Barat',
+    'Sulawesi Selatan',
+    'Sulawesi Tenggara',
+    'Maluku',
+    'Maluku Utara',
+    'Papua',
+    'Papua Barat',
+    'Papua Selatan',
+    'Papua Tengah',
+    'Papua Pegunungan',
+    'Papua Barat Daya'
+];
+
+const MASTER_PROVINCE_COMPACT_KEYS = MASTER_PROVINCES.map(normalizeProvinceKeyCompact).filter(Boolean);
+const MASTER_PROVINCE_NAME_BY_COMPACT_KEY = new Map(MASTER_PROVINCES.map(name => [normalizeProvinceKeyCompact(name), name]));
+
 export default function Dashboard({
     activity,
     totalPeserta,
@@ -673,26 +722,6 @@ export default function Dashboard({
         '#fde047','#fdba74','#fca5a5'
     ];
     const makeColors = (count) => Array.from({ length: Math.max(count, 1) }, (_, i) => BAR_COLORS[i % BAR_COLORS.length]);
-    const provincePicMap = useMemo(() => {
-        const map = new Map();
-        const list = activity?.committee_structures || activity?.committeeStructures || [];
-        for (const member of list) {
-            const position = (member?.position || '').toString().toLowerCase();
-            if (!position.includes('pic')) continue;
-            const daerah = (member?.daerah_layanan || '').toString();
-            if (!daerah.trim()) continue;
-            const picName = member?.user?.name || member?.name;
-            if (!picName) continue;
-            const provinces = daerah.split(',').map(s => normalizeProvinceKey(s)).filter(Boolean);
-            for (const prov of provinces) {
-                const key = normalizeProvinceKey(prov);
-                const prev = map.get(key) || [];
-                if (!prev.includes(picName)) prev.push(picName);
-                map.set(key, prev);
-            }
-        }
-        return map;
-    }, [activity]);
     const picToProvinceKeysMap = useMemo(() => {
         const map = new Map();
         const list = activity?.committee_structures || activity?.committeeStructures || [];
@@ -741,20 +770,73 @@ export default function Dashboard({
     const picOptions = useMemo(() => {
         return Array.from(picToProvinceKeysMap.keys()).sort((a, b) => a.localeCompare(b));
     }, [picToProvinceKeysMap]);
-    const formatProvinceLabelWithPic = (provinceName) => {
-        const raw = (provinceName || '').toString();
-        const key = normalizeProvinceKey(raw);
-        if (!key) return raw;
-        const pics = provincePicMap.get(key);
-        if (!pics || pics.length === 0) return raw;
-        return `${raw} - ${pics.join(' & ')}`;
+
+    const formatRegionName = (name, fallback = 'Tidak diisi') => {
+        const s = (name ?? '').toString().trim();
+        return s ? s : fallback;
     };
+
+    const provinceStatsForChart = useMemo(() => {
+        const list = Array.isArray(provinceStats) ? provinceStats : [];
+        const EMPTY_KEY = '__empty__';
+        const OTHER_KEY = '__other__';
+        const byKey = new Map();
+        const masterIndexByKey = new Map(MASTER_PROVINCE_COMPACT_KEYS.map((k, i) => [k, i]));
+
+        for (const item of list) {
+            const rawName = (item?.name ?? '').toString().trim();
+            const total = Number(item?.total ?? 0) || 0;
+            let key = OTHER_KEY;
+            let displayName = 'Lainnya';
+
+            if (!rawName) {
+                key = EMPTY_KEY;
+                displayName = 'Tidak diisi';
+            } else {
+                const compactKey = normalizeProvinceKeyCompact(rawName);
+                const canonicalName = MASTER_PROVINCE_NAME_BY_COMPACT_KEY.get(compactKey);
+                if (canonicalName) {
+                    key = compactKey;
+                    displayName = canonicalName;
+                }
+            }
+
+            const prev = byKey.get(key);
+            if (prev) {
+                prev.total += total;
+            } else {
+                byKey.set(key, { name: displayName, total });
+            }
+        }
+
+        for (const key of MASTER_PROVINCE_COMPACT_KEYS) {
+            if (byKey.has(key)) continue;
+            byKey.set(key, { name: MASTER_PROVINCE_NAME_BY_COMPACT_KEY.get(key) || key, total: 0 });
+        }
+
+        const result = Array.from(byKey.entries()).map(([key, value]) => ({
+            ...value,
+            __key: key,
+            __rank: key === EMPTY_KEY ? 2 : key === OTHER_KEY ? 1 : 0,
+            __masterIndex: masterIndexByKey.get(key) ?? 9999
+        }));
+
+        result.sort((a, b) => {
+            if (b.total !== a.total) return b.total - a.total;
+            if (a.__rank !== b.__rank) return a.__rank - b.__rank;
+            if (a.__rank === 0 && b.__rank === 0) return a.__masterIndex - b.__masterIndex;
+            return a.name.localeCompare(b.name, 'id');
+        });
+
+        return result.map(({ __key, __rank, __masterIndex, ...value }) => value);
+    }, [provinceStats]);
+
     const [regionChartDataState, setRegionChartDataState] = useState({
-        labels: provinceStats.map(item => formatProvinceLabelWithPic(item.name)),
+        labels: provinceStatsForChart.map(item => formatRegionName(item.name)),
         datasets: [{
             label: 'User',
-            data: provinceStats.map(item => item.total),
-            backgroundColor: makeColors(provinceStats.length),
+            data: provinceStatsForChart.map(item => item.total),
+            backgroundColor: makeColors(provinceStatsForChart.length),
             borderRadius: 4,
             barThickness: 20
         }]
@@ -768,7 +850,7 @@ export default function Dashboard({
     useEffect(() => {
         let data = [];
         if (regionLevel === 'province') {
-            data = provinceStats;
+            data = provinceStatsForChart;
         } else if (regionLevel === 'regency') {
             data = regencyStats; // gunakan seluruh kabupaten/kota yang terdaftar
         } else {
@@ -792,7 +874,7 @@ export default function Dashboard({
         // Let's assume they are ready to display.
 
         if (data) {
-            const labels = data.map(item => regionLevel === 'province' ? formatProvinceLabelWithPic(item.name) : item.name);
+            const labels = data.map(item => formatRegionName(item.name));
             const colors = makeColors(labels.length);
             setRegionChartDataState({
                 labels,
@@ -808,7 +890,7 @@ export default function Dashboard({
             });
         }
 
-    }, [regionLevel, provinceStats, regencyStats, districtStats]);
+    }, [regionLevel, provinceStatsForChart, regencyStats, districtStats]);
 
     // Plugin sederhana untuk menampilkan nilai di atas batang chart wilayah
     const regionBarValuePlugin = {
