@@ -94,8 +94,37 @@ class Activity extends Model
         })->toArray();
 
         // Normalisasi key untuk perbandingan (surat_tugas = surat-tugas = surat tugas)
+        // dan hilangkan prefix legacy "custom_" berulang (custom surat tugas, custom-custom-surat-tugas)
         $canonicalKey = function ($k) {
-            return strtolower(trim(preg_replace('/[\s\-]+/', '_', (string) $k)));
+            $s = strtolower(trim((string) $k));
+            if ($s === '') {
+                return '';
+            }
+
+            if (str_starts_with($s, 'col-custom-')) {
+                $s = substr($s, strlen('col-custom-'));
+            }
+
+            $s = preg_replace('/[\s\-]+/', '_', $s) ?? $s;
+            $s = preg_replace('/_+/', '_', $s) ?? $s;
+            $s = trim($s, '_');
+
+            if (preg_match('/^custom_\d+$/', $s)) {
+                return $s;
+            }
+
+            for ($i = 0; $i < 6; $i++) {
+                if (! str_starts_with($s, 'custom_')) {
+                    break;
+                }
+                $candidate = substr($s, strlen('custom_'));
+                if ($candidate === '' || preg_match('/^\d+$/', $candidate)) {
+                    break;
+                }
+                $s = trim($candidate, '_');
+            }
+
+            return $s;
         };
         $existingKeysCanonical = array_map($canonicalKey, array_column($fields, 'key'));
 

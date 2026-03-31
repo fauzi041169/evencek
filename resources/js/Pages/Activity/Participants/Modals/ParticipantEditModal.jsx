@@ -63,11 +63,31 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
         return Array.isArray(requiredProfileFields) && requiredProfileFields.map(s => String(s).toLowerCase()).includes(k);
     };
 
-    const normalizeKey = (k) => String(k || '')
-        .toLowerCase()
-        .replace(/^custom_/, '')
-        .trim()
-        .replace(/[\s\-]+/g, '_');
+    const normalizeKey = (k) => {
+        let s = String(k || '').toLowerCase().trim();
+        if (!s) return '';
+
+        const placeholder = /^custom[_-]\d+$/.test(s);
+        if (!placeholder) {
+            for (let i = 0; i < 6; i++) {
+                if (s.startsWith('custom ')) {
+                    s = s.slice(7).trim();
+                    continue;
+                }
+                if (s.startsWith('custom-')) {
+                    s = s.slice(7).trim();
+                    continue;
+                }
+                if (s.startsWith('custom_')) {
+                    s = s.slice(7).trim();
+                    continue;
+                }
+                break;
+            }
+        }
+
+        return s.replace(/[\s\-_]+/g, '_');
+    };
 
     const hasExplicitFileField = (keyNorm) => {
         const list = Array.isArray(activity?.custom_fields) ? activity.custom_fields : [];
@@ -125,13 +145,13 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
 
             // Build allowed keys strictly from activity settings (dedupedCustomKeys)
             const allowedKeys = Array.isArray(dedupedCustomKeys)
-                ? dedupedCustomKeys.map(raw => String(raw).split('|')[0].trim().toLowerCase())
+                ? dedupedCustomKeys.map(raw => normalizeKey(String(raw).split('|')[0].trim()))
                 : [];
 
             // Start with filtered existing values for allowed keys only
             const initialAdditionalData = {};
-            allowedKeys.forEach((lowerKey) => {
-                const existingKey = Object.keys(activityCustomData || {}).find(k => k.toLowerCase() === lowerKey);
+            allowedKeys.forEach((canonKey) => {
+                const existingKey = Object.keys(activityCustomData || {}).find(k => normalizeKey(k) === canonKey);
                 if (existingKey) {
                     initialAdditionalData[existingKey] = activityCustomData[existingKey];
                 }
@@ -142,8 +162,8 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                 dedupedCustomKeys.forEach(rawKey => {
                     const baseKey = rawKey.split('|')[0].trim();
                     if (shouldHideCustomKey(baseKey)) return;
-                    const lowerKey = baseKey.toLowerCase();
-                    const existingKey = Object.keys(initialAdditionalData).find(k => k.toLowerCase() === lowerKey);
+                    const canonKey = normalizeKey(baseKey);
+                    const existingKey = Object.keys(initialAdditionalData).find(k => normalizeKey(k) === canonKey);
 
                     if (existingKey) {
                         const value = initialAdditionalData[existingKey];

@@ -47,6 +47,37 @@ const normalizeCustomKey = (raw) => {
     return key.trim();
 };
 
+const canonicalizeCustomKey = (raw) => {
+    let s = normalizeCustomKey(raw);
+    s = String(s || '').trim().toLowerCase();
+    if (!s) return '';
+
+    if (s.startsWith('col-custom-')) {
+        s = s.slice('col-custom-'.length);
+    }
+
+    const placeholder = /^custom[-_]\d+$/.test(s);
+    if (!placeholder) {
+        for (let i = 0; i < 6; i++) {
+            if (s.startsWith('custom ')) {
+                s = s.slice(7).trim();
+                continue;
+            }
+            if (s.startsWith('custom-')) {
+                s = s.slice(7).trim();
+                continue;
+            }
+            if (s.startsWith('custom_')) {
+                s = s.slice(7).trim();
+                continue;
+            }
+            break;
+        }
+    }
+
+    return kebabCase(s);
+};
+
 // Map custom field key -> type (for file columns to show button instead of path)
 const getCustomFieldType = (rawKey, customFields = []) => {
     const baseKey = rawKey.split('|')[0].trim().toLowerCase();
@@ -393,8 +424,9 @@ export default function Index({
                 const lower = base.toLowerCase();
                 if (!lower) return;
 
-                // Canonical: normalize to kebab-case for deduplication (surat_tugas, surat-tugas, Surat Tugas -> surat-tugas)
-                const canonical = kebabCase(base);
+                // Canonical: normalize + strip legacy "custom" prefix (custom surat tugas, custom-custom-surat-tugas)
+                const canonical = canonicalizeCustomKey(base);
+                if (!canonical) return;
 
                 const existing = keyMap.get(canonical);
 
@@ -437,8 +469,8 @@ export default function Index({
             safeParticipants.data.forEach(p => {
                 if (p.custom_data) {
                     Object.keys(p.custom_data).forEach(dataKey => {
-                        const normalizedDataKey = normalizeCustomKey(dataKey);
-                        const matchedKey = availableCustomKeys.find(k => k.toLowerCase() === normalizedDataKey.toLowerCase());
+                        const normalizedDataKey = canonicalizeCustomKey(dataKey);
+                        const matchedKey = availableCustomKeys.find(k => canonicalizeCustomKey(k) === normalizedDataKey);
 
                         if (matchedKey) {
                             const val = p.custom_data[dataKey];
