@@ -24,6 +24,11 @@ class HandleInertiaRequests extends Middleware
      */
     public function version(Request $request): ?string
     {
+        $viteManifest = public_path('build/manifest.json');
+        if (is_file($viteManifest)) {
+            return md5_file($viteManifest) ?: parent::version($request);
+        }
+
         return parent::version($request);
     }
 
@@ -49,6 +54,8 @@ class HandleInertiaRequests extends Middleware
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role ?? 'user',
+                    'is_admin' => (method_exists($user, 'isAdmin') && $user->isAdmin()) ? true : false,
+                    'is_superadmin' => (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ? true : false,
                     'profile_photo_url' => $user->profile_photo_url ?? null,
                 ] : null,
             ],

@@ -6,11 +6,12 @@ import MyQrCodeModal from '@/Components/MyQrCodeModal';
 import Cropper from 'react-easy-crop';
 import Swal from 'sweetalert2';
 
-export default function ProfileShow({ auth, user, provinces = [] }) {
+export default function ProfileShow({ auth, user, provinces = [], can_add_regions = false }) {
     const { t } = useTranslation();
     const { props } = usePage();
     const flash = props.flash || {};
     const missingFields = Array.isArray(flash.missing_profile_fields) ? flash.missing_profile_fields : [];
+    const csrfToken = typeof props.csrf_token === 'function' ? props.csrf_token() : props.csrf_token;
 
     const isFieldRequired = (key) => {
         if (['name', 'email'].includes(key)) return true;
@@ -18,7 +19,9 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
     };
 
     const isOwnProfile = auth.user.id === user.id;
-    const isSuperAdmin = auth.user.role === 'superadmin' || (auth.user.roles && auth.user.roles.some(r => r.name === 'superadmin'));
+    const roleLower = String(auth?.user?.role || '').trim().toLowerCase();
+    const userRoleLower = String(user?.role || '').trim().toLowerCase();
+    const isSuperAdmin = can_add_regions === true || auth?.user?.is_superadmin === true || roleLower === 'superadmin' || userRoleLower === 'superadmin' || (auth.user.roles && auth.user.roles.some(r => String(r?.name || '').toLowerCase() === 'superadmin'));
     const canEdit = isOwnProfile || isSuperAdmin;
     const [activeTab, setActiveTab] = useState('overview');
     const [showQrModal, setShowQrModal] = useState(false);
@@ -34,11 +37,16 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
     }, [flash]);
 
     // Region Data States
+    const [provinceOptions, setProvinceOptions] = useState(Array.isArray(provinces) ? provinces : []);
     const [regencies, setRegencies] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [loadingRegencies, setLoadingRegencies] = useState(false);
 
     const [loadingDistricts, setLoadingDistricts] = useState(false);
+
+    const ADD_PROVINCE = '__add_province__';
+    const ADD_REGENCY = '__add_regency__';
+    const ADD_DISTRICT = '__add_district__';
 
     // Manual processing state for router.post
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,6 +191,144 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
         } finally {
             setLoadingDistricts(false);
         }
+    };
+
+    const postJson = async (url, body) => {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+            },
+            body: JSON.stringify(body || {}),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            const msg = json?.message || 'Gagal menyimpan data wilayah.';
+            throw new Error(msg);
+        }
+        return json;
+    };
+
+    const sortByName = (arr) => {
+        return [...(Array.isArray(arr) ? arr : [])].sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), 'id', { sensitivity: 'base' }));
+    };
+
+    const addProvince = async () => {
+        if (!isSuperAdmin) return;
+        const { value } = await Swal.fire({
+            title: 'Tambah Provinsi',
+            input: 'text',
+            inputLabel: 'Nama provinsi',
+            inputPlaceholder: 'Contoh: PAPUA SELATAN',
+            showCancelButton: true,
+            confirmButtonText: 'Simpan',
+            cancelButtonText: 'Batal',
+            inputValidator: (v) => (!v || !String(v).trim() ? 'Nama provinsi wajib diisi' : null),
+        });
+        if (!value || !String(value).trim()) return;
+
+        try {
+            const res = await postJson(route('profile.ajax.provinces.store'), { name: value });
+            const created = res?.data;
+            if (!created?.id) return;
+
+            setProvinceOptions(prev => sortByName([...prev, created]));
+            setData(d => ({ ...d, province_id: created.id, regency_id: '', district_id: '' }));
+            setRegencies([]);
+            setDistricts([]);
+            fetchRegencies(created.id);
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Provinsi ditambahkan.', timer: 1300, showConfirmButton: false });
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: e?.message || 'Gagal menambah provinsi.' });
+        }
+    };
+
+    const addRegency = async () => {
+        if (!isSuperAdmin || !data.province_id) return;
+        const { value } = await Swal.fire({
+            title: 'Tambah Kabupaten/Kota',
+            input: 'text',
+            inputLabel: 'Nama kabupaten/kota',
+            inputPlaceholder: 'Contoh: KABUPATEN XYZ / KOTA XYZ',
+            showCancelButton: true,
+            confirmButtonText: 'Simpan',
+            cancelButtonText: 'Batal',
+            inputValidator: (v) => (!v || !String(v).trim() ? 'Nama kabupaten/kota wajib diisi' : null),
+        });
+        if (!value || !String(value).trim()) return;
+
+        try {
+            const res = await postJson(route('profile.ajax.regencies.store'), { province_id: data.province_id, name: value });
+            const created = res?.data;
+            if (!created?.id) return;
+
+            setRegencies(prev => sortByName([...prev, created]));
+            setData(d => ({ ...d, regency_id: created.id, district_id: '' }));
+            setDistricts([]);
+            fetchDistricts(created.id);
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Kabupaten/Kota ditambahkan.', timer: 1300, showConfirmButton: false });
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: e?.message || 'Gagal menambah kabupaten/kota.' });
+        }
+    };
+
+    const addDistrict = async () => {
+        if (!isSuperAdmin || !data.regency_id) return;
+        const { value } = await Swal.fire({
+            title: 'Tambah Kecamatan',
+            input: 'text',
+            inputLabel: 'Nama kecamatan',
+            inputPlaceholder: 'Contoh: KECAMATAN XYZ',
+            showCancelButton: true,
+            confirmButtonText: 'Simpan',
+            cancelButtonText: 'Batal',
+            inputValidator: (v) => (!v || !String(v).trim() ? 'Nama kecamatan wajib diisi' : null),
+        });
+        if (!value || !String(value).trim()) return;
+
+        try {
+            const res = await postJson(route('profile.ajax.districts.store'), { regency_id: data.regency_id, name: value });
+            const created = res?.data;
+            if (!created?.id) return;
+
+            setDistricts(prev => sortByName([...prev, created]));
+            setData('district_id', created.id);
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Kecamatan ditambahkan.', timer: 1300, showConfirmButton: false });
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: e?.message || 'Gagal menambah kecamatan.' });
+        }
+    };
+
+    const handleProvinceChange = async (e) => {
+        const next = e.target.value;
+        if (next === ADD_PROVINCE) {
+            await addProvince();
+            return;
+        }
+        setData(d => ({ ...d, province_id: next, regency_id: '', district_id: '' }));
+        fetchRegencies(next);
+    };
+
+    const handleRegencyChange = async (e) => {
+        const next = e.target.value;
+        if (next === ADD_REGENCY) {
+            await addRegency();
+            return;
+        }
+        setData(d => ({ ...d, regency_id: next, district_id: '' }));
+        fetchDistricts(next);
+    };
+
+    const handleDistrictChange = async (e) => {
+        const next = e.target.value;
+        if (next === ADD_DISTRICT) {
+            await addDistrict();
+            return;
+        }
+        setData('district_id', next);
     };
 
     // Password Update Form
@@ -648,42 +794,67 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 {t('regions.province')} {isFieldRequired('province_id') && <span className="text-red-500">*</span>}
                                             </label>
-                                            <select
-                                                value={data.province_id}
-                                                onChange={(e) => {
-                                                    setData(d => ({ ...d, province_id: e.target.value, regency_id: '', district_id: '' }));
-                                                    fetchRegencies(e.target.value);
-                                                }}
-                                                className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('province_id') && !data.province_id) || errors.province_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                                disabled={!canEdit}
-                                                required={isFieldRequired('province_id')}
-                                            >
-                                                <option value="">{t('regions.province')}</option>
-                                                {provinces.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                ))}
-                                            </select>
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={data.province_id}
+                                                    onChange={handleProvinceChange}
+                                                    className={`flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('province_id') && !data.province_id) || errors.province_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                                    disabled={!canEdit}
+                                                    required={isFieldRequired('province_id')}
+                                                >
+                                                    <option value="">{t('regions.province')}</option>
+                                                    {provinceOptions.map(p => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                    ))}
+                                                    {isSuperAdmin && canEdit && (
+                                                        <option value={ADD_PROVINCE}>+ Tambah Provinsi...</option>
+                                                    )}
+                                                </select>
+                                                {isSuperAdmin && canEdit && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={addProvince}
+                                                        className="px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-800 transition"
+                                                        title="Tambah provinsi baru"
+                                                    >
+                                                        +
+                                                    </button>
+                                                )}
+                                            </div>
                                             {errors.province_id && <div className="text-red-500 text-xs mt-1">{errors.province_id}</div>}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 {t('regions.regency')} {isFieldRequired('regency_id') && <span className="text-red-500">*</span>}
                                             </label>
-                                            <select
-                                                value={data.regency_id}
-                                                onChange={(e) => {
-                                                    setData(d => ({ ...d, regency_id: e.target.value, district_id: '' }));
-                                                    fetchDistricts(e.target.value);
-                                                }}
-                                                className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('regency_id') && !data.regency_id) || errors.regency_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                                disabled={!canEdit || loadingRegencies || !data.province_id}
-                                                required={isFieldRequired('regency_id')}
-                                            >
-                                                <option value="">{loadingRegencies ? 'Memuat...' : t('regions.regency')}</option>
-                                                {regencies.map(r => (
-                                                    <option key={r.id} value={r.id}>{r.name}</option>
-                                                ))}
-                                            </select>
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={data.regency_id}
+                                                    onChange={handleRegencyChange}
+                                                    className={`flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('regency_id') && !data.regency_id) || errors.regency_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                                    disabled={!canEdit || loadingRegencies || !data.province_id}
+                                                    required={isFieldRequired('regency_id')}
+                                                >
+                                                    <option value="">{loadingRegencies ? 'Memuat...' : t('regions.regency')}</option>
+                                                    {regencies.map(r => (
+                                                        <option key={r.id} value={r.id}>{r.name}</option>
+                                                    ))}
+                                                    {isSuperAdmin && canEdit && data.province_id && (
+                                                        <option value={ADD_REGENCY}>+ Tambah Kabupaten/Kota...</option>
+                                                    )}
+                                                </select>
+                                                {isSuperAdmin && canEdit && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={addRegency}
+                                                        className="px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                        title="Tambah kabupaten/kota baru"
+                                                        disabled={!data.province_id}
+                                                    >
+                                                        +
+                                                    </button>
+                                                )}
+                                            </div>
                                             {errors.regency_id && <div className="text-red-500 text-xs mt-1">{errors.regency_id}</div>}
                                             {!data.province_id && data.regency_id && <div className="text-amber-600 text-[10px] mt-1 italic font-medium">Pilih Provinsi terlebih dahulu untuk memvalidasi data ini.</div>}
                                         </div>
@@ -691,18 +862,34 @@ export default function ProfileShow({ auth, user, provinces = [] }) {
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 {t('regions.district')} {isFieldRequired('district_id') && <span className="text-red-500">*</span>}
                                             </label>
-                                            <select
-                                                value={data.district_id}
-                                                onChange={(e) => setData('district_id', e.target.value)}
-                                                className={`w-full px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('district_id') && !data.district_id) || errors.district_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
-                                                disabled={!canEdit || loadingDistricts || !data.regency_id}
-                                                required={isFieldRequired('district_id')}
-                                            >
-                                                <option value="">{loadingDistricts ? 'Memuat...' : t('regions.district')}</option>
-                                                {districts.map(d => (
-                                                    <option key={d.id} value={d.id}>{d.name}</option>
-                                                ))}
-                                            </select>
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={data.district_id}
+                                                    onChange={handleDistrictChange}
+                                                    className={`flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-50 border-gray-200 focus:border-amber-500 focus:ring-amber-500 transition ${(isFieldRequired('district_id') && !data.district_id) || errors.district_id ? 'border-red-300 ring-1 ring-red-200' : ''}`}
+                                                    disabled={!canEdit || loadingDistricts || !data.regency_id}
+                                                    required={isFieldRequired('district_id')}
+                                                >
+                                                    <option value="">{loadingDistricts ? 'Memuat...' : t('regions.district')}</option>
+                                                    {districts.map(d => (
+                                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                                    ))}
+                                                    {isSuperAdmin && canEdit && data.regency_id && (
+                                                        <option value={ADD_DISTRICT}>+ Tambah Kecamatan...</option>
+                                                    )}
+                                                </select>
+                                                {isSuperAdmin && canEdit && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={addDistrict}
+                                                        className="px-3 py-2 sm:px-4 sm:py-3 rounded-xl bg-gray-900 text-white font-semibold hover:bg-gray-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                                        title="Tambah kecamatan baru"
+                                                        disabled={!data.regency_id}
+                                                    >
+                                                        +
+                                                    </button>
+                                                )}
+                                            </div>
                                             {errors.district_id && <div className="text-red-500 text-xs mt-1">{errors.district_id}</div>}
                                         </div>
                                     </div>

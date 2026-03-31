@@ -3106,6 +3106,47 @@ class ActivityPreparationController extends Controller
                     }
                 };
 
+                $parseHyperlinkFormulaUrl = function ($raw) {
+                    if (! is_string($raw)) {
+                        return null;
+                    }
+                    $s = trim($raw);
+                    if ($s === '') {
+                        return null;
+                    }
+                    if (stripos($s, '=HYPERLINK') !== 0) {
+                        return null;
+                    }
+                    if (preg_match('/HYPERLINK\s*\(\s*"([^"]+)"/i', $s, $m)) {
+                        return trim((string) $m[1]) ?: null;
+                    }
+                    if (preg_match("/HYPERLINK\s*\(\s*'([^']+)'/i", $s, $m)) {
+                        return trim((string) $m[1]) ?: null;
+                    }
+
+                    return null;
+                };
+
+                $getHyperlinkUrlFromCell = function (string $colKey, int $rowIndex) use ($sheet, $parseHyperlinkFormulaUrl) {
+                    try {
+                        $coord = strtoupper($colKey).$rowIndex;
+                        $cell = $sheet->getCell($coord);
+                        $hyper = $cell ? $cell->getHyperlink() : null;
+                        $url = $hyper ? trim((string) $hyper->getUrl()) : '';
+                        if ($url !== '') {
+                            return $url;
+                        }
+                        $raw = $cell ? $cell->getValue() : null;
+                        $fromFormula = $parseHyperlinkFormulaUrl($raw);
+                        if ($fromFormula) {
+                            return $fromFormula;
+                        }
+                    } catch (\Throwable $e) {
+                    }
+
+                    return null;
+                };
+
                 // Extract custom data (gunakan key dari activity->custom_fields jika ada agar tampil di list)
                 $customData = [];
                 foreach ($customColMap as $colKey => $colName) {
@@ -3117,6 +3158,31 @@ class ActivityPreparationController extends Controller
                             $lowerKey = strtolower($customKey);
                             $isFileField = ($customFieldTypeByKey[$lowerKey] ?? '') === 'file';
                             if ($isFileField) {
+                                $hasUrlPattern = (function ($s) {
+                                    if (! is_string($s) || trim($s) === '') {
+                                        return false;
+                                    }
+                                    $t = trim($s);
+                                    if (str_starts_with($t, 'http://') || str_starts_with($t, 'https://')) {
+                                        return true;
+                                    }
+                                    if (preg_match('#^(www\.|drive\.google\.com|docs\.google\.com|bit\.ly|tinyurl\.)#i', $t)) {
+                                        return true;
+                                    }
+                                    if (preg_match('#^[a-zA-Z0-9][-a-zA-Z0-9\.]*\.[a-zA-Z]{2,}(/|$)#', $t) && ! str_starts_with(strtolower($t), 'storage/')) {
+                                        return true;
+                                    }
+
+                                    return false;
+                                })($val);
+
+                                if (! $hasUrlPattern) {
+                                    $hyperUrl = $getHyperlinkUrlFromCell((string) $colKey, (int) $i);
+                                    if (is_string($hyperUrl) && trim($hyperUrl) !== '') {
+                                        $val = trim($hyperUrl);
+                                    }
+                                }
+
                                 // Excel mode: simpan LINK apa adanya bila terlihat seperti URL
                                 // 1) http/https langsung
                                 if (str_starts_with($val, 'http://') || str_starts_with($val, 'https://')) {

@@ -37,6 +37,7 @@ class ProfileController extends Controller
             'user' => $user,
             'subscriptions' => $subscriptions,
             'provinces' => $provinces,
+            'can_add_regions' => auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') ? auth()->user()->isSuperAdmin() : false,
         ]);
     }
 
@@ -85,6 +86,7 @@ class ProfileController extends Controller
             'user' => $user,
             'subscriptions' => $subscriptions,
             'provinces' => $provinces,
+            'can_add_regions' => auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') ? auth()->user()->isSuperAdmin() : false,
         ]);
     }
 
@@ -954,6 +956,142 @@ class ProfileController extends Controller
 
             return response()->json([]);
         }
+    }
+
+    public function storeProvince(Request $request)
+    {
+        $this->ensureSuperAdmin();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $name = $this->normalizeRegionName($validated['name']);
+        $existing = Province::whereRaw('LOWER(name) = ?', [strtolower($name)])->first(['id', 'name']);
+        if ($existing) {
+            return response()->json(['success' => true, 'data' => $existing]);
+        }
+
+        $id = $this->generateRegionId('provinces');
+        DB::table('provinces')->insert([
+            'id' => $id,
+            'name' => $name,
+            'logo_url' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'data' => ['id' => $id, 'name' => $name]]);
+    }
+
+    public function storeRegency(Request $request)
+    {
+        $this->ensureSuperAdmin();
+
+        $validated = $request->validate([
+            'province_id' => 'required|exists:provinces,id',
+            'name' => 'required|string|max:255',
+        ]);
+
+        $name = $this->normalizeRegionName($validated['name']);
+        $existing = Regency::where('province_id', $validated['province_id'])
+            ->whereRaw('LOWER(name) = ?', [strtolower($name)])
+            ->first(['id', 'name']);
+        if ($existing) {
+            return response()->json(['success' => true, 'data' => $existing]);
+        }
+
+        $id = $this->generateRegionId('regencies');
+        DB::table('regencies')->insert([
+            'id' => $id,
+            'province_id' => $validated['province_id'],
+            'name' => $name,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'data' => ['id' => $id, 'name' => $name]]);
+    }
+
+    public function storeDistrict(Request $request)
+    {
+        $this->ensureSuperAdmin();
+
+        $validated = $request->validate([
+            'regency_id' => 'required|exists:regencies,id',
+            'name' => 'required|string|max:255',
+        ]);
+
+        $name = $this->normalizeRegionName($validated['name']);
+        $existing = District::where('regency_id', $validated['regency_id'])
+            ->whereRaw('LOWER(name) = ?', [strtolower($name)])
+            ->first(['id', 'name']);
+        if ($existing) {
+            return response()->json(['success' => true, 'data' => $existing]);
+        }
+
+        $id = $this->generateRegionId('districts');
+        DB::table('districts')->insert([
+            'id' => $id,
+            'regency_id' => $validated['regency_id'],
+            'name' => $name,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'data' => ['id' => $id, 'name' => $name]]);
+    }
+
+    private function ensureSuperAdmin(): void
+    {
+        $user = auth()->user();
+        $isSuperAdmin = $user && (
+            (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
+            (($user->role ?? null) === 'superadmin')
+        );
+        if (! $isSuperAdmin) {
+            abort(403, 'Hanya Super Admin yang bisa menambah data wilayah.');
+        }
+    }
+
+    private function normalizeRegionName(string $name): string
+    {
+        $name = trim(preg_replace('/\s+/', ' ', $name) ?? '');
+        if ($name === '') {
+            return '';
+        }
+
+        return mb_strtoupper($name);
+    }
+
+    private function generateRegionId(string $table): string
+    {
+        do {
+            $id = $this->generateRandomRegionId();
+        } while (DB::table($table)->where('id', $id)->exists());
+
+        return $id;
+    }
+
+    private function generateRandomRegionId(): string
+    {
+        $letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $numbers = '0123456789';
+
+        $randomLetters = '';
+        for ($i = 0; $i < 3; $i++) {
+            $randomLetters .= $letters[random_int(0, strlen($letters) - 1)];
+        }
+
+        $randomNumbers = '';
+        for ($i = 0; $i < 3; $i++) {
+            $randomNumbers .= $numbers[random_int(0, strlen($numbers) - 1)];
+        }
+
+        $combined = str_split($randomLetters.$randomNumbers);
+        shuffle($combined);
+
+        return implode('', $combined);
     }
 
     public function store(Request $request)

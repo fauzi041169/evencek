@@ -530,6 +530,9 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
             Route::get('provinces', 'getProvinces')->name('provinces');
             Route::get('regencies/{province}', 'getRegencies')->name('regencies');
             Route::get('districts/{regency}', 'getDistricts')->name('districts');
+            Route::post('provinces', 'storeProvince')->name('provinces.store');
+            Route::post('regencies', 'storeRegency')->name('regencies.store');
+            Route::post('districts', 'storeDistrict')->name('districts.store');
         });
 
         Route::get('/{user}', 'show')->name('show');
