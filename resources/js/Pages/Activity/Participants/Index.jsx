@@ -80,8 +80,8 @@ const canonicalizeCustomKey = (raw) => {
 
 // Map custom field key -> type (for file columns to show button instead of path)
 const getCustomFieldType = (rawKey, customFields = []) => {
-    const baseKey = rawKey.split('|')[0].trim().toLowerCase();
-    const cf = (customFields || []).find(f => (f.key || '').toLowerCase() === baseKey);
+    const baseKey = canonicalizeCustomKey(rawKey.split('|')[0].trim());
+    const cf = (customFields || []).find(f => canonicalizeCustomKey(f?.key || f?.label || '') === baseKey);
     return cf?.type || null;
 };
 
@@ -274,17 +274,36 @@ const getCustomValue = (participant, rawKey) => {
     return '-';
 };
 
-const getCleanLabel = (key, rawCustomKeys = []) => {
+const getCleanLabel = (key, rawCustomKeys = [], customFields = []) => {
     if (columnLabels[key]) return columnLabels[key];
+
+    const canonicalLabelMap = new Map();
+    (customFields || []).forEach((f) => {
+        const canon = canonicalizeCustomKey(f?.key || f?.label || '');
+        if (canon && !canonicalLabelMap.has(canon)) {
+            canonicalLabelMap.set(canon, f?.label || '');
+        }
+    });
 
     // Handle kebab-cased keys from visibleColumns
     if (key.startsWith('col-custom-')) {
-        const raw = rawCustomKeys.find(k => `col-custom-${kebabCase(k.split('|')[0])}` === key);
+        const canon = key.replace('col-custom-', '');
+        const mapped = canonicalLabelMap.get(canon);
+        if (mapped) return mapped;
+        const raw = rawCustomKeys.find(k => `col-custom-${canonicalizeCustomKey(k.split('|')[0])}` === key);
         if (raw) return raw.split('|')[0].replace(/_/g, ' ').trim();
     }
 
     // Handle raw keys directly
-    if (key.includes('|')) return key.split('|')[0].replace(/_/g, ' ').trim();
+    if (key.includes('|')) {
+        const base = key.split('|')[0].trim();
+        const mapped = canonicalLabelMap.get(canonicalizeCustomKey(base));
+        if (mapped) return mapped;
+        return base.replace(/_/g, ' ').trim();
+    }
+
+    const mapped = canonicalLabelMap.get(canonicalizeCustomKey(key));
+    if (mapped) return mapped;
 
     return key.replace('col-', '').replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase());
 };
@@ -1194,7 +1213,7 @@ export default function Index({
                                                         className="rounded border-slate-300 text-primary focus:ring-indigo-500 w-4 h-4"
                                                     />
                                                     <span className="text-sm text-slate-700 font-medium">
-                                                        {getCleanLabel(key, availableCustomKeys)}
+                                                        {getCleanLabel(key, availableCustomKeys, activity?.custom_fields || [])}
                                                     </span>
                                                 </label>
                                             ))}
@@ -1549,7 +1568,7 @@ export default function Index({
                                         return visibleColumns[`col-custom-${kebabCase(baseKey)}`] && (
                                             <th key={key} className="px-4 py-4 whitespace-nowrap text-white">
                                                 <ColumnFilter
-                                                    label={getCleanLabel(key, availableCustomKeys)}
+                                                    label={getCleanLabel(key, availableCustomKeys, activity?.custom_fields || [])}
                                                     options={customOptions[key] || []}
                                                     value={filters[`custom_${key}`]}
                                                     onChange={(val) => handleFilterChange(`custom_${key}`, val)}

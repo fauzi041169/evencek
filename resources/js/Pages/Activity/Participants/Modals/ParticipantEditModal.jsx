@@ -470,7 +470,11 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                             const parts = String(rawKeyStr).split('|');
                                             const baseKey = (parts[0] || '').trim();
                                             if (shouldHideCustomKey(baseKey)) return null;
-                                            const label = baseKey.replace(/^custom_/, '').replace(/_/g, ' ').trim();
+                                            const meta = Array.isArray(activity?.custom_fields)
+                                                ? activity.custom_fields.find(f => normalizeKey(f?.key || f?.label || '') === normalizeKey(baseKey))
+                                                : null;
+                                            const labelBase = meta?.label || baseKey;
+                                            const label = String(labelBase).replace(/_/g, ' ').replace(/-/g, ' ').trim();
 
                                             const value = data.additional_data[baseKey];
 
@@ -479,7 +483,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
 
                                             let currentOptions = [];
                                             let isDropdown = false;
-                                            const isFileFieldConfigured = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => (f.key || '').toLowerCase() === baseKey.toLowerCase() && (f.type || '') === 'file');
+                                            const isFileFieldConfigured = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => normalizeKey(f?.key || '') === normalizeKey(baseKey) && (f.type || '') === 'file');
                                             const looksLikeFileValue = (() => {
                                                 const toStr = (x) => {
                                                     if (x == null) return '';
@@ -496,7 +500,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                                             })();
                                             const keySuggestsFile = /surat[\s_-]?tugas|penugasan|dokumen|document|file/i.test(label) || /surat[\s_-]?tugas|penugasan/i.test(originalKey);
                                             const isFileField = isFileFieldConfigured || looksLikeFileValue || keySuggestsFile;
-                                            const isRequiredCustom = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => (f.key || '').toLowerCase() === baseKey.toLowerCase() && (f.required === true || f.required === 1));
+                                            const isRequiredCustom = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => normalizeKey(f?.key || '') === normalizeKey(baseKey) && (f.required === true || f.required === 1));
                                             const getFileUrl = (v) => {
                                                 const pathStr = toFilePathString(v);
                                                 if (!pathStr) return null;

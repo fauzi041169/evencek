@@ -1660,6 +1660,33 @@ class ActivityPreparationController extends Controller
             // 1. Extract Custom Keys (Moved here so they can be used for filter options)
             $customKeys = [];
             $baseKeys = [];
+            $canonicalizeCustomKey = function (string $k) {
+                $s = strtolower(trim($k));
+                if ($s === '') {
+                    return '';
+                }
+                $s = preg_replace('/[\s\-_]+/', '_', $s) ?? $s;
+                $s = preg_replace('/_+/', '_', $s) ?? $s;
+                $s = trim($s, '_');
+                if ($s === '') {
+                    return '';
+                }
+                if (preg_match('/^custom_\d+$/', $s)) {
+                    return $s;
+                }
+                for ($i = 0; $i < 6; $i++) {
+                    if (! str_starts_with($s, 'custom_')) {
+                        break;
+                    }
+                    $candidate = substr($s, 7);
+                    if ($candidate === '' || preg_match('/^\d+$/', $candidate)) {
+                        break;
+                    }
+                    $s = trim($candidate, '_');
+                }
+
+                return $s;
+            };
 
             // Prioritize current activity's custom fields (if any)
             if ($activity && ! empty($activity->custom_fields)) {
@@ -1675,13 +1702,18 @@ class ActivityPreparationController extends Controller
                             continue;
                         }
 
-                        $raw = $key;
+                        $canon = $canonicalizeCustomKey((string) $key);
+                        if ($canon === '') {
+                            continue;
+                        }
+
+                        $raw = $canon;
                         if (isset($field['type']) && $field['type'] === 'dropdown' && ! empty($field['options'])) {
                             $opts = is_array($field['options']) ? implode('~', $field['options']) : $field['options'];
                             $raw .= '|Dropdown:'.$opts;
                         }
 
-                        $lower = strtolower($key);
+                        $lower = $canon;
                         // Skip built-in fields but store custom ones
                         if (! isset($builtinTemplateKeys[$lower])) {
                             $baseKeys[$lower] = $raw;
@@ -1729,10 +1761,15 @@ class ActivityPreparationController extends Controller
 
                     $lower = strtolower($baseKey);
                     if (! isset($builtinTemplateKeys[$lower])) {
+                        $canon = $canonicalizeCustomKey($baseKey);
+                        if ($canon === '') {
+                            continue;
+                        }
                         // Prefer key with definition if available
-                        $existing = $baseKeys[$lower] ?? null;
-                        if ($existing === null || (! str_contains($existing, '|') && str_contains($rawKey, '|'))) {
-                            $baseKeys[$lower] = $rawKey;
+                        $existing = $baseKeys[$canon] ?? null;
+                        $rawKeyCanon = $canon.(str_contains($rawKey, '|') ? '|'.explode('|', $rawKey, 2)[1] : '');
+                        if ($existing === null || (! str_contains($existing, '|') && str_contains($rawKeyCanon, '|'))) {
+                            $baseKeys[$canon] = $rawKeyCanon;
                         }
                     }
                 }
@@ -1762,16 +1799,16 @@ class ActivityPreparationController extends Controller
                                             continue;
                                         }
 
-                                        $baseLower = strtolower($base);
-                                        $cleanLower = str_starts_with($baseLower, 'custom_') ? substr($baseLower, 7) : $baseLower;
+                                        $canon = $canonicalizeCustomKey($base);
+                                        if ($canon === '') {
+                                            continue;
+                                        }
 
                                         // Check if any variant exists (raw, prefixed, or unprefixed)
-                                        $exists = isset($baseKeys[$baseLower]) ||
-                                                 isset($baseKeys['custom_'.$cleanLower]) ||
-                                                 isset($baseKeys[$cleanLower]);
+                                        $exists = isset($baseKeys[$canon]);
 
                                         if (! $exists) {
-                                            $baseKeys[$baseLower] = $base;
+                                            $baseKeys[$canon] = $canon;
                                         }
                                     }
                                 }
