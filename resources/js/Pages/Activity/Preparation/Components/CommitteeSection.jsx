@@ -291,7 +291,7 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
         if (!activityUid || selectedUserIdsToAdd.length === 0) return;
         setAddUsersProcessing(true);
         try {
-            const payload = { user_ids: selectedUserIdsToAdd, participation_type: participationTypeToAdd };
+            const payload = { user_ids: selectedUserIdsToAdd, participation_type: participationTypeToAdd, force_active: true };
             const res = await axios.post(route('activity.participants.users.add', { activityId: activityUid }), payload);
             const meta = res?.data?.meta || {};
             Swal.fire({

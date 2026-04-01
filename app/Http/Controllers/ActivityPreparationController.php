@@ -7302,6 +7302,7 @@ class ActivityPreparationController extends Controller
             'user_ids.*' => 'required',
             'activity_batch_id' => 'nullable|exists:activity_batches,id',
             'participation_type' => 'nullable|string|in:peserta,panitia',
+            'force_active' => 'sometimes|boolean',
         ]);
 
         $batchId = $validated['activity_batch_id'] ?? null;
@@ -7340,7 +7341,10 @@ class ActivityPreparationController extends Controller
         $toInsert = array_values(array_diff($userIds, $existing));
 
         $isPaid = (float) ($activity->price ?? 0) > 0;
-        $status = $isPaid ? ActivityUser::STATUS_PENDING : ActivityUser::STATUS_ACTIVE;
+        $forceActive = (bool) ($validated['force_active'] ?? false);
+        $status = ($forceActive || $participationTypeKey === 'panitia' || ! $isPaid)
+            ? ActivityUser::STATUS_ACTIVE
+            : ActivityUser::STATUS_PENDING;
 
         $rows = [];
         $now = now();
@@ -7368,13 +7372,79 @@ class ActivityPreparationController extends Controller
             $rows[] = $row;
         }
 
-        if (! empty($rows)) {
-            DB::transaction(function () use ($rows) {
+        $committeeAdded = 0;
+        $updatedExisting = 0;
+        DB::transaction(function () use ($rows, $userIds, $participationTypeKey, $participationTypeId, $activity, $batchId, $hasUpdatedBy, $actorId, $now, $status, &$committeeAdded, &$updatedExisting) {
+            if (! empty($rows)) {
                 foreach (array_chunk($rows, 100) as $chunk) {
                     DB::table('activity_users')->insert($chunk);
                 }
-            });
-        }
+            }
+
+            if ($participationTypeId && ! empty($userIds)) {
+                $updatePayload = [
+                    'activity_participation_type_id' => $participationTypeId,
+                    'updated_at' => $now,
+                ];
+                if ($hasUpdatedBy) {
+                    $updatePayload['updated_by'] = $actorId;
+                }
+                if ($status === ActivityUser::STATUS_ACTIVE) {
+                    $updatePayload['status'] = ActivityUser::STATUS_ACTIVE;
+                }
+                $updatedExisting = (int) DB::table('activity_users')
+                    ->where('activity_id', $activity->id)
+                    ->whereIn('user_id', $userIds)
+                    ->update($updatePayload);
+            }
+
+            if ($participationTypeKey !== 'panitia' || empty($userIds)) {
+                return;
+            }
+
+            $existingCommitteeUserIds = \App\Models\ActivityCommitteeStructure::where('activity_id', $activity->id)
+                ->whereIn('user_id', $userIds)
+                ->pluck('user_id')
+                ->map(fn ($v) => (string) $v)
+                ->toArray();
+
+            $missingCommitteeUserIds = array_values(array_diff(array_map('strval', $userIds), $existingCommitteeUserIds));
+            if (empty($missingCommitteeUserIds)) {
+                return;
+            }
+
+            $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)
+                ->where('name', 'like', '%Seksi%')
+                ->first();
+
+            if (! $defaultCommitteeType) {
+                $defaultCommitteeType = \App\Models\ActivityCommitteeType::where('activity_id', $activity->id)->first();
+            }
+
+            $users = User::whereIn('id', $missingCommitteeUserIds)->with('profile')->get()->keyBy('id');
+
+            foreach ($missingCommitteeUserIds as $uid) {
+                $u = $users->get($uid);
+                if (! $u) {
+                    continue;
+                }
+
+                \App\Models\ActivityCommitteeStructure::create([
+                    'activity_id' => $activity->id,
+                    'activity_batch_id' => $batchId,
+                    'position' => 'Anggota Panitia',
+                    'activity_division_id' => null,
+                    'committee_type_id' => $defaultCommitteeType ? $defaultCommitteeType->id : null,
+                    'name' => $u->name,
+                    'user_id' => $u->id,
+                    'phone' => $u->profile->no_hp ?? null,
+                    'email' => $u->email,
+                    'order' => 0,
+                    'daerah_layanan' => null,
+                ]);
+                $committeeAdded++;
+            }
+        });
 
         return response()->json([
             'success' => true,
@@ -7387,6 +7457,8 @@ class ActivityPreparationController extends Controller
                 'skipped_existing' => count($existing),
                 'status' => $status,
                 'participation_type' => $participationTypeKey,
+                'committee_added' => $committeeAdded,
+                'updated_existing' => $updatedExisting,
             ],
         ]);
     }
