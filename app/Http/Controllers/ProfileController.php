@@ -963,25 +963,93 @@ class ProfileController extends Controller
         $this->ensureSuperAdmin();
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required_without:names|string|max:255',
+            'names' => 'required_without:name|array|min:1',
+            'names.*' => 'required|string|max:255',
         ]);
 
-        $name = $this->normalizeRegionName($validated['name']);
-        $existing = Province::whereRaw('LOWER(name) = ?', [strtolower($name)])->first(['id', 'name']);
-        if ($existing) {
-            return response()->json(['success' => true, 'data' => $existing]);
+        $rawNames = [];
+        if (isset($validated['names']) && is_array($validated['names'])) {
+            $rawNames = $validated['names'];
+        } elseif (isset($validated['name'])) {
+            $rawNames = [$validated['name']];
         }
 
-        $id = $this->generateRegionId('provinces');
-        DB::table('provinces')->insert([
-            'id' => $id,
-            'name' => $name,
-            'logo_url' => null,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $normalized = array_values(array_filter(array_map(function ($n) {
+            return $this->normalizeRegionName((string) $n);
+        }, $rawNames), function ($n) {
+            return $n !== '';
+        }));
 
-        return response()->json(['success' => true, 'data' => ['id' => $id, 'name' => $name]]);
+        $unique = [];
+        $seenLower = [];
+        foreach ($normalized as $n) {
+            $lower = strtolower($n);
+            if (isset($seenLower[$lower])) {
+                continue;
+            }
+            $seenLower[$lower] = true;
+            $unique[] = $n;
+        }
+
+        $isBulk = is_array($request->input('names')) || count($unique) > 1;
+
+        $existingRows = collect();
+        if (! empty($unique)) {
+            $lowerNames = array_map('strtolower', $unique);
+            $existingRows = Province::whereIn(DB::raw('LOWER(name)'), $lowerNames)->get(['id', 'name']);
+        }
+
+        $existingByLower = $existingRows->mapWithKeys(function ($row) {
+            return [strtolower((string) $row->name) => ['id' => $row->id, 'name' => $row->name]];
+        })->all();
+
+        if (! $isBulk && count($unique) === 1) {
+            $lower = strtolower($unique[0]);
+            if (isset($existingByLower[$lower])) {
+                return response()->json(['success' => true, 'data' => $existingByLower[$lower]]);
+            }
+        }
+
+        $results = [];
+        $rowsToInsert = [];
+        foreach ($unique as $name) {
+            $lower = strtolower($name);
+            if (isset($existingByLower[$lower])) {
+                $results[] = $existingByLower[$lower];
+                continue;
+            }
+
+            $id = $this->generateRegionId('provinces');
+            $rowsToInsert[] = [
+                'id' => $id,
+                'name' => $name,
+                'logo_url' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+            $results[] = ['id' => $id, 'name' => $name];
+        }
+
+        if (! empty($rowsToInsert)) {
+            DB::transaction(function () use ($rowsToInsert) {
+                DB::table('provinces')->insert($rowsToInsert);
+            });
+        }
+
+        if (! $isBulk && count($results) === 1) {
+            return response()->json(['success' => true, 'data' => $results[0]]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $results,
+            'meta' => [
+                'total' => count($results),
+                'created' => count($rowsToInsert),
+                'existing' => count($results) - count($rowsToInsert),
+            ],
+        ]);
     }
 
     public function storeRegency(Request $request)
@@ -990,27 +1058,95 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'province_id' => 'required|exists:provinces,id',
-            'name' => 'required|string|max:255',
+            'name' => 'required_without:names|string|max:255',
+            'names' => 'required_without:name|array|min:1',
+            'names.*' => 'required|string|max:255',
         ]);
 
-        $name = $this->normalizeRegionName($validated['name']);
-        $existing = Regency::where('province_id', $validated['province_id'])
-            ->whereRaw('LOWER(name) = ?', [strtolower($name)])
-            ->first(['id', 'name']);
-        if ($existing) {
-            return response()->json(['success' => true, 'data' => $existing]);
+        $rawNames = [];
+        if (isset($validated['names']) && is_array($validated['names'])) {
+            $rawNames = $validated['names'];
+        } elseif (isset($validated['name'])) {
+            $rawNames = [$validated['name']];
         }
 
-        $id = $this->generateRegionId('regencies');
-        DB::table('regencies')->insert([
-            'id' => $id,
-            'province_id' => $validated['province_id'],
-            'name' => $name,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $normalized = array_values(array_filter(array_map(function ($n) {
+            return $this->normalizeRegionName((string) $n);
+        }, $rawNames), function ($n) {
+            return $n !== '';
+        }));
 
-        return response()->json(['success' => true, 'data' => ['id' => $id, 'name' => $name]]);
+        $unique = [];
+        $seenLower = [];
+        foreach ($normalized as $n) {
+            $lower = strtolower($n);
+            if (isset($seenLower[$lower])) {
+                continue;
+            }
+            $seenLower[$lower] = true;
+            $unique[] = $n;
+        }
+
+        $isBulk = is_array($request->input('names')) || count($unique) > 1;
+
+        $existingRows = collect();
+        if (! empty($unique)) {
+            $lowerNames = array_map('strtolower', $unique);
+            $existingRows = Regency::where('province_id', $validated['province_id'])
+                ->whereIn(DB::raw('LOWER(name)'), $lowerNames)
+                ->get(['id', 'name']);
+        }
+
+        $existingByLower = $existingRows->mapWithKeys(function ($row) {
+            return [strtolower((string) $row->name) => ['id' => $row->id, 'name' => $row->name]];
+        })->all();
+
+        if (! $isBulk && count($unique) === 1) {
+            $lower = strtolower($unique[0]);
+            if (isset($existingByLower[$lower])) {
+                return response()->json(['success' => true, 'data' => $existingByLower[$lower]]);
+            }
+        }
+
+        $results = [];
+        $rowsToInsert = [];
+        foreach ($unique as $name) {
+            $lower = strtolower($name);
+            if (isset($existingByLower[$lower])) {
+                $results[] = $existingByLower[$lower];
+                continue;
+            }
+
+            $id = $this->generateRegionId('regencies');
+            $rowsToInsert[] = [
+                'id' => $id,
+                'province_id' => $validated['province_id'],
+                'name' => $name,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+            $results[] = ['id' => $id, 'name' => $name];
+        }
+
+        if (! empty($rowsToInsert)) {
+            DB::transaction(function () use ($rowsToInsert) {
+                DB::table('regencies')->insert($rowsToInsert);
+            });
+        }
+
+        if (! $isBulk && count($results) === 1) {
+            return response()->json(['success' => true, 'data' => $results[0]]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $results,
+            'meta' => [
+                'total' => count($results),
+                'created' => count($rowsToInsert),
+                'existing' => count($results) - count($rowsToInsert),
+            ],
+        ]);
     }
 
     public function storeDistrict(Request $request)
@@ -1019,27 +1155,95 @@ class ProfileController extends Controller
 
         $validated = $request->validate([
             'regency_id' => 'required|exists:regencies,id',
-            'name' => 'required|string|max:255',
+            'name' => 'required_without:names|string|max:255',
+            'names' => 'required_without:name|array|min:1',
+            'names.*' => 'required|string|max:255',
         ]);
 
-        $name = $this->normalizeRegionName($validated['name']);
-        $existing = District::where('regency_id', $validated['regency_id'])
-            ->whereRaw('LOWER(name) = ?', [strtolower($name)])
-            ->first(['id', 'name']);
-        if ($existing) {
-            return response()->json(['success' => true, 'data' => $existing]);
+        $rawNames = [];
+        if (isset($validated['names']) && is_array($validated['names'])) {
+            $rawNames = $validated['names'];
+        } elseif (isset($validated['name'])) {
+            $rawNames = [$validated['name']];
         }
 
-        $id = $this->generateRegionId('districts');
-        DB::table('districts')->insert([
-            'id' => $id,
-            'regency_id' => $validated['regency_id'],
-            'name' => $name,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $normalized = array_values(array_filter(array_map(function ($n) {
+            return $this->normalizeRegionName((string) $n);
+        }, $rawNames), function ($n) {
+            return $n !== '';
+        }));
 
-        return response()->json(['success' => true, 'data' => ['id' => $id, 'name' => $name]]);
+        $unique = [];
+        $seenLower = [];
+        foreach ($normalized as $n) {
+            $lower = strtolower($n);
+            if (isset($seenLower[$lower])) {
+                continue;
+            }
+            $seenLower[$lower] = true;
+            $unique[] = $n;
+        }
+
+        $isBulk = is_array($request->input('names')) || count($unique) > 1;
+
+        $existingRows = collect();
+        if (! empty($unique)) {
+            $lowerNames = array_map('strtolower', $unique);
+            $existingRows = District::where('regency_id', $validated['regency_id'])
+                ->whereIn(DB::raw('LOWER(name)'), $lowerNames)
+                ->get(['id', 'name']);
+        }
+
+        $existingByLower = $existingRows->mapWithKeys(function ($row) {
+            return [strtolower((string) $row->name) => ['id' => $row->id, 'name' => $row->name]];
+        })->all();
+
+        if (! $isBulk && count($unique) === 1) {
+            $lower = strtolower($unique[0]);
+            if (isset($existingByLower[$lower])) {
+                return response()->json(['success' => true, 'data' => $existingByLower[$lower]]);
+            }
+        }
+
+        $results = [];
+        $rowsToInsert = [];
+        foreach ($unique as $name) {
+            $lower = strtolower($name);
+            if (isset($existingByLower[$lower])) {
+                $results[] = $existingByLower[$lower];
+                continue;
+            }
+
+            $id = $this->generateRegionId('districts');
+            $rowsToInsert[] = [
+                'id' => $id,
+                'regency_id' => $validated['regency_id'],
+                'name' => $name,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+            $results[] = ['id' => $id, 'name' => $name];
+        }
+
+        if (! empty($rowsToInsert)) {
+            DB::transaction(function () use ($rowsToInsert) {
+                DB::table('districts')->insert($rowsToInsert);
+            });
+        }
+
+        if (! $isBulk && count($results) === 1) {
+            return response()->json(['success' => true, 'data' => $results[0]]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $results,
+            'meta' => [
+                'total' => count($results),
+                'created' => count($rowsToInsert),
+                'existing' => count($results) - count($rowsToInsert),
+            ],
+        ]);
     }
 
     private function ensureSuperAdmin(): void

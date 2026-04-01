@@ -216,31 +216,65 @@ export default function ProfileShow({ auth, user, provinces = [], can_add_region
         return [...(Array.isArray(arr) ? arr : [])].sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), 'id', { sensitivity: 'base' }));
     };
 
+    const parsePastedNames = (raw) => {
+        const text = String(raw || '');
+        const parts = text
+            .split(/[\n,;]+/g)
+            .map(s => String(s || '').trim())
+            .map(s => s.replace(/^\s*\d+[\).\-\s]+/, '').trim())
+            .map(s => s.replace(/^\s*[-•*]+\s*/, '').trim())
+            .filter(Boolean);
+
+        const out = [];
+        const seen = new Set();
+        for (const p of parts) {
+            const key = p.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push(p);
+        }
+        return out;
+    };
+
     const addProvince = async () => {
         if (!isSuperAdmin) return;
         const { value } = await Swal.fire({
             title: 'Tambah Provinsi',
-            input: 'text',
-            inputLabel: 'Nama provinsi',
-            inputPlaceholder: 'Contoh: PAPUA SELATAN',
+            input: 'textarea',
+            inputLabel: 'Nama provinsi (bisa paste banyak, 1 baris per provinsi)',
+            inputPlaceholder: 'Contoh:\nPAPUA SELATAN\nPAPUA TENGAH\nPAPUA BARAT',
             showCancelButton: true,
             confirmButtonText: 'Simpan',
             cancelButtonText: 'Batal',
-            inputValidator: (v) => (!v || !String(v).trim() ? 'Nama provinsi wajib diisi' : null),
+            inputValidator: (v) => (parsePastedNames(v).length === 0 ? 'Nama provinsi wajib diisi' : null),
         });
-        if (!value || !String(value).trim()) return;
+        const names = parsePastedNames(value);
+        if (names.length === 0) return;
 
         try {
-            const res = await postJson(route('profile.ajax.provinces.store'), { name: value });
+            const payload = names.length === 1 ? { name: names[0] } : { names };
+            const res = await postJson(route('profile.ajax.provinces.store'), payload);
             const created = res?.data;
-            if (!created?.id) return;
+            const createdList = Array.isArray(created) ? created : (created?.id ? [created] : []);
+            if (createdList.length === 0) return;
 
-            setProvinceOptions(prev => sortByName([...prev, created]));
-            setData(d => ({ ...d, province_id: created.id, regency_id: '', district_id: '' }));
+            setProvinceOptions(prev => {
+                const map = new Map((Array.isArray(prev) ? prev : []).map(p => [p?.id, p]));
+                for (const p of createdList) {
+                    if (p?.id) map.set(p.id, p);
+                }
+                return sortByName(Array.from(map.values()));
+            });
+            setData(d => ({ ...d, province_id: createdList[0].id, regency_id: '', district_id: '' }));
             setRegencies([]);
             setDistricts([]);
-            fetchRegencies(created.id);
-            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Provinsi ditambahkan.', timer: 1300, showConfirmButton: false });
+            fetchRegencies(createdList[0].id);
+            const createdCount = Number(res?.meta?.created);
+            const existingCount = Number(res?.meta?.existing);
+            const message = createdList.length > 1
+                ? `Selesai. Ditambahkan: ${Number.isFinite(createdCount) ? createdCount : createdList.length}${Number.isFinite(existingCount) && existingCount > 0 ? `, sudah ada: ${existingCount}` : ''}.`
+                : 'Provinsi ditambahkan.';
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: message, timer: 1600, showConfirmButton: false });
         } catch (e) {
             Swal.fire({ icon: 'error', title: 'Gagal', text: e?.message || 'Gagal menambah provinsi.' });
         }
@@ -250,26 +284,42 @@ export default function ProfileShow({ auth, user, provinces = [], can_add_region
         if (!isSuperAdmin || !data.province_id) return;
         const { value } = await Swal.fire({
             title: 'Tambah Kabupaten/Kota',
-            input: 'text',
-            inputLabel: 'Nama kabupaten/kota',
-            inputPlaceholder: 'Contoh: KABUPATEN XYZ / KOTA XYZ',
+            input: 'textarea',
+            inputLabel: 'Nama kabupaten/kota (bisa paste banyak, 1 baris per item)',
+            inputPlaceholder: 'Contoh:\nKABUPATEN BOVEN DIGOEL\nKOTA JAYAPURA',
             showCancelButton: true,
             confirmButtonText: 'Simpan',
             cancelButtonText: 'Batal',
-            inputValidator: (v) => (!v || !String(v).trim() ? 'Nama kabupaten/kota wajib diisi' : null),
+            inputValidator: (v) => (parsePastedNames(v).length === 0 ? 'Nama kabupaten/kota wajib diisi' : null),
         });
-        if (!value || !String(value).trim()) return;
+        const names = parsePastedNames(value);
+        if (names.length === 0) return;
 
         try {
-            const res = await postJson(route('profile.ajax.regencies.store'), { province_id: data.province_id, name: value });
+            const payload = names.length === 1
+                ? { province_id: data.province_id, name: names[0] }
+                : { province_id: data.province_id, names };
+            const res = await postJson(route('profile.ajax.regencies.store'), payload);
             const created = res?.data;
-            if (!created?.id) return;
+            const createdList = Array.isArray(created) ? created : (created?.id ? [created] : []);
+            if (createdList.length === 0) return;
 
-            setRegencies(prev => sortByName([...prev, created]));
-            setData(d => ({ ...d, regency_id: created.id, district_id: '' }));
+            setRegencies(prev => {
+                const map = new Map((Array.isArray(prev) ? prev : []).map(r => [r?.id, r]));
+                for (const r of createdList) {
+                    if (r?.id) map.set(r.id, r);
+                }
+                return sortByName(Array.from(map.values()));
+            });
+            setData(d => ({ ...d, regency_id: createdList[0].id, district_id: '' }));
             setDistricts([]);
-            fetchDistricts(created.id);
-            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Kabupaten/Kota ditambahkan.', timer: 1300, showConfirmButton: false });
+            fetchDistricts(createdList[0].id);
+            const createdCount = Number(res?.meta?.created);
+            const existingCount = Number(res?.meta?.existing);
+            const message = createdList.length > 1
+                ? `Selesai. Ditambahkan: ${Number.isFinite(createdCount) ? createdCount : createdList.length}${Number.isFinite(existingCount) && existingCount > 0 ? `, sudah ada: ${existingCount}` : ''}.`
+                : 'Kabupaten/Kota ditambahkan.';
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: message, timer: 1600, showConfirmButton: false });
         } catch (e) {
             Swal.fire({ icon: 'error', title: 'Gagal', text: e?.message || 'Gagal menambah kabupaten/kota.' });
         }
@@ -279,24 +329,40 @@ export default function ProfileShow({ auth, user, provinces = [], can_add_region
         if (!isSuperAdmin || !data.regency_id) return;
         const { value } = await Swal.fire({
             title: 'Tambah Kecamatan',
-            input: 'text',
-            inputLabel: 'Nama kecamatan',
-            inputPlaceholder: 'Contoh: KECAMATAN XYZ',
+            input: 'textarea',
+            inputLabel: 'Nama kecamatan (bisa paste banyak, 1 baris per kecamatan)',
+            inputPlaceholder: 'Contoh:\nMANDOBO\nBOMAKIA\nKOUH',
             showCancelButton: true,
             confirmButtonText: 'Simpan',
             cancelButtonText: 'Batal',
-            inputValidator: (v) => (!v || !String(v).trim() ? 'Nama kecamatan wajib diisi' : null),
+            inputValidator: (v) => (parsePastedNames(v).length === 0 ? 'Nama kecamatan wajib diisi' : null),
         });
-        if (!value || !String(value).trim()) return;
+        const names = parsePastedNames(value);
+        if (names.length === 0) return;
 
         try {
-            const res = await postJson(route('profile.ajax.districts.store'), { regency_id: data.regency_id, name: value });
+            const payload = names.length === 1
+                ? { regency_id: data.regency_id, name: names[0] }
+                : { regency_id: data.regency_id, names };
+            const res = await postJson(route('profile.ajax.districts.store'), payload);
             const created = res?.data;
-            if (!created?.id) return;
+            const createdList = Array.isArray(created) ? created : (created?.id ? [created] : []);
+            if (createdList.length === 0) return;
 
-            setDistricts(prev => sortByName([...prev, created]));
-            setData('district_id', created.id);
-            Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Kecamatan ditambahkan.', timer: 1300, showConfirmButton: false });
+            setDistricts(prev => {
+                const map = new Map((Array.isArray(prev) ? prev : []).map(d => [d?.id, d]));
+                for (const d of createdList) {
+                    if (d?.id) map.set(d.id, d);
+                }
+                return sortByName(Array.from(map.values()));
+            });
+            setData('district_id', createdList[0].id);
+            const createdCount = Number(res?.meta?.created);
+            const existingCount = Number(res?.meta?.existing);
+            const message = createdList.length > 1
+                ? `Selesai. Ditambahkan: ${Number.isFinite(createdCount) ? createdCount : createdList.length}${Number.isFinite(existingCount) && existingCount > 0 ? `, sudah ada: ${existingCount}` : ''}.`
+                : 'Kecamatan ditambahkan.';
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: message, timer: 1600, showConfirmButton: false });
         } catch (e) {
             Swal.fire({ icon: 'error', title: 'Gagal', text: e?.message || 'Gagal menambah kecamatan.' });
         }
