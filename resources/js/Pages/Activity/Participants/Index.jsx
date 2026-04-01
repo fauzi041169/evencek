@@ -406,6 +406,11 @@ export default function Index({
     const [editingParticipant, setEditingParticipant] = useState(null);
     const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
     const [bulkImportResult, setBulkImportResult] = useState(null);
+    const [showAddFromUsersModal, setShowAddFromUsersModal] = useState(false);
+    const [userLookupQuery, setUserLookupQuery] = useState('');
+    const [userLookupLoading, setUserLookupLoading] = useState(false);
+    const [userLookupResults, setUserLookupResults] = useState([]);
+    const [selectedUserIdsToAdd, setSelectedUserIdsToAdd] = useState([]);
 
     // Filter states
     const [selectedBatch, setSelectedBatch] = useState(filters.batch_id || '');
@@ -971,6 +976,17 @@ export default function Index({
         }
     }, [filters.per_page]);
 
+    const [registeredFrom, setRegisteredFrom] = useState(filters.registered_from || '');
+    const [registeredTo, setRegisteredTo] = useState(filters.registered_to || '');
+
+    useEffect(() => {
+        setRegisteredFrom(filters.registered_from || '');
+    }, [filters.registered_from]);
+
+    useEffect(() => {
+        setRegisteredTo(filters.registered_to || '');
+    }, [filters.registered_to]);
+
     // Helper to get activity ID param
     const activityIdParam = activity?.uid || activity?.id;
 
@@ -1049,6 +1065,91 @@ export default function Index({
                 only: ['participants', 'filters']
             }
         );
+    };
+
+    const applyRegisteredDateFilter = (nextFrom, nextTo) => {
+        const newFilters = { ...filters, registered_from: nextFrom || '', registered_to: nextTo || '' };
+        delete newFilters.page;
+
+        router.get(
+            route('activity.participants.index', activityIdParam),
+            newFilters,
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                only: ['participants', 'filters']
+            }
+        );
+    };
+
+    const searchUsersToAdd = React.useMemo(() => debounce(async (q, actId) => {
+        const trimmed = String(q || '').trim();
+        if (!actId || trimmed.length < 2) {
+            setUserLookupResults([]);
+            return;
+        }
+        setUserLookupLoading(true);
+        try {
+            const res = await axios.get(route('activity.participants.users.search', { activityId: actId }), {
+                params: { q: trimmed, limit: 20 }
+            });
+            const list = res?.data?.data;
+            setUserLookupResults(Array.isArray(list) ? list : []);
+        } catch (e) {
+            setUserLookupResults([]);
+        } finally {
+            setUserLookupLoading(false);
+        }
+    }, 300), []);
+
+    const openAddFromUsersModal = () => {
+        setShowAddFromUsersModal(true);
+        setUserLookupQuery('');
+        setUserLookupResults([]);
+        setSelectedUserIdsToAdd([]);
+        setUserLookupLoading(false);
+    };
+
+    const closeAddFromUsersModal = () => {
+        setShowAddFromUsersModal(false);
+        setUserLookupQuery('');
+        setUserLookupResults([]);
+        setSelectedUserIdsToAdd([]);
+        setUserLookupLoading(false);
+    };
+
+    const toggleUserToAdd = (userId) => {
+        const id = String(userId || '');
+        if (!id) return;
+        setSelectedUserIdsToAdd(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const addSelectedUsersAsParticipants = async () => {
+        if (!activityIdParam || selectedUserIdsToAdd.length === 0) return;
+        try {
+            const payload = {
+                user_ids: selectedUserIdsToAdd,
+                activity_batch_id: selectedBatch || null,
+            };
+            const res = await axios.post(route('activity.participants.users.add', { activityId: activityIdParam }), payload);
+            const meta = res?.data?.meta || {};
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: `Ditambahkan: ${meta.added ?? 0}, dilewati (sudah terdaftar): ${meta.skipped_existing ?? 0}`,
+                timer: 1800,
+                showConfirmButton: false,
+            });
+            closeAddFromUsersModal();
+            router.get(
+                route('activity.participants.index', activityIdParam),
+                { ...filters },
+                { preserveState: true, preserveScroll: true, replace: true, only: ['participants', 'filters'] }
+            );
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: e?.response?.data?.message || e?.message || 'Gagal menambahkan peserta.' });
+        }
     };
 
     const handleSelectAll = (e) => {
@@ -1179,7 +1280,7 @@ export default function Index({
                                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
                             />
                         </div>
-                        <div className="flex gap-2 shrink-0">
+                        <div className="flex flex-wrap gap-2 shrink-0">
                             <div className="relative">
                                 <select
                                     value={perPage}
@@ -1191,6 +1292,47 @@ export default function Index({
                                         <option key={val} value={val}>{val === 10000 ? 'Semua' : val}</option>
                                     ))}
                                 </select>
+                            </div>
+
+                            <div className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">Tanggal daftar</span>
+                                <input
+                                    type="date"
+                                    value={registeredFrom}
+                                    onChange={(e) => {
+                                        const v = e.target.value;
+                                        setRegisteredFrom(v);
+                                        applyRegisteredDateFilter(v, registeredTo);
+                                    }}
+                                    className="text-xs px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                                    title="Dari tanggal"
+                                />
+                                <span className="text-xs text-slate-400">-</span>
+                                <input
+                                    type="date"
+                                    value={registeredTo}
+                                    onChange={(e) => {
+                                        const v = e.target.value;
+                                        setRegisteredTo(v);
+                                        applyRegisteredDateFilter(registeredFrom, v);
+                                    }}
+                                    className="text-xs px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                                    title="Sampai tanggal"
+                                />
+                                {(registeredFrom || registeredTo) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setRegisteredFrom('');
+                                            setRegisteredTo('');
+                                            applyRegisteredDateFilter('', '');
+                                        }}
+                                        className="text-xs px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                                        title="Reset filter tanggal daftar"
+                                    >
+                                        Reset
+                                    </button>
+                                )}
                             </div>
 
                             <div className="relative" ref={columnMenuRef}>
@@ -1317,6 +1459,15 @@ export default function Index({
                             >
                                 <UserPlus className="w-4 h-4" />
                                 <span className="hidden md:inline">Input Peserta</span>
+                            </button>
+
+                            <button
+                                onClick={openAddFromUsersModal}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
+                                title="Tambah peserta dari user yang sudah ada"
+                            >
+                                <UserPlus className="w-4 h-4 text-indigo-500" />
+                                <span className="hidden md:inline">Tambah dari User</span>
                             </button>
 
                             {(() => {
@@ -2006,6 +2157,89 @@ export default function Index({
                 roomOccupants={roomOccupants}
                 unassignedParticipants={unassignedParticipants}
             />
+
+            <Transition show={showAddFromUsersModal} as={React.Fragment}>
+                <div className="fixed inset-0 z-[70]">
+                    <div className="absolute inset-0 bg-black/40" onClick={closeAddFromUsersModal}></div>
+                    <div className="absolute inset-0 flex items-center justify-center p-4">
+                        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                                <div className="font-bold text-slate-800">Tambah Peserta dari User</div>
+                                <button type="button" onClick={closeAddFromUsersModal} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                                    <X className="w-5 h-5 text-slate-600" />
+                                </button>
+                            </div>
+
+                            <div className="p-5 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="text"
+                                        value={userLookupQuery}
+                                        onChange={(e) => {
+                                            const v = e.target.value;
+                                            setUserLookupQuery(v);
+                                            searchUsersToAdd(v, activityIdParam);
+                                        }}
+                                        placeholder="Cari nama atau email (min 2 karakter)..."
+                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                                    />
+                                </div>
+
+                                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                    <div className="max-h-80 overflow-y-auto">
+                                        {userLookupLoading && (
+                                            <div className="p-4 text-sm text-slate-500">Mencari...</div>
+                                        )}
+                                        {!userLookupLoading && userLookupResults.length === 0 && (
+                                            <div className="p-4 text-sm text-slate-500">Tidak ada hasil.</div>
+                                        )}
+                                        {!userLookupLoading && userLookupResults.map(u => (
+                                            <label key={u.id} className="flex items-start gap-3 px-4 py-3 border-t border-slate-100 hover:bg-slate-50 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedUserIdsToAdd.includes(String(u.id))}
+                                                    onChange={() => toggleUserToAdd(u.id)}
+                                                    className="mt-1 rounded border-slate-300 text-primary focus:ring-indigo-500 w-4 h-4"
+                                                />
+                                                <div className="min-w-0">
+                                                    <div className="text-sm font-semibold text-slate-800 truncate">{u.name || '-'}</div>
+                                                    <div className="text-xs text-slate-500 truncate">{u.email || '-'}</div>
+                                                    {u?.profile?.instansi && (
+                                                        <div className="text-xs text-slate-500 truncate">{u.profile.instansi}</div>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50/60">
+                                <div className="text-sm text-slate-600">
+                                    Terpilih: <span className="font-semibold text-slate-800">{selectedUserIdsToAdd.length}</span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={closeAddFromUsersModal}
+                                        className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={selectedUserIdsToAdd.length === 0}
+                                        onClick={addSelectedUsersAsParticipants}
+                                        className="px-4 py-2 rounded-xl bg-primary text-white font-semibold hover:bg-indigo-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                                    >
+                                        Tambah Peserta
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
 
             <PaymentValidationModal
                 show={showPaymentModal}

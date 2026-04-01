@@ -410,6 +410,8 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     // Activity Participants Routes
     Route::prefix('activity/{activityId}/participants')->name('activity.participants.')->middleware('auth')->controller(ActivityPreparationController::class)->group(function () {
         Route::get('/', 'participants')->name('index');
+        Route::get('/users/search', 'searchUsersForParticipants')->name('users.search');
+        Route::post('/users/add', 'addUsersToParticipants')->name('users.add');
         Route::post('/change-role-bulk', 'changeRoleBulk')->name('change-role-bulk');
         Route::get('/get-all-ids', 'getAllParticipantIds')->name('get-all-ids');
         Route::get('/{userId}/custom-file', 'serveParticipantCustomFile')->name('custom-file');

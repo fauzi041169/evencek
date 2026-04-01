@@ -1038,6 +1038,36 @@ class ActivityPreparationController extends Controller
             if ($val = request('birth_year')) {
                 $query->whereHas('user.profile', fn ($q) => $q->whereYear('birth_date', $val));
             }
+            $registeredFromStr = request('registered_from');
+            $registeredToStr = request('registered_to');
+            $registeredFrom = null;
+            $registeredTo = null;
+            if ($registeredFromStr) {
+                try {
+                    $registeredFrom = \Carbon\Carbon::parse($registeredFromStr)->startOfDay();
+                } catch (\Exception $e) {
+                    $registeredFrom = null;
+                }
+            }
+            if ($registeredToStr) {
+                try {
+                    $registeredTo = \Carbon\Carbon::parse($registeredToStr)->endOfDay();
+                } catch (\Exception $e) {
+                    $registeredTo = null;
+                }
+            }
+            if ($registeredFrom && $registeredTo && $registeredFrom->gt($registeredTo)) {
+                $tmp = $registeredFrom;
+                $registeredFrom = $registeredTo->copy()->startOfDay();
+                $registeredTo = $tmp->copy()->endOfDay();
+            }
+            if ($registeredFrom && $registeredTo) {
+                $query->whereBetween('created_at', [$registeredFrom, $registeredTo]);
+            } elseif ($registeredFrom) {
+                $query->where('created_at', '>=', $registeredFrom);
+            } elseif ($registeredTo) {
+                $query->where('created_at', '<=', $registeredTo);
+            }
             if ($val = request('address')) {
                 $query->whereHas('user.profile', fn ($q) => $q->where('alamat', $val));
             }
@@ -7202,6 +7232,163 @@ class ActivityPreparationController extends Controller
         shuffle($combined);
 
         return implode('', $combined);
+    }
+
+    public function searchUsersForParticipants(Request $request, $activityId)
+    {
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && $activity->user_id !== auth()->id()) {
+            if (! $activity->canManageRegistration(auth()->id())) {
+                abort(403);
+            }
+        }
+
+        $validated = $request->validate([
+            'q' => 'nullable|string|max:255',
+            'limit' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        $q = trim((string) ($validated['q'] ?? ''));
+        if ($q === '') {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        $limit = (int) ($validated['limit'] ?? 20);
+        if ($limit < 1) {
+            $limit = 20;
+        }
+        if ($limit > 50) {
+            $limit = 50;
+        }
+
+        $users = User::query()
+            ->select(['id', 'name', 'email'])
+            ->with(['profile' => function ($q) {
+                $q->select(['id', 'user_id', 'instansi', 'no_hp', 'province_id', 'regency_id', 'district_id']);
+            }])
+            ->whereNotIn('id', function ($sub) use ($activity) {
+                $sub->select('user_id')->from('activity_users')->where('activity_id', $activity->id);
+            })
+            ->where(function ($qq) use ($q) {
+                $qq->where('name', 'like', '%'.$q.'%')
+                    ->orWhere('email', 'like', '%'.$q.'%');
+            })
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $users]);
+    }
+
+    public function addUsersToParticipants(Request $request, $activityId)
+    {
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && $activity->user_id !== auth()->id()) {
+            if (! $activity->canManageRegistration(auth()->id())) {
+                abort(403);
+            }
+        }
+
+        $validated = $request->validate([
+            'user_ids' => 'required|array|min:1|max:200',
+            'user_ids.*' => 'required',
+            'activity_batch_id' => 'nullable|exists:activity_batches,id',
+            'participation_type' => 'nullable|string|in:peserta,panitia',
+        ]);
+
+        $batchId = $validated['activity_batch_id'] ?? null;
+        if ($batchId) {
+            $batchOk = ActivityBatch::where('id', $batchId)->where('activity_id', $activity->id)->exists();
+            if (! $batchOk) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Batch tidak valid untuk kegiatan ini.',
+                ], 422);
+            }
+        }
+
+        $participationTypeKey = strtolower((string) ($validated['participation_type'] ?? 'peserta'));
+        $participationTypeName = $participationTypeKey === 'panitia' ? 'Panitia' : 'Peserta';
+        $participationTypeId = \App\Models\ActivityParticipationType::where('activity_id', $activity->id)
+            ->whereRaw('LOWER(name) = ?', [strtolower($participationTypeName)])
+            ->value('id');
+
+        $userIds = array_values(array_unique(array_map('strval', $validated['user_ids'] ?? [])));
+        $userIds = array_values(array_filter($userIds, fn ($v) => $v !== ''));
+
+        if (empty($userIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada user yang dipilih.',
+            ], 422);
+        }
+
+        $existing = ActivityUser::where('activity_id', $activity->id)
+            ->whereIn('user_id', $userIds)
+            ->pluck('user_id')
+            ->map(fn ($v) => (string) $v)
+            ->toArray();
+
+        $toInsert = array_values(array_diff($userIds, $existing));
+
+        $isPaid = (float) ($activity->price ?? 0) > 0;
+        $status = $isPaid ? ActivityUser::STATUS_PENDING : ActivityUser::STATUS_ACTIVE;
+
+        $rows = [];
+        $now = now();
+        $actorId = auth()->id();
+        $hasCreatedBy = Schema::hasColumn('activity_users', 'created_by');
+        $hasUpdatedBy = Schema::hasColumn('activity_users', 'updated_by');
+
+        foreach ($toInsert as $uid) {
+            $row = [
+                'id' => $this->generateActivityUserUid(),
+                'activity_id' => $activity->id,
+                'user_id' => $uid,
+                'activity_batch_id' => $batchId,
+                'activity_participation_type_id' => $participationTypeId,
+                'status' => $status,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            if ($hasCreatedBy) {
+                $row['created_by'] = $actorId;
+            }
+            if ($hasUpdatedBy) {
+                $row['updated_by'] = $actorId;
+            }
+            $rows[] = $row;
+        }
+
+        if (! empty($rows)) {
+            DB::transaction(function () use ($rows) {
+                foreach (array_chunk($rows, 100) as $chunk) {
+                    DB::table('activity_users')->insert($chunk);
+                }
+            });
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'added_user_ids' => $toInsert,
+            ],
+            'meta' => [
+                'requested' => count($userIds),
+                'added' => count($toInsert),
+                'skipped_existing' => count($existing),
+                'status' => $status,
+                'participation_type' => $participationTypeKey,
+            ],
+        ]);
     }
 
     /**

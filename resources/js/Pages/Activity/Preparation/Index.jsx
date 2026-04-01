@@ -77,6 +77,15 @@ export default function PreparationIndex({
                             <p className="text-xl text-slate-500 font-medium max-w-4xl tracking-tight">
                                 Dashboard pengelolaan operasional, logistik, dan struktur kepanitiaan secara terpadu.
                             </p>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                                <Link
+                                    href={route('activity.participants.index', activity.uid || activity.id)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-semibold shadow-md hover:shadow-lg hover:bg-indigo-700 transition-all"
+                                >
+                                    <i className="fas fa-user-plus"></i>
+                                    Kelola Peserta
+                                </Link>
+                            </div>
                         </div>
                     </div>
 

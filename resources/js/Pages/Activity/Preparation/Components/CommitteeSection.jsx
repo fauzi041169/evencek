@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
+import axios from 'axios';
+import debounce from 'lodash/debounce';
 
 export default function CommitteeSection({ activity, committeeStructure, refPositions, divisions, participants = [], vouchers = [], provinces = [] }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,6 +16,41 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
     const [selectedProvinces, setSelectedProvinces] = useState([]);
     const [provinceQuery, setProvinceQuery] = useState('');
     const [showRegionPicker, setShowRegionPicker] = useState(false);
+    const [isAddParticipantsModalOpen, setIsAddParticipantsModalOpen] = useState(false);
+    const [userLookupQuery, setUserLookupQuery] = useState('');
+    const [userLookupLoading, setUserLookupLoading] = useState(false);
+    const [userLookupResults, setUserLookupResults] = useState([]);
+    const [selectedUserIdsToAdd, setSelectedUserIdsToAdd] = useState([]);
+    const [participationTypeToAdd, setParticipationTypeToAdd] = useState('peserta');
+    const [addUsersProcessing, setAddUsersProcessing] = useState(false);
+
+    const activityUid = activity?.uid || activity?.id;
+
+    const searchUsersToAdd = React.useMemo(() => debounce(async (q, actId) => {
+        const trimmed = String(q || '').trim();
+        if (!actId || trimmed.length < 2) {
+            setUserLookupResults([]);
+            return;
+        }
+        setUserLookupLoading(true);
+        try {
+            const res = await axios.get(route('activity.participants.users.search', { activityId: actId }), {
+                params: { q: trimmed, limit: 20 }
+            });
+            const list = res?.data?.data;
+            setUserLookupResults(Array.isArray(list) ? list : []);
+        } catch (e) {
+            setUserLookupResults([]);
+        } finally {
+            setUserLookupLoading(false);
+        }
+    }, 300), []);
+
+    useEffect(() => {
+        return () => {
+            searchUsersToAdd.cancel();
+        };
+    }, [searchUsersToAdd]);
 
     const normalizedProvinceQuery = (provinceQuery || '').trim().toLowerCase();
     const provincesSorted = Array.isArray(provinces)
@@ -224,6 +261,55 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
         });
     };
 
+    const openAddParticipantsModal = () => {
+        setIsAddParticipantsModalOpen(true);
+        setUserLookupQuery('');
+        setUserLookupResults([]);
+        setSelectedUserIdsToAdd([]);
+        setParticipationTypeToAdd('peserta');
+        setUserLookupLoading(false);
+        setAddUsersProcessing(false);
+    };
+
+    const closeAddParticipantsModal = () => {
+        setIsAddParticipantsModalOpen(false);
+        setUserLookupQuery('');
+        setUserLookupResults([]);
+        setSelectedUserIdsToAdd([]);
+        setParticipationTypeToAdd('peserta');
+        setUserLookupLoading(false);
+        setAddUsersProcessing(false);
+    };
+
+    const toggleUserToAdd = (userId) => {
+        const id = String(userId || '');
+        if (!id) return;
+        setSelectedUserIdsToAdd(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+    };
+
+    const addSelectedUsersAsParticipants = async () => {
+        if (!activityUid || selectedUserIdsToAdd.length === 0) return;
+        setAddUsersProcessing(true);
+        try {
+            const payload = { user_ids: selectedUserIdsToAdd, participation_type: participationTypeToAdd };
+            const res = await axios.post(route('activity.participants.users.add', { activityId: activityUid }), payload);
+            const meta = res?.data?.meta || {};
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: `Ditambahkan: ${meta.added ?? 0}, dilewati (sudah terdaftar): ${meta.skipped_existing ?? 0}`,
+                timer: 1800,
+                showConfirmButton: false
+            });
+            closeAddParticipantsModal();
+            router.reload({ only: ['participants'], preserveScroll: true });
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: e?.response?.data?.message || e?.message || 'Gagal menambahkan peserta.' });
+        } finally {
+            setAddUsersProcessing(false);
+        }
+    };
+
     return (
         <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-4 sm:mb-6 transition-all hover:shadow-md duration-300">
             <div className="p-3 sm:p-6 font-primary">
@@ -318,6 +404,15 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                         >
                             <i className="fas fa-plus mr-2"></i>
                             Tambah Panitia
+                        </button>
+                        <button
+                            type="button"
+                            onClick={openAddParticipantsModal}
+                            className="flex-1 sm:flex-none inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-all active:scale-95"
+                            title="Tambah peserta dari data user aplikasi"
+                        >
+                            <i className="fas fa-user-plus mr-2 text-primary"></i>
+                            Tambah Peserta
                         </button>
                         <a
                             href={route('activity.print-cards', { id: activity.uid || activity.id, type: 'committee' })}
@@ -733,6 +828,120 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {isAddParticipantsModalOpen && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div
+                        className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+                        onClick={closeAddParticipantsModal}
+                    ></div>
+
+                    <div className="bg-white rounded-[2rem] w-full max-w-2xl overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+                        <div className="p-6 sm:p-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-bold text-gray-900">Tambah Peserta dari User</h3>
+                                <button
+                                    type="button"
+                                    onClick={closeAddParticipantsModal}
+                                    className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-gray-900 transition-colors"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Role</label>
+                                        <select
+                                            value={participationTypeToAdd}
+                                            onChange={(e) => setParticipationTypeToAdd(e.target.value)}
+                                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-primary/30 font-medium text-gray-700"
+                                        >
+                                            <option value="peserta">Peserta</option>
+                                            <option value="panitia">Panitia</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="relative">
+                                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"></i>
+                                    <input
+                                        type="text"
+                                        value={userLookupQuery}
+                                        onChange={(e) => {
+                                            const v = e.target.value;
+                                            setUserLookupQuery(v);
+                                            searchUsersToAdd(v, activityUid);
+                                        }}
+                                        placeholder="Cari nama atau email (min 2 karakter)..."
+                                        className="w-full pl-11 pr-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-primary/30 font-medium placeholder-gray-400"
+                                    />
+                                </div>
+
+                                <div className="border border-gray-200 rounded-2xl overflow-hidden">
+                                    <div className="max-h-80 overflow-y-auto bg-white">
+                                        {userLookupLoading && (
+                                            <div className="p-4 text-sm text-gray-500">Mencari...</div>
+                                        )}
+                                        {!userLookupLoading && userLookupResults.length === 0 && (
+                                            <div className="p-4 text-sm text-gray-500">Tidak ada hasil.</div>
+                                        )}
+                                        {!userLookupLoading && userLookupResults.map((u, idx) => (
+                                            <label
+                                                key={u.id}
+                                                className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 ${idx === 0 ? '' : 'border-t border-gray-100'}`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedUserIdsToAdd.includes(String(u.id))}
+                                                    onChange={() => toggleUserToAdd(u.id)}
+                                                    className="mt-1 w-4 h-4 rounded text-primary focus:ring-primary border-gray-300"
+                                                />
+                                                <div className="min-w-0">
+                                                    <div className="text-sm font-bold text-gray-900 truncate">{u.name || '-'}</div>
+                                                    <div className="text-xs text-gray-500 truncate">{u.email || '-'}</div>
+                                                    {u?.profile?.instansi && (
+                                                        <div className="text-xs text-gray-500 truncate">{u.profile.instansi}</div>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="text-sm text-gray-600">
+                                Terpilih: <span className="font-bold text-gray-900">{selectedUserIdsToAdd.length}</span>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={closeAddParticipantsModal}
+                                    className="flex-1 sm:flex-none px-5 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={addUsersProcessing || selectedUserIdsToAdd.length === 0}
+                                    onClick={addSelectedUsersAsParticipants}
+                                    className="flex-1 sm:flex-none px-5 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/25 hover:bg-primary/90 disabled:opacity-50 disabled:shadow-none active:scale-95 transition-all"
+                                >
+                                    {addUsersProcessing ? (
+                                        <span className="flex items-center justify-center">
+                                            <i className="fas fa-circle-notch fa-spin mr-2"></i> Processing...
+                                        </span>
+                                    ) : (
+                                        'Tambah Peserta'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
