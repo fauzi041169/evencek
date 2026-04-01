@@ -21,6 +21,7 @@ class AIController extends Controller
         $rateKey = 'ai-chat:'.($userId ? 'u:'.$userId : 'ip:'.$request->ip());
         if (RateLimiter::tooManyAttempts($rateKey, 20)) {
             $seconds = RateLimiter::availableIn($rateKey);
+
             return response()->json([
                 'error' => 'Terlalu banyak permintaan. Coba lagi sebentar ya.',
                 'retry_after' => $seconds,
@@ -208,6 +209,7 @@ class AIController extends Controller
                 'content' => mb_substr($content, 0, 2000),
             ];
         }
+
         return $out;
     }
 
@@ -225,6 +227,7 @@ class AIController extends Controller
                 return true;
             }
         }
+
         return false;
     }
 }

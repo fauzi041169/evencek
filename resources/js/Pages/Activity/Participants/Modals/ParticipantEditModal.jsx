@@ -57,10 +57,16 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
         _method: 'PUT'
     });
 
+    const effectiveRequiredProfileFields = React.useMemo(() => {
+        const base = Array.isArray(requiredProfileFields) ? requiredProfileFields : [];
+        const merged = [...base, 'email', 'foto'];
+        return Array.from(new Set(merged.map(v => String(v || '').toLowerCase().trim()).filter(Boolean)));
+    }, [requiredProfileFields]);
+
     // Helper: apakah field profil wajib untuk kegiatan ini
     const isRequired = (key) => {
         const k = String(key || '').toLowerCase();
-        return Array.isArray(requiredProfileFields) && requiredProfileFields.map(s => String(s).toLowerCase()).includes(k);
+        return Array.isArray(effectiveRequiredProfileFields) && effectiveRequiredProfileFields.includes(k);
     };
 
     const normalizeKey = (k) => {
@@ -101,6 +107,20 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
         }
         return false;
     };
+
+    const requiredCustomFields = React.useMemo(() => {
+        const list = Array.isArray(activity?.custom_fields) ? activity.custom_fields : [];
+        const toBool = (v) => v === true || v === 1 || v === '1' || v === 'true';
+        return list
+            .filter(f => f && (toBool(f.is_required) || toBool(f.required)) && (f.key || f.label))
+            .map(f => ({
+                ...f,
+                key: String(f.key || f.label || '').trim(),
+                label: String(f.label || f.key || '').trim(),
+                type: String(f.type || 'text').toLowerCase(),
+            }))
+            .filter(f => f.key && !shouldHideCustomKey(f.key));
+    }, [activity]);
 
     // Deduplicate customKeys by canonical key (strip custom_ and normalize)
     const dedupedCustomKeys = React.useMemo(() => {
@@ -143,39 +163,16 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                 ? participantCustomData
                 : {};
 
-            // Build allowed keys strictly from activity settings (dedupedCustomKeys)
-            const allowedKeys = Array.isArray(dedupedCustomKeys)
-                ? dedupedCustomKeys.map(raw => normalizeKey(String(raw).split('|')[0].trim()))
-                : [];
-
-            // Start with filtered existing values for allowed keys only
             const initialAdditionalData = {};
-            allowedKeys.forEach((canonKey) => {
+            (requiredCustomFields || []).forEach((field) => {
+                const canonKey = normalizeKey(field.key);
                 const existingKey = Object.keys(activityCustomData || {}).find(k => normalizeKey(k) === canonKey);
                 if (existingKey) {
-                    initialAdditionalData[existingKey] = activityCustomData[existingKey];
+                    initialAdditionalData[field.key] = activityCustomData[existingKey];
+                } else {
+                    initialAdditionalData[field.key] = '';
                 }
             });
-
-            // Ensure all configured columns (customKeys) are initialized and canonicalized
-            if (Array.isArray(dedupedCustomKeys)) {
-                dedupedCustomKeys.forEach(rawKey => {
-                    const baseKey = rawKey.split('|')[0].trim();
-                    if (shouldHideCustomKey(baseKey)) return;
-                    const canonKey = normalizeKey(baseKey);
-                    const existingKey = Object.keys(initialAdditionalData).find(k => normalizeKey(k) === canonKey);
-
-                    if (existingKey) {
-                        const value = initialAdditionalData[existingKey];
-                        if (existingKey !== baseKey) {
-                            delete initialAdditionalData[existingKey];
-                        }
-                        initialAdditionalData[baseKey] = value;
-                    } else {
-                        initialAdditionalData[baseKey] = '';
-                    }
-                });
-            }
 
             setData({
                 name: targetUser.name || '',
@@ -206,7 +203,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                 fetchDistricts(targetProfile.regency_id);
             }
         }
-    }, [show, user, activity, dedupedCustomKeys]); // include dedupedCustomKeys
+    }, [show, user, activity, requiredCustomFields, dedupedCustomKeys]); // include dedupedCustomKeys
 
     const fetchRegencies = (provinceId) => {
         if (!provinceId) {
@@ -249,6 +246,29 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
         const hasFileUpload = Object.values(data.additional_data || {}).some(v => v instanceof File);
         transform((data) => {
             const { additional_data: adj, ...rest } = data;
+            const requiredKeySet = new Set(effectiveRequiredProfileFields || []);
+            const allowedProfile = [
+                'name', 'email', 'no_hp', 'nik', 'jenis_kelamin',
+                'birth_place', 'birth_date', 'alamat', 'instansi',
+                'jabatan', 'pekerjaan', 'province_id', 'regency_id',
+                'district_id', 'foto',
+            ];
+            const profileOut = {};
+            allowedProfile.forEach((k) => {
+                if (requiredKeySet.has(String(k).toLowerCase())) {
+                    if (k === 'foto') return;
+                    profileOut[k] = rest[k];
+                }
+            });
+            if (requiredKeySet.has('foto')) {
+                if (rest.foto_file instanceof File) {
+                    profileOut.foto_file = rest.foto_file;
+                }
+            }
+            if (rest.activity_id != null) {
+                profileOut.activity_id = rest.activity_id;
+            }
+            profileOut._method = rest._method || 'PUT';
             const cleanAdditional = {};
             const custom_files = {};
             const isFakepath = (v) => typeof v === 'string' && (v.toLowerCase().includes('fakepath') || /^[a-zA-Z]:\\/.test(v) || v.includes('\\'));
@@ -265,7 +285,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
             });
 
             return {
-                ...rest,
+                ...profileOut,
                 ...cleanAdditional,
                 ...(Object.keys(custom_files).length ? { custom_files } : {})
             };
@@ -314,7 +334,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-white tracking-tight">Edit Profil Peserta</h2>
-                            <p className="text-blue-100 text-sm mt-0.5">Perbarui informasi lengkap peserta di bawah ini</p>
+                            <p className="text-blue-100 text-sm mt-0.5">Perbarui data wajib peserta sesuai kegiatan di bawah ini</p>
                         </div>
                     </div>
 
@@ -344,447 +364,427 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                             </div>
                         </div>
 
-                        {/* Section: Identitas Pribadi */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                            <div className="bg-slate-50/80 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
-                                <Users className="w-4 h-4 text-indigo-500" />
-                                <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Identitas Pribadi</h3>
-                            </div>
-                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="col-span-2 md:col-span-1">
-                                    <FormInput
-                                        label="Nama Lengkap"
-                                        value={data.name}
-                                        onChange={e => setData('name', e.target.value)}
-                                        error={errors.name}
-                                        icon={<User className="w-4 h-4" />}
-                                required={isRequired('name')}
-                                    />
-                                </div>
-                                <div className="col-span-2 md:col-span-1">
-                                    <FormInput
-                                        label="Email"
-                                        type="email"
-                                        value={data.email}
-                                        onChange={e => setData('email', e.target.value)}
-                                        error={errors.email}
-                                        icon={<Mail className="w-4 h-4" />}
-                                required={isRequired('email')}
-                                    />
-                                </div>
-                                <div className="col-span-2 md:col-span-1">
-                                    <FormInput
-                                        label="No. WhatsApp / HP"
-                                        value={data.no_hp}
-                                        onChange={e => setData('no_hp', e.target.value)}
-                                        error={errors.no_hp}
-                                        icon={<Phone className="w-4 h-4" />}
-                                required={isRequired('no_hp')}
-                                    />
-                                </div>
-                                <div className="col-span-2 md:col-span-1">
-                                    <FormInput
-                                        label="NIK"
-                                        value={data.nik}
-                                        onChange={e => setData('nik', e.target.value)}
-                                        error={errors.nik}
-                                        icon={<Hash className="w-4 h-4" />}
-                                required={isRequired('nik')}
-                                    />
-                                </div>
-
-                                <div className="col-span-2 md:col-span-1">
-                                    <FormSelect
-                                        label="Jenis Kelamin"
-                                        value={data.jenis_kelamin}
-                                        onChange={e => setData('jenis_kelamin', e.target.value)}
-                                        error={errors.jenis_kelamin}
-                                required={isRequired('jenis_kelamin') || isRequired('gender')}
-                                    >
-                                        <option value="">Pilih Jenis Kelamin</option>
-                                        <option value="L">Laki-laki</option>
-                                        <option value="P">Perempuan</option>
-                                    </FormSelect>
-                                </div>
-
-                                <div className="col-span-2 md:col-span-1 grid grid-cols-2 gap-4">
-                                    <FormInput
-                                        label="Tempat Lahir"
-                                        value={data.birth_place}
-                                        onChange={e => setData('birth_place', e.target.value)}
-                                        error={errors.birth_place}
-                                        icon={<MapPin className="w-4 h-4" />}
-                                required={isRequired('birth_place')}
-                                    />
-                                    <FormInput
-                                        label="Tanggal Lahir"
-                                        type="date"
-                                        value={data.birth_date}
-                                        onChange={e => setData('birth_date', e.target.value)}
-                                        error={errors.birth_date}
-                                        icon={<Calendar className="w-4 h-4" />}
-                                required={isRequired('birth_date')}
-                                    />
-                                </div>
-
-                        {/* Foto Profil (opsional, tampil jika diwajibkan) */}
-                        {(isRequired('foto') || isRequired('photo')) && (
-                            <div className="col-span-2 space-y-1.5">
-                                <FormInput
-                                    label="Foto Profil"
-                                    type="file"
-                                    onChange={(e) => setData('foto_file', e.target.files?.[0] || null)}
-                                    error={errors.foto_file}
-                                    required
-                                />
-                                <p className="text-xs text-slate-500">Pilih file baru akan menggantikan foto yang sudah tersimpan.</p>
-                                {(targetUser?.profile_photo_url || targetProfile?.foto_url) && (
-                                    <a
-                                        href={targetUser?.profile_photo_url || targetProfile?.foto_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-indigo-600 text-xs hover:underline"
-                                    >
-                                        <FileText className="w-3 h-3" /> Lihat foto tersimpan
-                                    </a>
-                                )}
-                            </div>
-                        )}
-                            </div>
-                        </div>
-
-                        {/* Section: Data Tambahan / Custom Fields */}
-                        {Object.keys(data.additional_data).length > 0 && (
+                        {([
+                            'name', 'email', 'no_hp', 'nik', 'jenis_kelamin',
+                            'birth_place', 'birth_date', 'foto',
+                        ].some(k => isRequired(k) || (k === 'jenis_kelamin' && isRequired('gender')) || (k === 'foto' && isRequired('photo'))) ) && (
                             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                                 <div className="bg-slate-50/80 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-amber-500" />
-                                    <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Data Kegiatan & Lainnya</h3>
+                                    <Users className="w-4 h-4 text-indigo-500" />
+                                    <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Identitas Pribadi</h3>
                                 </div>
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {dedupedCustomKeys && dedupedCustomKeys.length > 0 ? (
-                                        dedupedCustomKeys.map((rawKey) => {
-                                            // Pastikan rawKey selalu string (hindari [object Object] dari backend/column_settings)
-                                            const rawKeyStr = typeof rawKey === 'string'
-                                                ? rawKey
-                                                : (rawKey && (rawKey.key ?? rawKey.label ?? rawKey.name)) || String(rawKey || '');
-                                            const parts = String(rawKeyStr).split('|');
-                                            const baseKey = (parts[0] || '').trim();
-                                            if (shouldHideCustomKey(baseKey)) return null;
-                                            const meta = Array.isArray(activity?.custom_fields)
-                                                ? activity.custom_fields.find(f => normalizeKey(f?.key || f?.label || '') === normalizeKey(baseKey))
-                                                : null;
-                                            const labelBase = meta?.label || baseKey;
-                                            const label = String(labelBase).replace(/_/g, ' ').replace(/-/g, ' ').trim();
+                                    {isRequired('name') && (
+                                        <div className="col-span-2 md:col-span-1">
+                                            <FormInput
+                                                label="Nama Lengkap"
+                                                value={data.name}
+                                                onChange={e => setData('name', e.target.value)}
+                                                error={errors.name}
+                                                icon={<User className="w-4 h-4" />}
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                    {isRequired('email') && (
+                                        <div className="col-span-2 md:col-span-1">
+                                            <FormInput
+                                                label="Email"
+                                                type="email"
+                                                value={data.email}
+                                                onChange={e => setData('email', e.target.value)}
+                                                error={errors.email}
+                                                icon={<Mail className="w-4 h-4" />}
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                    {isRequired('no_hp') && (
+                                        <div className="col-span-2 md:col-span-1">
+                                            <FormInput
+                                                label="No. WhatsApp / HP"
+                                                value={data.no_hp}
+                                                onChange={e => setData('no_hp', e.target.value)}
+                                                error={errors.no_hp}
+                                                icon={<Phone className="w-4 h-4" />}
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                    {isRequired('nik') && (
+                                        <div className="col-span-2 md:col-span-1">
+                                            <FormInput
+                                                label="NIK"
+                                                value={data.nik}
+                                                onChange={e => setData('nik', e.target.value)}
+                                                error={errors.nik}
+                                                icon={<Hash className="w-4 h-4" />}
+                                                required
+                                            />
+                                        </div>
+                                    )}
 
-                                            const value = data.additional_data[baseKey];
+                                    {(isRequired('jenis_kelamin') || isRequired('gender')) && (
+                                        <div className="col-span-2 md:col-span-1">
+                                            <FormSelect
+                                                label="Jenis Kelamin"
+                                                value={data.jenis_kelamin}
+                                                onChange={e => setData('jenis_kelamin', e.target.value)}
+                                                error={errors.jenis_kelamin}
+                                                required
+                                            >
+                                                <option value="">Pilih Jenis Kelamin</option>
+                                                <option value="L">Laki-laki</option>
+                                                <option value="P">Perempuan</option>
+                                            </FormSelect>
+                                        </div>
+                                    )}
 
-                                            let cleanKey = label.toLowerCase().trim();
-                                            const originalKey = baseKey; // Use baseKey for updates
+                                    {(isRequired('birth_place') || isRequired('birth_date')) && (
+                                        <div className="col-span-2 md:col-span-1 grid grid-cols-2 gap-4">
+                                            {isRequired('birth_place') && (
+                                                <FormInput
+                                                    label="Tempat Lahir"
+                                                    value={data.birth_place}
+                                                    onChange={e => setData('birth_place', e.target.value)}
+                                                    error={errors.birth_place}
+                                                    icon={<MapPin className="w-4 h-4" />}
+                                                    required
+                                                />
+                                            )}
+                                            {isRequired('birth_date') && (
+                                                <FormInput
+                                                    label="Tanggal Lahir"
+                                                    type="date"
+                                                    value={data.birth_date}
+                                                    onChange={e => setData('birth_date', e.target.value)}
+                                                    error={errors.birth_date}
+                                                    icon={<Calendar className="w-4 h-4" />}
+                                                    required
+                                                />
+                                            )}
+                                        </div>
+                                    )}
 
-                                            let currentOptions = [];
-                                            let isDropdown = false;
-                                            const isFileFieldConfigured = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => normalizeKey(f?.key || '') === normalizeKey(baseKey) && (f.type || '') === 'file');
-                                            const looksLikeFileValue = (() => {
-                                                const toStr = (x) => {
-                                                    if (x == null) return '';
-                                                    if (typeof x === 'string') return x;
-                                                    if (x instanceof File) return x.name || '';
-                                                    if (typeof x === 'object') return x.path || x.url || x.name || '';
-                                                    return String(x);
-                                                };
-                                                const s = toStr(value);
-                                                if (!s) return false;
-                                                const lower = s.toLowerCase();
-                                                if (lower.includes('storage/activities/') || lower.includes('/custom-data/')) return true;
-                                                return /\.(pdf|jpg|jpeg|png|gif|doc|docx|xls|xlsx|zip|rar)(\?|$)/i.test(s) || /^https?:\/\/(drive\.google|docs\.google)/i.test(s);
-                                            })();
-                                            const keySuggestsFile = /surat[\s_-]?tugas|penugasan|dokumen|document|file/i.test(label) || /surat[\s_-]?tugas|penugasan/i.test(originalKey);
-                                            const isFileField = isFileFieldConfigured || looksLikeFileValue || keySuggestsFile;
-                                            const isRequiredCustom = Array.isArray(activity?.custom_fields) && !!activity.custom_fields.find(f => normalizeKey(f?.key || '') === normalizeKey(baseKey) && (f.required === true || f.required === 1));
-                                            const getFileUrl = (v) => {
-                                                const pathStr = toFilePathString(v);
-                                                if (!pathStr) return null;
-                                                let s = String(pathStr).trim();
-                                                if (s.startsWith('http://') || s.startsWith('https://')) return s;
-                                                if (s.toLowerCase().includes('fakepath') || /^[a-zA-Z]:\\/.test(s)) return null;
-                                                if (s.includes('\\')) s = s.replace(/\\/g, '/');
-                                                const path = s.startsWith('storage/') ? s : (s.startsWith('/') ? s.slice(1) : `storage/${s}`);
-                                                return window.location.origin + '/' + path.replace(/^\/+/, '');
-                                            };
-                                            // Normalize value: if object/array, extract path or first item for display/URL
-                                            const toFilePathString = (v) => {
-                                                if (v == null) return '';
-                                                if (typeof v === 'string') return v;
-                                                if (typeof v === 'object' && v !== null) {
-                                                    if (v.path) return v.path;
-                                                    if (v.url) return v.url;
-                                                    if (Array.isArray(v) && v.length > 0) return toFilePathString(v[0]);
-                                                }
-                                                return '';
-                                            };
-                                            const toDisplayValue = (v) => {
-                                                if (v == null) return '';
-                                                if (typeof v === 'string') return v;
-                                                if (typeof v === 'object' && v !== null) {
-                                                    if (v.label) return v.label;
-                                                    if (v.name) return v.name;
-                                                    if (v.path) return v.path;
-                                                    if (v.url) return v.url;
-                                                    if (Array.isArray(v) && v.length > 0) return toDisplayValue(v[0]);
-                                                }
-                                                return String(v);
-                                            };
-
-                                            // 0. Parse complex type definition (e.g. "Dropdown:A~B~C")
-                                            if (parts.length > 1) {
-                                                const typeDef = parts[1];
-                                                if (typeDef.toLowerCase().startsWith('dropdown:')) {
-                                                    const optionsStr = typeDef.substring('dropdown:'.length);
-                                                    // Options are typically separated by '~' or ','
-                                                    currentOptions = optionsStr.split(/~|,/).map(o => o.trim()).filter(o => o);
-                                                    isDropdown = true;
-                                                }
-                                            }
-
-                                            if (isFileField) {
-                                                // Tampilkan link file tersimpan hanya jika value terlihat seperti path storage sistem kita
-                                                const pathStr = toFilePathString(value) || '';
-                                                const looksOurStorage = /\/custom-data\//i.test(pathStr) && (/^storage\//i.test(pathStr.replace(/^\/+/, '')) || /storage\/activities\//i.test(pathStr));
-                                                const fileUrl = (activity && targetUser?.id && looksOurStorage)
-                                                    ? `${route('activity.participants.custom-file', { activityId: activity.uid || activity.id, userId: targetUser.id })}?key=${encodeURIComponent(baseKey)}`
-                                                    : getFileUrl(value);
-                                                return (
-                                                    <div key={rawKeyStr} className="space-y-1.5">
-                                                        <label className="block text-sm font-medium text-slate-700">{label} {isRequiredCustom && <span className="text-red-500">*</span>}</label>
-                                                        <input
-                                                            type="file"
-                                                            onChange={(e) => {
-                                                                const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-                                                                const newData = { ...data.additional_data, [originalKey]: file || '' };
-                                                                setData('additional_data', newData);
-                                                            }}
-                                                            className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm"
-                                                            required={isRequiredCustom}
-                                                        />
-                                                        <p className="text-xs text-slate-500">Pilih file baru akan menggantikan dokumen yang sudah tersimpan.</p>
-                                                        {fileUrl ? (
-                                                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 text-xs hover:underline">
-                                                                <FileText className="w-3 h-3" /> Lihat file tersimpan
-                                                            </a>
-                                                        ) : (
-                                                            value != null && value !== '' ? (
-                                                                <span className="text-xs text-slate-400">Belum tersimpan di server</span>
-                                                            ) : null
-                                                        )}
-                                                    </div>
-                                                );
-                                            }
-
-                                            // 1. Gender check
-                                            if (['gender', 'jenis kelamin', 'sex'].includes(cleanKey)) {
-                                                return (
-                                                    <div key={rawKeyStr}>
-                                                        <FormSelect
-                                                            label={label}
-                                                            value={value || ''}
-                                                            onChange={(e) => {
-                                                                const newData = { ...data.additional_data, [originalKey]: e.target.value };
-                                                                setData('additional_data', newData);
-                                                            }}
-                                                            className="capitalize-label"
-                                                            required={isRequiredCustom}
-                                                        >
-                                                            <option value="">Pilih {label}...</option>
-                                                            <option value="L">Laki-laki</option>
-                                                            <option value="P">Perempuan</option>
-                                                        </FormSelect>
-                                                    </div>
-                                                );
-                                            }
-
-                                            // 2. Options check (discovered customOptions from table data if not explicitly defined)
-                                            if (!isDropdown && !currentOptions.length) {
-                                                const optionKey = Object.keys(customOptions || {}).find(k => k.toLowerCase() === rawKeyStr.toLowerCase() || k.toLowerCase().replace(/_/g, ' ') === cleanKey);
-                                                if (optionKey && customOptions[optionKey]) {
-                                                    currentOptions = customOptions[optionKey];
-                                                }
-                                            }
-
-                                            // If we have options OR it's a known region field, render as select
-                                            if (isDropdown || (currentOptions && currentOptions.length > 0) || ['province', 'provinsi', 'regency', 'kabupaten', 'kota', 'city', 'district', 'kecamatan', 'village', 'desa', 'kelurahan'].includes(cleanKey)) {
-                                                // Sort options unique
-                                                const uniqueOptions = [...new Set(currentOptions || [])].filter(o => o);
-                                                const valueStr = value != null && typeof value === 'object'
-                                                    ? toDisplayValue(value)
-                                                    : String(value ?? '');
-                                                const valueInOptions = uniqueOptions.some(o => (typeof o === 'object' ? (o.value ?? o.id) : String(o)) === valueStr);
-
-return (
-                                                    <div key={rawKeyStr}>
-                                                    <FormSelect
-                                                            label={label}
-                                                            value={valueStr}
-                                                            onChange={(e) => {
-                                                                const newData = { ...data.additional_data, [originalKey]: e.target.value };
-                                                                setData('additional_data', newData);
-                                                            }}
-                                                            className="capitalize-label"
-                                                            required={isRequiredCustom}
-                                                        >
-                                                            <option value="">Pilih {label}...</option>
-                                                            {uniqueOptions.map((opt, idx) => {
-                                                                const val = (opt && typeof opt === 'object') ? (opt.value ?? opt.id ?? JSON.stringify(opt)) : String(opt);
-                                                                const labelText = (opt && typeof opt === 'object') ? (opt.label ?? opt.name ?? val) : String(opt);
-                                                                return <option key={idx} value={val}>{labelText}</option>;
-                                                            })}
-                                                            {/* If current value is not in options, add it so it displays correctly (no [object Object]) */}
-                                                            {valueStr && !valueInOptions && (
-                                                                <option value={valueStr}>{valueStr}</option>
-                                                            )}
-                                                        </FormSelect>
-                                                    </div>
-                                                );
-                                            }
-
-                                            // 3. Fallback to Input (tampilkan nilai sebagai string; hindari [object Object])
-                                            const displayValue = (v) => {
-                                                if (v == null || v === '') return '';
-                                                if (typeof v === 'string') return v;
-                                                if (v instanceof File) return v.name || '';
-                                                if (typeof v === 'object') return v.path ?? v.label ?? v.name ?? '';
-                                                return String(v);
-                                            };
-                                            return (
-                                                <div key={rawKeyStr}>
-                                                    <FormInput
-                                                        label={label}
-                                                        value={displayValue(value) || ''}
-                                                        onChange={(e) => {
-                                                            const newData = { ...data.additional_data, [originalKey]: e.target.value };
-                                                            setData('additional_data', newData);
-                                                        }}
-                                                        className="capitalize-label"
-                                                        required={isRequiredCustom}
-                                                    />
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="col-span-full text-center text-slate-500 py-4 text-sm">
-                                            Tidak ada data tambahan untuk kegiatan ini.
+                                    {(isRequired('foto') || isRequired('photo')) && (
+                                        <div className="col-span-2 space-y-1.5">
+                                            <FormInput
+                                                label="Foto Profil"
+                                                type="file"
+                                                onChange={(e) => setData('foto_file', e.target.files?.[0] || null)}
+                                                error={errors.foto_file}
+                                                required
+                                            />
+                                            <p className="text-xs text-slate-500">Pilih file baru akan menggantikan foto yang sudah tersimpan.</p>
+                                            {(targetUser?.profile_photo_url || targetProfile?.foto_url) && (
+                                                <a
+                                                    href={targetUser?.profile_photo_url || targetProfile?.foto_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-indigo-600 text-xs hover:underline"
+                                                >
+                                                    <FileText className="w-3 h-3" /> Lihat foto tersimpan
+                                                </a>
+                                            )}
                                         </div>
                                     )}
                                 </div>
                             </div>
                         )}
 
+                        {/* Section: Data Tambahan / Custom Fields */}
+                        {requiredCustomFields.length > 0 && Object.keys(data.additional_data).length > 0 && (
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                <div className="bg-slate-50/80 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
+                                    <FileText className="w-4 h-4 text-amber-500" />
+                                    <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Data Kegiatan & Lainnya</h3>
+                                </div>
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {requiredCustomFields.map((field) => {
+                                        const baseKey = field.key;
+                                        if (!baseKey) return null;
+                                        const label = String(field.label || baseKey).replace(/_/g, ' ').replace(/-/g, ' ').trim();
+                                        const type = String(field.type || 'text').toLowerCase();
+                                        const originalKey = baseKey;
+                                        const value = data.additional_data[originalKey];
+
+                                        const toFilePathString = (v) => {
+                                            if (v == null) return '';
+                                            if (typeof v === 'string') return v;
+                                            if (typeof v === 'object' && v !== null) {
+                                                if (v.path) return v.path;
+                                                if (v.url) return v.url;
+                                                if (Array.isArray(v) && v.length > 0) return toFilePathString(v[0]);
+                                            }
+                                            return '';
+                                        };
+
+                                        const getFileUrl = (v) => {
+                                            const pathStr = toFilePathString(v);
+                                            if (!pathStr) return null;
+                                            let s = String(pathStr).trim();
+                                            if (s.startsWith('http://') || s.startsWith('https://')) return s;
+                                            if (s.toLowerCase().includes('fakepath') || /^[a-zA-Z]:\\/.test(s)) return null;
+                                            if (s.includes('\\')) s = s.replace(/\\/g, '/');
+                                            const path = s.startsWith('storage/') ? s : (s.startsWith('/') ? s.slice(1) : `storage/${s}`);
+                                            return window.location.origin + '/' + path.replace(/^\/+/, '');
+                                        };
+
+                                        const parseOptions = (opt) => {
+                                            if (Array.isArray(opt)) return opt;
+                                            if (typeof opt === 'string') {
+                                                const s = opt.trim();
+                                                if (!s) return [];
+                                                if (s.startsWith('[')) {
+                                                    const decoded = JSON.parse(s);
+                                                    return Array.isArray(decoded) ? decoded : [];
+                                                }
+                                                return s.split(',').map(x => x.trim()).filter(Boolean);
+                                            }
+                                            return [];
+                                        };
+
+                                        if (type === 'file') {
+                                            const pathStr = toFilePathString(value) || '';
+                                            const looksOurStorage = /\/custom-data\//i.test(pathStr) && (/^storage\//i.test(pathStr.replace(/^\/+/, '')) || /storage\/activities\//i.test(pathStr));
+                                            const fileUrl = (activity && targetUser?.id && looksOurStorage)
+                                                ? `${route('activity.participants.custom-file', { activityId: activity.uid || activity.id, userId: targetUser.id })}?key=${encodeURIComponent(baseKey)}`
+                                                : getFileUrl(value);
+                                            return (
+                                                <div key={baseKey} className="space-y-1.5">
+                                                    <label className="block text-sm font-medium text-slate-700">{label} <span className="text-red-500">*</span></label>
+                                                    <input
+                                                        type="file"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                                                            const newData = { ...data.additional_data, [originalKey]: file || '' };
+                                                            setData('additional_data', newData);
+                                                        }}
+                                                        className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm"
+                                                        required
+                                                    />
+                                                    <p className="text-xs text-slate-500">Pilih file baru akan menggantikan dokumen yang sudah tersimpan.</p>
+                                                    {fileUrl ? (
+                                                        <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 text-xs hover:underline">
+                                                            <FileText className="w-3 h-3" /> Lihat file tersimpan
+                                                        </a>
+                                                    ) : (
+                                                        value != null && value !== '' ? (
+                                                            <span className="text-xs text-slate-400">Belum tersimpan di server</span>
+                                                        ) : null
+                                                    )}
+                                                </div>
+                                            );
+                                        }
+
+                                        if (type === 'dropdown') {
+                                            let options = [];
+                                            try {
+                                                options = parseOptions(field.options);
+                                            } catch {
+                                                options = [];
+                                            }
+                                            if ((!options || options.length === 0) && customOptions) {
+                                                const optionKey = Object.keys(customOptions || {}).find(k => normalizeKey(k.split('|')[0].trim()) === normalizeKey(baseKey));
+                                                if (optionKey && Array.isArray(customOptions[optionKey])) {
+                                                    options = customOptions[optionKey];
+                                                }
+                                            }
+                                            const uniqueOptions = [...new Set((options || []).map(o => (o && typeof o === 'object') ? (o.value ?? o.id ?? o.label ?? o.name ?? String(o)) : String(o)))].filter(Boolean);
+                                            const valueStr = value != null && typeof value === 'object'
+                                                ? (value.label ?? value.name ?? value.value ?? value.id ?? '')
+                                                : String(value ?? '');
+                                            const valueInOptions = uniqueOptions.includes(valueStr);
+                                            return (
+                                                <div key={baseKey}>
+                                                    <FormSelect
+                                                        label={label}
+                                                        value={valueStr}
+                                                        onChange={(e) => {
+                                                            const newData = { ...data.additional_data, [originalKey]: e.target.value };
+                                                            setData('additional_data', newData);
+                                                        }}
+                                                        required
+                                                    >
+                                                        <option value="">Pilih {label}...</option>
+                                                        {uniqueOptions.map((opt, idx) => (
+                                                            <option key={idx} value={opt}>{opt}</option>
+                                                        ))}
+                                                        {valueStr && !valueInOptions && (
+                                                            <option value={valueStr}>{valueStr}</option>
+                                                        )}
+                                                    </FormSelect>
+                                                </div>
+                                            );
+                                        }
+
+                                        if (type === 'textarea') {
+                                            const valueStr = value != null && typeof value === 'object'
+                                                ? (value.label ?? value.name ?? value.path ?? value.url ?? '')
+                                                : String(value ?? '');
+                                            return (
+                                                <div key={baseKey}>
+                                                    <FormTextarea
+                                                        label={label}
+                                                        value={valueStr}
+                                                        onChange={(e) => {
+                                                            const newData = { ...data.additional_data, [originalKey]: e.target.value };
+                                                            setData('additional_data', newData);
+                                                        }}
+                                                        required
+                                                    />
+                                                </div>
+                                            );
+                                        }
+
+                                        const inputType = type === 'number' ? 'number' : (type === 'date' ? 'date' : 'text');
+                                        const valueStr = value != null && typeof value === 'object'
+                                            ? (value.label ?? value.name ?? value.path ?? value.url ?? '')
+                                            : String(value ?? '');
+                                        return (
+                                            <div key={baseKey}>
+                                                <FormInput
+                                                    label={label}
+                                                    type={inputType}
+                                                    value={valueStr}
+                                                    onChange={(e) => {
+                                                        const newData = { ...data.additional_data, [originalKey]: e.target.value };
+                                                        setData('additional_data', newData);
+                                                    }}
+                                                    required
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Section: Pekerjaan & Instansi */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                            <div className="bg-slate-50/80 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
-                                <Briefcase className="w-4 h-4 text-emerald-500" />
-                                <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Pekerjaan & Instansi</h3>
+                        {(['instansi', 'pekerjaan', 'jabatan'].some(k => isRequired(k))) && (
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                <div className="bg-slate-50/80 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
+                                    <Briefcase className="w-4 h-4 text-emerald-500" />
+                                    <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Pekerjaan & Instansi</h3>
+                                </div>
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {isRequired('instansi') && (
+                                        <div className="col-span-2">
+                                            <FormInput
+                                                label="Instansi / Organisasi"
+                                                value={data.instansi}
+                                                onChange={e => setData('instansi', e.target.value)}
+                                                error={errors.instansi}
+                                                icon={<Building className="w-4 h-4" />}
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                    {isRequired('pekerjaan') && (
+                                        <div>
+                                            <FormInput
+                                                label="Detail Pekerjaan"
+                                                value={data.pekerjaan}
+                                                onChange={e => setData('pekerjaan', e.target.value)}
+                                                error={errors.pekerjaan}
+                                                icon={<Briefcase className="w-4 h-4" />}
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                    {isRequired('jabatan') && (
+                                        <div>
+                                            <FormInput
+                                                label="Jabatan"
+                                                value={data.jabatan}
+                                                onChange={e => setData('jabatan', e.target.value)}
+                                                error={errors.jabatan}
+                                                icon={<CreditCard className="w-4 h-4" />}
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="col-span-2">
-                                    <FormInput
-                                        label="Instansi / Organisasi"
-                                        value={data.instansi}
-                                        onChange={e => setData('instansi', e.target.value)}
-                                        error={errors.instansi}
-                                        icon={<Building className="w-4 h-4" />}
-                                    required={isRequired('instansi')}
-                                    />
-                                </div>
-                                <div>
-                                    <FormInput
-                                        label="Detail Pekerjaan"
-                                        value={data.pekerjaan}
-                                        onChange={e => setData('pekerjaan', e.target.value)}
-                                        error={errors.pekerjaan}
-                                        icon={<Briefcase className="w-4 h-4" />}
-                                    required={isRequired('pekerjaan')}
-                                    />
-                                </div>
-                                <div>
-                                    <FormInput
-                                        label="Jabatan"
-                                        value={data.jabatan}
-                                        onChange={e => setData('jabatan', e.target.value)}
-                                        error={errors.jabatan}
-                                        icon={<CreditCard className="w-4 h-4" />}
-                                    required={isRequired('jabatan')}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                        )}
 
                         {/* Section: Alamat & Domisili */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                            <div className="bg-slate-50/80 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-rose-500" />
-                                <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Alamat Lengkap</h3>
+                        {(['province_id', 'regency_id', 'district_id', 'alamat', 'address', 'provinsi', 'kabupaten', 'kota', 'city', 'kecamatan'].some(k => isRequired(k))) && (
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                                <div className="bg-slate-50/80 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-rose-500" />
+                                    <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Alamat Lengkap</h3>
+                                </div>
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {isRequired('province_id') || isRequired('provinsi') ? (
+                                        <div>
+                                            <FormSelect
+                                                label="Provinsi"
+                                                value={data.province_id}
+                                                onChange={handleProvinceChange}
+                                                error={errors.province_id}
+                                                required
+                                            >
+                                                <option value="">Pilih Provinsi...</option>
+                                                {provinces && provinces.map(prov => (
+                                                    <option key={prov.id} value={prov.id}>{prov.name}</option>
+                                                ))}
+                                            </FormSelect>
+                                        </div>
+                                    ) : null}
+                                    {isRequired('regency_id') || isRequired('kabupaten') || isRequired('kota') || isRequired('city') ? (
+                                        <div>
+                                            <FormSelect
+                                                label="Kabupaten/Kota"
+                                                value={data.regency_id}
+                                                onChange={handleRegencyChange}
+                                                disabled={!data.province_id && (isRequired('province_id') || isRequired('provinsi'))}
+                                                error={errors.regency_id}
+                                                required
+                                            >
+                                                <option value="">Pilih Kota/Kab...</option>
+                                                {regencies && regencies.map(reg => (
+                                                    <option key={reg.id} value={reg.id}>{reg.name}</option>
+                                                ))}
+                                            </FormSelect>
+                                        </div>
+                                    ) : null}
+                                    {isRequired('district_id') || isRequired('kecamatan') ? (
+                                        <div>
+                                            <FormSelect
+                                                label="Kecamatan"
+                                                value={data.district_id}
+                                                onChange={e => setData('district_id', e.target.value)}
+                                                disabled={!data.regency_id && (isRequired('regency_id') || isRequired('kabupaten') || isRequired('kota') || isRequired('city'))}
+                                                error={errors.district_id}
+                                                required
+                                            >
+                                                <option value="">Pilih Kecamatan...</option>
+                                                {districts && districts.map(dist => (
+                                                    <option key={dist.id} value={dist.id}>{dist.name}</option>
+                                                ))}
+                                            </FormSelect>
+                                        </div>
+                                    ) : null}
+                                    {isRequired('alamat') || isRequired('address') ? (
+                                        <div className="col-span-1 md:col-span-3">
+                                            <div className="space-y-1">
+                                                <label className="block text-sm font-medium text-slate-700">Detail Alamat <span className="text-red-500">*</span></label>
+                                                <textarea
+                                                    value={data.alamat}
+                                                    onChange={(e) => setData('alamat', e.target.value)}
+                                                    className="w-full border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500/20 text-sm min-h-[80px]"
+                                                    rows="2"
+                                                    placeholder="Nama jalan, RT/RW, nomor rumah, kode pos, dll."
+                                                    required
+                                                ></textarea>
+                                                {errors.alamat && <p className="text-red-500 text-xs">{errors.alamat}</p>}
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </div>
                             </div>
-                            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                    <FormSelect
-                                        label="Provinsi"
-                                        value={data.province_id}
-                                        onChange={handleProvinceChange}
-                                        error={errors.province_id}
-                                    required={isRequired('province_id') || isRequired('provinsi')}
-                                    >
-                                        <option value="">Pilih Provinsi...</option>
-                                        {provinces && provinces.map(prov => (
-                                            <option key={prov.id} value={prov.id}>{prov.name}</option>
-                                        ))}
-                                    </FormSelect>
-                                </div>
-                                <div>
-                                    <FormSelect
-                                        label="Kabupaten/Kota"
-                                        value={data.regency_id}
-                                        onChange={handleRegencyChange}
-                                        disabled={!data.province_id}
-                                        error={errors.regency_id}
-                                    required={isRequired('regency_id') || isRequired('kabupaten') || isRequired('kota') || isRequired('city')}
-                                    >
-                                        <option value="">Pilih Kota/Kab...</option>
-                                        {regencies && regencies.map(reg => (
-                                            <option key={reg.id} value={reg.id}>{reg.name}</option>
-                                        ))}
-                                    </FormSelect>
-                                </div>
-                                <div>
-                                    <FormSelect
-                                        label="Kecamatan"
-                                        value={data.district_id}
-                                        onChange={e => setData('district_id', e.target.value)}
-                                        disabled={!data.regency_id}
-                                        error={errors.district_id}
-                                    required={isRequired('district_id') || isRequired('kecamatan')}
-                                    >
-                                        <option value="">Pilih Kecamatan...</option>
-                                        {districts && districts.map(dist => (
-                                            <option key={dist.id} value={dist.id}>{dist.name}</option>
-                                        ))}
-                                    </FormSelect>
-                                </div>
-                                <div className="col-span-1 md:col-span-3">
-                                    <div className="space-y-1">
-                                        <label className="block text-sm font-medium text-slate-700">Detail Alamat</label>
-                                        <textarea
-                                            value={data.alamat}
-                                            onChange={(e) => setData('alamat', e.target.value)}
-                                            className="w-full border-slate-200 rounded-xl shadow-sm focus:border-indigo-500 focus:ring-indigo-500/20 text-sm min-h-[80px]"
-                                            rows="2"
-                                            placeholder="Nama jalan, RT/RW, nomor rumah, kode pos, dll."
-                                        required={isRequired('alamat') || isRequired('address')}
-                                        ></textarea>
-                                        {errors.alamat && <p className="text-red-500 text-xs">{errors.alamat}</p>}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        )}
                     </form>
                 </div>
 
@@ -868,6 +868,25 @@ const FormSelect = ({ label, value, onChange, error, children, disabled, require
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
         </div>
+        {error && <p className="text-red-500 text-xs flex items-center gap-1">
+            <span className="w-1 h-1 bg-red-500 rounded-full"></span> {error}
+        </p>}
+    </div>
+);
+
+const FormTextarea = ({ label, value, onChange, error, required }) => (
+    <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-slate-700 capitalize">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        <textarea
+            value={value}
+            onChange={onChange}
+            className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all shadow-sm placeholder:text-slate-300 hover:border-slate-300 min-h-[90px]"
+            rows={3}
+            placeholder={`Masukkan ${String(label || '').toLowerCase()}...`}
+            required={required}
+        />
         {error && <p className="text-red-500 text-xs flex items-center gap-1">
             <span className="w-1 h-1 bg-red-500 rounded-full"></span> {error}
         </p>}
