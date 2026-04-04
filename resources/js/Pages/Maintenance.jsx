@@ -127,6 +127,18 @@ export default function Maintenance({ message, start_time, end_time }) {
                             Jika Anda memerlukan bantuan mendesak, silakan hubungi tim support kami.
                         </p>
                     </div>
+
+                    <div className="mt-4 p-4 bg-[#0f172a]/5 rounded-[10px] border border-[#0f172a]/10 text-left">
+                        <h5 className="text-[#2d3748] font-bold mb-2">Monitoring API</h5>
+                        <div className="text-[#4a5568] text-sm md:text-base space-y-1">
+                            <div>POST <span className="font-mono">/api/logs</span> (kirim log)</div>
+                            <div>GET <span className="font-mono">/api/logs</span> (ambil log)</div>
+                            <div>GET <span className="font-mono">/api/logs/stream</span> (realtime)</div>
+                        </div>
+                        <div className="text-xs text-[#4a5568] mt-2">
+                            Akses endpoint ini membutuhkan token / autentikasi. Hubungi administrator untuk konfigurasi.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

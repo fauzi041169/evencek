@@ -285,7 +285,7 @@ export default function LoginDropdown() {
                                             )}
                                         </button>
                                     </div>
-                                    {registerErrors.password && <div className="text-red-500 text-xs mt-1 ml-1">{registerErrors.password}</div>}
+{errorsRegister.password && <div className="text-red-500 text-xs mt-1 ml-1">{errorsRegister.password}</div>}
                                 </div>
 
                                 <div>

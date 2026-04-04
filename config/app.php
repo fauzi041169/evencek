@@ -197,4 +197,5 @@ return [
     'subdomain_host' => env('SUBDOMAIN_HOST', 'eventcek.com'),
     'use_path_alias' => env('USE_PATH_ALIAS', true),
 
+    'log_ingest_token' => env('LOG_INGEST_TOKEN', ''),
 ];

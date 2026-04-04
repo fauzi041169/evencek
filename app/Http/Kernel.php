@@ -81,6 +81,7 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\Role::class,
         'checkrole' => \App\Http\Middleware\CheckRole::class,
         'track.activity.access' => \App\Http\Middleware\TrackActivityAccess::class,
+        'log.token' => \App\Http\Middleware\VerifyLogIngestToken::class,
     ];
 
     protected $routeMiddleware = [

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ClientLogController;
 use App\Http\Controllers\Api\DashboardController as ApiDashboardController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\NewsController as ApiNewsController;
@@ -21,6 +22,15 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/health', [HealthController::class, 'check']);
+
+Route::post('/logs', [ClientLogController::class, 'store'])
+    ->middleware(['throttle:60,1', 'log.token']);
+
+Route::get('/logs', [ClientLogController::class, 'index'])
+    ->middleware(['throttle:120,1', 'log.token']);
+
+Route::get('/logs/stream', [ClientLogController::class, 'stream'])
+    ->middleware(['throttle:120,1', 'log.token']);
 
 Route::prefix('auth')->middleware('throttle:5,1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);

@@ -6,6 +6,7 @@ import Modal from '@/Components/Modal';
 
 export default function Maintenance({ setting, apkList = [], permissionMatrix = [], roles = [] }) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
     const [statusActive, setStatusActive] = useState(!!setting?.is_maintenance_mode);
     const [alert, setAlert] = useState(null);
     const [logs, setLogs] = useState([]);
@@ -13,6 +14,17 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
     const [logLevel, setLogLevel] = useState('');
     const [logLines, setLogLines] = useState(200);
     const [artisanOutput, setArtisanOutput] = useState('');
+    const [clientLogToken, setClientLogToken] = useState('');
+    const [clientLogItems, setClientLogItems] = useState([]);
+    const [clientLogLoading, setClientLogLoading] = useState(false);
+    const [clientLogError, setClientLogError] = useState('');
+    const [clientLogFilterLevel, setClientLogFilterLevel] = useState('');
+    const [clientLogFilterSource, setClientLogFilterSource] = useState('');
+    const [clientLogFilterTag, setClientLogFilterTag] = useState('');
+    const [clientLogStreamRunning, setClientLogStreamRunning] = useState(false);
+    const [clientLogStreamStatus, setClientLogStreamStatus] = useState('');
+    const [clientLogStreamLastId, setClientLogStreamLastId] = useState(0);
+    const [clientLogStreamAbort, setClientLogStreamAbort] = useState(null);
 
     // Update App States
     const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -53,6 +65,56 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
             throw error;
         }
         return data;
+    };
+
+    const requestApiJson = async (path, options = {}) => {
+        const token = (clientLogToken || '').trim();
+        if (!token) {
+            throw new Error('LOG_INGEST_TOKEN belum diisi');
+        }
+
+        const res = await fetch(`${appOrigin}${path}`, {
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Log-Token': token,
+                ...(options.headers || {}),
+            },
+            ...options,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            const error = new Error(data?.message || `Request gagal (${res.status})`);
+            error.data = data;
+            throw error;
+        }
+        return data;
+    };
+
+    const copyToClipboard = async (text) => {
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+                showAlert('success', 'URL tersalin');
+                return;
+            }
+        } catch (e) {
+        }
+
+        try {
+            const el = document.createElement('textarea');
+            el.value = text;
+            el.setAttribute('readonly', '');
+            el.style.position = 'absolute';
+            el.style.left = '-9999px';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showAlert('success', 'URL tersalin');
+        } catch (e) {
+            showAlert('error', 'Gagal menyalin URL');
+        }
     };
 
     const updateSettings = async () => {
@@ -280,6 +342,140 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
         });
     };
 
+    const fetchClientLogs = async () => {
+        setClientLogError('');
+        setClientLogLoading(true);
+        try {
+            const params = new URLSearchParams();
+            params.set('per_page', '50');
+            if (clientLogFilterLevel) params.set('level', clientLogFilterLevel);
+            if (clientLogFilterSource) params.set('source', clientLogFilterSource);
+            if (clientLogFilterTag) params.set('tag', clientLogFilterTag);
+
+            const res = await requestApiJson(`/api/logs?${params.toString()}`, { method: 'GET' });
+            const rows = res?.data?.data || [];
+            setClientLogItems(rows);
+            const maxId = rows.reduce((m, r) => Math.max(m, Number(r?.id || 0)), 0);
+            setClientLogStreamLastId(maxId);
+        } catch (e) {
+            setClientLogError(e.message || 'Gagal memuat client logs');
+        } finally {
+            setClientLogLoading(false);
+        }
+    };
+
+    const stopClientLogStream = () => {
+        try {
+            if (clientLogStreamAbort) {
+                clientLogStreamAbort.abort();
+            }
+        } catch (e) {
+        }
+        setClientLogStreamAbort(null);
+        setClientLogStreamRunning(false);
+        setClientLogStreamStatus('Stopped');
+    };
+
+    const startClientLogStream = async () => {
+        stopClientLogStream();
+
+        const token = (clientLogToken || '').trim();
+        if (!token) {
+            setClientLogError('LOG_INGEST_TOKEN belum diisi');
+            return;
+        }
+
+        const params = new URLSearchParams();
+        params.set('last_id', String(clientLogStreamLastId || 0));
+        params.set('max_seconds', '120');
+        params.set('poll_ms', '1000');
+        params.set('limit', '100');
+        if (clientLogFilterLevel) params.set('level', clientLogFilterLevel);
+        if (clientLogFilterSource) params.set('source', clientLogFilterSource);
+        if (clientLogFilterTag) params.set('tag', clientLogFilterTag);
+
+        const abortController = new AbortController();
+        setClientLogStreamAbort(abortController);
+        setClientLogStreamRunning(true);
+        setClientLogStreamStatus('Connecting...');
+        setClientLogError('');
+
+        try {
+            const res = await fetch(`${appOrigin}/api/logs/stream?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    Accept: 'text/event-stream',
+                    'X-Log-Token': token,
+                },
+                signal: abortController.signal,
+            });
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(text || `Stream gagal (${res.status})`);
+            }
+
+            setClientLogStreamStatus('Streaming');
+
+            const reader = res.body?.getReader();
+            if (!reader) {
+                throw new Error('Streaming tidak didukung pada browser ini');
+            }
+
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            let currentEvent = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const parts = buffer.split('\n\n');
+                buffer = parts.pop() || '';
+
+                for (const chunk of parts) {
+                    const lines = chunk.split('\n').map((l) => l.trimEnd());
+                    let dataLine = '';
+                    for (const line of lines) {
+                        if (line.startsWith('event:')) currentEvent = line.slice(6).trim();
+                        if (line.startsWith('data:')) dataLine += line.slice(5).trim();
+                    }
+
+                    if (currentEvent === 'log' && dataLine) {
+                        try {
+                            const obj = JSON.parse(dataLine);
+                            const id = Number(obj?.id || 0);
+                            setClientLogItems((prev) => {
+                                const next = [...prev, obj];
+                                if (next.length > 200) {
+                                    return next.slice(next.length - 200);
+                                }
+                                return next;
+                            });
+                            if (id > 0) {
+                                setClientLogStreamLastId((prev) => Math.max(prev || 0, id));
+                            }
+                        } catch (e) {
+                        }
+                    }
+                }
+            }
+
+            setClientLogStreamStatus('Disconnected');
+        } catch (e) {
+            if (e?.name === 'AbortError') {
+                setClientLogStreamStatus('Stopped');
+            } else {
+                setClientLogStreamStatus('Error');
+                setClientLogError(e.message || 'Stream error');
+            }
+        } finally {
+            setClientLogStreamRunning(false);
+            setClientLogStreamAbort(null);
+        }
+    };
+
     const fetchLogs = async () => {
         try {
             const url = new URL(route('maintenance.logs'), window.location.origin);
@@ -434,6 +630,14 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
         fetchLogs();
     }, [logLevel, logLines]);
 
+    useEffect(() => {
+        return () => {
+            try {
+                if (clientLogStreamAbort) clientLogStreamAbort.abort();
+            } catch (e) {
+            }
+        };
+    }, [clientLogStreamAbort]);
 
     return (
         <MainLayout>
@@ -637,6 +841,150 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
                         </div>
                     </div>
 
+                    <div className="bg-white rounded-xl shadow p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">API Monitoring (Client Logs)</h3>
+                            <span className="text-xs text-gray-500">{appOrigin}</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="space-y-3">
+                                <div className="space-y-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                                        <input
+                                            type="text"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono"
+                                            value={`${appOrigin}/api/logs`}
+                                            readOnly
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(`${appOrigin}/api/logs`)}
+                                            className="px-3 py-2 bg-gray-100 rounded-md text-sm"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                                        <input
+                                            type="text"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono"
+                                            value={`${appOrigin}/api/logs/stream`}
+                                            readOnly
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(`${appOrigin}/api/logs/stream`)}
+                                            className="px-3 py-2 bg-gray-100 rounded-md text-sm"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <input
+                                        type="password"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                        value={clientLogToken}
+                                        onChange={(e) => setClientLogToken(e.target.value)}
+                                        placeholder="LOG_INGEST_TOKEN"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={fetchClientLogs}
+                                            disabled={clientLogLoading}
+                                            className="px-4 py-2 bg-gray-800 text-white rounded-md text-sm"
+                                        >
+                                            Ambil Log
+                                        </button>
+                                        {!clientLogStreamRunning ? (
+                                            <button
+                                                type="button"
+                                                onClick={startClientLogStream}
+                                                className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm"
+                                            >
+                                                Realtime
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={stopClientLogStream}
+                                                className="px-4 py-2 bg-rose-600 text-white rounded-md text-sm"
+                                            >
+                                                Stop
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <select
+                                        value={clientLogFilterLevel}
+                                        onChange={(e) => setClientLogFilterLevel(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                    >
+                                        <option value="">Level</option>
+                                        <option value="error">error</option>
+                                        <option value="warning">warning</option>
+                                        <option value="info">info</option>
+                                        <option value="debug">debug</option>
+                                    </select>
+                                    <input
+                                        type="text"
+                                        value={clientLogFilterSource}
+                                        onChange={(e) => setClientLogFilterSource(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                        placeholder="source (contoh: web)"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={clientLogFilterTag}
+                                        onChange={(e) => setClientLogFilterTag(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                                        placeholder="tag (contoh: frontend)"
+                                    />
+                                </div>
+
+                                <div className="text-xs text-gray-600">
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="px-2 py-1 bg-gray-100 rounded">POST /api/logs</span>
+                                        <span className="px-2 py-1 bg-gray-100 rounded">GET /api/logs</span>
+                                        <span className="px-2 py-1 bg-gray-100 rounded">GET /api/logs/stream</span>
+                                    </div>
+                                </div>
+
+                                {clientLogError && (
+                                    <div className="px-3 py-2 bg-rose-50 border border-rose-200 text-rose-700 rounded text-sm">
+                                        {clientLogError}
+                                    </div>
+                                )}
+
+                                <div className="text-xs text-gray-500">
+                                    Status: {clientLogStreamStatus || 'Idle'} · last_id: {clientLogStreamLastId || 0} · items: {clientLogItems.length}
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="text-sm font-semibold text-gray-800">Contoh Request</div>
+                                <pre className="p-3 bg-gray-50 border rounded text-xs overflow-auto whitespace-pre-wrap">{`curl -X POST "${appOrigin}/api/logs" \\
+  -H "Content-Type: application/json" \\
+  -H "X-Log-Token: <LOG_INGEST_TOKEN>" \\
+  -d '{"level":"error","message":"test","context":{"a":1},"tags":["monitor"],"source":"web"}'
+
+curl "${appOrigin}/api/logs?per_page=50" \\
+  -H "X-Log-Token: <LOG_INGEST_TOKEN>"`}</pre>
+                            </div>
+                        </div>
+
+                        <div className="mt-4">
+                            <pre className="p-3 bg-gray-900 text-gray-100 rounded text-xs overflow-auto max-h-72 whitespace-pre-wrap">
+                                {clientLogItems.map((l) => `[${l?.id}] ${String(l?.created_at || '')} ${String(l?.level || '')} ${String(l?.source || '')} ${String(l?.message || '')}`).join('\n')}
+                            </pre>
+                        </div>
+                    </div>
+
                     <div className="bg-slate-50 rounded-xl shadow p-6">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-lg font-semibold text-gray-900">Log Aplikasi</h3>
@@ -745,4 +1093,3 @@ export default function Maintenance({ setting, apkList = [], permissionMatrix = 
         </MainLayout>
     );
 }
-

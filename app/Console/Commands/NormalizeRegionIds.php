@@ -167,8 +167,8 @@ class NormalizeRegionIds extends Command
 
                 // Perform update
                 $affected = DB::table($table)
-                    ->where($column, $oldUid)
-                    ->update([$column => $newId]);
+                    ->where($column, (string) $oldUid)
+                    ->update([$column => (string) $newId]);
 
                 if ($affected > 0) {
                     $count += $affected;

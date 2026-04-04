@@ -84,6 +84,30 @@ const MASTER_PROVINCES = [
 const MASTER_PROVINCE_COMPACT_KEYS = MASTER_PROVINCES.map(normalizeProvinceKeyCompact).filter(Boolean);
 const MASTER_PROVINCE_NAME_BY_COMPACT_KEY = new Map(MASTER_PROVINCES.map(name => [normalizeProvinceKeyCompact(name), name]));
 
+const PROVINCE_ALIAS_TO_MASTER_COMPACT_KEY = new Map([
+    [normalizeProvinceKeyCompact('Jakarta'), normalizeProvinceKeyCompact('DKI Jakarta')],
+    [normalizeProvinceKeyCompact('Daerah Khusus Ibukota Jakarta'), normalizeProvinceKeyCompact('DKI Jakarta')],
+    [normalizeProvinceKeyCompact('Yogyakarta'), normalizeProvinceKeyCompact('DI Yogyakarta')],
+    [normalizeProvinceKeyCompact('D.I. Yogyakarta'), normalizeProvinceKeyCompact('DI Yogyakarta')],
+    [normalizeProvinceKeyCompact('Bangka Belitung'), normalizeProvinceKeyCompact('Kepulauan Bangka Belitung')],
+    [normalizeProvinceKeyCompact('Kep. Bangka Belitung'), normalizeProvinceKeyCompact('Kepulauan Bangka Belitung')],
+    [normalizeProvinceKeyCompact('Kep. Riau'), normalizeProvinceKeyCompact('Kepulauan Riau')],
+    [normalizeProvinceKeyCompact('Papua Barat Daya'), normalizeProvinceKeyCompact('Papua Barat Daya')],
+]);
+
+const getMasterProvinceCompactKey = (value) => {
+    const compact = normalizeProvinceKeyCompact(value);
+    if (!compact) return '';
+    if (MASTER_PROVINCE_NAME_BY_COMPACT_KEY.has(compact)) return compact;
+    return PROVINCE_ALIAS_TO_MASTER_COMPACT_KEY.get(compact) || '';
+};
+
+const getProvinceDisplayNameUpper = (value) => {
+    const key = getMasterProvinceCompactKey(value);
+    const canonical = key ? MASTER_PROVINCE_NAME_BY_COMPACT_KEY.get(key) : (value || '');
+    return String(canonical || '').toUpperCase();
+};
+
 export default function Dashboard({
     activity,
     totalPeserta,
@@ -732,7 +756,10 @@ export default function Dashboard({
             if (!daerah.trim()) continue;
             const picName = (member?.user?.name || member?.name || '').toString().trim();
             if (!picName) continue;
-            const provinces = daerah.split(',').map(s => normalizeProvinceKey(s)).filter(Boolean);
+            const provinces = daerah
+                .split(',')
+                .map(s => getMasterProvinceCompactKey(s))
+                .filter(Boolean);
             const prev = map.get(picName) || [];
             for (const provKey of provinces) {
                 if (!prev.includes(provKey)) prev.push(provKey);
@@ -751,9 +778,9 @@ export default function Dashboard({
             if (!daerah.trim()) continue;
             const parts = daerah.split(',').map(s => s.trim()).filter(Boolean);
             for (const name of parts) {
-                const key = normalizeProvinceKey(name);
+                const key = getMasterProvinceCompactKey(name);
                 if (!key) continue;
-                if (!map.has(key)) map.set(key, name);
+                if (!map.has(key)) map.set(key, getProvinceDisplayNameUpper(name));
             }
         }
         return map;
@@ -1044,13 +1071,18 @@ export default function Dashboard({
                 if (!Array.isArray(keysWanted) || keysWanted.length === 0) return srcAllRaw;
 
                 const byKey = new Map(
-                    srcAllRaw.map((row) => [normalizeProvinceKey(row?.name), row]).filter(([k]) => Boolean(k))
+                    srcAllRaw
+                        .map((row) => {
+                            const key = getMasterProvinceCompactKey(row?.name) || normalizeProvinceKeyCompact(row?.name);
+                            return [key, row];
+                        })
+                        .filter(([k]) => Boolean(k))
                 );
 
                 return keysWanted.map((key) => {
                     const existing = byKey.get(key);
                     if (existing) return existing;
-                    const name = provinceNameByKeyFromPic.get(key) || key;
+                    const name = provinceNameByKeyFromPic.get(key) || getProvinceDisplayNameUpper(key) || key;
                     return { id: `missing:${key}`, name, assigned: 0, unassigned: 0, total: 0 };
                 });
             })();
@@ -1062,7 +1094,7 @@ export default function Dashboard({
                 ? []
                 : srcAll.filter((r) => {
                     const provinceName = roomRegionLevel === 'province' ? r?.name : r?.province_name;
-                    const pKey = normalizeProvinceKey(provinceName);
+                    const pKey = getMasterProvinceCompactKey(provinceName) || normalizeProvinceKeyCompact(provinceName);
                     return pKey && provinceKeys.includes(pKey);
                 }));
         setRoomRegionChartData({
