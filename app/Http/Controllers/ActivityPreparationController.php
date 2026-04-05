@@ -1635,14 +1635,41 @@ class ActivityPreparationController extends Controller
                     ->toArray();
 
                 // 2. Load detailed room occupants across ALL batches
-                $assignmentsCollection = ActivityHotelRoomAssignment::with('user:id,name,email')
+                $assignmentsCollection = ActivityHotelRoomAssignment::with([
+                    'user:id,name,email',
+                    'user.profile:user_id,province_id,other_province',
+                    'user.profile.province:id,name',
+                ])
                     ->where('activity_id', $activityId)
                     ->get();
 
                 // Group by room_id
                 foreach ($assignmentsCollection as $assignment) {
                     if ($assignment->room_id && $assignment->user) {
-                        $roomOccupants[$assignment->room_id][] = $assignment->user;
+                        $profile = $assignment->user->profile;
+                        $provinceLabel = null;
+                        $provinceKey = 'none';
+
+                        if ($profile) {
+                            if ($profile->province) {
+                                $provinceLabel = $profile->province->name;
+                                $provinceKey = 'id:'.(string) $profile->province_id;
+                            } else {
+                                $other = trim((string) ($profile->other_province ?? ''));
+                                if ($other !== '') {
+                                    $provinceLabel = $other;
+                                    $provinceKey = 'other:'.strtolower($other);
+                                }
+                            }
+                        }
+
+                        $roomOccupants[$assignment->room_id][] = [
+                            'id' => $assignment->user->id,
+                            'name' => $assignment->user->name,
+                            'email' => $assignment->user->email,
+                            'province_key' => $provinceKey,
+                            'province_label' => $provinceLabel,
+                        ];
                     }
                 }
 
@@ -1673,8 +1700,39 @@ class ActivityPreparationController extends Controller
 
                 if (! empty($unassignedIds)) {
                     $unassignedParticipants = User::whereIn('id', $unassignedIds)
+                        ->with([
+                            'profile:user_id,province_id,other_province',
+                            'profile.province:id,name',
+                        ])
                         ->orderBy('name')
-                        ->get(['id', 'name']);
+                        ->get(['id', 'name', 'email'])
+                        ->map(function ($u) {
+                            $profile = $u->profile;
+                            $provinceLabel = null;
+                            $provinceKey = 'none';
+
+                            if ($profile) {
+                                if ($profile->province) {
+                                    $provinceLabel = $profile->province->name;
+                                    $provinceKey = 'id:'.(string) $profile->province_id;
+                                } else {
+                                    $other = trim((string) ($profile->other_province ?? ''));
+                                    if ($other !== '') {
+                                        $provinceLabel = $other;
+                                        $provinceKey = 'other:'.strtolower($other);
+                                    }
+                                }
+                            }
+
+                            return [
+                                'id' => $u->id,
+                                'name' => $u->name,
+                                'email' => $u->email,
+                                'province_key' => $provinceKey,
+                                'province_label' => $provinceLabel,
+                            ];
+                        })
+                        ->values();
                 }
             } catch (\Exception $e) {
                 \Log::warning('Failed to load unassigned participants', ['error' => $e->getMessage()]);

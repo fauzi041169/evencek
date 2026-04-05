@@ -26,7 +26,8 @@ const SearchableParticipantSelect = ({ participants, onSelect, placeholder = "+ 
 
     const filtered = safeParticipants.filter(p =>
         (p.name && p.name.toLowerCase().includes(search.toLowerCase())) ||
-        (p.email && p.email.toLowerCase().includes(search.toLowerCase()))
+        (p.email && p.email.toLowerCase().includes(search.toLowerCase())) ||
+        (p.province_label && p.province_label.toLowerCase().includes(search.toLowerCase()))
     );
 
     return (
@@ -59,10 +60,12 @@ const SearchableParticipantSelect = ({ participants, onSelect, placeholder = "+ 
                                         setIsOpen(false);
                                     }}
                                     className="px-2 py-1.5 text-xs hover:bg-indigo-50 cursor-pointer truncate"
-                                    title={`${p.name} (${p.email || '-'})`}
+                                    title={`${p.name} (${p.email || '-'})${p.province_label ? ` - ${p.province_label}` : ''}`}
                                 >
                                     <div className="font-medium">{p.name}</div>
-                                    <div className="text-[10px] text-gray-400">{p.email}</div>
+                                    <div className="text-[10px] text-gray-400">
+                                        {[p.email, p.province_label].filter(Boolean).join(' • ')}
+                                    </div>
                                 </div>
                             ))
                         ) : (
@@ -87,6 +90,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     const [activeTab, setActiveTab] = useState('manual');
     const [roomSearch, setRoomSearch] = useState('');
     const [roomFilter, setRoomFilter] = useState('all');
+    const [provinceFilter, setProvinceFilter] = useState('all');
 
     // Import form
     const importForm = useForm({
@@ -285,6 +289,42 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     const roomSearchTokens = roomSearchTerm
         ? roomSearchTerm.split(/[\s/_,.-]+/).map(t => t.trim()).filter(Boolean)
         : [];
+
+    const roomOccupantsValues = roomOccupants && typeof roomOccupants === 'object'
+        ? Object.values(roomOccupants).flat()
+        : [];
+
+    const provinceOptionsLocal = (() => {
+        const map = new Map();
+        const add = (key, label) => {
+            if (!key) return;
+            const safeLabel = (label || '').toString().trim();
+            if (safeLabel === '') return;
+            if (!map.has(key)) map.set(key, safeLabel);
+        };
+
+        const all = [
+            ...(Array.isArray(unassignedParticipants) ? unassignedParticipants : []),
+            ...(Array.isArray(roomOccupantsValues) ? roomOccupantsValues : []),
+        ];
+
+        for (const p of all) {
+            const key = p?.province_key || 'none';
+            const label = p?.province_label || (key === 'none' ? 'Tanpa Provinsi' : '');
+            add(key, label);
+        }
+
+        const arr = Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+        arr.sort((a, b) => (a.label || '').localeCompare(b.label || '', 'id', { sensitivity: 'base' }));
+        return arr;
+    })();
+
+    const unassignedParticipantsFiltered = provinceFilter === 'all'
+        ? unassignedParticipants
+        : (Array.isArray(unassignedParticipants)
+            ? unassignedParticipants.filter(p => (p?.province_key || 'none') === provinceFilter)
+            : []);
+
     const filteredRooms = rooms.filter((room) => {
         const occupants = roomOccupants[room.id] || [];
         const isFull = room.capacity > 0 && occupants.length >= room.capacity;
@@ -293,12 +333,17 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
         if (roomFilter === 'empty' && !isEmpty) return false;
         if (roomFilter === 'available' && !isAvailable) return false;
+        if (provinceFilter !== 'all') {
+            const match = occupants.some(o => (o?.province_key || 'none') === provinceFilter);
+            if (!match) return false;
+        }
 
         const hotelName = (room.hotel_name || '').toString().toLowerCase();
         const roomNumber = (room.room_number || '').toString().toLowerCase();
         const notes = (room.notes || '').toString().toLowerCase();
         const statusLabel = room.is_active ? 'aktif' : 'tidak aktif';
         const occupantsText = occupants.map(o => (o?.name || '').toString().toLowerCase()).join(' ');
+        const provincesText = occupants.map(o => (o?.province_label || '').toString().toLowerCase()).join(' ');
         const capacityText = room.capacity > 0 ? String(room.capacity) : 'tak terbatas';
         const occupancyText = String(occupants.length);
         const fullText = isFull ? 'penuh' : 'tersedia';
@@ -311,6 +356,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
             notes,
             statusLabel,
             occupantsText,
+            provincesText,
             capacityText,
             occupancyText,
             fullText,
@@ -482,7 +528,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                 )}
                             </div>
 
-                            <div className="flex items-center gap-2 mb-2 flex-nowrap">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
                                 <div className="flex-1 min-w-0">
                                     <input
                                         type="text"
@@ -501,6 +547,18 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                         <option value="all">Semua Kamar</option>
                                         <option value="empty">Kamar Kosong</option>
                                         <option value="available">Masih Bisa Terisi</option>
+                                    </select>
+                                </div>
+                                <div className="w-[220px] shrink-0">
+                                    <select
+                                        value={provinceFilter}
+                                        onChange={(e) => setProvinceFilter(e.target.value)}
+                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                    >
+                                        <option value="all">Semua Provinsi</option>
+                                        {provinceOptionsLocal.map(p => (
+                                            <option key={p.key} value={p.key}>{p.label}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="text-xs text-gray-500 shrink-0 whitespace-nowrap">
@@ -571,7 +629,14 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                                             <div className="flex flex-col gap-1">
                                                                 {occupants.map(occ => (
                                                                     <div key={occ.id} className="flex justify-between items-center bg-blue-50 px-2 py-1 rounded text-xs border border-blue-100">
-                                                                        <span className="truncate font-medium text-secondary max-w-[150px]" title={occ.name}>{occ.name}</span>
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <div className="truncate font-medium text-secondary max-w-[150px]" title={`${occ.name}${occ.province_label ? ` - ${occ.province_label}` : ''}`}>{occ.name}</div>
+                                                                            {occ.province_label && (
+                                                                                <div className="text-[10px] text-gray-500 truncate max-w-[150px]" title={occ.province_label}>
+                                                                                    {occ.province_label}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => handleRemoveParticipant(room.id, occ.id)}
@@ -585,7 +650,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
                                                                 {!isFull && (
                                                                     <SearchableParticipantSelect
-                                                                        participants={unassignedParticipants}
+                                                                        participants={unassignedParticipantsFiltered}
                                                                         onSelect={(userId) => handleAssignParticipant(room.id, userId)}
                                                                     />
                                                                 )}
