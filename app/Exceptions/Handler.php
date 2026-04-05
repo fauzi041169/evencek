@@ -11,6 +11,7 @@ use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
@@ -64,9 +65,23 @@ class Handler extends ExceptionHandler
         }
 
         if ($e instanceof ModelNotFoundException) {
+            if ($request->header('X-Inertia')) {
+                return Inertia::render('Error', [
+                    'status' => 404,
+                    'request_id' => $requestId,
+                ])->toResponse($request)->setStatusCode(404)->withHeaders(['X-Request-Id' => $requestId]);
+            }
+
             return response()->view('errors.404', [], 404)->withHeaders(['X-Request-Id' => $requestId]);
         }
         if ($e instanceof NotFoundHttpException) {
+            if ($request->header('X-Inertia')) {
+                return Inertia::render('Error', [
+                    'status' => 404,
+                    'request_id' => $requestId,
+                ])->toResponse($request)->setStatusCode(404)->withHeaders(['X-Request-Id' => $requestId]);
+            }
+
             return response()->view('errors.404', [], 404)->withHeaders(['X-Request-Id' => $requestId]);
         }
         // Handle database connection errors globally
@@ -87,6 +102,14 @@ class Handler extends ExceptionHandler
                         'error' => 'Database connection failed',
                         'request_id' => $requestId,
                     ], 503);
+                }
+
+                if ($request->header('X-Inertia')) {
+                    return Inertia::render('Error', [
+                        'status' => 503,
+                        'message' => 'Database tidak tersedia saat ini. Silakan coba lagi nanti atau hubungi administrator.',
+                        'request_id' => $requestId,
+                    ])->toResponse($request)->setStatusCode(503)->withHeaders(['X-Request-Id' => $requestId]);
                 }
 
                 // For web requests, show friendly error page
@@ -111,7 +134,7 @@ class Handler extends ExceptionHandler
 
         if (! config('app.debug')) {
             if (method_exists($e, 'getStatusCode') && (int) $e->getStatusCode() === 500) {
-                if ($request->expectsJson() || $request->is('api/*') || $request->header('X-Inertia')) {
+                if ($request->expectsJson() || $request->is('api/*')) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Terjadi kesalahan server. Silakan coba lagi.',
@@ -119,17 +142,33 @@ class Handler extends ExceptionHandler
                     ], 500)->withHeaders(['X-Request-Id' => $requestId]);
                 }
 
+                if ($request->header('X-Inertia')) {
+                    return Inertia::render('Error', [
+                        'status' => 500,
+                        'message' => 'Terjadi kesalahan server. Silakan coba lagi.',
+                        'request_id' => $requestId,
+                    ])->toResponse($request)->setStatusCode(500)->withHeaders(['X-Request-Id' => $requestId]);
+                }
+
                 return response()->view('errors.500', [
                     'request_id' => $requestId,
                 ], 500)->withHeaders(['X-Request-Id' => $requestId]);
             }
             if (! $this->isHttpException($e) && ! ($e instanceof TokenMismatchException) && ! ($e instanceof ValidationException) && ! ($e instanceof AuthenticationException)) {
-                if ($request->expectsJson() || $request->is('api/*') || $request->header('X-Inertia')) {
+                if ($request->expectsJson() || $request->is('api/*')) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Terjadi kesalahan server. Silakan coba lagi.',
                         'request_id' => $requestId,
                     ], 500)->withHeaders(['X-Request-Id' => $requestId]);
+                }
+
+                if ($request->header('X-Inertia')) {
+                    return Inertia::render('Error', [
+                        'status' => 500,
+                        'message' => 'Terjadi kesalahan server. Silakan coba lagi.',
+                        'request_id' => $requestId,
+                    ])->toResponse($request)->setStatusCode(500)->withHeaders(['X-Request-Id' => $requestId]);
                 }
 
                 return response()->view('errors.500', [
