@@ -1034,11 +1034,15 @@ class ActivityPreparationController extends Controller
             if ($val = request('jabatan')) {
                 $query->whereHas('user.profile', fn ($q) => $q->where('jabatan', $val));
             }
-            if ($val = request('jenis_kelamin')) {
-                if ($val === '__EMPTY__') {
+            $genderVal = request('jenis_kelamin');
+            if ($genderVal === null || $genderVal === '') {
+                $genderVal = request('gender');
+            }
+            if ($genderVal !== null && $genderVal !== '') {
+                if ($genderVal === '__EMPTY__') {
                     $query->whereHas('user.profile', fn ($q) => $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-'));
                 } else {
-                    $query->whereHas('user.profile', fn ($q) => $q->where('jenis_kelamin', $val));
+                    $query->whereHas('user.profile', fn ($q) => $q->where('jenis_kelamin', $genderVal));
                 }
             }
             if ($val = request('birth_place')) {
@@ -1097,7 +1101,10 @@ class ActivityPreparationController extends Controller
                 $query->where('activity_participant_group_id', $val);
             }
             if ($val = request('room_number')) {
-                $query->whereHas('room', fn ($q) => $q->where('room_number', $val));
+                $query->whereHas('roomAssignment', function ($q) use ($activityId, $val) {
+                    $q->where('activity_id', $activityId)
+                        ->whereHas('room', fn ($room) => $room->where('room_number', $val)->where('activity_id', $activityId));
+                });
             }
 
             if ($val = request('room_status')) {
@@ -1116,6 +1123,27 @@ class ActivityPreparationController extends Controller
                             ->where('activity_hotel_room_assignments.activity_id', $activityId);
                     });
                 }
+            }
+
+            if ($val = request('payment_method')) {
+                $query->whereExists(function ($q) use ($activityId, $val) {
+                    $q->select(\DB::raw(1))
+                        ->from('payments')
+                        ->leftJoin('payment_methods', 'payments.payment_method_id', '=', 'payment_methods.id')
+                        ->whereColumn('payments.user_id', 'activity_users.user_id')
+                        ->where('payments.activity_id', $activityId)
+                        ->where(function ($sub) use ($val) {
+                            if ($val === 'Payment Gateway (Otomatis)') {
+                                $sub->whereNull('payments.payment_method_id')
+                                    ->whereNotNull('payments.midtrans_transaction_id');
+                            } elseif ($val === 'Transfer Bank (Manual)') {
+                                $sub->whereNull('payments.payment_method_id')
+                                    ->whereNull('payments.midtrans_transaction_id');
+                            } else {
+                                $sub->where('payment_methods.name', $val);
+                            }
+                        });
+                });
             }
 
             // Calculate Bulk IDs for Registration Method Filter

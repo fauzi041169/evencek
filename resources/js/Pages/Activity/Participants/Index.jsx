@@ -1125,9 +1125,11 @@ export default function Index({
     const handlePerPageChange = (e) => {
         const value = e.target.value;
         setPerPage(value);
+        const nextFilters = { ...filters, per_page: value };
+        delete nextFilters.page;
         router.get(
             route('activity.participants.index', activityIdParam),
-            { ...filters, per_page: value },
+            nextFilters,
             { preserveState: true, preserveScroll: true, replace: true }
         );
     };
@@ -1147,6 +1149,7 @@ export default function Index({
 
     const handleFilterChange = (key, value) => {
         const newFilters = { ...filters, [key]: value };
+        delete newFilters.page;
         // Reset child location filters if parent changes
         if (key === 'province_id') {
             newFilters.regency_id = '';
@@ -1772,8 +1775,8 @@ export default function Index({
                                             <ColumnFilter
                                                 label="Jenis Kelamin"
                                                 options={genderOptions}
-                                                value={filters.gender}
-                                                onChange={(val) => handleFilterChange('gender', val)}
+                                                value={filters.jenis_kelamin}
+                                                onChange={(val) => handleFilterChange('jenis_kelamin', val)}
                                                 dark={true}
                                             />
                                         </th>
