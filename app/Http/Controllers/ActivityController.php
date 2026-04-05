@@ -7323,6 +7323,20 @@ class ActivityController extends Controller
                         $assignedCount = (int) $assignedQuery->distinct()->count('a.user_id');
                     }
 
+                    $committeeIdsSql = implode(',', array_map('intval', $committeeIdsArray));
+                    $occupancyExpr = 'SUM(CASE WHEN au.status = 1 THEN 1 ELSE 0 END)';
+                    if ($type === 'peserta') {
+                        if (! empty($committeeIdsSql)) {
+                            $occupancyExpr = 'SUM(CASE WHEN au.status = 1 AND a.user_id NOT IN ('.$committeeIdsSql.') THEN 1 ELSE 0 END)';
+                        }
+                    } elseif ($type === 'panitia') {
+                        if (empty($committeeIdsSql)) {
+                            $occupancyExpr = '0';
+                        } else {
+                            $occupancyExpr = 'SUM(CASE WHEN au.status = 1 AND a.user_id IN ('.$committeeIdsSql.') THEN 1 ELSE 0 END)';
+                        }
+                    }
+
                     $roomRowsQuery = \DB::table('activity_hotel_rooms as r')
                         ->leftJoin('activity_hotel_room_assignments as a', 'a.room_id', '=', 'r.id')
                         ->leftJoin($tableName.' as au', function ($join) {
@@ -7332,33 +7346,49 @@ class ActivityController extends Controller
                         ->where('r.activity_id', $activityId)
                         ->where('r.is_active', 1);
 
-                    if ($type === 'peserta') {
-                        if (! empty($committeeIdsArray)) {
-                            $roomRowsQuery->where(function ($q) use ($committeeIdsArray) {
-                                $q->whereNotIn('a.user_id', $committeeIdsArray)->orWhereNull('a.user_id');
-                            });
-                        }
-                    } elseif ($type === 'panitia') {
-                        if (empty($committeeIdsArray)) {
-                            $roomRowsQuery->whereRaw('1=0');
-                        } else {
-                            $roomRowsQuery->whereIn('a.user_id', $committeeIdsArray);
-                        }
-                    }
-
                     $roomRows = $roomRowsQuery
                         ->select(
                             'r.id',
                             'r.hotel_name',
                             'r.room_number',
                             'r.capacity',
-                            \DB::raw('SUM(CASE WHEN au.status = 1 THEN 1 ELSE 0 END) as occupancy')
+                            \DB::raw($occupancyExpr.' as occupancy')
                         )
                         ->groupBy('r.id', 'r.hotel_name', 'r.room_number', 'r.capacity')
                         ->orderByDesc('occupancy')
                         ->get();
 
                     $activeCount = $getActiveCountByType($type);
+                    $hotelStats = $roomRows
+                        ->groupBy(function ($row) {
+                            return trim((string) ($row->hotel_name ?? ''));
+                        })
+                        ->map(function ($rows, $hotelName) {
+                            $hotelName = trim((string) $hotelName);
+                            $hasUnlimited = $rows->contains(function ($r) {
+                                return (int) ($r->capacity ?? 0) <= 0;
+                            });
+                            $totalCapacity = (int) $rows->sum(function ($r) {
+                                $cap = (int) ($r->capacity ?? 0);
+
+                                return $cap > 0 ? $cap : 0;
+                            });
+                            $occupancy = (int) $rows->sum(function ($r) {
+                                return (int) ($r->occupancy ?? 0);
+                            });
+
+                            return [
+                                'hotel_name' => $hotelName !== '' ? $hotelName : 'Tanpa Hotel',
+                                'total_rooms' => (int) $rows->count(),
+                                'total_capacity' => $totalCapacity,
+                                'has_unlimited' => $hasUnlimited,
+                                'occupancy' => $occupancy,
+                                'available_capacity' => $hasUnlimited ? null : max(0, $totalCapacity - $occupancy),
+                            ];
+                        })
+                        ->sortByDesc('total_rooms')
+                        ->values()
+                        ->toArray();
                     $roomStatsByType[$type] = [
                         'total_rooms' => $totalRooms,
                         'total_rooms_all' => $totalRoomsAll,
@@ -7366,6 +7396,7 @@ class ActivityController extends Controller
                         'has_unlimited' => $hasUnlimited,
                         'assigned' => (int) $assignedCount,
                         'unassigned' => max(0, $activeCount - (int) $assignedCount),
+                        'hotels' => $hotelStats,
                         'rooms' => $roomRows->map(function ($r) {
                             $label = trim(($r->hotel_name ? $r->hotel_name.' • ' : '').'Kamar '.$r->room_number);
 
@@ -7754,6 +7785,19 @@ class ActivityController extends Controller
             $attendanceTables[] = 'activity_attendance_records';
         }
 
+        $enrollmentQuery = ActivityUser::where('activity_id', $activity->id)->whereIn('user_id', $userIds);
+        if ($hasBatchId) {
+            if ($batchId) {
+                $enrollmentQuery->where('activity_batch_id', $batchId);
+            } else {
+                $enrollmentQuery->whereNull('activity_batch_id');
+            }
+        }
+        $enrollmentQuery->update(['deleted_by' => (string) (auth()->id() ?? null)]);
+        $enrollmentQuery->delete();
+
+        return;
+
         // 1. Delete Payments & Files
         $paymentQuery = Payment::where('activity_id', $activity->id)->whereIn('user_id', $userIds);
         if (Schema::hasColumn('payments', 'activity_batch_id')) {
@@ -7966,7 +8010,7 @@ class ActivityController extends Controller
         }
         $roomQuery->delete();
 
-        // 4. Delete Activity User (Enrollment) & Files
+        // 4. Delete Activity User (Enrollment) (Soft Delete) - keep files for rollback window
         $enrollmentQuery = ActivityUser::where('activity_id', $activity->id)->whereIn('user_id', $userIds);
         if ($hasBatchId) {
             if ($batchId) {
@@ -7975,69 +8019,7 @@ class ActivityController extends Controller
                 $enrollmentQuery->whereNull('activity_batch_id');
             }
         }
-
-        // Delete enrollment image, custom_data files (e.g. Surat Tugas), and certificate files
-        try {
-            $enrollments = $enrollmentQuery->get();
-            foreach ($enrollments as $enrollment) {
-                if ($enrollment->image_path) {
-                    try {
-                        $pathsToCheck = [
-                            public_path($enrollment->image_path),
-                            public_path('storage/'.$enrollment->image_path),
-                            storage_path('app/public/'.$enrollment->image_path),
-                        ];
-                        foreach ($pathsToCheck as $path) {
-                            if (\Illuminate\Support\Facades\File::exists($path)) {
-                                \Illuminate\Support\Facades\File::delete($path);
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        \Log::warning('Failed to delete enrollment image: '.$e->getMessage());
-                    }
-                }
-                // Hapus file dari custom_data (Surat Tugas, dll.)
-                $customData = $enrollment->custom_data;
-                if (is_array($customData)) {
-                    foreach ($customData as $value) {
-                        if (is_string($value) && (strpos($value, 'storage/') === 0 || strpos($value, 'uploads/') === 0 || strpos($value, '/storage/') !== false || preg_match('#^(activities/|public/)#', $value))) {
-                            try {
-                                $path = public_path($value);
-                                if (\Illuminate\Support\Facades\File::exists($path) && is_file($path)) {
-                                    \Illuminate\Support\Facades\File::delete($path);
-                                } else {
-                                    $storagePath = ltrim(preg_replace('#^storage/#', '', $value), '/');
-                                    if (Storage::disk('public')->exists($storagePath)) {
-                                        Storage::disk('public')->delete($storagePath);
-                                    }
-                                }
-                            } catch (\Exception $e) {
-                                \Log::warning('Failed to delete custom_data file: '.$e->getMessage());
-                            }
-                        }
-                    }
-                }
-                // Hapus file sertifikat jika ada
-                if (! empty($enrollment->certificate_id)) {
-                    try {
-                        $paths = [
-                            "certificates/{$activity->id}/{$enrollment->certificate_id}.pdf",
-                            "certificates/{$enrollment->certificate_id}.pdf",
-                        ];
-                        foreach ($paths as $p) {
-                            if (Storage::disk('public')->exists($p)) {
-                                Storage::disk('public')->delete($p);
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        \Log::warning('Failed to delete certificate file: '.$e->getMessage());
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error processing enrollment files deletion: '.$e->getMessage());
-        }
-
+        $enrollmentQuery->update(['deleted_by' => (string) (auth()->id() ?? null)]);
         $enrollmentQuery->delete();
 
         // 5. Delete Activity Chats for these users
@@ -8080,5 +8062,36 @@ class ActivityController extends Controller
                 ActivityParticipantGroup::whereIn('id', $emptyGroupIds)->delete();
             }
         }
+    }
+
+    public function restoreParticipants(Request $request, Activity $activity)
+    {
+        if (! auth()->check()) {
+            abort(403);
+        }
+        $actor = auth()->user();
+        $isAdmin = $actor->isAdmin() || $actor->isSuperAdmin();
+        $isCreator = $activity->user_id === $actor->id && $actor->isCreator();
+        $isCommittee = method_exists($activity, 'canManageRegistration') ? $activity->canManageRegistration($actor->id) : false;
+        if (! ($isAdmin || $isCreator || $isCommittee)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki izin untuk memulihkan peserta.');
+        }
+
+        $userIds = array_values(array_filter($request->input('user_ids', []), function ($id) {
+            return $id !== null && $id !== '';
+        }));
+        if (empty($userIds)) {
+            return redirect()->back()->with('error', 'Tidak ada peserta yang dipilih untuk dipulihkan.');
+        }
+
+        $cutoff = now()->subDays(10);
+
+        $restored = ActivityUser::onlyTrashed()
+            ->where('activity_id', $activity->id)
+            ->whereIn('user_id', $userIds)
+            ->where('deleted_at', '>=', $cutoff)
+            ->restore();
+
+        return redirect()->back()->with('success', "Berhasil memulihkan {$restored} peserta (maksimal 10 hari).");
     }
 }

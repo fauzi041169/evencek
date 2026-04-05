@@ -1663,6 +1663,51 @@ export default function Dashboard({
                                     <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsView.unassigned?.toLocaleString() || 0}</div>
                                 </div>
                             </div>
+                            {Array.isArray(roomStatsView?.hotels) && roomStatsView.hotels.length > 1 && (
+                                <div className="mb-4 sm:mb-6">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h6 className="text-sm font-semibold text-gray-700">Rincian per Hotel</h6>
+                                        <div className="text-[10px] text-gray-400">{roomStatsView.hotels.length} hotel</div>
+                                    </div>
+                                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                                        <table className="min-w-full text-xs">
+                                            <thead className="bg-gray-50 text-gray-600">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left font-semibold whitespace-nowrap">Hotel</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Kamar</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Kapasitas</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Terisi</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Sisa</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-100">
+                                                {roomStatsView.hotels.map((h, idx) => {
+                                                    const hotelName = String(h?.hotel_name || '').trim() || 'Tanpa Hotel';
+                                                    const rooms = Number(h?.total_rooms || 0);
+                                                    const capacity = Number(h?.total_capacity || 0);
+                                                    const occupancy = Number(h?.occupancy || 0);
+                                                    const hasUnlimited = Boolean(h?.has_unlimited);
+                                                    const available = hasUnlimited
+                                                        ? null
+                                                        : (h?.available_capacity != null ? Number(h.available_capacity) : Math.max(0, capacity - occupancy));
+
+                                                    return (
+                                                        <tr key={`${hotelName}-${idx}`} className="hover:bg-gray-50">
+                                                            <td className="px-3 py-2 font-semibold text-gray-800 whitespace-nowrap" title={hotelName}>
+                                                                {hotelName}
+                                                            </td>
+                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{rooms.toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{hasUnlimited ? '∞' : capacity.toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{occupancy.toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{hasUnlimited ? '∞' : (available ?? 0).toLocaleString()}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
                             {roomByRegionStatsView && (
                                 <div className="mt-2">
                                     <div className="flex items-center justify-between mb-3">

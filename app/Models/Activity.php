@@ -400,6 +400,7 @@ class Activity extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'activity_users')
+            ->wherePivotNull('deleted_at')
             ->withPivot(['status', 'created_at', 'print_count', 'activity_batch_id'])
             ->withTimestamps();
     }

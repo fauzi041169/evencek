@@ -462,6 +462,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
             return redirect()->back()->with('error', 'Permintaan ini memerlukan metode POST. Silakan gunakan formulir untuk menghapus peserta.');
         })->middleware('auth');
         Route::post('/{activity}/remove-participants', 'removeParticipants')->name('removeParticipants')->middleware('auth');
+        Route::post('/{activity}/restore-participants', 'restoreParticipants')->name('restoreParticipants')->middleware('auth');
         Route::put('/{id}/content', 'updateContent')->name('content.update');
         Route::post('/gallery/{id}/update-caption', 'updateGalleryCaption')->name('gallery.update-caption');
         Route::post('/{id}/toggle-price', 'togglePrice')->name('togglePrice');

@@ -14,13 +14,10 @@ use App\Models\ActivityHotelRoom;
 use App\Models\ActivityHotelRoomAssignment;
 use App\Models\ActivityMaterial;
 use App\Models\ActivityParticipantGroup;
-use App\Models\ActivityRecord;
 use App\Models\ActivityRundown;
 use App\Models\ActivityUser;
-use App\Models\Attendance;
 use App\Models\CardSettings;
 use App\Models\CertificateSettings;
-use App\Models\Comment;
 use App\Models\District;
 use App\Models\Payment;
 use App\Models\Profile;
@@ -733,6 +730,7 @@ class ActivityPreparationController extends Controller
                 $activity = Activity::findOrFail($activityId);
             }
             $activityId = $activity->id;
+            $showDeleted = (string) request('show_deleted', '') === '1';
 
             // AUTO-FIX: Jika harga kegiatan 0 (Gratis), otomatis set status peserta menjadi AKTIF
             // Ini menangani kasus dimana harga diubah menjadi 0 setelah ada pendaftar (yang sebelumnya Menunggu Verifikasi)
@@ -762,10 +760,11 @@ class ActivityPreparationController extends Controller
 
             // Get unique regencies for filter
             $activityUserTable = (new ActivityUser)->getTable();
+            $hasDeletedAt = Schema::hasColumn($activityUserTable, 'deleted_at');
 
             // Optimasi: Cache filter location data (Province, Regency, District)
-            $cacheKey = "activity_participants_filters_{$activityId}";
-            $locationFilters = Cache::remember($cacheKey, 300, function () use ($activityId, $activityUserTable) {
+            $cacheKey = "activity_participants_filters_{$activityId}_".($showDeleted ? 'deleted' : 'active');
+            $locationFilters = Cache::remember($cacheKey, 300, function () use ($activityId, $activityUserTable, $hasDeletedAt, $showDeleted) {
                 // 1. Get relevant Province IDs
                 $participantProvinceIds = ActivityUser::query()
                     ->from($activityUserTable)
@@ -773,6 +772,9 @@ class ActivityPreparationController extends Controller
                     ->join('users', "{$activityUserTable}.user_id", '=', 'users.id')
                     ->join('profiles', 'users.id', '=', 'profiles.user_id')
                     ->whereNotNull('profiles.province_id')
+                    ->when($hasDeletedAt && ! $showDeleted, function ($q) use ($activityUserTable) {
+                        $q->whereNull("{$activityUserTable}.deleted_at");
+                    })
                     ->distinct()
                     ->pluck('profiles.province_id');
 
@@ -785,6 +787,9 @@ class ActivityPreparationController extends Controller
                     ->join('users', "{$activityUserTable}.user_id", '=', 'users.id')
                     ->join('profiles', 'users.id', '=', 'profiles.user_id')
                     ->whereNotNull('profiles.regency_id')
+                    ->when($hasDeletedAt && ! $showDeleted, function ($q) use ($activityUserTable) {
+                        $q->whereNull("{$activityUserTable}.deleted_at");
+                    })
                     ->distinct()
                     ->pluck('profiles.regency_id');
 
@@ -797,6 +802,9 @@ class ActivityPreparationController extends Controller
                     ->join('users', "{$activityUserTable}.user_id", '=', 'users.id')
                     ->join('profiles', 'users.id', '=', 'profiles.user_id')
                     ->whereNotNull('profiles.district_id')
+                    ->when($hasDeletedAt && ! $showDeleted, function ($q) use ($activityUserTable) {
+                        $q->whereNull("{$activityUserTable}.deleted_at");
+                    })
                     ->distinct()
                     ->pluck('profiles.district_id');
 
@@ -813,6 +821,9 @@ class ActivityPreparationController extends Controller
                             ->join('profiles', 'users.id', '=', 'profiles.user_id')
                             ->whereNull('profiles.district_id')
                             ->whereNotNull('profiles.other_district')
+                            ->when($hasDeletedAt && ! $showDeleted, function ($q) use ($activityUserTable) {
+                                $q->whereNull("{$activityUserTable}.deleted_at");
+                            })
                             ->distinct()
                             ->pluck('profiles.other_district')
                             ->filter(fn ($val) => ! empty(trim($val)))
@@ -840,7 +851,9 @@ class ActivityPreparationController extends Controller
             $selectedDistrictId = request('district_id');
 
             // Simplified eager loading to avoid issues
-            $query = ActivityUser::where('activity_id', $activityId);
+            $query = $showDeleted
+                ? ActivityUser::onlyTrashed()->where('activity_id', $activityId)
+                : ActivityUser::where('activity_id', $activityId);
 
             \Log::info('DEBUG PARTICIPANTS START', [
                 'activity_id' => $activityId,
@@ -5245,108 +5258,13 @@ class ActivityPreparationController extends Controller
                     continue;
                 }
 
-                // A. Delete Payments & Files for this activity FIRST (sebelum user dihapus)
-                $payments = Payment::where('activity_id', $activityId)->where('user_id', $uid)->get();
-                foreach ($payments as $payment) {
-                    if ($payment->proof_of_payment) {
-                        try {
-                            // Gunakan Storage facade untuk menghapus file
-                            if (Storage::disk('public')->exists($payment->proof_of_payment)) {
-                                // Jangan hapus file default/aset
-                                if (! str_contains($payment->proof_of_payment, 'assets/images/credit/bukti bayar.png')) {
-                                    Storage::disk('public')->delete($payment->proof_of_payment);
-                                }
-                            } else {
-                                // Fallback ke public_path jika file tidak ada di storage disk (legacy)
-                                $pathsToCheck = [
-                                    public_path($payment->proof_of_payment),
-                                    public_path('storage/'.$payment->proof_of_payment),
-                                ];
-
-                                foreach ($pathsToCheck as $path) {
-                                    if (File::exists($path) &&
-                                        ! str_contains($payment->proof_of_payment, 'assets/images/credit/bukti bayar.png')) {
-                                        File::delete($path);
-                                    }
-                                }
-                            }
-                        } catch (\Exception $e) {
-                        }
-                    }
-                    $payment->delete();
-                }
-
-                // B. Delete Activity Enrollments & Files (image_path, custom_data files, certificate)
+                // Soft delete enrollment only, keep related data/files for rollback window
                 $enrollments = ActivityUser::where('activity_id', $activityId)->where('user_id', $uid)->get();
                 foreach ($enrollments as $enrollment) {
-                    if ($enrollment->image_path) {
-                        try {
-                            if (Storage::disk('public')->exists($enrollment->image_path)) {
-                                Storage::disk('public')->delete($enrollment->image_path);
-                            } else {
-                                $path = public_path($enrollment->image_path);
-                                if (File::exists($path)) {
-                                    File::delete($path);
-                                }
-                            }
-                        } catch (\Exception $e) {
-                        }
-                    }
-                    // Hapus file dari custom_data (Surat Tugas, dll.)
-                    $customData = $enrollment->custom_data;
-                    if (is_array($customData)) {
-                        foreach ($customData as $value) {
-                            if (is_string($value) && (strpos($value, 'storage/') === 0 || strpos($value, 'uploads/') === 0 || strpos($value, '/storage/') !== false || preg_match('#^(activities/|public/)#', $value))) {
-                                try {
-                                    $path = public_path($value);
-                                    if (File::exists($path) && is_file($path)) {
-                                        File::delete($path);
-                                    } else {
-                                        $storagePath = ltrim(preg_replace('#^storage/#', '', $value), '/');
-                                        if (Storage::disk('public')->exists($storagePath)) {
-                                            Storage::disk('public')->delete($storagePath);
-                                        }
-                                    }
-                                } catch (\Exception $e) {
-                                }
-                            }
-                        }
-                    }
-                    // Hapus file sertifikat jika ada
-                    if (! empty($enrollment->certificate_id)) {
-                        try {
-                            foreach (["certificates/{$activityId}/{$enrollment->certificate_id}.pdf", "certificates/{$enrollment->certificate_id}.pdf"] as $p) {
-                                if (Storage::disk('public')->exists($p)) {
-                                    Storage::disk('public')->delete($p);
-                                }
-                            }
-                        } catch (\Exception $e) {
-                        }
-                    }
+                    $enrollment->deleted_by = (string) (auth()->id() ?? null);
+                    $enrollment->save();
                     $enrollment->delete();
                 }
-
-                // C. Delete Activity Related Records (Attendance, etc.)
-                // Note: We scope by activity_id via relationships or direct where if possible
-
-                // Attendance Records
-                if (Schema::hasTable('attendances')) {
-                    $attendanceIds = Attendance::where('activity_id', $activityId)->pluck('id');
-                    if ($attendanceIds->isNotEmpty()) {
-                        ActivityRecord::whereIn('attendance_id', $attendanceIds)->where('user_id', $uid)->delete();
-                    }
-                }
-
-                // Room Assignments
-                if (Schema::hasTable('activity_hotel_room_assignments')) {
-                    ActivityHotelRoomAssignment::where('activity_id', $activityId)->where('user_id', $uid)->delete();
-                }
-
-                // Comments for this activity
-                Comment::where('commentable_id', $activityId)
-                    ->where('commentable_type', Activity::class)
-                    ->where('user_id', $uid)
-                    ->delete();
 
             }
 
@@ -6799,7 +6717,11 @@ class ActivityPreparationController extends Controller
      */
     public function verifyEmail(Request $request, $activityId, $userId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityPk = $activity->id;
 
         // Check permission
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && $activity->user_id !== auth()->id()) {
@@ -6817,7 +6739,7 @@ class ActivityPreparationController extends Controller
             $user->save();
 
             // Update status ActivityUser jika masih dalam status verifikasi
-            $query = ActivityUser::where('activity_id', $activityId)
+            $query = ActivityUser::where('activity_id', $activityPk)
                 ->where('user_id', $userId);
 
             if ($request->has('batch_id') && $request->batch_id) {
@@ -6939,7 +6861,11 @@ class ActivityPreparationController extends Controller
 
     public function verifyEmailBulk(Request $request, $activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityPk = $activity->id;
 
         // Check permission
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && $activity->user_id !== auth()->id()) {
@@ -6958,7 +6884,7 @@ class ActivityPreparationController extends Controller
         $userIds = [];
 
         if ($request->boolean('select_all')) {
-            $userIds = $this->buildParticipantQuery($request, $activityId)->pluck('user_id')->toArray();
+            $userIds = $this->buildParticipantQuery($request, $activityPk)->pluck('user_id')->toArray();
         } else {
             $userIds = $request->input('user_ids', []);
         }
@@ -6980,7 +6906,7 @@ class ActivityPreparationController extends Controller
                     $user->save();
 
                     // Update status ActivityUser jika masih dalam status verifikasi
-                    $query = ActivityUser::where('activity_id', $activityId)
+                    $query = ActivityUser::where('activity_id', $activityPk)
                         ->where('user_id', $userId);
 
                     if ($batchId) {
@@ -7003,7 +6929,7 @@ class ActivityPreparationController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Error verifying emails in bulk', [
-                'activity_id' => $activityId,
+                'activity_id' => $activityPk,
                 'error' => $e->getMessage(),
             ]);
 
@@ -7136,7 +7062,11 @@ class ActivityPreparationController extends Controller
      */
     public function toggleParticipantStatus(Request $request, $activityId, $userId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityPk = $activity->id;
 
         // Check permission
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && $activity->user_id !== auth()->id()) {
@@ -7145,7 +7075,7 @@ class ActivityPreparationController extends Controller
             }
         }
 
-        $query = ActivityUser::where('activity_id', $activityId)
+        $query = ActivityUser::where('activity_id', $activityPk)
             ->where('user_id', $userId);
 
         if ($request->has('batch_id') && $request->batch_id) {
@@ -7163,7 +7093,7 @@ class ActivityPreparationController extends Controller
 
         // 1. Check explicit group
         if ($participant->activity_participant_group_id) {
-            $groupMembers = ActivityUser::where('activity_id', $activityId)
+            $groupMembers = ActivityUser::where('activity_id', $activityPk)
                 ->where('activity_participant_group_id', $participant->activity_participant_group_id)
                 ->pluck('user_id')
                 ->toArray();
@@ -7172,7 +7102,7 @@ class ActivityPreparationController extends Controller
             // 2. Check implicit bulk group (via Payment notes) to ensure integrity of bulk registrations
             try {
                 // Find any payment in this activity that lists this user in 'user_ids'
-                $parentPayment = Payment::where('activity_id', $activityId)
+                $parentPayment = Payment::where('activity_id', $activityPk)
                     ->where('notes', 'like', '%user_ids%')
                     ->get()
                     ->first(function ($p) use ($userId) {
@@ -7210,7 +7140,7 @@ class ActivityPreparationController extends Controller
         }
 
         // Apply update to all found members
-        ActivityUser::where('activity_id', $activityId)
+        ActivityUser::where('activity_id', $activityPk)
             ->whereIn('user_id', $userIdsToUpdate)
             ->when($request->has('batch_id') && $request->batch_id, function ($q) use ($request) {
                 $q->where('activity_batch_id', $request->batch_id);

@@ -31,4 +31,3 @@ class VerifyLogIngestToken
         ], 401);
     }
 }
-

@@ -1017,6 +1017,7 @@ class ProfileController extends Controller
             $lower = strtolower($name);
             if (isset($existingByLower[$lower])) {
                 $results[] = $existingByLower[$lower];
+
                 continue;
             }
 
@@ -1114,6 +1115,7 @@ class ProfileController extends Controller
             $lower = strtolower($name);
             if (isset($existingByLower[$lower])) {
                 $results[] = $existingByLower[$lower];
+
                 continue;
             }
 
@@ -1211,6 +1213,7 @@ class ProfileController extends Controller
             $lower = strtolower($name);
             if (isset($existingByLower[$lower])) {
                 $results[] = $existingByLower[$lower];
+
                 continue;
             }
 

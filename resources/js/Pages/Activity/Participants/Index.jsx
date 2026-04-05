@@ -517,6 +517,12 @@ export default function Index({
     }, [safeParticipants, availableCustomKeys]);
 
     const handleStatusClick = (participant) => {
+        const activityId = activity?.uid || activity?.id;
+        if (!activityId) {
+            Swal.fire('Error', 'ID aktivitas tidak ditemukan.', 'error');
+            return;
+        }
+
         // Prioritize the directly loaded payment for this activity
         let payment = participant.payment;
 
@@ -533,7 +539,41 @@ export default function Index({
                 participant: participant
             });
             setShowPaymentModal(true);
+            return;
         }
+
+        const userId = participant?.user?.id || participant?.user_id;
+        if (!userId) {
+            Swal.fire('Info', 'Data user tidak ditemukan untuk peserta ini.', 'info');
+            return;
+        }
+
+        const isPaidActivity = Number(activity?.price || 0) > 0;
+        const isActive = Number(participant?.status) === 1;
+        const nextAction = isActive ? 'Nonaktifkan' : 'Aktifkan';
+        const warningText = isPaidActivity
+            ? 'Peserta ini tidak memiliki data pembayaran pada sistem. Jika kegiatan berbayar, pastikan data pembayaran sudah ada/terhubung sebelum validasi.'
+            : 'Peserta ini tidak memiliki data pembayaran pada sistem (kegiatan gratis atau tanpa pembayaran).';
+
+        Swal.fire({
+            title: `${nextAction} peserta?`,
+            html: `<div class="text-left"><p class="mb-2">${warningText}</p><p class="text-sm text-slate-500">Aksi ini akan mengubah status peserta menjadi <b>${isActive ? 'Menunggu Verifikasi' : 'Aktif'}</b>.</p></div>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: `Ya, ${nextAction}`,
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('activity.participants.toggle-status', { activityId, userId }), {
+                    batch_id: filters.batch_id
+                }, {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        Swal.fire('Berhasil!', `Status peserta berhasil diubah.`, 'success');
+                    }
+                });
+            }
+        });
     };
 
     // Sync selectedPaymentParticipant when participants data updates (e.g. after upload)
@@ -782,8 +822,8 @@ export default function Index({
         Swal.fire({
             title: 'Hapus Peserta?',
             text: selectAllMatching
-                ? `Apakah Anda yakin ingin menghapus SEMUA ${safeParticipants.total} peserta? Data yang dihapus tidak dapat dikembalikan.`
-                : `Apakah Anda yakin ingin menghapus ${selectedIds.length} peserta terpilih? Data yang dihapus tidak dapat dikembalikan.`,
+                ? `Apakah Anda yakin ingin menghapus SEMUA ${safeParticipants.total} peserta? Peserta masih bisa dipulihkan maksimal 10 hari.`
+                : `Apakah Anda yakin ingin menghapus ${selectedIds.length} peserta terpilih? Peserta masih bisa dipulihkan maksimal 10 hari.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -803,6 +843,51 @@ export default function Index({
                         setSelectAllMatching(false);
                         if (!page.props.flash?.error) {
                             Swal.fire('Terhapus!', 'Peserta berhasil dihapus.', 'success');
+                        }
+                    }
+                });
+            }
+        });
+    };
+
+    const handleBulkRestore = () => {
+        if (!selectedIds.length) return;
+
+        const activityId = activity?.uid || activity?.id;
+
+        if (!activityId) {
+            Swal.fire('Error', 'ID aktivitas tidak ditemukan.', 'error');
+            return;
+        }
+
+        const userIdsToRestore = safeParticipants.data
+            .filter(p => selectedIds.includes(p.id))
+            .map(p => p.user?.id || p.user_id)
+            .filter(id => id);
+
+        if (!userIdsToRestore.length) {
+            Swal.fire('Info', 'Tidak ada peserta terpilih yang dapat dipulihkan.', 'info');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Pulihkan Peserta?',
+            text: `Peserta akan dipulihkan jika penghapusan masih dalam 10 hari terakhir. Pulihkan ${userIdsToRestore.length} peserta?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Pulihkan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.post(route('activity.restoreParticipants', { activity: activityId }), {
+                    user_ids: userIdsToRestore,
+                }, {
+                    preserveScroll: true,
+                    onSuccess: (page) => {
+                        setSelectedIds([]);
+                        setSelectAllMatching(false);
+                        if (!page.props.flash?.error) {
+                            Swal.fire('Berhasil!', 'Peserta berhasil dipulihkan (jika masih dalam 10 hari).', 'success');
                         }
                     }
                 });
@@ -1044,6 +1129,19 @@ export default function Index({
             route('activity.participants.index', activityIdParam),
             { ...filters, per_page: value },
             { preserveState: true, preserveScroll: true, replace: true }
+        );
+    };
+
+    const toggleShowDeleted = () => {
+        const next = String(filters.show_deleted || '') === '1' ? '' : '1';
+        router.get(
+            route('activity.participants.index', activityIdParam),
+            { ...filters, show_deleted: next, page: 1 },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true
+            }
         );
     };
 
@@ -1434,6 +1532,12 @@ export default function Index({
                                                 </button>
                                                 <div className="border-t border-slate-100 my-1"></div>
                                                 <button
+                                                    onClick={handleBulkRestore}
+                                                    className="w-full text-left px-4 py-2.5 text-sm text-emerald-700 hover:bg-emerald-50 rounded-lg flex items-center gap-3 transition-colors"
+                                                >
+                                                    <CheckCircle className="w-4 h-4 text-emerald-600" /> Pulihkan Peserta (≤10 hari)
+                                                </button>
+                                                <button
                                                     onClick={handleBulkDelete}
                                                     className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-3 transition-colors"
                                                 >
@@ -1451,6 +1555,18 @@ export default function Index({
                             >
                                 <Building className="w-4 h-4 text-indigo-500" />
                                 <span className="hidden md:inline">Manajemen Kamar</span>
+                            </button>
+
+                            <button
+                                onClick={toggleShowDeleted}
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all shadow-sm border ${String(filters.show_deleted || '') === '1'
+                                        ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
+                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                    }`}
+                                title="Tampilkan peserta yang terhapus (maks 10 hari bisa dipulihkan)"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                <span className="hidden md:inline">{String(filters.show_deleted || '') === '1' ? 'Mode Terhapus' : 'Tampilkan Terhapus'}</span>
                             </button>
 
                             <button

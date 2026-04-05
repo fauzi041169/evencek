@@ -5,11 +5,13 @@ namespace App\Models;
 use App\Traits\HasCustomUid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ActivityUser extends Model
 {
     use HasCustomUid;
     use HasFactory;
+    use SoftDeletes;
 
     public $incrementing = false;
 
@@ -40,6 +42,7 @@ class ActivityUser extends Model
         'activity_participation_type_id',
         'created_by',
         'updated_by',
+        'deleted_by',
         'jumlah_akses',
         'lama_akses',
         'last_access_at',

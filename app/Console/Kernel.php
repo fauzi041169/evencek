@@ -17,6 +17,7 @@ class Kernel extends ConsoleKernel
         // Sinkronisasi status pembayaran Midtrans secara berkala agar tidak bergantung pada halaman dibuka
         // Catatan: Ini adalah fallback jika webhook Midtrans tidak dapat menjangkau server (mis. lingkungan lokal)
         $schedule->command('midtrans:sync-payments')->everyFiveMinutes();
+        $schedule->command('participants:purge-deleted --days=10')->dailyAt('02:10');
     }
 
     /**

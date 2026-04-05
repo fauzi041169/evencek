@@ -285,6 +285,9 @@ class AttendanceController extends Controller
             $query = DB::table('activity_users')
                 ->join('users', 'users.id', '=', 'activity_users.user_id')
                 ->where('activity_users.activity_id', $activity_id);
+            if (Schema::hasColumn('activity_users', 'deleted_at')) {
+                $query->whereNull('activity_users.deleted_at');
+            }
 
             // Filter peserta berdasarkan batch jika attendance memiliki batch_id
             if ($attendance->activity_batch_id) {
