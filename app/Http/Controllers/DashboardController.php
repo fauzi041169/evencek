@@ -30,6 +30,15 @@ use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
+    private function rememberSafe(string $key, $ttl, callable $callback)
+    {
+        try {
+            return Cache::remember($key, $ttl, $callback);
+        } catch (\Throwable $e) {
+            return $callback();
+        }
+    }
+
     public function index(Request $request)
     {
         // Branch dashboard sesuai peran
@@ -50,11 +59,11 @@ class DashboardController extends Controller
         $selectedActivity = $request->input('activity_id');
         $selectedProvince = $request->input('province_id');
 
-        $provinces = Cache::remember('dashboard_provinces', 3600, function () {
+        $provinces = $this->rememberSafe('dashboard_provinces', 3600, function () {
             return Province::select('id', 'name')->orderBy('name')->get();
         });
 
-        $activities = Cache::remember('dashboard_activities', 600, function () {
+        $activities = $this->rememberSafe('dashboard_activities', 600, function () {
             return Activity::select('id', 'name')->orderBy('name')->get();
         });
 
@@ -83,7 +92,7 @@ class DashboardController extends Controller
         }
 
         // 0. Schema Checks (Cached globally as they rarely change)
-        $schemaFlags = Cache::remember('dashboard_schema_flags', 86400, function () {
+        $schemaFlags = $this->rememberSafe('dashboard_schema_flags', 86400, function () {
             return [
                 'viewsExist' => Schema::hasTable('views'),
                 'followersExist' => Schema::hasTable('followers'),
@@ -100,7 +109,7 @@ class DashboardController extends Controller
         extract($schemaFlags);
 
         // 1. Global Stats (Not affected by filters)
-        $globalStats = Cache::remember('dashboard_global_stats', 3600, function () use ($schemaFlags) {
+        $globalStats = $this->rememberSafe('dashboard_global_stats', 3600, function () use ($schemaFlags) {
             extract($schemaFlags);
             $now = now();
             $startCurrent = $now->copy()->startOfMonth();
@@ -269,7 +278,7 @@ class DashboardController extends Controller
             'province_id' => $selectedProvince,
         ]));
 
-        $filteredStats = Cache::remember($cacheKey, 600, function () use ($selectedActivity, $selectedProvince, $userQuery, $activityUserQuery, $activityQuery) {
+        $filteredStats = $this->rememberSafe($cacheKey, 600, function () use ($selectedActivity, $selectedProvince, $userQuery, $activityUserQuery, $activityQuery) {
             $now = now();
             $startCurrent = $now->copy()->startOfMonth();
             $startLast = $now->copy()->subMonth()->startOfMonth();
@@ -382,7 +391,7 @@ class DashboardController extends Controller
             'prov' => $selectedProvince,
         ]));
 
-        $userSessions = Cache::remember($userSessionsKey, 3600, function () use ($userQuery) {
+        $userSessions = $this->rememberSafe($userSessionsKey, 3600, function () use ($userQuery) {
             try {
                 return $userQuery->clone()
                     ->select(DB::raw('DATE(last_login_at) as date'), DB::raw('count(*) as count'))
@@ -423,7 +432,7 @@ class DashboardController extends Controller
             'start' => $startDateStr,
             'end' => $endDateStr,
         ]));
-        $activityTrend = Cache::remember($activityTrendKey, 3600, function () use ($activityQuery, $startMonth, $endMonth, $months) {
+        $activityTrend = $this->rememberSafe($activityTrendKey, 3600, function () use ($activityQuery, $startMonth, $endMonth, $months) {
             $trend = [
                 'labels' => [],
                 'data' => [],
@@ -453,7 +462,7 @@ class DashboardController extends Controller
             'start' => $startDateStr,
             'end' => $endDateStr,
         ]));
-        $userVisitTrend = Cache::remember($userVisitTrendKey, 3600, function () use ($viewsExist, $userQuery, $startMonth, $endMonth, $months) {
+        $userVisitTrend = $this->rememberSafe($userVisitTrendKey, 3600, function () use ($viewsExist, $userQuery, $startMonth, $endMonth, $months) {
             $trend = [
                 'labels' => [],
                 'data' => [],
@@ -505,7 +514,7 @@ class DashboardController extends Controller
         }
 
         // Trend ganda (Input vs Output) mengikuti desain: Input = Aktivitas per bulan, Output = Berita per bulan
-        $trendDual = Cache::remember('dashboard_trend_dual_'.md5(json_encode([
+        $trendDual = $this->rememberSafe('dashboard_trend_dual_'.md5(json_encode([
             'act' => $selectedActivity ?: 'all',
             'start' => $startDateStr,
             'end' => $endDateStr,
@@ -544,7 +553,7 @@ class DashboardController extends Controller
         });
 
         // Data Performa Berita
-        $newsPerformance = Cache::remember('dashboard_news_performance', 3600, function () {
+        $newsPerformance = $this->rememberSafe('dashboard_news_performance', 3600, function () {
             try {
                 $newsQuery = News::select('news.category_id', 'news_categories.name as category_name', DB::raw('count(*) as count'))
                     ->join('news_categories', 'news.category_id', '=', 'news_categories.id')
@@ -566,7 +575,7 @@ class DashboardController extends Controller
         });
 
         // Data untuk grafik kategori - NOW FILTERED
-        $categoryData = Cache::remember('dashboard_category_data_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($selectedActivity, $selectedProvince, $activityQuery) {
+        $categoryData = $this->rememberSafe('dashboard_category_data_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($selectedActivity, $selectedProvince, $activityQuery) {
             $categoryQuery = Category::query();
             if ($selectedActivity || $selectedProvince) {
                 $participatingActivityIds = $activityQuery->clone()->pluck('id');
@@ -587,7 +596,7 @@ class DashboardController extends Controller
         });
 
         // Data untuk grafik status aktivitas - NOW FILTERED
-        $statusData = Cache::remember('dashboard_status_data_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($activityQuery) {
+        $statusData = $this->rememberSafe('dashboard_status_data_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($activityQuery) {
             $statusQuery = $activityQuery->clone()->select('status', DB::raw('count(*) as total'))
                 ->groupBy('status');
             $statusCounts = $statusQuery->get();
@@ -599,7 +608,7 @@ class DashboardController extends Controller
         });
 
         // Data untuk aktivitas terbaru - NOW FILTERED
-        $recentActivities = Cache::remember('dashboard_recent_activities_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 600, function () use ($activityQuery) {
+        $recentActivities = $this->rememberSafe('dashboard_recent_activities_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 600, function () use ($activityQuery) {
             $recentActivitiesQuery = $activityQuery->clone()->with('category')
                 ->withCount(['participants' => function ($query) {
                     $query->where('status', true);
@@ -623,7 +632,7 @@ class DashboardController extends Controller
         ];
 
         // Data untuk grafik partisipasi
-        $participationData = Cache::remember('dashboard_participation_data_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($activityUserQuery) {
+        $participationData = $this->rememberSafe('dashboard_participation_data_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($activityUserQuery) {
             return [
                 $activityUserQuery->clone()->where('status', true)->count(),
                 $activityUserQuery->clone()->where('status', false)->count(),
@@ -631,7 +640,7 @@ class DashboardController extends Controller
         });
 
         // Top 10 user teraktif + tren 30 hari (dibanding 30 hari sebelumnya)
-        $topActiveUsers = Cache::remember('dashboard_top_active_users', 3600, function () {
+        $topActiveUsers = $this->rememberSafe('dashboard_top_active_users', 3600, function () {
             try {
                 $tableName = Schema::hasTable('activity_users') ? 'activity_users' : 'activity_users';
 
@@ -683,7 +692,7 @@ class DashboardController extends Controller
         });
 
         // Top 5 aktivitas dengan rating tertinggi
-        $topRatedActivities = Cache::remember('dashboard_top_rated_activities', 3600, function () use ($activityQuery) {
+        $topRatedActivities = $this->rememberSafe('dashboard_top_rated_activities', 3600, function () use ($activityQuery) {
             try {
                 // Optimize: Use withAvg to calculate rating in DB query
                 $activities = $activityQuery->clone()
@@ -710,7 +719,7 @@ class DashboardController extends Controller
         });
 
         // Top 5 user teraktif harian (berdasarkan page views jika tersedia, fallback ke pendaftaran hari ini)
-        $topDailyActiveUsers = Cache::remember('dashboard_top_daily_active_users', 600, function () use ($viewsExist) {
+        $topDailyActiveUsers = $this->rememberSafe('dashboard_top_daily_active_users', 600, function () use ($viewsExist) {
             try {
                 $rows = collect();
                 if ($viewsExist) {
@@ -755,7 +764,7 @@ class DashboardController extends Controller
 
         // Top 10 creator terbaik berdasarkan peserta aktif (prioritas) dan jumlah aktivitas
         // Sertakan sparkline tren 6 minggu terakhir
-        $topCreators = Cache::remember('dashboard_top_creators', 600, function () {
+        $topCreators = $this->rememberSafe('dashboard_top_creators', 600, function () {
             try {
                 $tableName = Schema::hasTable('activity_users') ? 'activity_users' : 'activity_users';
 
@@ -879,7 +888,7 @@ class DashboardController extends Controller
             'prov' => $selectedProvince,
         ]));
 
-        $profileStats = Cache::remember($profileStatsKey, 3600, function () use ($userQuery) {
+        $profileStats = $this->rememberSafe($profileStatsKey, 3600, function () use ($userQuery) {
             $genderKeySql = "CASE
                 WHEN profiles.jenis_kelamin IS NULL OR TRIM(profiles.jenis_kelamin) = '' OR TRIM(profiles.jenis_kelamin) = '-' THEN 'Tidak Disebutkan'
                 WHEN LOWER(REPLACE(REPLACE(TRIM(profiles.jenis_kelamin), ' ', ''), '-', '')) IN ('l','lakilaki','pria','male','m') THEN 'L'
@@ -962,7 +971,7 @@ class DashboardController extends Controller
         // But better to cache if possible.
         // Actually, $stats['totalUsers'] is already cached in $dashboardData.
         // But $usersWithProfile depends on filters.
-        $usersWithProfile = Cache::remember('dashboard_users_with_profile_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($userQuery) {
+        $usersWithProfile = $this->rememberSafe('dashboard_users_with_profile_'.md5(json_encode(['act' => $selectedActivity, 'prov' => $selectedProvince])), 3600, function () use ($userQuery) {
             return $userQuery->clone()->has('profile')->count();
         });
         $usersWithoutProfile = max(0, $stats['totalUsers'] - $usersWithProfile);
@@ -978,7 +987,7 @@ class DashboardController extends Controller
         ];
 
         // Attendance Type Chart Data
-        $attendanceTypeData = Cache::remember('dashboard_attendance_type_data', 3600, function () use ($attendancesExist) {
+        $attendanceTypeData = $this->rememberSafe('dashboard_attendance_type_data', 3600, function () use ($attendancesExist) {
             $data = [
                 'labels' => [],
                 'data' => [],
@@ -1040,7 +1049,7 @@ class DashboardController extends Controller
         $userId = auth()->id();
         $cacheKey = 'creator_dashboard_data_'.$userId;
 
-        $data = Cache::remember($cacheKey, 600, function () use ($userId) {
+        $data = $this->rememberSafe($cacheKey, 600, function () use ($userId) {
             // Helper for subquery to avoid loading IDs into memory
             $myActivityIdsSubQuery = function ($query) use ($userId) {
                 $query->select('id')->from('activities')->where('user_id', $userId);
@@ -1142,7 +1151,7 @@ class DashboardController extends Controller
         $userId = $user->id;
 
         // Cache stats calculation
-        $stats = Cache::remember('user_dashboard_stats_'.$userId, 600, function () use ($userId) {
+        $stats = $this->rememberSafe('user_dashboard_stats_'.$userId, 600, function () use ($userId) {
             $query = ActivityUser::where('user_id', $userId);
 
             // Single query for all stats
@@ -1167,7 +1176,7 @@ class DashboardController extends Controller
 
         // Daftar pendaftaran kegiatan per batch (tampil terpisah jika batch berbeda)
         // Limit to 50 latest activities to prevent overload
-        $joinedActivityUsers = Cache::remember('user_dashboard_activities_'.$userId, 600, function () use ($userId) {
+        $joinedActivityUsers = $this->rememberSafe('user_dashboard_activities_'.$userId, 600, function () use ($userId) {
             $results = ActivityUser::where('user_id', $userId)
                 ->with(['activity' => function ($query) {
                     $query->select('id', 'name', 'category_id', 'date', 'start_time', 'end_time', 'location', 'image', 'status')
@@ -1190,7 +1199,7 @@ class DashboardController extends Controller
         });
 
         // Status langganan (cache 5 menit agar tidak query tiap buka dashboard)
-        $subscription = Cache::remember('user_dashboard_subscription_'.$userId, 300, function () use ($user) {
+        $subscription = $this->rememberSafe('user_dashboard_subscription_'.$userId, 300, function () use ($user) {
             return $user->activeSubscription ?? $user->subscriptions()->latest()->first();
         });
 
@@ -1309,7 +1318,7 @@ class DashboardController extends Controller
 
         $cacheKey = 'api_user_visit_trend_'.md5(json_encode($request->all()));
 
-        $result = Cache::remember($cacheKey, 3600, function () use ($year, $month, $week, $day) {
+        $result = $this->rememberSafe($cacheKey, 3600, function () use ($year, $month, $week, $day) {
             $labels = [];
             $data = [];
             $viewsExist = Schema::hasTable('views');
