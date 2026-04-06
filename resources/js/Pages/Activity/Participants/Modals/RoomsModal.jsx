@@ -369,10 +369,28 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         return arr;
     })();
 
+    const normalizeProvinceLabel = (raw) => {
+        return (raw || '')
+            .toString()
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .replace(/[^a-z0-9 ]/g, '');
+    };
+    const provinceKeyToLabel = new Map(provinceOptionsLocal.map(p => [p.key, p.label]));
+    const selectedProvinceLabelNormalized = provinceFilter !== 'all'
+        ? normalizeProvinceLabel(provinceKeyToLabel.get(provinceFilter))
+        : '';
+
     const unassignedParticipantsFiltered = provinceFilter === 'all'
         ? unassignedParticipants
         : (Array.isArray(unassignedParticipants)
-            ? unassignedParticipants.filter(p => (p?.province_key || 'none') === provinceFilter)
+            ? unassignedParticipants.filter(p => {
+                const k = p?.province_key || 'none';
+                if (k === provinceFilter) return true;
+                if (!selectedProvinceLabelNormalized) return false;
+                return normalizeProvinceLabel(p?.province_label) === selectedProvinceLabelNormalized;
+            })
             : []);
 
     const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
@@ -395,7 +413,12 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         if (roomFilter === 'empty' && !isEmpty) return false;
         if (roomFilter === 'available' && !isAvailable) return false;
         if (provinceFilter !== 'all') {
-            const match = occupants.some(o => (o?.province_key || 'none') === provinceFilter);
+            const match = occupants.some(o => {
+                const k = o?.province_key || 'none';
+                if (k === provinceFilter) return true;
+                if (!selectedProvinceLabelNormalized) return false;
+                return normalizeProvinceLabel(o?.province_label) === selectedProvinceLabelNormalized;
+            });
             if (!match) return false;
         }
 
