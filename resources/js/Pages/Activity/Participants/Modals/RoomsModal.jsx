@@ -90,6 +90,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     const [activeTab, setActiveTab] = useState('manual');
     const [roomSearch, setRoomSearch] = useState('');
     const [roomFilter, setRoomFilter] = useState('all');
+    const [roomStatusFilter, setRoomStatusFilter] = useState('active');
     const [provinceFilter, setProvinceFilter] = useState('all');
     const [sortMode, setSortMode] = useState('hotel_then_number');
     const [editingRoomId, setEditingRoomId] = useState(null);
@@ -410,6 +411,9 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         const isActive = room.is_active !== false && room.is_active !== 0;
         const isAvailable = isActive && !isFull;
 
+        if (roomStatusFilter === 'active' && !isActive) return false;
+        if (roomStatusFilter === 'inactive' && isActive) return false;
+
         if (roomFilter === 'empty' && !isEmpty) return false;
         if (roomFilter === 'available' && !isAvailable) return false;
         if (provinceFilter !== 'all') {
@@ -660,6 +664,18 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                         <option value="number_desc_then_hotel">Urutkan: Nomor (desc) → Hotel</option>
                                     </select>
                                 </div>
+                                    <div className="w-[180px] shrink-0">
+                                        <select
+                                            value={roomStatusFilter}
+                                            onChange={(e) => setRoomStatusFilter(e.target.value)}
+                                            className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                            title="Filter status kamar"
+                                        >
+                                            <option value="active">Kamar Aktif</option>
+                                            <option value="inactive">Kamar Tidak Aktif</option>
+                                            <option value="all">Semua Status</option>
+                                        </select>
+                                    </div>
                                 <div className="w-[220px] shrink-0">
                                     <select
                                         value={roomFilter}

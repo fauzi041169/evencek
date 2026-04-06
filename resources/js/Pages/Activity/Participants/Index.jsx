@@ -1486,8 +1486,8 @@ export default function Index({
                                     className="px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer text-sm shadow-sm hover:bg-slate-50 transition-colors"
                                     title="Jumlah data per halaman"
                                 >
-                                    {[10, 15, 25, 50, 100, 250, 500, 10000].map(val => (
-                                        <option key={val} value={val}>{val === 10000 ? 'Semua' : val}</option>
+                                    {[10, 15, 25, 50, 100, 200].map(val => (
+                                        <option key={val} value={val}>{val}</option>
                                     ))}
                                 </select>
                             </div>

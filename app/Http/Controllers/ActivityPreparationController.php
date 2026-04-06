@@ -1149,53 +1149,50 @@ class ActivityPreparationController extends Controller
                 });
             }
 
-            // Calculate Bulk IDs for Registration Method Filter
             $bulkGroupUserIds = [];
-            // We need this for the 'registration_method' filter and later usage
-            try {
-                $paymentsWithNotes = Payment::select('id', 'activity_id', 'user_id', 'notes')
-                    ->where('activity_id', $activityId)
-                    ->whereNotNull('notes')
-                    ->where(function ($q) {
-                        $q->where('notes', 'like', '%user_ids%')
-                            ->orWhere('notes', 'like', '%bulk_import%');
-                    })
-                    ->get();
+            $registrationMethod = request('registration_method');
+            if ($registrationMethod) {
+                try {
+                    $paymentsWithNotes = Payment::select('id', 'activity_id', 'user_id', 'notes')
+                        ->where('activity_id', $activityId)
+                        ->whereNotNull('notes')
+                        ->where(function ($q) {
+                            $q->where('notes', 'like', '%user_ids%')
+                                ->orWhere('notes', 'like', '%bulk_import%');
+                        })
+                        ->get();
 
-                foreach ($paymentsWithNotes as $p) {
-                    $decoded = json_decode($p->notes, true);
-                    // Handle malformed json or mixed string if needed (simplified here for speed)
-                    if (! $decoded && str_contains($p->notes, '{')) {
-                        // fallback extractor
-                        $start = strpos($p->notes, '{');
-                        $end = strrpos($p->notes, '}');
-                        if ($start !== false && $end !== false) {
-                            $decoded = json_decode(substr($p->notes, $start, $end - $start + 1), true);
+                    foreach ($paymentsWithNotes as $p) {
+                        $decoded = json_decode($p->notes, true);
+                        if (! $decoded && str_contains($p->notes, '{')) {
+                            $start = strpos($p->notes, '{');
+                            $end = strrpos($p->notes, '}');
+                            if ($start !== false && $end !== false) {
+                                $decoded = json_decode(substr($p->notes, $start, $end - $start + 1), true);
+                            }
                         }
-                    }
 
-                    if (is_array($decoded)) {
-                        $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
-                        foreach ($uids as $uid) {
-                            if ($uid) {
-                                $bulkGroupUserIds[] = (string) $uid;
+                        if (is_array($decoded)) {
+                            $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
+                            foreach ($uids as $uid) {
+                                if ($uid) {
+                                    $bulkGroupUserIds[] = (string) $uid;
+                                }
                             }
                         }
                     }
+                    $bulkGroupUserIds = array_unique($bulkGroupUserIds);
+                } catch (\Exception $e) {
                 }
-                $bulkGroupUserIds = array_unique($bulkGroupUserIds);
-            } catch (\Exception $e) {
-            }
 
-            if ($val = request('registration_method')) {
-                if ($val === 'kelompok') {
+                if ($registrationMethod === 'kelompok') {
                     $query->where(function ($q) use ($bulkGroupUserIds) {
                         $q->whereNotNull('activity_participant_group_id');
                         if (! empty($bulkGroupUserIds)) {
                             $q->orWhereIn('user_id', $bulkGroupUserIds);
                         }
                     });
-                } elseif ($val === 'mandiri') {
+                } elseif ($registrationMethod === 'mandiri') {
                     $query->whereNull('activity_participant_group_id');
                     if (! empty($bulkGroupUserIds)) {
                         $query->whereNotIn('user_id', $bulkGroupUserIds);
@@ -1219,20 +1216,14 @@ class ActivityPreparationController extends Controller
             $participants = collect();
             // $bulkGroupUserIds is already calculated above
 
-            \Log::info('DEBUG PARTICIPANTS BEFORE QUERY', [
-                'count_before_paginate' => $query->count(),
-                'sql' => $query->toSql(),
-                'bindings' => $query->getBindings(),
-            ]);
-
             try {
                 // Optimization: Assume created_at exists to avoid slow Schema::hasColumn check
                 // ActivityUser model uses standard timestamps
                 $orderColumn = 'created_at';
 
                 $perPage = (int) request('per_page', 25);
-                if ($perPage > 500) {
-                    $perPage = 500;
+                if ($perPage > 200) {
+                    $perPage = 200;
                 }
                 $participants = $query->orderBy($orderColumn, 'desc')->paginate($perPage)->appends(request()->query());
 
@@ -1263,20 +1254,8 @@ class ActivityPreparationController extends Controller
                         'batch',
                         'participantGroup',
                     ]);
-
-                    // Load payments for "Metode Daftar" column
-                    $participants->load(['user.payments' => function ($query) use ($activityId) {
-                        $query->where('activity_id', $activityId)
-                            ->orderBy('id', 'desc')
-                            ->with(['paymentMethod', 'verifier', 'user']);
-                    }]);
-
-                    if ($participants->isNotEmpty()) {
-                        $firstP = $participants->first();
-
-                    }
-
-                    // Build bulk group user ids from payments (notes user_ids)
+                    $latestPaymentIndex = [];
+                    $groupPaymentIndex = [];
                     try {
                         $decodeNotes = function ($notes) {
                             if (is_array($notes)) {
@@ -1289,7 +1268,6 @@ class ActivityPreparationController extends Controller
                             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                                 return $decoded;
                             }
-                            // Try to extract JSON from mixed string
                             $start = strpos($notes, '{');
                             $end = strrpos($notes, '}');
                             if ($start !== false && $end !== false && $end > $start) {
@@ -1303,141 +1281,67 @@ class ActivityPreparationController extends Controller
                             return null;
                         };
 
-                        // Optimasi: Hanya ambil payment yang memiliki notes dan kemungkinan berisi user_ids/bulk_import
-                        // Select hanya kolom yang diperlukan
-                        $payments = Payment::select('id', 'activity_id', 'user_id', 'notes')
-                            ->where('activity_id', $activityId)
-                            ->whereNotNull('notes')
-                            ->where(function ($q) {
-                                $q->where('notes', 'like', '%user_ids%')
-                                    ->orWhere('notes', 'like', '%bulk_import%');
-                            })
-                            ->get();
+                        $pageUserIds = $participants->pluck('user_id')->filter()->unique()->values()->all();
+                        $pageUserIdSet = array_fill_keys(array_map('strval', $pageUserIds), true);
 
-                        $bulkSet = [];
-                        foreach ($payments as $p) {
-                            $decoded = $decodeNotes($p->notes);
-                            if (is_array($decoded)) {
+                        if (! empty($pageUserIds)) {
+                            $latestPayments = Payment::select('id', 'activity_id', 'user_id', 'payment_method_id', 'midtrans_transaction_id', 'status', 'notes', 'created_at')
+                                ->where('activity_id', $activityId)
+                                ->whereIn('user_id', $pageUserIds)
+                                ->orderByDesc('id')
+                                ->with(['paymentMethod:id,name', 'verifier:id,name'])
+                                ->get();
+
+                            foreach ($latestPayments as $p) {
+                                $uid = (string) $p->user_id;
+                                if (! isset($latestPaymentIndex[$uid])) {
+                                    $latestPaymentIndex[$uid] = $p;
+                                }
+                            }
+
+                            $groupPayments = Payment::select('id', 'activity_id', 'user_id', 'payment_method_id', 'midtrans_transaction_id', 'status', 'notes', 'created_at')
+                                ->where('activity_id', $activityId)
+                                ->whereNotNull('notes')
+                                ->where(function ($q) {
+                                    $q->where('notes', 'like', '%user_ids%')
+                                        ->orWhere('notes', 'like', '%bulk_import%');
+                                })
+                                ->orderByDesc('id')
+                                ->with(['paymentMethod:id,name', 'verifier:id,name'])
+                                ->get();
+
+                            foreach ($groupPayments as $payment) {
+                                $decoded = $decodeNotes($payment->notes);
+                                if (! is_array($decoded)) {
+                                    continue;
+                                }
                                 $uids = [];
                                 if (! empty($decoded['user_ids']) && is_array($decoded['user_ids'])) {
                                     $uids = $decoded['user_ids'];
                                 } elseif (! empty($decoded['bulk_import']) && is_array($decoded['bulk_import']) && ! empty($decoded['bulk_import']['user_ids'])) {
                                     $uids = $decoded['bulk_import']['user_ids'];
                                 }
-
-                                if (! empty($uids)) {
-                                    foreach ($uids as $uid) {
-                                        if ($uid) {
-                                            $bulkSet[(string) $uid] = true;
-                                        }
-                                    }
+                                if (empty($uids)) {
+                                    continue;
                                 }
-                            }
-                        }
 
-                        if (! empty($bulkSet)) {
-                            $bulkGroupUserIds = array_keys($bulkSet);
-                        }
-                    } catch (\Exception $e) {
-                        \Log::warning('Failed to build bulk group user ids', ['error' => $e->getMessage()]);
-                    }
+                                $payment->is_group_payment = true;
 
-                    // ATTACH GROUP MEMBERS TO PAYMENTS
-                    try {
-                        $referencedUserIds = [];
-                        $paymentMap = []; // payment_id -> [user_ids]
-
-                        foreach ($participants as $participant) {
-                            if ($participant->user && $participant->user->payments) {
-                                foreach ($participant->user->payments as $payment) {
-                                    if ($payment->notes) {
-                                        $decoded = $decodeNotes($payment->notes);
-                                        if (is_array($decoded)) {
-                                            $uids = [];
-                                            if (! empty($decoded['user_ids']) && is_array($decoded['user_ids'])) {
-                                                $uids = $decoded['user_ids'];
-                                            } elseif (! empty($decoded['bulk_import']) && is_array($decoded['bulk_import']) && ! empty($decoded['bulk_import']['user_ids'])) {
-                                                $uids = $decoded['bulk_import']['user_ids'];
-                                            }
-
-                                            if (! empty($uids)) {
-                                                $uniqueUids = array_unique($uids);
-                                                $paymentMap[$payment->id] = $uniqueUids;
-                                                foreach ($uniqueUids as $uid) {
-                                                    $referencedUserIds[] = $uid;
-                                                }
-                                            }
-                                        }
+                                foreach (array_unique($uids) as $uid) {
+                                    $uid = (string) $uid;
+                                    if (! isset($pageUserIdSet[$uid])) {
+                                        continue;
                                     }
-                                }
-                            }
-                        }
-
-                        $referencedUserIds = array_unique($referencedUserIds);
-                        $usersMap = [];
-                        if (! empty($referencedUserIds)) {
-                            $usersMap = User::whereIn('id', $referencedUserIds)
-                                ->select('id', 'name', 'email')
-                                ->get()
-                                ->keyBy('id');
-                        }
-
-                        foreach ($participants as $participant) {
-                            if ($participant->user && $participant->user->payments) {
-                                foreach ($participant->user->payments as $payment) {
-                                    if (isset($paymentMap[$payment->id])) {
-                                        $members = [];
-                                        foreach ($paymentMap[$payment->id] as $uid) {
-                                            if (isset($usersMap[$uid])) {
-                                                $members[] = $usersMap[$uid];
-                                            }
-                                        }
-                                        $payment->setRelation('group_members', collect($members));
-                                        $payment->is_group_payment = true;
-                                    } else {
-                                        $payment->setRelation('group_members', collect([]));
-                                        $payment->is_group_payment = false;
+                                    if (isset($groupPaymentIndex[$uid])) {
+                                        continue;
                                     }
+                                    $groupPaymentIndex[$uid] = $payment;
                                 }
                             }
                         }
                     } catch (\Exception $e) {
-                        \Log::warning('Failed to attach group members to payments', ['error' => $e->getMessage()]);
+                        \Log::warning('Failed to build payment indexes', ['error' => $e->getMessage()]);
                     }
-
-                    // Build global index: map user_id -> covering group payment
-                    // This allows attaching the payer's group payment to non-payer members
-                    $groupPaymentIndex = [];
-                    try {
-                        foreach ($participants as $participant) {
-                            if ($participant->user && $participant->user->payments) {
-                                foreach ($participant->user->payments as $payment) {
-                                    if (! empty($payment->is_group_payment) && $payment->relationLoaded('group_members')) {
-                                        foreach ($payment->group_members as $member) {
-                                            if (! empty($member->id)) {
-                                                // Do not overwrite if already mapped; prefer most recent payment
-                                                if (! isset($groupPaymentIndex[$member->id])) {
-                                                    $groupPaymentIndex[$member->id] = $payment;
-                                                } else {
-                                                    // Prefer newer payment by created_at if available
-                                                    $current = $groupPaymentIndex[$member->id];
-                                                    if (($payment->created_at ?? null) && ($current->created_at ?? null)) {
-                                                        if ($payment->created_at->gt($current->created_at)) {
-                                                            $groupPaymentIndex[$member->id] = $payment;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        \Log::warning('Failed to build groupPaymentIndex', ['error' => $e->getMessage()]);
-                    }
-
-                    // Loop for nested relationships removed as it is now handled by eager loading above
                 }
             } catch (\Exception $e) {
                 \Log::error('Failed to load participants', [
@@ -1573,32 +1477,12 @@ class ActivityPreparationController extends Controller
                 foreach ($participants as $participant) {
                     // Payment
                     $payment = null;
-                    if ($participant->user && $participant->user->payments) {
-                        // Filter payments to find one that actually covers this user
-                        $payment = $participant->user->payments
-                            ->where('activity_id', $activityId)
-                            ->filter(function ($p) use ($participant) {
-                                // If it's not a group payment, it applies to the payer (this user)
-                                if (empty($p->is_group_payment)) {
-                                    return true;
-                                }
-
-                                // If it IS a group payment, the user must be in the group members
-                                // We check the manually attached group_members relation
-                                if ($p->relationLoaded('group_members')) {
-                                    return $p->group_members->contains('id', $participant->user_id);
-                                }
-
-                                return false;
-                            })
-                            ->sortByDesc('created_at')
-                            ->first();
+                    $uid = (string) $participant->user_id;
+                    if (isset($latestPaymentIndex) && is_array($latestPaymentIndex) && isset($latestPaymentIndex[$uid])) {
+                        $payment = $latestPaymentIndex[$uid];
                     }
-                    // Fallback: if user has no own payment, attach payer's group payment that includes this user
-                    if (! $payment && isset($groupPaymentIndex) && is_array($groupPaymentIndex)) {
-                        if (isset($groupPaymentIndex[$participant->user_id])) {
-                            $payment = $groupPaymentIndex[$participant->user_id];
-                        }
+                    if (! $payment && isset($groupPaymentIndex) && is_array($groupPaymentIndex) && isset($groupPaymentIndex[$uid])) {
+                        $payment = $groupPaymentIndex[$uid];
                     }
                     $participant->setRelation('payment', $payment);
 

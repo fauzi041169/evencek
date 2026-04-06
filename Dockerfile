@@ -70,8 +70,9 @@ RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-avail
 
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
-COPY --from=vendor /app/bootstrap/cache ./bootstrap/cache
 COPY --from=frontend /app/public/build ./public/build
+
+RUN rm -f /var/www/html/bootstrap/cache/services.php /var/www/html/bootstrap/cache/packages.php || true
 
 RUN rm -rf /var/www/html/public/storage && APP_ENV=production APP_DEBUG=false APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= php artisan storage:link --ansi || true
 

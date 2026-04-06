@@ -7279,18 +7279,24 @@ class ActivityController extends Controller
                 $types = ['peserta', 'panitia', 'all'];
                 $roomStatsByType = [];
                 $roomByRegionStatsByType = [];
+                $activityUsersTableExists = Schema::hasTable($tableName);
 
-                $roomEligibleStatuses = [ActivityUser::STATUS_ACTIVE];
-                $eligibleCountAll = (int) (clone $activityUsersBaseQuery)
-                    ->whereIn('au.status', $roomEligibleStatuses)
-                    ->distinct()
-                    ->count('au.user_id');
-                $eligibleCountPanitia = empty($committeeIdsArray) ? 0 : (int) (clone $activityUsersBaseQuery)
-                    ->whereIn('au.status', $roomEligibleStatuses)
-                    ->whereIn('au.user_id', $committeeIdsArray)
-                    ->distinct()
-                    ->count('au.user_id');
-                $eligibleCountPeserta = (int) $pesertaAktif;
+                $roomEligibleStatuses = $activityUsersTableExists ? [ActivityUser::STATUS_ACTIVE] : [];
+                $eligibleCountAll = 0;
+                $eligibleCountPanitia = 0;
+                $eligibleCountPeserta = 0;
+                if ($activityUsersTableExists) {
+                    $eligibleCountAll = (int) (clone $activityUsersBaseQuery)
+                        ->whereIn('au.status', $roomEligibleStatuses)
+                        ->distinct()
+                        ->count('au.user_id');
+                    $eligibleCountPanitia = empty($committeeIdsArray) ? 0 : (int) (clone $activityUsersBaseQuery)
+                        ->whereIn('au.status', $roomEligibleStatuses)
+                        ->whereIn('au.user_id', $committeeIdsArray)
+                        ->distinct()
+                        ->count('au.user_id');
+                    $eligibleCountPeserta = (int) $pesertaAktif;
+                }
 
                 $getEligibleCountByType = function ($type) use ($eligibleCountPeserta, $eligibleCountAll, $eligibleCountPanitia) {
                     if ($type === 'peserta') {
@@ -7319,16 +7325,17 @@ class ActivityController extends Controller
                     return $query;
                 };
 
-                $applyTypeFilterToAssignments = function ($query, $type) use ($committeeIdsArray) {
+                $applyTypeFilterToAssignments = function ($query, $type) use ($committeeIdsArray, $activityUsersTableExists) {
+                    $col = $activityUsersTableExists ? 'au.user_id' : 'a.user_id';
                     if ($type === 'peserta') {
                         if (! empty($committeeIdsArray)) {
-                            $query->whereNotIn('au.user_id', $committeeIdsArray);
+                            $query->whereNotIn($col, $committeeIdsArray);
                         }
                     } elseif ($type === 'panitia') {
                         if (empty($committeeIdsArray)) {
                             $query->whereRaw('1=0');
                         } else {
-                            $query->whereIn('au.user_id', $committeeIdsArray);
+                            $query->whereIn($col, $committeeIdsArray);
                         }
                     }
 
@@ -7343,49 +7350,71 @@ class ActivityController extends Controller
                                 $join->on('r.id', '=', 'a.room_id')
                                     ->on('r.activity_id', '=', 'a.activity_id');
                             })
-                            ->join($tableName.' as au', function ($join) {
-                                $join->on('au.user_id', '=', 'a.user_id')
-                                    ->on('au.activity_id', '=', 'a.activity_id');
-                            })
                             ->join('users as u', 'u.id', '=', 'a.user_id')
                             ->where('a.activity_id', $activityId)
                             ->where('r.is_active', 1)
-                            ->whereIn('au.status', $roomEligibleStatuses);
-                        if ($activityUsersHasDeletedAt) {
-                            $assignedQuery->whereNull('au.deleted_at');
+                            ->whereNotNull('u.id');
+                        if ($activityUsersTableExists) {
+                            $assignedQuery->join($tableName.' as au', function ($join) {
+                                $join->on('au.user_id', '=', 'a.user_id')
+                                    ->on('au.activity_id', '=', 'a.activity_id');
+                            })->whereIn('au.status', $roomEligibleStatuses);
+                            if ($activityUsersHasDeletedAt) {
+                                $assignedQuery->whereNull('au.deleted_at');
+                            }
                         }
                         $assignedQuery = $applyTypeFilterToAssignments($assignedQuery, $type);
                         $assignedCount = (int) $assignedQuery->distinct()->count('a.user_id');
                     }
 
                     $committeeIdsSql = implode(',', array_map('intval', $committeeIdsArray));
-                    $eligibleStatusesSql = implode(',', array_map('intval', $roomEligibleStatuses));
-                    $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL THEN a.user_id END)';
-                    if ($type === 'peserta') {
-                        if (! empty($committeeIdsSql)) {
-                            $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL AND a.user_id NOT IN ('.$committeeIdsSql.') THEN a.user_id END)';
+                    if ($activityUsersTableExists) {
+                        $eligibleStatusesSql = implode(',', array_map('intval', $roomEligibleStatuses));
+                        $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL THEN a.user_id END)';
+                        if ($type === 'peserta') {
+                            if (! empty($committeeIdsSql)) {
+                                $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL AND a.user_id NOT IN ('.$committeeIdsSql.') THEN a.user_id END)';
+                            }
+                        } elseif ($type === 'panitia') {
+                            if (empty($committeeIdsSql)) {
+                                $occupancyExpr = '0';
+                            } else {
+                                $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL AND a.user_id IN ('.$committeeIdsSql.') THEN a.user_id END)';
+                            }
                         }
-                    } elseif ($type === 'panitia') {
-                        if (empty($committeeIdsSql)) {
-                            $occupancyExpr = '0';
-                        } else {
-                            $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL AND a.user_id IN ('.$committeeIdsSql.') THEN a.user_id END)';
+                    } else {
+                        $occupancyExpr = 'COUNT(DISTINCT CASE WHEN u.id IS NOT NULL THEN a.user_id END)';
+                        if ($type === 'peserta') {
+                            if (! empty($committeeIdsSql)) {
+                                $occupancyExpr = 'COUNT(DISTINCT CASE WHEN u.id IS NOT NULL AND a.user_id NOT IN ('.$committeeIdsSql.') THEN a.user_id END)';
+                            }
+                        } elseif ($type === 'panitia') {
+                            if (empty($committeeIdsSql)) {
+                                $occupancyExpr = '0';
+                            } else {
+                                $occupancyExpr = 'COUNT(DISTINCT CASE WHEN u.id IS NOT NULL AND a.user_id IN ('.$committeeIdsSql.') THEN a.user_id END)';
+                            }
                         }
                     }
 
                     $roomRowsQuery = \DB::table('activity_hotel_rooms as r')
-                        ->leftJoin('activity_hotel_room_assignments as a', 'a.room_id', '=', 'r.id')
-                        ->leftJoin($tableName.' as au', function ($join) {
-                            $join->on('au.user_id', '=', 'a.user_id')
-                                ->on('au.activity_id', '=', 'a.activity_id');
+                        ->leftJoin('activity_hotel_room_assignments as a', function ($join) {
+                            $join->on('a.room_id', '=', 'r.id')
+                                ->on('a.activity_id', '=', 'r.activity_id');
                         })
                         ->leftJoin('users as u', 'u.id', '=', 'a.user_id')
                         ->where('r.activity_id', $activityId)
                         ->where('r.is_active', 1);
-                    if ($activityUsersHasDeletedAt) {
-                        $roomRowsQuery->where(function ($q) {
-                            $q->whereNull('au.deleted_at')->orWhereNull('au.user_id');
+                    if ($activityUsersTableExists) {
+                        $roomRowsQuery->leftJoin($tableName.' as au', function ($join) {
+                            $join->on('au.user_id', '=', 'a.user_id')
+                                ->on('au.activity_id', '=', 'a.activity_id');
                         });
+                        if ($activityUsersHasDeletedAt) {
+                            $roomRowsQuery->where(function ($q) {
+                                $q->whereNull('au.deleted_at')->orWhereNull('au.user_id');
+                            });
+                        }
                     }
 
                     $roomRows = $roomRowsQuery
@@ -7418,6 +7447,24 @@ class ActivityController extends Controller
                             $occupancy = (int) $rows->sum(function ($r) {
                                 return (int) ($r->occupancy ?? 0);
                             });
+                            $usedRooms = (int) $rows->filter(function ($r) {
+                                return (int) ($r->occupancy ?? 0) > 0;
+                            })->count();
+                            $availableRooms = (int) $rows->filter(function ($r) {
+                                $cap = (int) ($r->capacity ?? 0);
+                                $occ = (int) ($r->occupancy ?? 0);
+                                if ($cap <= 0) {
+                                    return true;
+                                }
+
+                                return $occ < $cap;
+                            })->count();
+                            $fullRooms = (int) $rows->filter(function ($r) {
+                                $cap = (int) ($r->capacity ?? 0);
+                                $occ = (int) ($r->occupancy ?? 0);
+
+                                return $cap > 0 && $occ >= $cap;
+                            })->count();
 
                             return [
                                 'hotel_name' => $hotelName !== '' ? $hotelName : 'Tanpa Hotel',
@@ -7426,11 +7473,32 @@ class ActivityController extends Controller
                                 'has_unlimited' => $hasUnlimited,
                                 'occupancy' => $occupancy,
                                 'available_capacity' => $hasUnlimited ? null : max(0, $totalCapacity - $occupancy),
+                                'used_rooms' => $usedRooms,
+                                'available_rooms' => $availableRooms,
+                                'full_rooms' => $fullRooms,
                             ];
                         })
                         ->sortByDesc('total_rooms')
                         ->values()
                         ->toArray();
+                    $usedRoomsAll = (int) $roomRows->filter(function ($r) {
+                        return (int) ($r->occupancy ?? 0) > 0;
+                    })->count();
+                    $availableRoomsAll = (int) $roomRows->filter(function ($r) {
+                        $cap = (int) ($r->capacity ?? 0);
+                        $occ = (int) ($r->occupancy ?? 0);
+                        if ($cap <= 0) {
+                            return true;
+                        }
+
+                        return $occ < $cap;
+                    })->count();
+                    $fullRoomsAll = (int) $roomRows->filter(function ($r) {
+                        $cap = (int) ($r->capacity ?? 0);
+                        $occ = (int) ($r->occupancy ?? 0);
+
+                        return $cap > 0 && $occ >= $cap;
+                    })->count();
                     $roomStatsByType[$type] = [
                         'total_rooms' => $totalRooms,
                         'total_rooms_all' => $totalRoomsAll,
@@ -7438,6 +7506,9 @@ class ActivityController extends Controller
                         'has_unlimited' => $hasUnlimited,
                         'assigned' => (int) $assignedCount,
                         'unassigned' => max(0, $activeCount - (int) $assignedCount),
+                        'used_rooms' => $usedRoomsAll,
+                        'available_rooms' => $availableRoomsAll,
+                        'full_rooms' => $fullRoomsAll,
                         'hotels' => $hotelStats,
                         'rooms' => $roomRows->map(function ($r) {
                             $label = trim(($r->hotel_name ? $r->hotel_name.' • ' : '').'Kamar '.$r->room_number);
@@ -7449,6 +7520,15 @@ class ActivityController extends Controller
                             ];
                         })->take(12)->values()->toArray(),
                     ];
+
+                    if (! $activityUsersTableExists) {
+                        $roomByRegionStatsByType[$type] = [
+                            'province' => collect(),
+                            'regency' => collect(),
+                            'district' => collect(),
+                        ];
+                        continue;
+                    }
 
                     $provinceTotals = DB::table($tableName.' as au')
                         ->join('users as u', 'u.id', '=', 'au.user_id')
