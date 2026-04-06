@@ -7349,6 +7349,7 @@ class ActivityController extends Controller
                             })
                             ->join('users as u', 'u.id', '=', 'a.user_id')
                             ->where('a.activity_id', $activityId)
+                            ->where('r.is_active', 1)
                             ->whereIn('au.status', $roomEligibleStatuses);
                         if ($activityUsersHasDeletedAt) {
                             $assignedQuery->whereNull('au.deleted_at');
@@ -7518,6 +7519,7 @@ class ActivityController extends Controller
                             ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
                             ->join('provinces', 'profiles.province_id', '=', 'provinces.id')
                             ->where('a.activity_id', $activityId)
+                            ->where('r.is_active', 1)
                             ->whereIn('au.status', $roomEligibleStatuses);
                         if ($activityUsersHasDeletedAt) {
                             $provinceAssignedQuery->whereNull('au.deleted_at');
@@ -7544,6 +7546,7 @@ class ActivityController extends Controller
                             ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
                             ->join('regencies', 'profiles.regency_id', '=', 'regencies.id')
                             ->where('a.activity_id', $activityId)
+                            ->where('r.is_active', 1)
                             ->whereIn('au.status', $roomEligibleStatuses);
                         if ($activityUsersHasDeletedAt) {
                             $regencyAssignedQuery->whereNull('au.deleted_at');
@@ -7570,6 +7573,7 @@ class ActivityController extends Controller
                             ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
                             ->join('districts', 'profiles.district_id', '=', 'districts.id')
                             ->where('a.activity_id', $activityId)
+                            ->where('r.is_active', 1)
                             ->whereIn('au.status', $roomEligibleStatuses);
                         if ($activityUsersHasDeletedAt) {
                             $districtAssignedQuery->whereNull('au.deleted_at');
