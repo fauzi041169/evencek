@@ -6615,12 +6615,25 @@ class ActivityController extends Controller
         $limit = $request->query('limit', 15);
 
         $tableName = Schema::hasTable('activity_users') ? 'activity_users' : 'activity_users';
+        $activityUsersHasDeletedAt = Schema::hasColumn($tableName, 'deleted_at');
+        $activityUsersBaseQuery = DB::table($tableName.' as au')
+            ->join('users as u', 'u.id', '=', 'au.user_id')
+            ->where('au.activity_id', $activityId);
+        if ($activityUsersHasDeletedAt) {
+            $activityUsersBaseQuery->whereNull('au.deleted_at');
+        }
+
+        $committeeUserIds = DB::table('activity_committee_structures')
+            ->where('activity_id', $activityId)
+            ->whereNotNull('user_id')
+            ->pluck('user_id');
 
         // Base query: users in this activity
-        $participantUserIds = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->where('status', 1) // Active only
-            ->pluck('user_id');
+        $participantUserIds = (clone $activityUsersBaseQuery)
+            ->where('au.status', ActivityUser::STATUS_ACTIVE)
+            ->whereNotIn('au.user_id', $committeeUserIds)
+            ->distinct()
+            ->pluck('au.user_id');
 
         $query = DB::table('profiles')
             ->whereIn('profiles.user_id', $participantUserIds);
@@ -6682,40 +6695,48 @@ class ActivityController extends Controller
 
         // Total peserta terdaftar (status = 1 = aktif) - EXCLUDING COMMITTEE
         $tableName = Schema::hasTable('activity_users') ? 'activity_users' : 'activity_users';
-        $totalPeserta = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->whereNotIn('user_id', $committeeUserIds)
-            ->count();
+        $activityUsersHasDeletedAt = Schema::hasColumn($tableName, 'deleted_at');
+        $activityUsersBaseQuery = DB::table($tableName.' as au')
+            ->join('users as u', 'u.id', '=', 'au.user_id')
+            ->where('au.activity_id', $activityId);
+        if ($activityUsersHasDeletedAt) {
+            $activityUsersBaseQuery->whereNull('au.deleted_at');
+        }
+
+        $totalPeserta = (clone $activityUsersBaseQuery)
+            ->whereNotIn('au.user_id', $committeeUserIds)
+            ->distinct()
+            ->count('au.user_id');
 
         // Total peserta terdaftar (termasuk panitia jika ada di activity_users)
-        $totalPesertaWithCommittee = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->count();
+        $totalPesertaWithCommittee = (clone $activityUsersBaseQuery)
+            ->distinct()
+            ->count('au.user_id');
 
         // Status peserta - EXCLUDING COMMITTEE
-        $pesertaPending = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->where('status', 0)
-            ->whereNotIn('user_id', $committeeUserIds)
-            ->count();
+        $pesertaPending = (clone $activityUsersBaseQuery)
+            ->where('au.status', 0)
+            ->whereNotIn('au.user_id', $committeeUserIds)
+            ->distinct()
+            ->count('au.user_id');
 
-        $pesertaAktif = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->where('status', 1)
-            ->whereNotIn('user_id', $committeeUserIds)
-            ->count();
+        $pesertaAktif = (clone $activityUsersBaseQuery)
+            ->where('au.status', 1)
+            ->whereNotIn('au.user_id', $committeeUserIds)
+            ->distinct()
+            ->count('au.user_id');
 
-        $pesertaDitolak = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->where('status', 2)
-            ->whereNotIn('user_id', $committeeUserIds)
-            ->count();
+        $pesertaDitolak = (clone $activityUsersBaseQuery)
+            ->where('au.status', 2)
+            ->whereNotIn('au.user_id', $committeeUserIds)
+            ->distinct()
+            ->count('au.user_id');
 
-        $pesertaMenungguPembayaran = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->where('status', 3)
-            ->whereNotIn('user_id', $committeeUserIds)
-            ->count();
+        $pesertaMenungguPembayaran = (clone $activityUsersBaseQuery)
+            ->where('au.status', 3)
+            ->whereNotIn('au.user_id', $committeeUserIds)
+            ->distinct()
+            ->count('au.user_id');
 
         // Statistik absensi
         $totalAbsensi = 0;
@@ -6730,6 +6751,11 @@ class ActivityController extends Controller
             $pesertaHadir = DB::table('activity_attendance_records')
                 ->where('activity_id', $activityId)
                 ->where('status', 'present')
+                ->whereIn('user_id', (clone $activityUsersBaseQuery)
+                    ->where('au.status', ActivityUser::STATUS_ACTIVE)
+                    ->whereNotIn('au.user_id', $committeeUserIds)
+                    ->select('au.user_id')
+                    ->distinct())
                 ->distinct('user_id')
                 ->count('user_id');
 
@@ -6762,10 +6788,12 @@ class ActivityController extends Controller
         }
 
         // Statistik jenis kelamin
-        $participantUserIds = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->where('status', 1)
-            ->pluck('user_id');
+        $participantUserIds = (clone $activityUsersBaseQuery)
+            ->where('au.status', ActivityUser::STATUS_ACTIVE)
+            ->whereNotIn('au.user_id', $committeeUserIds)
+            ->select('au.user_id')
+            ->distinct()
+            ->pluck('au.user_id');
 
         $genderKeySql = "CASE
             WHEN jenis_kelamin IS NULL OR TRIM(jenis_kelamin) = '' OR TRIM(jenis_kelamin) = '-' THEN 'Tidak Disebutkan'
@@ -7164,11 +7192,11 @@ class ActivityController extends Controller
         $registrationTrend = collect();
         for ($i = 0; $i < $days; $i++) {
             $date = $startDate->copy()->addDays($i);
-            $count = DB::table($tableName)
-                ->where('activity_id', $activityId)
-                ->whereNotIn('user_id', $committeeUserIds)
-                ->whereDate('created_at', $date->format('Y-m-d'))
-                ->count();
+            $count = (clone $activityUsersBaseQuery)
+                ->whereNotIn('au.user_id', $committeeUserIds)
+                ->whereDate('au.created_at', $date->format('Y-m-d'))
+                ->distinct()
+                ->count('au.user_id');
             $registrationTrend->push([
                 'date' => $date->format('d M'),
                 'count' => $count,
@@ -7205,12 +7233,12 @@ class ActivityController extends Controller
             $batches = ActivityBatch::where('activity_id', $activityId)->get();
             if ($batches->count() > 0) {
                 foreach ($batches as $batch) {
-                    $count = DB::table($tableName)
-                        ->where('activity_id', $activityId)
-                        ->where('activity_batch_id', $batch->id)
-                        ->where('status', 1)
-                        ->whereNotIn('user_id', $committeeUserIds)
-                        ->count();
+                    $count = (clone $activityUsersBaseQuery)
+                        ->where('au.activity_batch_id', $batch->id)
+                        ->where('au.status', ActivityUser::STATUS_ACTIVE)
+                        ->whereNotIn('au.user_id', $committeeUserIds)
+                        ->distinct()
+                        ->count('au.user_id');
                     $batchStats[] = [
                         'name' => $batch->name,
                         'count' => $count,
@@ -7252,25 +7280,27 @@ class ActivityController extends Controller
                 $roomStatsByType = [];
                 $roomByRegionStatsByType = [];
 
-                $activeCountAll = (int) DB::table($tableName)
-                    ->where('activity_id', $activityId)
-                    ->where('status', 1)
-                    ->count();
-                $activeCountPanitia = empty($committeeIdsArray) ? 0 : (int) DB::table($tableName)
-                    ->where('activity_id', $activityId)
-                    ->where('status', 1)
-                    ->whereIn('user_id', $committeeIdsArray)
-                    ->count();
+                $roomEligibleStatuses = [ActivityUser::STATUS_ACTIVE];
+                $eligibleCountAll = (int) (clone $activityUsersBaseQuery)
+                    ->whereIn('au.status', $roomEligibleStatuses)
+                    ->distinct()
+                    ->count('au.user_id');
+                $eligibleCountPanitia = empty($committeeIdsArray) ? 0 : (int) (clone $activityUsersBaseQuery)
+                    ->whereIn('au.status', $roomEligibleStatuses)
+                    ->whereIn('au.user_id', $committeeIdsArray)
+                    ->distinct()
+                    ->count('au.user_id');
+                $eligibleCountPeserta = (int) $pesertaAktif;
 
-                $getActiveCountByType = function ($type) use ($pesertaAktif, $activeCountAll, $activeCountPanitia) {
+                $getEligibleCountByType = function ($type) use ($eligibleCountPeserta, $eligibleCountAll, $eligibleCountPanitia) {
                     if ($type === 'peserta') {
-                        return (int) $pesertaAktif;
+                        return (int) $eligibleCountPeserta;
                     }
                     if ($type === 'panitia') {
-                        return (int) $activeCountPanitia;
+                        return (int) $eligibleCountPanitia;
                     }
 
-                    return (int) $activeCountAll;
+                    return (int) $eligibleCountAll;
                 };
 
                 $applyTypeFilterToActivityUsers = function ($query, $type) use ($committeeIdsArray) {
@@ -7317,23 +7347,28 @@ class ActivityController extends Controller
                                 $join->on('au.user_id', '=', 'a.user_id')
                                     ->on('au.activity_id', '=', 'a.activity_id');
                             })
+                            ->join('users as u', 'u.id', '=', 'a.user_id')
                             ->where('a.activity_id', $activityId)
-                            ->where('au.status', 1);
+                            ->whereIn('au.status', $roomEligibleStatuses);
+                        if ($activityUsersHasDeletedAt) {
+                            $assignedQuery->whereNull('au.deleted_at');
+                        }
                         $assignedQuery = $applyTypeFilterToAssignments($assignedQuery, $type);
                         $assignedCount = (int) $assignedQuery->distinct()->count('a.user_id');
                     }
 
                     $committeeIdsSql = implode(',', array_map('intval', $committeeIdsArray));
-                    $occupancyExpr = 'SUM(CASE WHEN au.status = 1 THEN 1 ELSE 0 END)';
+                    $eligibleStatusesSql = implode(',', array_map('intval', $roomEligibleStatuses));
+                    $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL THEN a.user_id END)';
                     if ($type === 'peserta') {
                         if (! empty($committeeIdsSql)) {
-                            $occupancyExpr = 'SUM(CASE WHEN au.status = 1 AND a.user_id NOT IN ('.$committeeIdsSql.') THEN 1 ELSE 0 END)';
+                            $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL AND a.user_id NOT IN ('.$committeeIdsSql.') THEN a.user_id END)';
                         }
                     } elseif ($type === 'panitia') {
                         if (empty($committeeIdsSql)) {
                             $occupancyExpr = '0';
                         } else {
-                            $occupancyExpr = 'SUM(CASE WHEN au.status = 1 AND a.user_id IN ('.$committeeIdsSql.') THEN 1 ELSE 0 END)';
+                            $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL AND a.user_id IN ('.$committeeIdsSql.') THEN a.user_id END)';
                         }
                     }
 
@@ -7343,8 +7378,14 @@ class ActivityController extends Controller
                             $join->on('au.user_id', '=', 'a.user_id')
                                 ->on('au.activity_id', '=', 'a.activity_id');
                         })
+                        ->leftJoin('users as u', 'u.id', '=', 'a.user_id')
                         ->where('r.activity_id', $activityId)
                         ->where('r.is_active', 1);
+                    if ($activityUsersHasDeletedAt) {
+                        $roomRowsQuery->where(function ($q) {
+                            $q->whereNull('au.deleted_at')->orWhereNull('au.user_id');
+                        });
+                    }
 
                     $roomRows = $roomRowsQuery
                         ->select(
@@ -7358,7 +7399,7 @@ class ActivityController extends Controller
                         ->orderByDesc('occupancy')
                         ->get();
 
-                    $activeCount = $getActiveCountByType($type);
+                    $activeCount = $getEligibleCountByType($type);
                     $hotelStats = $roomRows
                         ->groupBy(function ($row) {
                             return trim((string) ($row->hotel_name ?? ''));
@@ -7409,40 +7450,52 @@ class ActivityController extends Controller
                     ];
 
                     $provinceTotals = DB::table($tableName.' as au')
+                        ->join('users as u', 'u.id', '=', 'au.user_id')
                         ->join('profiles', 'profiles.user_id', '=', 'au.user_id')
                         ->join('provinces', 'profiles.province_id', '=', 'provinces.id')
                         ->where('au.activity_id', $activityId)
-                        ->where('au.status', 1);
+                        ->whereIn('au.status', $roomEligibleStatuses);
+                    if ($activityUsersHasDeletedAt) {
+                        $provinceTotals->whereNull('au.deleted_at');
+                    }
                     $provinceTotals = $applyTypeFilterToActivityUsers($provinceTotals, $type);
                     $provinceTotals = $provinceTotals
-                        ->select('provinces.id', 'provinces.name', DB::raw('COUNT(au.id) as total'))
+                        ->select('provinces.id', 'provinces.name', DB::raw('COUNT(DISTINCT au.user_id) as total'))
                         ->groupBy('provinces.id', 'provinces.name')
                         ->orderByDesc('total')
                         ->get();
 
                     $regencyTotals = DB::table($tableName.' as au')
+                        ->join('users as u', 'u.id', '=', 'au.user_id')
                         ->join('profiles', 'profiles.user_id', '=', 'au.user_id')
                         ->join('regencies', 'profiles.regency_id', '=', 'regencies.id')
                         ->join('provinces', 'regencies.province_id', '=', 'provinces.id')
                         ->where('au.activity_id', $activityId)
-                        ->where('au.status', 1);
+                        ->whereIn('au.status', $roomEligibleStatuses);
+                    if ($activityUsersHasDeletedAt) {
+                        $regencyTotals->whereNull('au.deleted_at');
+                    }
                     $regencyTotals = $applyTypeFilterToActivityUsers($regencyTotals, $type);
                     $regencyTotals = $regencyTotals
-                        ->select('regencies.id', 'regencies.name', 'provinces.name as province_name', DB::raw('COUNT(au.id) as total'))
+                        ->select('regencies.id', 'regencies.name', 'provinces.name as province_name', DB::raw('COUNT(DISTINCT au.user_id) as total'))
                         ->groupBy('regencies.id', 'regencies.name', 'provinces.name')
                         ->orderByDesc('total')
                         ->get();
 
                     $districtTotals = DB::table($tableName.' as au')
+                        ->join('users as u', 'u.id', '=', 'au.user_id')
                         ->join('profiles', 'profiles.user_id', '=', 'au.user_id')
                         ->join('districts', 'profiles.district_id', '=', 'districts.id')
                         ->join('regencies', 'districts.regency_id', '=', 'regencies.id')
                         ->join('provinces', 'regencies.province_id', '=', 'provinces.id')
                         ->where('au.activity_id', $activityId)
-                        ->where('au.status', 1);
+                        ->whereIn('au.status', $roomEligibleStatuses);
+                    if ($activityUsersHasDeletedAt) {
+                        $districtTotals->whereNull('au.deleted_at');
+                    }
                     $districtTotals = $applyTypeFilterToActivityUsers($districtTotals, $type);
                     $districtTotals = $districtTotals
-                        ->select('districts.id', 'districts.name', 'provinces.name as province_name', DB::raw('COUNT(au.id) as total'))
+                        ->select('districts.id', 'districts.name', 'provinces.name as province_name', DB::raw('COUNT(DISTINCT au.user_id) as total'))
                         ->groupBy('districts.id', 'districts.name', 'provinces.name')
                         ->orderByDesc('total')
                         ->get();
@@ -7461,10 +7514,14 @@ class ActivityController extends Controller
                                 $join->on('au.user_id', '=', 'a.user_id')
                                     ->on('au.activity_id', '=', 'a.activity_id');
                             })
+                            ->join('users as u', 'u.id', '=', 'a.user_id')
                             ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
                             ->join('provinces', 'profiles.province_id', '=', 'provinces.id')
                             ->where('a.activity_id', $activityId)
-                            ->where('au.status', 1);
+                            ->whereIn('au.status', $roomEligibleStatuses);
+                        if ($activityUsersHasDeletedAt) {
+                            $provinceAssignedQuery->whereNull('au.deleted_at');
+                        }
                         $provinceAssignedQuery = $applyTypeFilterToAssignments($provinceAssignedQuery, $type);
                         $provinceAssigned = $provinceAssignedQuery
                             ->select('provinces.id', 'provinces.name', DB::raw('COUNT(DISTINCT a.user_id) as assigned'))
@@ -7483,10 +7540,14 @@ class ActivityController extends Controller
                                 $join->on('au.user_id', '=', 'a.user_id')
                                     ->on('au.activity_id', '=', 'a.activity_id');
                             })
+                            ->join('users as u', 'u.id', '=', 'a.user_id')
                             ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
                             ->join('regencies', 'profiles.regency_id', '=', 'regencies.id')
                             ->where('a.activity_id', $activityId)
-                            ->where('au.status', 1);
+                            ->whereIn('au.status', $roomEligibleStatuses);
+                        if ($activityUsersHasDeletedAt) {
+                            $regencyAssignedQuery->whereNull('au.deleted_at');
+                        }
                         $regencyAssignedQuery = $applyTypeFilterToAssignments($regencyAssignedQuery, $type);
                         $regencyAssigned = $regencyAssignedQuery
                             ->select('regencies.id', 'regencies.name', DB::raw('COUNT(DISTINCT a.user_id) as assigned'))
@@ -7505,10 +7566,14 @@ class ActivityController extends Controller
                                 $join->on('au.user_id', '=', 'a.user_id')
                                     ->on('au.activity_id', '=', 'a.activity_id');
                             })
+                            ->join('users as u', 'u.id', '=', 'a.user_id')
                             ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
                             ->join('districts', 'profiles.district_id', '=', 'districts.id')
                             ->where('a.activity_id', $activityId)
-                            ->where('au.status', 1);
+                            ->whereIn('au.status', $roomEligibleStatuses);
+                        if ($activityUsersHasDeletedAt) {
+                            $districtAssignedQuery->whereNull('au.deleted_at');
+                        }
                         $districtAssignedQuery = $applyTypeFilterToAssignments($districtAssignedQuery, $type);
                         $districtAssigned = $districtAssignedQuery
                             ->select('districts.id', 'districts.name', DB::raw('COUNT(DISTINCT a.user_id) as assigned'))

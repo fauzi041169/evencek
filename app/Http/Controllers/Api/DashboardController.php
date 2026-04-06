@@ -28,22 +28,29 @@ class DashboardController extends Controller
         }
 
         $tableName = Schema::hasTable('activity_users') ? 'activity_users' : 'activity_users';
+        $activityUsersHasDeletedAt = Schema::hasColumn($tableName, 'deleted_at');
+        $activityUsersBaseQuery = DB::table($tableName.' as au')
+            ->join('users as u', 'u.id', '=', 'au.user_id')
+            ->where('au.activity_id', $activityId);
+        if ($activityUsersHasDeletedAt) {
+            $activityUsersBaseQuery->whereNull('au.deleted_at');
+        }
 
         // Total peserta
-        $totalPeserta = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->where('status', 1)
-            ->count();
+        $totalPeserta = (clone $activityUsersBaseQuery)
+            ->where('au.status', 1)
+            ->distinct()
+            ->count('au.user_id');
 
-        $pesertaAktif = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->where('status', 1)
-            ->count();
+        $pesertaAktif = (clone $activityUsersBaseQuery)
+            ->where('au.status', 1)
+            ->distinct()
+            ->count('au.user_id');
 
-        $pesertaPending = DB::table($tableName)
-            ->where('activity_id', $activityId)
-            ->where('status', 0)
-            ->count();
+        $pesertaPending = (clone $activityUsersBaseQuery)
+            ->where('au.status', 0)
+            ->distinct()
+            ->count('au.user_id');
 
         // Statistik absensi
         $pesertaHadir = 0;
@@ -247,11 +254,11 @@ class DashboardController extends Controller
         if (Schema::hasTable('activity_batches')) {
             $batches = \App\Models\ActivityBatch::where('activity_id', $activityId)->get();
             foreach ($batches as $batch) {
-                $count = DB::table($tableName)
-                    ->where('activity_id', $activityId)
-                    ->where('activity_batch_id', $batch->id)
-                    ->where('status', 1)
-                    ->count();
+                $count = (clone $activityUsersBaseQuery)
+                    ->where('au.activity_batch_id', $batch->id)
+                    ->where('au.status', 1)
+                    ->distinct()
+                    ->count('au.user_id');
                 $batchStats[] = [
                     'id' => $batch->id,
                     'name' => $batch->name,

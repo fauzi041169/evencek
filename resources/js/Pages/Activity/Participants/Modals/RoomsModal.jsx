@@ -329,7 +329,8 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         const occupants = roomOccupants[room.id] || [];
         const isFull = room.capacity > 0 && occupants.length >= room.capacity;
         const isEmpty = occupants.length === 0;
-        const isAvailable = !isFull;
+        const isActive = room.is_active !== false && room.is_active !== 0;
+        const isAvailable = isActive && !isFull;
 
         if (roomFilter === 'empty' && !isEmpty) return false;
         if (roomFilter === 'available' && !isAvailable) return false;
@@ -611,6 +612,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                             filteredRooms.map((room) => {
                                                 const occupants = roomOccupants[room.id] || [];
                                                 const isFull = room.capacity > 0 && occupants.length >= room.capacity;
+                                                const isActive = room.is_active !== false && room.is_active !== 0;
 
                                                 return (
                                                     <tr key={room.id} className="hover:bg-gray-50">
@@ -648,11 +650,16 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                                                     </div>
                                                                 ))}
 
-                                                                {!isFull && (
+                                                                {isActive && !isFull && (
                                                                     <SearchableParticipantSelect
                                                                         participants={unassignedParticipantsFiltered}
                                                                         onSelect={(userId) => handleAssignParticipant(room.id, userId)}
                                                                     />
+                                                                )}
+                                                                {!isActive && (
+                                                                    <div className="text-[10px] text-gray-400 italic">
+                                                                        Kamar nonaktif (tidak bisa tambah peserta)
+                                                                    </div>
                                                                 )}
 
                                                                 <div className="text-[10px] text-gray-400 text-right mt-0.5">

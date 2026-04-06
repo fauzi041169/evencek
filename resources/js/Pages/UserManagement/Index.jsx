@@ -8,10 +8,12 @@ export default function UserManagementIndex({
     roleStats = {},
     availableRoles = [],
     plans = [],
+    provinces = [],
     auth
 }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
+    const [provinceFilter, setProvinceFilter] = useState('');
     const [perPage, setPerPage] = useState('20');
     const initialUsers = (users?.data || users || []);
     const initialPagination = (users?.meta || users);
@@ -93,6 +95,7 @@ export default function UserManagementIndex({
         const params = {
             search: searchTerm,
             role: roleFilter,
+            province_id: provinceFilter,
             ...extra
         };
         if (perPage === 'all') {
@@ -276,7 +279,7 @@ export default function UserManagementIndex({
         // Auto fetch when role/perPage changes
         fetchUsers(buildParams());
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [roleFilter, perPage]);
+    }, [roleFilter, provinceFilter, perPage]);
 
     const usersList = usersData;
 
@@ -375,6 +378,19 @@ export default function UserManagementIndex({
                                     ))}
                                 </select>
                             </div>
+                            <div className="flex-1 min-w-[220px]">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Provinsi</label>
+                                <select
+                                    value={provinceFilter}
+                                    onChange={(e) => setProvinceFilter(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                >
+                                    <option value="">Semua Provinsi</option>
+                                    {provinces.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                             <div className="flex-1 min-w-[200px]">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Cari User</label>
                                 <input
@@ -428,6 +444,7 @@ export default function UserManagementIndex({
                                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Nama</th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Email</th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Role</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Provinsi</th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Langganan</th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Bergabung</th>
                                         <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase">Aksi</th>
@@ -436,11 +453,12 @@ export default function UserManagementIndex({
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {loading ? (
                                         <tr>
-                                            <td colSpan="7" className="px-6 py-8 text-center text-gray-500">Memuat data...</td>
+                                            <td colSpan="8" className="px-6 py-8 text-center text-gray-500">Memuat data...</td>
                                         </tr>
                                     ) : usersList.length > 0 ? usersList.map((user, index) => {
                                         const activeSubscription = user.active_subscription;
                                         const activeSlug = activeSubscription?.plan?.slug || '';
+                                        const provinceName = user?.profile?.province?.name || user?.profile?.other_province || user?.province || user?.province_name || '-';
 
                                         return (
                                             <tr key={user.id} className="hover:bg-primary/5 transition-colors">
@@ -481,6 +499,7 @@ export default function UserManagementIndex({
                                                         </span>
                                                     )}
                                                 </td>
+                                                <td className="px-6 py-4 text-sm text-gray-600">{provinceName}</td>
                                                 <td className="px-6 py-4">
                                                     {isSuperAdmin && user.id !== currentUser?.id ? (
                                                         <select
@@ -535,7 +554,7 @@ export default function UserManagementIndex({
                                         );
                                     }) : (
                                         <tr>
-                                            <td colSpan="7" className="px-6 py-2 sm:py-8 text-center text-gray-500">
+                                            <td colSpan="8" className="px-6 py-2 sm:py-8 text-center text-gray-500">
                                                 <div className="flex flex-col items-center justify-center">
                                                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                                         <i className="fas fa-users-slash text-2xl text-gray-400"></i>

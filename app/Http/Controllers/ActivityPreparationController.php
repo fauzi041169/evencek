@@ -1668,20 +1668,42 @@ class ActivityPreparationController extends Controller
 
             $roomOccupants = [];
             try {
-                // 1. Get occupancy counts across ALL batches for capacity check
+                $eligibleParticipantIdsQuery = ActivityUser::query()
+                    ->from($activityUserTable)
+                    ->where('activity_id', $activityId)
+                    ->where('status', ActivityUser::STATUS_ACTIVE)
+                    ->whereNotIn('user_id', $committeeUserIds)
+                    ->when($hasDeletedAt, function ($q) use ($activityUserTable) {
+                        $q->whereNull("{$activityUserTable}.deleted_at");
+                    })
+                    ->when($selectedBatchId, function ($q) use ($selectedBatchId) {
+                        $q->where('activity_batch_id', $selectedBatchId);
+                    })
+                    ->select('user_id')
+                    ->distinct();
+
+                // 1. Get occupancy counts for eligible participants (matches current batch & active participants)
                 $occupancy = ActivityHotelRoomAssignment::select('room_id', DB::raw('COUNT(*) as count'))
                     ->where('activity_id', $activityId)
+                    ->when($selectedBatchId, function ($q) use ($selectedBatchId) {
+                        $q->where('activity_batch_id', $selectedBatchId);
+                    })
+                    ->whereIn('user_id', $eligibleParticipantIdsQuery)
                     ->groupBy('room_id')
                     ->pluck('count', 'room_id')
                     ->toArray();
 
-                // 2. Load detailed room occupants across ALL batches
+                // 2. Load detailed room occupants for eligible participants (matches current batch & active participants)
                 $assignmentsCollection = ActivityHotelRoomAssignment::with([
                     'user:id,name,email',
                     'user.profile:user_id,province_id,other_province',
                     'user.profile.province:id,name',
                 ])
                     ->where('activity_id', $activityId)
+                    ->when($selectedBatchId, function ($q) use ($selectedBatchId) {
+                        $q->where('activity_batch_id', $selectedBatchId);
+                    })
+                    ->whereIn('user_id', $eligibleParticipantIdsQuery)
                     ->get();
 
                 // Group by room_id
@@ -1722,10 +1744,18 @@ class ActivityPreparationController extends Controller
             $unassignedParticipants = collect();
             try {
                 // Get all participant user IDs
-                $allParticipantIds = ActivityUser::where('activity_id', $activityId)
+                $allParticipantIds = ActivityUser::query()
+                    ->from($activityUserTable)
+                    ->where('activity_id', $activityId)
+                    ->where('status', ActivityUser::STATUS_ACTIVE)
+                    ->whereNotIn('user_id', $committeeUserIds)
+                    ->when($hasDeletedAt, function ($q) use ($activityUserTable) {
+                        $q->whereNull("{$activityUserTable}.deleted_at");
+                    })
                     ->when($selectedBatchId, function ($q) use ($selectedBatchId) {
                         $q->where('activity_batch_id', $selectedBatchId);
                     })
+                    ->distinct()
                     ->pluck('user_id')
                     ->toArray();
 
@@ -1734,6 +1764,7 @@ class ActivityPreparationController extends Controller
                     ->when($selectedBatchId, function ($q) use ($selectedBatchId) {
                         $q->where('activity_batch_id', $selectedBatchId);
                     })
+                    ->whereIn('user_id', $allParticipantIds)
                     ->pluck('user_id')
                     ->toArray();
 
@@ -2871,11 +2902,30 @@ class ActivityPreparationController extends Controller
         }
 
         $room = ActivityHotelRoom::where('activity_id', $activityId)->findOrFail($roomId);
+        if (! (bool) $room->is_active) {
+            return redirect()->back()->with('error', 'Kamar tidak aktif, tidak bisa menambah peserta');
+        }
 
-        // Check capacity BEFORE modifying existing assignments (ALWAYS activity-wide)
-        $currentCount = ActivityHotelRoomAssignment::where('activity_id', $activityId)
-            ->where('room_id', $room->id)
-            ->count();
+        $activityUserTable = (new ActivityUser)->getTable();
+        $activityUsersHasDeletedAt = Schema::hasColumn($activityUserTable, 'deleted_at');
+
+        $countQuery = DB::table('activity_hotel_room_assignments as a')
+            ->join($activityUserTable.' as au', function ($join) {
+                $join->on('au.user_id', '=', 'a.user_id')
+                    ->on('au.activity_id', '=', 'a.activity_id');
+            })
+            ->where('a.activity_id', $activityId)
+            ->where('a.room_id', $room->id)
+            ->where('au.status', ActivityUser::STATUS_ACTIVE);
+        if ($activityUsersHasDeletedAt) {
+            $countQuery->whereNull('au.deleted_at');
+        }
+        if ($batchId) {
+            $countQuery->where('a.activity_batch_id', $batchId)->where('au.activity_batch_id', $batchId);
+        } else {
+            $countQuery->whereNull('a.activity_batch_id')->whereNull('au.activity_batch_id');
+        }
+        $currentCount = (int) $countQuery->distinct()->count('a.user_id');
 
         if ((int) $room->capacity > 0 && $currentCount >= (int) $room->capacity && ! $request->boolean('force')) {
             return redirect()->back()->with('error', 'Kapasitas kamar penuh');
@@ -2905,9 +2955,23 @@ class ActivityPreparationController extends Controller
             return redirect()->back()->with('error', 'Gagal menyimpan: '.$e->getMessage());
         }
 
-        $updatedCount = ActivityHotelRoomAssignment::where('activity_id', $activityId)
-            ->where('room_id', $room->id)
-            ->count();
+        $updatedCountQuery = DB::table('activity_hotel_room_assignments as a')
+            ->join($activityUserTable.' as au', function ($join) {
+                $join->on('au.user_id', '=', 'a.user_id')
+                    ->on('au.activity_id', '=', 'a.activity_id');
+            })
+            ->where('a.activity_id', $activityId)
+            ->where('a.room_id', $room->id)
+            ->where('au.status', ActivityUser::STATUS_ACTIVE);
+        if ($activityUsersHasDeletedAt) {
+            $updatedCountQuery->whereNull('au.deleted_at');
+        }
+        if ($batchId) {
+            $updatedCountQuery->where('a.activity_batch_id', $batchId)->where('au.activity_batch_id', $batchId);
+        } else {
+            $updatedCountQuery->whereNull('a.activity_batch_id')->whereNull('au.activity_batch_id');
+        }
+        $updatedCount = (int) $updatedCountQuery->distinct()->count('a.user_id');
 
         return redirect()->back()->with('success', "Peserta dipindahkan ke kamar {$room->room_number}");
     }

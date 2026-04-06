@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Province;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -23,11 +24,19 @@ class UserManagementController extends Controller
             abort(403, 'Hanya admin dan superadmin yang dapat mengakses halaman ini');
         }
 
-        $query = User::with(['profile', 'subscription.plan', 'activeSubscription.plan']);
+        $query = User::with(['profile.province', 'subscription.plan', 'activeSubscription.plan']);
 
         // Filter by role
         if ($request->filled('role')) {
             $query->where('role', $request->role);
+        }
+
+        // Filter by province if provided
+        if ($request->filled('province_id')) {
+            $provinceId = $request->string('province_id');
+            $query->whereHas('profile', function ($q) use ($provinceId) {
+                $q->where('province_id', $provinceId);
+            });
         }
 
         // Search by name or email
@@ -67,7 +76,9 @@ class UserManagementController extends Controller
         // Available subscription plans (active)
         $plans = \App\Models\SubscriptionPlan::where('is_active', true)->orderBy('sort_order')->get();
 
-        return Inertia::render('UserManagement/Index', compact('users', 'roleStats', 'availableRoles', 'plans'));
+        $provinces = Province::orderBy('name')->get(['id', 'name']);
+
+        return Inertia::render('UserManagement/Index', compact('users', 'roleStats', 'availableRoles', 'plans', 'provinces'));
     }
 
     /**
@@ -662,11 +673,19 @@ class UserManagementController extends Controller
             ], 403);
         }
 
-        $query = User::with(['profile', 'subscription.plan', 'activeSubscription.plan']);
+        $query = User::with(['profile.province', 'subscription.plan', 'activeSubscription.plan']);
 
         // Filter by role if provided
         if ($request->filled('role')) {
             $query->where('role', $request->role);
+        }
+
+        // Filter by province if provided
+        if ($request->filled('province_id')) {
+            $provinceId = $request->string('province_id');
+            $query->whereHas('profile', function ($q) use ($provinceId) {
+                $q->where('province_id', $provinceId);
+            });
         }
 
         // Search by name or email
@@ -699,6 +718,7 @@ class UserManagementController extends Controller
         $usersData = $collection->map(function ($user) {
             $active = $user->activeSubscription;
             $plan = $active ? $active->plan : null;
+            $provinceName = $user->profile?->province?->name ?: ($user->profile?->other_province ?: null);
 
             return [
                 'id' => $user->id,
@@ -706,6 +726,8 @@ class UserManagementController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'avatar' => $user->profile?->foto_url ?? asset('assets/images/profilefoto/default-profile.png'),
+                'province_id' => $user->profile?->province_id,
+                'province' => $provinceName,
                 'subscription' => $plan?->name ?? 'Tidak Berlangganan',
                 'subscription_status' => $active ? 'Berlangganan' : 'Tidak Berlanggan',
                 'active_subscription' => $active ? [
