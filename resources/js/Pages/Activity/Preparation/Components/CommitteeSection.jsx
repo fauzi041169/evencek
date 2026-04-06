@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
 import axios from 'axios';
@@ -23,8 +23,42 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
     const [selectedUserIdsToAdd, setSelectedUserIdsToAdd] = useState([]);
     const [participationTypeToAdd, setParticipationTypeToAdd] = useState('peserta');
     const [addUsersProcessing, setAddUsersProcessing] = useState(false);
+    const [participantDropdownOpen, setParticipantDropdownOpen] = useState(false);
+    const [participantQuery, setParticipantQuery] = useState('');
+    const participantDropdownRef = useRef(null);
 
     const activityUid = activity?.uid || activity?.id;
+
+    const committeeUserIdSet = React.useMemo(() => {
+        const ids = (committeeStructure || [])
+            .map((m) => (m?.user_id ? String(m.user_id) : null))
+            .filter(Boolean);
+        return new Set(ids);
+    }, [committeeStructure]);
+
+    const participantsUnique = React.useMemo(() => {
+        const seen = new Set();
+        return (participants || []).filter((p) => {
+            const key = p?.user_id ? String(p.user_id) : null;
+            if (!key) return false;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    }, [participants]);
+
+    const availableParticipants = React.useMemo(() => {
+        if (editingMember) return participantsUnique;
+        return participantsUnique.filter((p) => !committeeUserIdSet.has(String(p.user_id)));
+    }, [participantsUnique, committeeUserIdSet, editingMember]);
+
+    const getParticipantLabel = (p) => {
+        const name = p?.user?.name || p?.name || '';
+        const email = p?.user?.email || p?.email || '';
+        return email ? `${name} (${email})` : name;
+    };
+
+    const selectedParticipant = participantsUnique.find((p) => String(p.user_id) === String(data.user_id));
 
     const searchUsersToAdd = React.useMemo(() => debounce(async (q, actId) => {
         const trimmed = String(q || '').trim();
@@ -51,6 +85,19 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
             searchUsersToAdd.cancel();
         };
     }, [searchUsersToAdd]);
+
+    useEffect(() => {
+        if (!participantDropdownOpen) return;
+        const onMouseDown = (e) => {
+            if (!participantDropdownRef.current) return;
+            if (!participantDropdownRef.current.contains(e.target)) {
+                setParticipantDropdownOpen(false);
+                setParticipantQuery('');
+            }
+        };
+        document.addEventListener('mousedown', onMouseDown);
+        return () => document.removeEventListener('mousedown', onMouseDown);
+    }, [participantDropdownOpen]);
 
     const normalizedProvinceQuery = (provinceQuery || '').trim().toLowerCase();
     const provincesSorted = Array.isArray(provinces)
@@ -571,27 +618,90 @@ export default function CommitteeSection({ activity, committeeStructure, refPosi
 
                                     <div className="relative group">
                                         <label htmlFor="user_id" className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1">Pilih Personel (Peserta Terdaftar)</label>
-                                        <div className="relative">
-                                            <i className="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors"></i>
-                                            <select
-                                                id="user_id"
-                                                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-primary shadow-inner font-medium appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
-                                                value={data.user_id}
-                                                onChange={(e) => setData({ ...data, user_id: e.target.value })}
-                                                required
-                                                disabled={!!editingMember}
-                                            >
-                                                <option value="">-- Pilih Peserta --</option>
-                                                {participants.map((p) => (
-                                                    <option key={p.id} value={p.user_id}>
-                                                        {p.user?.name || p.name} {p.user?.email ? `(${p.user.email})` : ''}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            {!editingMember && (
-                                                <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none"></i>
-                                            )}
-                                        </div>
+                                        {editingMember ? (
+                                            <div className="relative">
+                                                <i className="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"></i>
+                                                <input
+                                                    id="user_id"
+                                                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl shadow-inner font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    value={selectedParticipant ? getParticipantLabel(selectedParticipant) : (editingMember?.name || '')}
+                                                    disabled
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div ref={participantDropdownRef} className="relative">
+                                                <i className="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"></i>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setParticipantDropdownOpen((v) => !v)}
+                                                    className="w-full text-left pl-12 pr-12 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-primary shadow-inner font-medium"
+                                                >
+                                                    {selectedParticipant ? getParticipantLabel(selectedParticipant) : '-- Pilih Peserta --'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setParticipantDropdownOpen((v) => !v)}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-xl bg-white text-gray-400 hover:text-gray-800 border border-gray-200"
+                                                >
+                                                    <i className="fas fa-chevron-down text-xs"></i>
+                                                </button>
+                                                {participantDropdownOpen && (
+                                                    <div className="absolute z-[120] mt-2 w-full bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden">
+                                                        <div className="p-3 border-b border-gray-200">
+                                                            <div className="relative">
+                                                                <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"></i>
+                                                                <input
+                                                                    type="text"
+                                                                    className="w-full pl-12 pr-3 py-3 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium"
+                                                                    placeholder="Ketik nama / email..."
+                                                                    value={participantQuery}
+                                                                    onChange={(e) => setParticipantQuery(e.target.value)}
+                                                                    autoFocus
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="max-h-64 overflow-y-auto">
+                                                            {(() => {
+                                                                const q = (participantQuery || '').trim().toLowerCase();
+                                                                const list = q
+                                                                    ? availableParticipants.filter((p) => {
+                                                                        const name = (p?.user?.name || p?.name || '').toString().toLowerCase();
+                                                                        const email = (p?.user?.email || p?.email || '').toString().toLowerCase();
+                                                                        return name.includes(q) || email.includes(q);
+                                                                    })
+                                                                    : availableParticipants;
+                                                                const sliced = list.slice(0, 80);
+                                                                if (sliced.length === 0) {
+                                                                    return (
+                                                                        <div className="px-4 py-3 text-xs text-gray-400">
+                                                                            Tidak ada hasil
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return sliced.map((p) => (
+                                                                    <button
+                                                                        key={p.user_id}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setData({ ...data, user_id: p.user_id });
+                                                                            setParticipantDropdownOpen(false);
+                                                                            setParticipantQuery('');
+                                                                        }}
+                                                                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                                                                    >
+                                                                        <div className="text-sm font-bold text-gray-800">{p.user?.name || p.name}</div>
+                                                                        <div className="text-xs text-gray-500">{p.user?.email || ''}</div>
+                                                                    </button>
+                                                                ));
+                                                            })()}
+                                                        </div>
+                                                        <div className="px-4 py-2 text-[11px] text-gray-500 border-t border-gray-200 bg-white">
+                                                            Menampilkan peserta aktif yang belum menjadi panitia.
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {isPicPosition(data.position) && (

@@ -228,8 +228,11 @@ class ActivityPreparationController extends Controller
                 },
             ])
                 ->where('activity_id', $activityIdValue)
+                ->where('status', ActivityUser::STATUS_ACTIVE)
                 ->orderBy('created_at', 'desc')
-                ->get();
+                ->get()
+                ->unique('user_id')
+                ->values();
 
             // Map roomAssignment.room to room for frontend compatibility
             $participants->each(function ($p) {
@@ -5819,16 +5822,19 @@ class ActivityPreparationController extends Controller
             return redirect()->back()->withErrors(['user_id' => 'Peserta ini sudah terdaftar sebagai panitia.']);
         }
 
+        $activityUser = ActivityUser::where('activity_id', $activityIdValue)
+            ->where('user_id', $request->user_id)
+            ->where('status', ActivityUser::STATUS_ACTIVE)
+            ->first();
+        if (! $activityUser) {
+            return redirect()->back()->withErrors(['user_id' => 'Peserta tidak ditemukan di data peserta kegiatan.']);
+        }
+
         $user = User::with('profile')->findOrFail($request->user_id);
 
         // Determine activity_batch_id from activity_users
         $batchId = null;
-        $activityUser = ActivityUser::where('activity_id', $activityIdValue)
-            ->where('user_id', $request->user_id)
-            ->first();
-        if ($activityUser) {
-            $batchId = $activityUser->activity_batch_id;
-        }
+        $batchId = $activityUser->activity_batch_id;
 
         $maxOrder = ActivityCommitteeStructure::where('activity_id', $activityIdValue)->max('order') ?? -1;
 
@@ -5920,6 +5926,14 @@ class ActivityPreparationController extends Controller
 
         $committee = ActivityCommitteeStructure::where('activity_id', $activityIdValue)
             ->findOrFail($committeeId);
+
+        $activityUser = ActivityUser::where('activity_id', $activityIdValue)
+            ->where('user_id', $request->user_id)
+            ->where('status', ActivityUser::STATUS_ACTIVE)
+            ->first();
+        if (! $activityUser) {
+            return redirect()->back()->withErrors(['user_id' => 'Peserta tidak ditemukan di data peserta kegiatan.']);
+        }
 
         RefPosition::firstOrCreate(['name' => $request->position]);
 
