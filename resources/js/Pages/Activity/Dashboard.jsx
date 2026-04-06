@@ -1024,6 +1024,11 @@ export default function Dashboard({
         return (byType && byType[roomUserTypeFilter]) ? byType[roomUserTypeFilter] : roomStats;
     }, [roomStats, roomStatsByType, roomUserTypeFilter]);
 
+    const roomStatsAll = useMemo(() => {
+        const byType = roomStatsByType && typeof roomStatsByType === 'object' ? roomStatsByType : null;
+        return (byType && byType.all) ? byType.all : roomStatsView;
+    }, [roomStatsByType, roomStatsView]);
+
     const roomByRegionStatsView = useMemo(() => {
         const byType = roomByRegionStatsByType && typeof roomByRegionStatsByType === 'object' ? roomByRegionStatsByType : null;
         return (byType && byType[roomUserTypeFilter]) ? byType[roomUserTypeFilter] : roomByRegionStats;
@@ -1642,27 +1647,27 @@ export default function Dashboard({
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kamar Aktif</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsView.total_rooms?.toLocaleString() || 0}</div>
-                                    {roomStatsView.total_rooms_all != null && roomStatsView.total_rooms_all !== roomStatsView.total_rooms && (
-                                        <div className="text-[10px] text-gray-400 mt-1">Total semua kamar: {roomStatsView.total_rooms_all?.toLocaleString()}</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsAll.total_rooms?.toLocaleString() || 0}</div>
+                                    {roomStatsAll.total_rooms_all != null && roomStatsAll.total_rooms_all !== roomStatsAll.total_rooms && (
+                                        <div className="text-[10px] text-gray-400 mt-1">Total semua kamar: {roomStatsAll.total_rooms_all?.toLocaleString()}</div>
                                     )}
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Total Kapasitas</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsView.has_unlimited ? '∞' : (roomStatsView.total_capacity?.toLocaleString() || 0)}</div>
-                                    {roomStatsView.has_unlimited && (
+                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsAll.has_unlimited ? '∞' : (roomStatsAll.total_capacity?.toLocaleString() || 0)}</div>
+                                    {roomStatsAll.has_unlimited && (
                                         <div className="text-[10px] text-gray-400 mt-1">Ada kamar kapasitas tak terbatas</div>
                                     )}
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Kamar Terpakai</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsView.used_rooms?.toLocaleString() || 0}</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsAll.used_rooms?.toLocaleString() || 0}</div>
                                     <div className="text-[10px] text-gray-400 mt-1">Kamar dengan minimal 1 penghuni</div>
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
-                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Kamar Tersedia</div>
-                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsView.available_rooms?.toLocaleString() || 0}</div>
-                                    <div className="text-[10px] text-gray-400 mt-1">Masih bisa diisi (belum penuh)</div>
+                                    <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Kamar Kosong</div>
+                                    <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsAll.empty_rooms?.toLocaleString() || 0}</div>
+                                    <div className="text-[10px] text-gray-400 mt-1">0 penghuni</div>
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="text-xs sm:text-sm text-gray-500 mb-1 font-medium">Terisi (Peserta)</div>
@@ -1673,11 +1678,11 @@ export default function Dashboard({
                                     <div className="text-2xl sm:text-3xl font-bold text-gray-700">{roomStatsView.unassigned?.toLocaleString() || 0}</div>
                                 </div>
                             </div>
-                            {Array.isArray(roomStatsView?.hotels) && roomStatsView.hotels.length > 1 && (
+                            {Array.isArray(roomStatsAll?.hotels) && roomStatsAll.hotels.length > 1 && (
                                 <div className="mb-4 sm:mb-6">
                                     <div className="flex items-center justify-between mb-3">
                                         <h6 className="text-sm font-semibold text-gray-700">Rincian per Hotel</h6>
-                                        <div className="text-[10px] text-gray-400">{roomStatsView.hotels.length} hotel</div>
+                                        <div className="text-[10px] text-gray-400">{roomStatsAll.hotels.length} hotel</div>
                                     </div>
                                     <div className="overflow-x-auto rounded-lg border border-gray-200">
                                         <table className="min-w-full text-xs">
@@ -1686,16 +1691,18 @@ export default function Dashboard({
                                                     <th className="px-3 py-2 text-left font-semibold whitespace-nowrap">Hotel</th>
                                                     <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Kamar</th>
                                                     <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Terpakai</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Kosong</th>
                                                     <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Kapasitas</th>
-                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Terisi (Peserta)</th>
-                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Sisa</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Terisi</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Sisa (Slot)</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-100">
-                                                {roomStatsView.hotels.map((h, idx) => {
+                                                {roomStatsAll.hotels.map((h, idx) => {
                                                     const hotelName = String(h?.hotel_name || '').trim() || 'Tanpa Hotel';
                                                     const rooms = Number(h?.total_rooms || 0);
                                                     const usedRooms = Number(h?.used_rooms || 0);
+                                                    const emptyRooms = Number(h?.empty_rooms || 0);
                                                     const capacity = Number(h?.total_capacity || 0);
                                                     const occupancy = Number(h?.occupancy || 0);
                                                     const hasUnlimited = Boolean(h?.has_unlimited);
@@ -1710,6 +1717,7 @@ export default function Dashboard({
                                                             </td>
                                                             <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{rooms.toLocaleString()}</td>
                                                             <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{usedRooms.toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{emptyRooms.toLocaleString()}</td>
                                                             <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{hasUnlimited ? '∞' : capacity.toLocaleString()}</td>
                                                             <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{occupancy.toLocaleString()}</td>
                                                             <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{hasUnlimited ? '∞' : (available ?? 0).toLocaleString()}</td>

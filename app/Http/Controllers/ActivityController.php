@@ -7437,6 +7437,9 @@ class ActivityController extends Controller
                             $usedRooms = (int) $rows->filter(function ($r) {
                                 return (int) ($r->occupancy ?? 0) > 0;
                             })->count();
+                            $emptyRooms = (int) $rows->filter(function ($r) {
+                                return (int) ($r->occupancy ?? 0) === 0;
+                            })->count();
                             $availableRooms = (int) $rows->filter(function ($r) {
                                 $cap = (int) ($r->capacity ?? 0);
                                 $occ = (int) ($r->occupancy ?? 0);
@@ -7461,6 +7464,7 @@ class ActivityController extends Controller
                                 'occupancy' => $occupancy,
                                 'available_capacity' => $hasUnlimited ? null : max(0, $totalCapacity - $occupancy),
                                 'used_rooms' => $usedRooms,
+                                'empty_rooms' => $emptyRooms,
                                 'available_rooms' => $availableRooms,
                                 'full_rooms' => $fullRooms,
                             ];
@@ -7470,6 +7474,9 @@ class ActivityController extends Controller
                         ->toArray();
                     $usedRoomsAll = (int) $roomRows->filter(function ($r) {
                         return (int) ($r->occupancy ?? 0) > 0;
+                    })->count();
+                    $emptyRoomsAll = (int) $roomRows->filter(function ($r) {
+                        return (int) ($r->occupancy ?? 0) === 0;
                     })->count();
                     $availableRoomsAll = (int) $roomRows->filter(function ($r) {
                         $cap = (int) ($r->capacity ?? 0);
@@ -7494,6 +7501,7 @@ class ActivityController extends Controller
                         'assigned' => (int) $assignedCount,
                         'unassigned' => max(0, $activeCount - (int) $assignedCount),
                         'used_rooms' => $usedRoomsAll,
+                        'empty_rooms' => $emptyRoomsAll,
                         'available_rooms' => $availableRoomsAll,
                         'full_rooms' => $fullRoomsAll,
                         'hotels' => $hotelStats,
