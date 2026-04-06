@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useForm, router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
-import { Building, X, Plus, Upload, Download, Trash2, CheckCircle, Ban, SquarePen, Check } from 'lucide-react';
+import { Building, X, Plus, Upload, Download, Trash2, CheckCircle, Ban, SquarePen, Check, Search, RotateCcw } from 'lucide-react';
 
 // Internal component for searchable select
 const SearchableParticipantSelect = ({ participants, onSelect, placeholder = "+ Pilih Peserta" }) => {
@@ -642,56 +642,77 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                 )}
                             </div>
 
-                            <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2 overflow-x-auto pb-1">
+                                <div className="relative flex-1 min-w-[260px]">
+                                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                                     <input
                                         type="text"
                                         value={roomSearch}
                                         onChange={(e) => setRoomSearch(e.target.value)}
-                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                        className="rounded border border-gray-300 pl-9 pr-9 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500"
                                         placeholder="Cari: hotel / nomor / peserta (contoh: GOLDEN 1)"
                                     />
+                                    {String(roomSearch || '').trim() !== '' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setRoomSearch('')}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                                            title="Bersihkan pencarian"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
-                                <div className="w-[220px] shrink-0">
+
+                                <div className="w-[140px] shrink-0 relative">
                                     <select
                                         value={sortMode}
                                         onChange={(e) => setSortMode(e.target.value)}
-                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white text-transparent"
                                         title="Urutkan tampilan kamar"
+                                        aria-label="Urutkan"
                                     >
-                                        <option value="hotel_then_number">Urutkan: Hotel → Nomor</option>
-                                        <option value="number_then_hotel">Urutkan: Nomor → Hotel</option>
-                                        <option value="number_desc_then_hotel">Urutkan: Nomor (desc) → Hotel</option>
+                                        <option value="hotel_then_number">Hotel → Nomor</option>
+                                        <option value="number_then_hotel">Nomor → Hotel</option>
+                                        <option value="number_desc_then_hotel">Nomor (desc) → Hotel</option>
+                                    </select>
+                                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-700">
+                                        Urutkan
+                                    </span>
+                                </div>
+
+                                <div className="w-[170px] shrink-0">
+                                    <select
+                                        value={roomStatusFilter}
+                                        onChange={(e) => setRoomStatusFilter(e.target.value)}
+                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                        title="Filter status kamar"
+                                    >
+                                        <option value="active">Kamar Aktif</option>
+                                        <option value="inactive">Tidak Aktif</option>
+                                        <option value="all">Semua Status</option>
                                     </select>
                                 </div>
-                                    <div className="w-[180px] shrink-0">
-                                        <select
-                                            value={roomStatusFilter}
-                                            onChange={(e) => setRoomStatusFilter(e.target.value)}
-                                            className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-                                            title="Filter status kamar"
-                                        >
-                                            <option value="active">Kamar Aktif</option>
-                                            <option value="inactive">Kamar Tidak Aktif</option>
-                                            <option value="all">Semua Status</option>
-                                        </select>
-                                    </div>
-                                <div className="w-[220px] shrink-0">
+
+                                <div className="w-[190px] shrink-0">
                                     <select
                                         value={roomFilter}
                                         onChange={(e) => setRoomFilter(e.target.value)}
                                         className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                        title="Filter kamar"
                                     >
                                         <option value="all">Semua Kamar</option>
                                         <option value="empty">Kamar Kosong</option>
                                         <option value="available">Masih Bisa Terisi</option>
                                     </select>
                                 </div>
-                                <div className="w-[220px] shrink-0">
+
+                                <div className="w-[210px] shrink-0">
                                     <select
                                         value={provinceFilter}
                                         onChange={(e) => setProvinceFilter(e.target.value)}
                                         className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                        title="Filter provinsi"
                                     >
                                         <option value="all">Semua Provinsi</option>
                                         {provinceOptionsLocal.map(p => (
@@ -699,6 +720,21 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                         ))}
                                     </select>
                                 </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSortMode('hotel_then_number');
+                                        setRoomStatusFilter('active');
+                                        setRoomFilter('all');
+                                        setProvinceFilter('all');
+                                    }}
+                                    className="shrink-0 h-[38px] w-[38px] inline-flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                                    title="Reset filter"
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                </button>
+
                                 <div className="text-xs text-gray-500 shrink-0 whitespace-nowrap">
                                     Menampilkan {filteredRooms.length} dari {rooms.length}
                                 </div>
