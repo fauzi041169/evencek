@@ -7367,65 +7367,52 @@ class ActivityController extends Controller
                         $assignedCount = (int) $assignedQuery->distinct()->count('a.user_id');
                     }
 
-                    $committeeIdsSql = implode(',', array_map('intval', $committeeIdsArray));
-                    if ($activityUsersTableExists) {
-                        $eligibleStatusesSql = implode(',', array_map('intval', $roomEligibleStatuses));
-                        $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL THEN a.user_id END)';
-                        if ($type === 'peserta') {
-                            if (! empty($committeeIdsSql)) {
-                                $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL AND a.user_id NOT IN ('.$committeeIdsSql.') THEN a.user_id END)';
-                            }
-                        } elseif ($type === 'panitia') {
-                            if (empty($committeeIdsSql)) {
-                                $occupancyExpr = '0';
-                            } else {
-                                $occupancyExpr = 'COUNT(DISTINCT CASE WHEN au.status IN ('.$eligibleStatusesSql.') AND u.id IS NOT NULL AND a.user_id IN ('.$committeeIdsSql.') THEN a.user_id END)';
-                            }
-                        }
-                    } else {
-                        $occupancyExpr = 'COUNT(DISTINCT CASE WHEN u.id IS NOT NULL THEN a.user_id END)';
-                        if ($type === 'peserta') {
-                            if (! empty($committeeIdsSql)) {
-                                $occupancyExpr = 'COUNT(DISTINCT CASE WHEN u.id IS NOT NULL AND a.user_id NOT IN ('.$committeeIdsSql.') THEN a.user_id END)';
-                            }
-                        } elseif ($type === 'panitia') {
-                            if (empty($committeeIdsSql)) {
-                                $occupancyExpr = '0';
-                            } else {
-                                $occupancyExpr = 'COUNT(DISTINCT CASE WHEN u.id IS NOT NULL AND a.user_id IN ('.$committeeIdsSql.') THEN a.user_id END)';
-                            }
-                        }
-                    }
-
-                    $roomRowsQuery = \DB::table('activity_hotel_rooms as r')
-                        ->leftJoin('activity_hotel_room_assignments as a', function ($join) {
-                            $join->on('a.room_id', '=', 'r.id')
-                                ->on('a.activity_id', '=', 'r.activity_id');
+                    $occupancyByRoomQuery = \DB::table('activity_hotel_room_assignments as a')
+                        ->join('activity_hotel_rooms as r', function ($join) {
+                            $join->on('r.id', '=', 'a.room_id')
+                                ->on('r.activity_id', '=', 'a.activity_id');
                         })
-                        ->leftJoin('users as u', 'u.id', '=', 'a.user_id')
-                        ->where('r.activity_id', $activityId)
-                        ->where('r.is_active', 1);
+                        ->join('users as u', 'u.id', '=', 'a.user_id')
+                        ->where('a.activity_id', $activityId)
+                        ->where('r.is_active', 1)
+                        ->whereNotNull('u.id');
                     if ($activityUsersTableExists) {
-                        $roomRowsQuery->leftJoin($tableName.' as au', function ($join) {
+                        $occupancyByRoomQuery->join($tableName.' as au', function ($join) {
                             $join->on('au.user_id', '=', 'a.user_id')
                                 ->on('au.activity_id', '=', 'a.activity_id');
-                        });
+                        })->whereIn('au.status', $roomEligibleStatuses);
                         if ($activityUsersHasDeletedAt) {
-                            $roomRowsQuery->where(function ($q) {
-                                $q->whereNull('au.deleted_at')->orWhereNull('au.user_id');
-                            });
+                            $occupancyByRoomQuery->whereNull('au.deleted_at');
                         }
                     }
+                    if ($type === 'peserta') {
+                        if (! empty($committeeIdsArray)) {
+                            $occupancyByRoomQuery->whereNotIn('a.user_id', $committeeIdsArray);
+                        }
+                    } elseif ($type === 'panitia') {
+                        if (empty($committeeIdsArray)) {
+                            $occupancyByRoomQuery->whereRaw('1=0');
+                        } else {
+                            $occupancyByRoomQuery->whereIn('a.user_id', $committeeIdsArray);
+                        }
+                    }
+                    $occupancyByRoomQuery = $occupancyByRoomQuery
+                        ->select('a.room_id', \DB::raw('COUNT(DISTINCT a.user_id) AS occupancy'))
+                        ->groupBy('a.room_id');
 
-                    $roomRows = $roomRowsQuery
+                    $roomRows = \DB::table('activity_hotel_rooms as r')
+                        ->leftJoinSub($occupancyByRoomQuery, 'occ', function ($join) {
+                            $join->on('occ.room_id', '=', 'r.id');
+                        })
+                        ->where('r.activity_id', $activityId)
+                        ->where('r.is_active', 1)
                         ->select(
                             'r.id',
                             'r.hotel_name',
                             'r.room_number',
                             'r.capacity',
-                            \DB::raw($occupancyExpr.' as occupancy')
+                            \DB::raw('COALESCE(occ.occupancy, 0) as occupancy')
                         )
-                        ->groupBy('r.id', 'r.hotel_name', 'r.room_number', 'r.capacity')
                         ->orderByDesc('occupancy')
                         ->get();
 
