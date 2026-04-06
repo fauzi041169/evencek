@@ -1447,8 +1447,57 @@ class ActivityPreparationController extends Controller
             // Load rooms
             $rooms = collect();
             try {
+                if (Schema::hasTable('activity_hotel_rooms') && Schema::hasTable('activity_hotel_room_assignments')) {
+                    $dupeGroups = DB::table('activity_hotel_rooms')
+                        ->where('activity_id', $activityId)
+                        ->select('activity_batch_id', 'hotel_name', 'room_number', DB::raw('COUNT(*) as c'))
+                        ->groupBy('activity_batch_id', 'hotel_name', 'room_number')
+                        ->having('c', '>', 1)
+                        ->limit(200)
+                        ->get();
+
+                    foreach ($dupeGroups as $g) {
+                        $roomsQuery = ActivityHotelRoom::where('activity_id', $activityId)->where('room_number', $g->room_number);
+                        if ($g->activity_batch_id) {
+                            $roomsQuery->where('activity_batch_id', $g->activity_batch_id);
+                        } else {
+                            $roomsQuery->whereNull('activity_batch_id');
+                        }
+                        if ($g->hotel_name !== null) {
+                            $roomsQuery->where('hotel_name', $g->hotel_name);
+                        } else {
+                            $roomsQuery->whereNull('hotel_name');
+                        }
+
+                        $sameRooms = $roomsQuery
+                            ->orderByDesc('capacity')
+                            ->orderBy('created_at')
+                            ->get();
+
+                        if ($sameRooms->count() <= 1) {
+                            continue;
+                        }
+
+                        $keep = $sameRooms->first();
+                        $dupIds = $sameRooms->skip(1)->pluck('id')->values()->all();
+                        if (empty($dupIds)) {
+                            continue;
+                        }
+
+                        DB::table('activity_hotel_room_assignments')
+                            ->where('activity_id', $activityId)
+                            ->whereIn('room_id', $dupIds)
+                            ->update(['room_id' => $keep->id]);
+
+                        ActivityHotelRoom::whereIn('id', $dupIds)->delete();
+                    }
+                }
+
                 $rooms = ActivityHotelRoom::where('activity_id', $activityId)
+                    ->orderByRaw('hotel_name IS NULL')
+                    ->orderBy('hotel_name')
                     ->orderBy('room_number')
+                    ->orderByDesc('capacity')
                     ->get();
             } catch (\Exception $e) {
                 \Log::warning('Failed to load rooms', ['error' => $e->getMessage()]);
@@ -2856,36 +2905,43 @@ class ActivityPreparationController extends Controller
             if (str_contains($roomCodeClean, '/')) {
                 [$hotelName, $roomNum] = array_map('trim', explode('/', $roomCodeClean, 2));
             }
-            $query = ActivityHotelRoom::where('activity_id', $activityId)
-                ->where('room_number', $roomNum);
-            if ($hotelName !== null) {
-                $query->where('hotel_name', $hotelName);
-            } else {
-                $query->whereNull('hotel_name');
-            }
-            $existing = $query->first();
-            if (! $existing) {
-                $existing = ActivityHotelRoom::create([
-                    'activity_id' => $activityId,
-                    'hotel_name' => $hotelName,
-                    'room_number' => $roomNum,
-                    'capacity' => $capacityFromCode ?? 0,
-                    'notes' => null,
-                ]);
-            }
-            // JANGAN PERNAH MENGUBAH KAPASITAS KAMAR YANG SUDAH ADA
-            // Kapasitas hanya boleh diubah melalui form "Kelola Kamar" atau import Excel
-            // Jika kamar sudah ada, gunakan kapasitas yang sudah ada, jangan ubah menjadi 0
-            // Hanya update kapasitas jika capacityFromCode > 0 (ada explicit capacity dari code)
-            if ($existing && $capacityFromCode !== null && $capacityFromCode > 0) {
-                // Hanya update jika ada explicit capacity yang valid dari code
-                if ((int) $existing->capacity !== $capacityFromCode) {
-                    $existing->capacity = $capacityFromCode;
-                    $existing->save();
+            if ($hotelName === null || $hotelName === '') {
+                $candidates = ActivityHotelRoom::where('activity_id', $activityId)
+                    ->where('room_number', $roomNum)
+                    ->orderByRaw('hotel_name IS NULL')
+                    ->orderByDesc('capacity')
+                    ->orderBy('created_at')
+                    ->get();
+
+                if ($candidates->isEmpty()) {
+                    return redirect()->back()->with('error', 'Format kamar harus "HOTEL/NOMOR"');
                 }
+
+                $distinctHotels = $candidates->pluck('hotel_name')->filter()->unique()->values();
+                if ($distinctHotels->count() > 1) {
+                    return redirect()->back()->with('error', 'Nomor kamar ada di beberapa hotel, gunakan format "HOTEL/NOMOR"');
+                }
+
+                $roomId = $candidates->first()->id;
+            } else {
+                $existing = ActivityHotelRoom::where('activity_id', $activityId)
+                    ->where('room_number', $roomNum)
+                    ->where('hotel_name', $hotelName)
+                    ->first();
+
+                if (! $existing) {
+                    $existing = ActivityHotelRoom::create([
+                        'activity_id' => $activityId,
+                        'hotel_name' => $hotelName,
+                        'room_number' => $roomNum,
+                        'capacity' => $capacityFromCode ?? 1,
+                        'notes' => null,
+                        'is_active' => 1,
+                    ]);
+                }
+
+                $roomId = $existing->id;
             }
-            // Jika capacityFromCode === null atau <= 0, pertahankan kapasitas yang sudah ada
-            $roomId = $existing->id;
         }
 
         // Clear assignment when neither room_id nor room_code provided

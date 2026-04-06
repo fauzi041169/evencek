@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useForm, router } from '@inertiajs/react';
 import Swal from 'sweetalert2';
-import { Building, X, Plus, Upload, Download, Trash2, CheckCircle, Ban, UserPlus, Users } from 'lucide-react';
+import { Building, X, Plus, Upload, Download, Trash2, CheckCircle, Ban, SquarePen, Check } from 'lucide-react';
 
 // Internal component for searchable select
 const SearchableParticipantSelect = ({ participants, onSelect, placeholder = "+ Pilih Peserta" }) => {
@@ -91,6 +91,10 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     const [roomSearch, setRoomSearch] = useState('');
     const [roomFilter, setRoomFilter] = useState('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
+    const [sortMode, setSortMode] = useState('hotel_then_number');
+    const [editingRoomId, setEditingRoomId] = useState(null);
+    const [editingCapacity, setEditingCapacity] = useState('');
+    const [savingRoomId, setSavingRoomId] = useState(null);
 
     // Import form
     const importForm = useForm({
@@ -285,6 +289,52 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         });
     };
 
+    const startEditCapacity = (room) => {
+        setEditingRoomId(room.id);
+        setEditingCapacity(String(room.capacity ?? 0));
+    };
+
+    const cancelEditCapacity = () => {
+        setEditingRoomId(null);
+        setEditingCapacity('');
+    };
+
+    const saveCapacity = (room) => {
+        const cap = parseInt(String(editingCapacity ?? '0'), 10);
+        if (Number.isNaN(cap) || cap < 0 || cap > 1000) {
+            Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Kapasitas harus angka 0 - 1000' });
+            return;
+        }
+
+        setSavingRoomId(room.id);
+        router.put(route('activity.participants.rooms.update', { activityId: activity.uid || activity.id, roomId: room.id }), {
+            activity_batch_id: room.activity_batch_id || '',
+            hotel_name: room.hotel_name || '',
+            room_number: room.room_number || '',
+            capacity: cap,
+            notes: room.notes || ''
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setSavingRoomId(null);
+                setEditingRoomId(null);
+                setEditingCapacity('');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: 'Kapasitas kamar diperbarui',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            },
+            onError: () => {
+                setSavingRoomId(null);
+            }
+        });
+    };
+
     const roomSearchTerm = (roomSearch || '').trim().toLowerCase();
     const roomSearchTokens = roomSearchTerm
         ? roomSearchTerm.split(/[\s/_,.-]+/).map(t => t.trim()).filter(Boolean)
@@ -325,6 +375,16 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
             ? unassignedParticipants.filter(p => (p?.province_key || 'none') === provinceFilter)
             : []);
 
+    const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
+    const getRoomNumberKey = (roomNumberRaw) => {
+        const s = (roomNumberRaw ?? '').toString().trim();
+        if (!s) return { n: null, s: '' };
+        const m = s.match(/\d+/);
+        if (!m) return { n: null, s };
+        const n = parseInt(m[0], 10);
+        return { n: Number.isFinite(n) ? n : null, s };
+    };
+
     const filteredRooms = rooms.filter((room) => {
         const occupants = roomOccupants[room.id] || [];
         const isFull = room.capacity > 0 && occupants.length >= room.capacity;
@@ -364,6 +424,32 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         ].join(' ');
 
         return roomSearchTokens.every(token => searchable.includes(token));
+    }).sort((a, b) => {
+        const aHotel = (a.hotel_name || '').toString().trim();
+        const bHotel = (b.hotel_name || '').toString().trim();
+        const aRoom = (a.room_number || '').toString().trim();
+        const bRoom = (b.room_number || '').toString().trim();
+        const aKey = getRoomNumberKey(aRoom);
+        const bKey = getRoomNumberKey(bRoom);
+
+        if (sortMode === 'number_then_hotel' || sortMode === 'number_desc_then_hotel') {
+            const dir = sortMode === 'number_desc_then_hotel' ? -1 : 1;
+            if (aKey.n !== null && bKey.n !== null && aKey.n !== bKey.n) return (aKey.n - bKey.n) * dir;
+            if (aKey.n !== null && bKey.n === null) return -1;
+            if (aKey.n === null && bKey.n !== null) return 1;
+            const byRoom = collator.compare(aRoom, bRoom);
+            if (byRoom !== 0) return byRoom * dir;
+            const byHotel = collator.compare(aHotel, bHotel);
+            if (byHotel !== 0) return byHotel;
+            return collator.compare(String(a.id), String(b.id));
+        }
+
+        const byHotel = collator.compare(aHotel, bHotel);
+        if (byHotel !== 0) return byHotel;
+        const byRoom = collator.compare(aRoom, bRoom);
+        if (byRoom !== 0) return byRoom;
+        if (a.capacity !== b.capacity) return (b.capacity ?? 0) - (a.capacity ?? 0);
+        return collator.compare(String(a.id), String(b.id));
     });
 
     const visibleRoomIds = filteredRooms.map(r => r.id);
@@ -541,6 +627,18 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                 </div>
                                 <div className="w-[220px] shrink-0">
                                     <select
+                                        value={sortMode}
+                                        onChange={(e) => setSortMode(e.target.value)}
+                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                        title="Urutkan tampilan kamar"
+                                    >
+                                        <option value="hotel_then_number">Urutkan: Hotel → Nomor</option>
+                                        <option value="number_then_hotel">Urutkan: Nomor → Hotel</option>
+                                        <option value="number_desc_then_hotel">Urutkan: Nomor (desc) → Hotel</option>
+                                    </select>
+                                </div>
+                                <div className="w-[220px] shrink-0">
+                                    <select
                                         value={roomFilter}
                                         onChange={(e) => setRoomFilter(e.target.value)}
                                         className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
@@ -626,7 +724,50 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                                         </td>
                                                         <td className="px-4 py-2 whitespace-nowrap">{room.hotel_name || '-'}</td>
                                                         <td className="px-4 py-2 whitespace-nowrap font-medium">{room.room_number}</td>
-                                                        <td className="px-4 py-2 whitespace-nowrap">{(room.capacity > 0 ? room.capacity : 'Tak terbatas')}</td>
+                                                        <td className="px-4 py-2 whitespace-nowrap">
+                                                            {editingRoomId === room.id ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        max="1000"
+                                                                        value={editingCapacity}
+                                                                        onChange={(e) => setEditingCapacity(e.target.value)}
+                                                                        className="w-20 rounded border border-gray-300 px-2 py-1 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => saveCapacity(room)}
+                                                                        disabled={savingRoomId === room.id}
+                                                                        className="inline-flex items-center justify-center p-1.5 rounded text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                                                                        title="Simpan kapasitas"
+                                                                    >
+                                                                        <Check className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={cancelEditCapacity}
+                                                                        disabled={savingRoomId === room.id}
+                                                                        className="inline-flex items-center justify-center p-1.5 rounded text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                                                                        title="Batal"
+                                                                    >
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2">
+                                                                    <span>{(room.capacity > 0 ? room.capacity : 'Tak terbatas')}</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => startEditCapacity(room)}
+                                                                        className="inline-flex items-center justify-center p-1 rounded text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                                                                        title="Edit kapasitas"
+                                                                    >
+                                                                        <SquarePen className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </td>
                                                         <td className="px-4 py-2 whitespace-normal min-w-[200px]">
                                                             <div className="flex flex-col gap-1">
                                                                 {occupants.map(occ => (
