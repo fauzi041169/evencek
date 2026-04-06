@@ -7182,6 +7182,195 @@ class ActivityPreparationController extends Controller
         return redirect()->back()->with('success', $message);
     }
 
+    public function createParticipantPayment(Request $request, $activityId, $userId)
+    {
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityPk = $activity->id;
+
+        if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && $activity->user_id !== auth()->id()) {
+            if (! $activity->canManageRegistration(auth()->id())) {
+                abort(403, 'Anda tidak memiliki izin untuk mengunggah pembayaran peserta.');
+            }
+        }
+
+        $validated = $request->validate([
+            'proof_file' => 'required|image|max:10240',
+            'amount' => 'nullable|numeric|min:0',
+            'payment_method_id' => 'nullable|exists:payment_methods,id',
+            'sender_name' => 'nullable|string|max:255',
+            'batch_id' => 'nullable|exists:activity_batches,id',
+        ]);
+
+        $participantQuery = ActivityUser::where('activity_id', $activityPk)
+            ->where('user_id', $userId);
+
+        if (! empty($validated['batch_id'])) {
+            $participantQuery->where('activity_batch_id', $validated['batch_id']);
+        }
+
+        $participant = $participantQuery->firstOrFail();
+
+        $batchId = $participant->activity_batch_id;
+
+        $amount = $validated['amount'] ?? null;
+        if ($amount === null) {
+            $amount = (float) ($activity->price ?? 0);
+            if ($batchId) {
+                $batch = ActivityBatch::where('id', $batchId)->where('activity_id', $activityPk)->first();
+                if ($batch && $batch->price !== null) {
+                    $amount = (float) $batch->price;
+                }
+            }
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $paymentQuery = Payment::where('user_id', $userId)
+                ->where('activity_id', $activityPk)
+                ->when(Schema::hasColumn('payments', 'activity_batch_id'), function ($q) use ($batchId) {
+                    if ($batchId) {
+                        $q->where('activity_batch_id', $batchId);
+                    } else {
+                        $q->whereNull('activity_batch_id');
+                    }
+                })
+                ->latest();
+
+            $payment = $paymentQuery->first();
+
+            if ($payment && $payment->status === 'approved') {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Pembayaran peserta sudah berstatus approved.',
+                    ], 422);
+                }
+
+                return redirect()->back()->with('error', 'Pembayaran peserta sudah berstatus approved.');
+            }
+
+            if (! $payment) {
+                $payment = new Payment();
+                $payment->user_id = $userId;
+                $payment->activity_id = $activityPk;
+                $payment->activity_batch_id = $batchId;
+            }
+
+            $file = $request->file('proof_file');
+            $path = ImageHelper::storeCompressedUploadedImage($file, 'payment-proofs', 'public', [
+                'max_width' => 2500,
+                'max_height' => 2500,
+                'quality' => 80,
+                'format' => 'webp',
+            ]);
+
+            if ($payment->exists && $payment->proof_of_payment && $payment->proof_of_payment !== 'imported') {
+                if (Storage::disk('public')->exists($payment->proof_of_payment)) {
+                    Storage::disk('public')->delete($payment->proof_of_payment);
+                }
+            }
+
+            $payment->amount = $amount;
+            $payment->status = 'pending';
+            $payment->proof_of_payment = $path;
+            if (array_key_exists('payment_method_id', $validated)) {
+                $payment->payment_method_id = $validated['payment_method_id'] ?: null;
+            }
+            if (array_key_exists('sender_name', $validated)) {
+                $payment->sender_name = $validated['sender_name'] ?: null;
+            }
+            $payment->save();
+
+            $relatedUserIds = [$userId];
+            if ($participant->activity_participant_group_id) {
+                $relatedUserIds = ActivityUser::where('activity_id', $activityPk)
+                    ->where('activity_participant_group_id', $participant->activity_participant_group_id)
+                    ->pluck('user_id')
+                    ->toArray();
+            }
+
+            $relatedUserIds = array_values(array_unique(array_map('strval', $relatedUserIds)));
+            $otherUserIds = array_values(array_diff($relatedUserIds, [(string) $userId]));
+
+            foreach ($otherUserIds as $uid) {
+                $memberPayment = Payment::firstOrNew([
+                    'user_id' => $uid,
+                    'activity_id' => $activityPk,
+                    'activity_batch_id' => $batchId,
+                ]);
+
+                $ext = pathinfo($path, PATHINFO_EXTENSION);
+                $uniqueName = 'payment_group_'.$activityPk.'_'.$uid.'_'.uniqid().'.'.$ext;
+                $uniquePathRelative = 'payment-proofs/'.$uniqueName;
+
+                if (Storage::disk('public')->exists($path)) {
+                    Storage::disk('public')->copy($path, $uniquePathRelative);
+
+                    if ($memberPayment->exists && $memberPayment->proof_of_payment && $memberPayment->proof_of_payment !== 'imported') {
+                        if (Storage::disk('public')->exists($memberPayment->proof_of_payment)) {
+                            Storage::disk('public')->delete($memberPayment->proof_of_payment);
+                        }
+                    }
+
+                    $memberPayment->proof_of_payment = $uniquePathRelative;
+                    $memberPayment->amount = $amount;
+                    $memberPayment->status = 'pending';
+                    if ($payment->payment_method_id) {
+                        $memberPayment->payment_method_id = $payment->payment_method_id;
+                    }
+                    if ($payment->sender_name) {
+                        $memberPayment->sender_name = $payment->sender_name;
+                    }
+                    $memberPayment->save();
+                }
+            }
+
+            ActivityUser::where('activity_id', $activityPk)
+                ->whereIn('user_id', $relatedUserIds)
+                ->when($batchId, function ($q) use ($batchId) {
+                    $q->where('activity_batch_id', $batchId);
+                })
+                ->update([
+                    'status' => ActivityUser::STATUS_VERIFICATION,
+                    'updated_by' => auth()->id(),
+                    'updated_at' => now(),
+                ]);
+
+            DB::commit();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Bukti pembayaran berhasil diunggah.',
+                    'payment_id' => $payment->id,
+                    'proof_url' => asset('storage/'.$path),
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Bukti pembayaran berhasil diunggah.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('createParticipantPayment failed', [
+                'activity_id' => $activityPk,
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal mengunggah bukti pembayaran.',
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Gagal mengunggah bukti pembayaran.');
+        }
+    }
+
     /**
      * Generate custom UID untuk User (karena User::insert() tidak memicu event model)
      *

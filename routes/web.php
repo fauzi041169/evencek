@@ -428,6 +428,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::get('/rooms/template', 'downloadRoomsTemplate')->name('rooms.template');
         Route::post('/verify-email/{userId}', 'verifyEmail')->name('verify-email');
         Route::post('/verify-email-bulk', 'verifyEmailBulk')->name('verify-email-bulk');
+        Route::post('/payment/{userId}', 'createParticipantPayment')->name('create-payment');
         Route::post('/toggle-status/{userId}', 'toggleParticipantStatus')->name('toggle-status');
         Route::post('/save-column-settings', 'saveColumnSettings')->name('save-column-settings');
         Route::post('/fill-gender', 'fillGender')->name('fill-gender');

@@ -73,6 +73,6 @@ COPY --from=vendor /app/vendor ./vendor
 COPY --from=vendor /app/bootstrap/cache ./bootstrap/cache
 COPY --from=frontend /app/public/build ./public/build
 
-RUN APP_ENV=production APP_DEBUG=false APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= php artisan storage:link --ansi || true
+RUN rm -rf /var/www/html/public/storage && APP_ENV=production APP_DEBUG=false APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= php artisan storage:link --ansi || true
 
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache

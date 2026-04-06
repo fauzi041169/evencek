@@ -402,6 +402,7 @@ export default function Index({
     const [showRoomsModal, setShowRoomsModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [selectedPaymentParticipant, setSelectedPaymentParticipant] = useState(null);
+    const [pendingOpenPaymentForUserId, setPendingOpenPaymentForUserId] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingParticipant, setEditingParticipant] = useState(null);
     const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
@@ -516,7 +517,7 @@ export default function Index({
         return result;
     }, [safeParticipants, availableCustomKeys]);
 
-    const handleStatusClick = (participant) => {
+    const handleStatusClick = async (participant) => {
         const activityId = activity?.uid || activity?.id;
         if (!activityId) {
             Swal.fire('Error', 'ID aktivitas tidak ditemukan.', 'error');
@@ -551,6 +552,85 @@ export default function Index({
         const isPaidActivity = Number(activity?.price || 0) > 0;
         const isActive = Number(participant?.status) === 1;
         const nextAction = isActive ? 'Nonaktifkan' : 'Aktifkan';
+
+        if (isPaidActivity) {
+            const res = await Swal.fire({
+                title: 'Tidak ada data pembayaran',
+                html: `<div class="text-left"><p class="mb-2">Peserta ini belum memiliki data pembayaran pada sistem.</p><p class="text-sm text-slate-500">Agar status dan validasi pembayaran normal, unggah bukti bayar terlebih dahulu.</p></div>`,
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: 'Upload Bukti Bayar',
+                denyButtonText: `Ya, ${nextAction}`,
+                cancelButtonText: 'Batal'
+            });
+
+            if (res.isConfirmed) {
+                const upload = await Swal.fire({
+                    title: 'Upload Bukti Bayar',
+                    input: 'file',
+                    inputAttributes: {
+                        accept: 'image/*'
+                    },
+                    showCancelButton: true,
+                    confirmButtonText: 'Upload',
+                    cancelButtonText: 'Batal',
+                    showLoaderOnConfirm: true,
+                    preConfirm: async (file) => {
+                        if (!file) {
+                            Swal.showValidationMessage('Pilih file bukti bayar terlebih dahulu.');
+                            return;
+                        }
+
+                        if (file.size > 10 * 1024 * 1024) {
+                            Swal.showValidationMessage('Ukuran file maksimal 10MB.');
+                            return;
+                        }
+
+                        const formData = new FormData();
+                        formData.append('proof_file', file);
+                        if (filters?.batch_id) {
+                            formData.append('batch_id', filters.batch_id);
+                        }
+
+                        try {
+                            const response = await axios.post(route('activity.participants.create-payment', { activityId, userId }), formData, {
+                                headers: {
+                                    'Content-Type': 'multipart/form-data',
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            return response.data;
+                        } catch (error) {
+                            const msg = error?.response?.data?.message || 'Gagal mengunggah bukti bayar.';
+                            Swal.showValidationMessage(msg);
+                        }
+                    },
+                    allowOutsideClick: () => !Swal.isLoading()
+                });
+
+                if (upload.isConfirmed) {
+                    setPendingOpenPaymentForUserId(userId);
+                    router.reload({ only: ['participants'], preserveScroll: true });
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Bukti bayar berhasil diunggah. Silakan lanjutkan validasi pembayaran.',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
+
+                return;
+            }
+
+            if (!res.isDenied) {
+                return;
+            }
+        }
+
         const warningText = isPaidActivity
             ? 'Peserta ini tidak memiliki data pembayaran pada sistem. Jika kegiatan berbayar, pastikan data pembayaran sudah ada/terhubung sebelum validasi.'
             : 'Peserta ini tidak memiliki data pembayaran pada sistem (kegiatan gratis atau tanpa pembayaran).';
@@ -596,6 +676,23 @@ export default function Index({
             }
         }
     }, [safeParticipants]);
+
+    useEffect(() => {
+        if (!pendingOpenPaymentForUserId || !safeParticipants?.data) return;
+
+        const updatedParticipant = safeParticipants.data.find(p => (p.user?.id || p.user_id) === pendingOpenPaymentForUserId);
+        if (!updatedParticipant) return;
+
+        const payment = updatedParticipant.payment || updatedParticipant.user?.payments?.[0];
+        if (!payment) return;
+
+        setSelectedPaymentParticipant({
+            payment: payment,
+            participant: updatedParticipant
+        });
+        setShowPaymentModal(true);
+        setPendingOpenPaymentForUserId(null);
+    }, [pendingOpenPaymentForUserId, safeParticipants]);
 
 
     // Helper to get custom value by normalized key - REMOVED to use the outer robust function
