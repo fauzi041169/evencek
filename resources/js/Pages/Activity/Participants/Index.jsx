@@ -1658,32 +1658,11 @@ export default function Index({
                             </button>
 
                             <button
-                                onClick={toggleShowDeleted}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all shadow-sm border ${String(filters.show_deleted || '') === '1'
-                                        ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
-                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                                    }`}
-                                title="Tampilkan peserta yang terhapus (maks 10 hari bisa dipulihkan)"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                <span className="hidden md:inline">{String(filters.show_deleted || '') === '1' ? 'Mode Terhapus' : 'Tampilkan Terhapus'}</span>
-                            </button>
-
-                            <button
                                 onClick={() => setShowImportModals(true)}
                                 className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg active:scale-95"
                             >
                                 <UserPlus className="w-4 h-4" />
                                 <span className="hidden md:inline">Input Peserta</span>
-                            </button>
-
-                            <button
-                                onClick={openAddFromUsersModal}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
-                                title="Tambah peserta dari user yang sudah ada"
-                            >
-                                <UserPlus className="w-4 h-4 text-indigo-500" />
-                                <span className="hidden md:inline">Tambah dari User</span>
                             </button>
 
                             {(() => {
