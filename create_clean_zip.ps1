@@ -36,19 +36,19 @@ foreach ($file in $files) {
 $envContent = @"
 APP_NAME=EVENCEK
 APP_ENV=production
-APP_KEY=base64:KQ2uXJL35gNKsLpdaCP0lqxsPj5pwcyEEU19fkcENcI=
-APP_DEBUG=true
+APP_KEY=
+APP_DEBUG=false
 APP_URL=https://m.eventcek.com
 LOG_CHANNEL=stack
 LOG_DEPRECATIONS_CHANNEL=null
-LOG_LEVEL=debug
+LOG_LEVEL=info
 
 DB_CONNECTION=mysql
 DB_HOST=localhost
 DB_PORT=3306
-DB_DATABASE=rama3823_ivenubadzkia
-DB_USERNAME=rama3823_ivenubadzkia
-DB_PASSWORD="Gombal@21"
+DB_DATABASE=
+DB_USERNAME=
+DB_PASSWORD=
 
 BROADCAST_DRIVER=log
 CACHE_DRIVER=file
@@ -75,72 +75,6 @@ foreach ($file in $publicFiles) {
         Copy-Item -Path "$source\public\$file" -Destination "$dest\public\$file" -Force
     }
 }
-
-# 5. Create setup.php Helper INSIDE PUBLIC (To avoid rewrite issues)
-$setupPhpContent = @"
-<?php
-// Helper script for shared hosting setup
-// Enable error reporting immediately
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-define('LARAVEL_START', microtime(true));
-
-echo "<html><head><title>EventCek Setup V2</title></head><body style='font-family:sans-serif; padding:20px;'>";
-echo "<h1>EventCek Auto Setup V2</h1>";
-echo "<p>PHP Version: " . phpversion() . "</p>";
-
-\$vendorPath = __DIR__.'/../vendor/autoload.php';
-if (!file_exists(\$vendorPath)) {
-    die("Error: vendor folder is missing at \$vendorPath. Please upload the full zip.");
-}
-
-require \$vendorPath;
-
-try {
-    echo "<p>Bootstrapping Laravel...</p>";
-    \$app = require_once __DIR__.'/../bootstrap/app.php';
-    
-    // Create Kernel to boot the app
-    \$kernel = \$app->make(Illuminate\Contracts\Http\Kernel::class);
-    // We don't handle the request, just boot to run Artisan
-    
-    use Illuminate\Support\Facades\Artisan;
-    
-    function runCommand(\$cmd, \$desc) {
-        echo "<h3>\$desc</h3>";
-        try {
-            Artisan::call(\$cmd);
-            echo "<pre style='background:#f0f0f0; padding:10px;'>" . Artisan::output() . "</pre>";
-        } catch (Exception \$e) {
-            echo "<p style='color:red'>Error running command: " . \$e->getMessage() . "</p>";
-        }
-    }
-
-    // Run Commands
-    runCommand('storage:link', 'Linking Storage...');
-    runCommand('optimize:clear', 'Clearing Caches...');
-    runCommand('view:clear', 'Clearing Views...');
-    runCommand('config:clear', 'Clearing Config...');
-    runCommand('migrate --force', 'Migrating Database...');
-    
-    echo "<h2 style='color:green'>Setup Complete!</h2>";
-    echo "<p>If you see this, the app logic is working.</p>";
-    echo "<a href='/'>Go to Homepage</a>";
-    
-} catch (Throwable \$e) {
-    echo "<h1 style='color:red'>Critical Error during Boot</h1>";
-    echo "<strong>Message:</strong> " . \$e->getMessage() . "<br>";
-    echo "<strong>File:</strong> " . \$e->getFile() . ":" . \$e->getLine() . "<br>";
-    echo "<h3>Stack Trace:</h3>";
-    echo "<pre>" . \$e->getTraceAsString() . "</pre>";
-}
-echo "</body></html>";
-?>
-"@
-Set-Content -Path "$dest\public\setup.php" -Value $setupPhpContent
-
 
 # Copy public subdirectories except assets and storage
 $publicDirs = Get-ChildItem -Path "$source\public" -Directory | Where-Object { $_.Name -notin @("assets", "storage", "storage_old") }

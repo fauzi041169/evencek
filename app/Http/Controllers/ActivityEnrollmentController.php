@@ -19,17 +19,11 @@ class ActivityEnrollmentController extends Controller
         $wantsJson = $request->wantsJson() || $request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest';
 
         try {
-            Log::info('ActivityEnrollmentController::enroll HIT', [
+            Log::debug('ActivityEnrollmentController::enroll HIT', [
                 'activity_id' => $activityId,
                 'user_id' => auth()->id(),
                 'method' => $request->method(),
-                'url' => $request->fullUrl(),
             ]);
-
-            Log::info('Enroll Request:', $request->all());
-            Log::info('Enroll Request Headers:', $request->headers->all());
-            Log::info('Enroll Request wantsJson: '.($request->wantsJson() ? 'true' : 'false'));
-            Log::info('Enroll Request ajax: '.($request->ajax() ? 'true' : 'false'));
 
             // Ensure user is logged in
             if (! auth()->check()) {
@@ -75,9 +69,9 @@ class ActivityEnrollmentController extends Controller
             $batchCount = $activity->batches()->count();
             $hasBatches = $batchCount > 0;
 
-            Log::info('Enroll Batch Info', [
+            Log::debug('Enroll Batch Info', [
                 'has_batches' => $hasBatches,
-                'active_batch' => $activeBatch ? $activeBatch->toArray() : null,
+                'active_batch_id' => $activeBatch ? $activeBatch->id : null,
                 'batch_count' => $batchCount,
             ]);
 
@@ -539,8 +533,11 @@ class ActivityEnrollmentController extends Controller
             }
 
             if (! $isCommitteeVoucherValidForBypass && ! empty($uniqueMissingData)) {
-                $debugValidation['missing_fields_final'] = $allMissingFields;
-                Log::info('Validation Failed: Missing fields (Aggregated)', $debugValidation);
+                Log::warning('Validation Failed: Missing fields', [
+                    'activity_id' => $activityId,
+                    'user_id' => $user->id,
+                    'missing_keys' => array_column($uniqueMissingData, 'key'),
+                ]);
 
                 $msg = 'Profil Anda belum lengkap. Lengkapi data berikut: '.implode(', ', $allMissingFields);
 
@@ -875,20 +872,9 @@ class ActivityEnrollmentController extends Controller
                     }
                 }
 
-                $debugValidation['enrollment_created'] = $enrollment->toArray();
-                Log::info('Enrollment Success (Free)', $debugValidation);
-            } else {
-                Log::info('Enrollment Pending Payment (Paid) - Skipping ActivityUser creation until payment', $debugValidation);
             }
 
             $userId = auth()->id();
-
-            Log::info('Enrollment Price Check - DEBUG', [
-                'activity_price' => $activity->price,
-                'batch_price' => $activeBatch ? $activeBatch->price : 'NO BATCH',
-                'batch_price_is_null' => $activeBatch ? is_null($activeBatch->price) : 'N/A',
-                'final_price' => $price,
-            ]);
 
             if ($price > 0) {
                 $paymentData = [
@@ -938,8 +924,6 @@ class ActivityEnrollmentController extends Controller
                     $payment->save();
                 }
 
-                Log::info('Payment record created/checked:', $payment->toArray());
-
                 $routeParams = ['activity' => $activityId];
                 if ($activeBatch) {
                     $routeParams['batch_id'] = $activeBatch->id;
@@ -949,8 +933,6 @@ class ActivityEnrollmentController extends Controller
                 if (method_exists($activity, 'hasAutomaticPayment') && $activity->hasAutomaticPayment()) {
                     $redirectUrl = route('midtrans.payment.create', $routeParams);
                 }
-
-                Log::info('Enrollment Redirecting to Payment', ['url' => $redirectUrl]);
 
                 if ($wantsJson) {
                     return response()->json(array_merge([
@@ -987,8 +969,12 @@ class ActivityEnrollmentController extends Controller
                 return redirect()->back()->with('error', 'Anda sudah terdaftar dalam kegiatan ini');
             }
 
-            Log::error('Enrollment System Error: '.$e->getMessage());
-            Log::error($e->getTraceAsString());
+            Log::error('Enrollment System Error', [
+                'activity_id' => $activityId,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ]);
 
             if ($wantsJson) {
                 // Return detailed error in debug mode, generic in production
@@ -999,7 +985,7 @@ class ActivityEnrollmentController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => $message,
-                    'debug_error' => $e->getMessage(), // Always send this for now to help debug the user issue
+                    'debug_error' => config('app.debug') ? $e->getMessage() : null,
                 ], 500);
             }
 
