@@ -143,6 +143,8 @@ export default function Dashboard({
     roomByRegionStats,
     roomStatsByType,
     roomByRegionStatsByType,
+    roomGenderFilter,
+    roomHotelFilter,
     totalChats,
     totalChatHubungiPanitia,
     totalUserKomentar,
@@ -157,6 +159,17 @@ export default function Dashboard({
     const defaultStart = startDateStr || new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const [startDate, setStartDate] = useState(defaultStart);
     const [endDate, setEndDate] = useState(defaultEnd);
+
+    const [roomGenderFilterState, setRoomGenderFilterState] = useState(roomGenderFilter || 'all');
+    const [roomHotelFilterState, setRoomHotelFilterState] = useState(roomHotelFilter || 'all');
+
+    useEffect(() => {
+        setRoomGenderFilterState(roomGenderFilter || 'all');
+    }, [roomGenderFilter]);
+
+    useEffect(() => {
+        setRoomHotelFilterState(roomHotelFilter || 'all');
+    }, [roomHotelFilter]);
 
     // --- Chart Configurations ---
 
@@ -1018,6 +1031,26 @@ export default function Dashboard({
     const [roomRegionLevel, setRoomRegionLevel] = useState('province');
     const [roomPicFilter, setRoomPicFilter] = useState('all');
     const [roomUserTypeFilter, setRoomUserTypeFilter] = useState('peserta');
+    const [roomHotelNameFilter, setRoomHotelNameFilter] = useState('all');
+
+    const reloadRoomStats = (params = {}) => {
+        const nextRoomGender = params.room_gender ?? roomGenderFilterState;
+        const nextRoomHotel = params.room_hotel ?? roomHotelFilterState;
+        router.get(
+            route('activity.dashboard', activity.id),
+            {
+                start_date: startDate,
+                end_date: endDate,
+                room_gender: nextRoomGender,
+                room_hotel: nextRoomHotel,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['roomStats', 'roomByRegionStats', 'roomStatsByType', 'roomByRegionStatsByType', 'roomGenderFilter', 'roomHotelFilter'],
+            }
+        );
+    };
 
     const roomStatsView = useMemo(() => {
         const byType = roomStatsByType && typeof roomStatsByType === 'object' ? roomStatsByType : null;
@@ -1028,6 +1061,22 @@ export default function Dashboard({
         const byType = roomStatsByType && typeof roomStatsByType === 'object' ? roomStatsByType : null;
         return (byType && byType.all) ? byType.all : roomStatsView;
     }, [roomStatsByType, roomStatsView]);
+
+    const roomHotelNameOptions = useMemo(() => {
+        const list = Array.isArray(roomStatsAll?.hotels) ? roomStatsAll.hotels : [];
+        const names = list
+            .map((h) => String(h?.hotel_name || '').trim() || 'Tanpa Hotel')
+            .filter(Boolean);
+        return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+    }, [roomStatsAll]);
+
+    const roomHotelsFilteredForTable = useMemo(() => {
+        const list = Array.isArray(roomStatsAll?.hotels) ? roomStatsAll.hotels : [];
+        if (roomHotelNameFilter === 'all') return list;
+        const wanted = String(roomHotelNameFilter || '').trim();
+        if (!wanted) return list;
+        return list.filter((h) => (String(h?.hotel_name || '').trim() || 'Tanpa Hotel') === wanted);
+    }, [roomStatsAll, roomHotelNameFilter]);
 
     const roomByRegionStatsView = useMemo(() => {
         const byType = roomByRegionStatsByType && typeof roomByRegionStatsByType === 'object' ? roomByRegionStatsByType : null;
@@ -1102,18 +1151,20 @@ export default function Dashboard({
                     const pKey = getMasterProvinceCompactKey(provinceName) || normalizeProvinceKeyCompact(provinceName);
                     return pKey && provinceKeys.includes(pKey);
                 }));
+        const assignedLabel = roomHotelFilterState === 'all' ? 'Sudah Dapat Kamar' : 'Di Hotel Ini';
+        const unassignedLabel = roomHotelFilterState === 'all' ? 'Belum Dapat Kamar' : 'Di Luar Hotel Ini';
         setRoomRegionChartData({
             labels: src.map(r => r.name),
             datasets: [
                 {
-                    label: 'Sudah Dapat Kamar',
+                    label: assignedLabel,
                     data: src.map(r => r.assigned),
                     backgroundColor: '#3b82f6',
                     borderRadius: 4,
                     barThickness: 18
                 },
                 {
-                    label: 'Belum Dapat Kamar',
+                    label: unassignedLabel,
                     data: src.map(r => r.unassigned),
                     backgroundColor: '#f59e0b',
                     borderRadius: 4,
@@ -1121,7 +1172,7 @@ export default function Dashboard({
                 }
             ]
         });
-    }, [roomRegionLevel, roomByRegionStatsView, roomPicFilter, picToProvinceKeysMap, allProvinceKeysFromPic, provinceNameByKeyFromPic]);
+    }, [roomRegionLevel, roomByRegionStatsView, roomPicFilter, picToProvinceKeysMap, allProvinceKeysFromPic, provinceNameByKeyFromPic, roomHotelFilterState]);
 
     const roomRegionChartOptions = {
         responsive: true,
@@ -1491,7 +1542,11 @@ export default function Dashboard({
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        router.get(route('activity.dashboard', activity.id), { start_date: startDate, end_date: endDate }, { preserveScroll: true, preserveState: true, only: ['registrationTrend', 'startDateStr', 'endDateStr'] });
+                                        router.get(
+                                            route('activity.dashboard', activity.id),
+                                            { start_date: startDate, end_date: endDate, room_gender: roomGenderFilterState, room_hotel: roomHotelFilterState },
+                                            { preserveScroll: true, preserveState: true, only: ['registrationTrend', 'startDateStr', 'endDateStr'] }
+                                        );
                                     }}
                                     className="inline-flex items-center px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90"
                                 >
@@ -1682,7 +1737,20 @@ export default function Dashboard({
                                 <div className="mb-4 sm:mb-6">
                                     <div className="flex items-center justify-between mb-3">
                                         <h6 className="text-sm font-semibold text-gray-700">Rincian per Hotel</h6>
-                                        <div className="text-[10px] text-gray-400">{roomStatsAll.hotels.length} hotel</div>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                value={roomHotelNameFilter}
+                                                onChange={(e) => setRoomHotelNameFilter(e.target.value)}
+                                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                                disabled={roomHotelNameOptions.length <= 1}
+                                            >
+                                                <option value="all">Semua Hotel</option>
+                                                {roomHotelNameOptions.map((name) => (
+                                                    <option key={name} value={name}>{name}</option>
+                                                ))}
+                                            </select>
+                                            <div className="text-[10px] text-gray-400">{roomHotelsFilteredForTable.length} hotel</div>
+                                        </div>
                                     </div>
                                     <div className="overflow-x-auto rounded-lg border border-gray-200">
                                         <table className="min-w-full text-xs">
@@ -1698,7 +1766,7 @@ export default function Dashboard({
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-100">
-                                                {roomStatsAll.hotels.map((h, idx) => {
+                                                {roomHotelsFilteredForTable.map((h, idx) => {
                                                     const hotelName = String(h?.hotel_name || '').trim() || 'Tanpa Hotel';
                                                     const rooms = Number(h?.total_rooms || 0);
                                                     const usedRooms = Number(h?.used_rooms || 0);
@@ -1742,6 +1810,18 @@ export default function Dashboard({
                                                     - <span className="font-extrabold">{roomPicFilter}</span>
                                                 </>
                                             )}
+                                            {roomGenderFilterState !== 'all' && (
+                                                <>
+                                                    {' '}
+                                                    - <span className="font-extrabold">{roomGenderFilterState === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
+                                                </>
+                                            )}
+                                            {roomHotelFilterState !== 'all' && String(roomHotelFilterState || '').trim() !== '' && (
+                                                <>
+                                                    {' '}
+                                                    - <span className="font-extrabold">{roomHotelFilterState}</span>
+                                                </>
+                                            )}
                                         </h6>
                                         <div className="flex items-center gap-2">
                                             <select
@@ -1752,6 +1832,35 @@ export default function Dashboard({
                                                 <option value="peserta">Peserta</option>
                                                 <option value="panitia">Panitia</option>
                                                 <option value="all">Semua</option>
+                                            </select>
+                                            <select
+                                                value={roomGenderFilterState}
+                                                onChange={(e) => {
+                                                    const v = e.target.value;
+                                                    setRoomGenderFilterState(v);
+                                                    reloadRoomStats({ room_gender: v });
+                                                }}
+                                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                            >
+                                                <option value="all">Semua Gender</option>
+                                                <option value="L">Laki-laki</option>
+                                                <option value="P">Perempuan</option>
+                                            </select>
+                                            <select
+                                                value={roomHotelFilterState}
+                                                onChange={(e) => {
+                                                    const v = e.target.value;
+                                                    setRoomHotelFilterState(v);
+                                                    setRoomHotelNameFilter(v);
+                                                    reloadRoomStats({ room_hotel: v });
+                                                }}
+                                                className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                                                disabled={roomHotelNameOptions.length <= 1}
+                                            >
+                                                <option value="all">Semua Hotel</option>
+                                                {roomHotelNameOptions.map((name) => (
+                                                    <option key={name} value={name}>{name}</option>
+                                                ))}
                                             </select>
                                             <select
                                                 value={roomPicFilter}

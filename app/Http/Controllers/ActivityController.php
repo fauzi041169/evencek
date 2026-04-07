@@ -6687,6 +6687,42 @@ class ActivityController extends Controller
         $activity = Activity::with(['category', 'divisions', 'divisions.requirements', 'committeeStructures.user.profile', 'rundowns'])
             ->findOrFail($activityId);
 
+        $roomGenderFilterRaw = trim((string) $request->query('room_gender', 'all'));
+        $roomGenderFilterNorm = strtoupper($roomGenderFilterRaw);
+        $roomGenderFilter = in_array($roomGenderFilterNorm, ['L', 'P'], true) ? $roomGenderFilterNorm : 'all';
+        $roomHotelFilterRaw = trim((string) $request->query('room_hotel', 'all'));
+        $roomHotelFilter = $roomHotelFilterRaw !== '' ? $roomHotelFilterRaw : 'all';
+        $applyRoomGenderFilter = function ($query) use ($roomGenderFilter) {
+            if ($roomGenderFilter === 'all') {
+                return $query;
+            }
+
+            $query->where(function ($q) use ($roomGenderFilter) {
+                if ($roomGenderFilter === 'L') {
+                    $q->whereRaw("LOWER(COALESCE(profiles.jenis_kelamin, '')) IN ('l','lk','male','m')")
+                        ->orWhereRaw("LOWER(COALESCE(profiles.jenis_kelamin, '')) LIKE '%laki%'");
+                } else {
+                    $q->whereRaw("LOWER(COALESCE(profiles.jenis_kelamin, '')) IN ('p','pr','female','f')")
+                        ->orWhereRaw("LOWER(COALESCE(profiles.jenis_kelamin, '')) LIKE '%perem%'");
+                }
+            });
+
+            return $query;
+        };
+        $applyRoomHotelFilterToRoomJoin = function ($query) use ($roomHotelFilter) {
+            if ($roomHotelFilter === 'all') {
+                return $query;
+            }
+
+            if ($roomHotelFilter === 'Tanpa Hotel') {
+                $query->whereRaw("TRIM(COALESCE(r.hotel_name, '')) = ''");
+            } else {
+                $query->whereRaw("TRIM(COALESCE(r.hotel_name, '')) = ?", [$roomHotelFilter]);
+            }
+
+            return $query;
+        };
+
         // Get committee user IDs to exclude them from participants
         $committeeUserIds = DB::table('activity_committee_structures')
             ->where('activity_id', $activityId)
@@ -7286,16 +7322,29 @@ class ActivityController extends Controller
                 $eligibleCountPanitia = 0;
                 $eligibleCountPeserta = 0;
                 if ($activityUsersTableExists) {
-                    $eligibleCountAll = (int) (clone $activityUsersBaseQuery)
+                    $eligibleAllQuery = (clone $activityUsersBaseQuery)
                         ->whereIn('au.status', $roomEligibleStatuses)
-                        ->distinct()
-                        ->count('au.user_id');
-                    $eligibleCountPanitia = empty($committeeIdsArray) ? 0 : (int) (clone $activityUsersBaseQuery)
+                        ->join('profiles', 'profiles.user_id', '=', 'au.user_id');
+                    $eligibleAllQuery = $applyRoomGenderFilter($eligibleAllQuery);
+                    $eligibleCountAll = (int) $eligibleAllQuery->distinct()->count('au.user_id');
+
+                    if (empty($committeeIdsArray)) {
+                        $eligibleCountPanitia = 0;
+                    } else {
+                        $eligiblePanitiaQuery = (clone $activityUsersBaseQuery)
+                            ->whereIn('au.status', $roomEligibleStatuses)
+                            ->whereIn('au.user_id', $committeeIdsArray)
+                            ->join('profiles', 'profiles.user_id', '=', 'au.user_id');
+                        $eligiblePanitiaQuery = $applyRoomGenderFilter($eligiblePanitiaQuery);
+                        $eligibleCountPanitia = (int) $eligiblePanitiaQuery->distinct()->count('au.user_id');
+                    }
+
+                    $eligiblePesertaQuery = (clone $activityUsersBaseQuery)
                         ->whereIn('au.status', $roomEligibleStatuses)
-                        ->whereIn('au.user_id', $committeeIdsArray)
-                        ->distinct()
-                        ->count('au.user_id');
-                    $eligibleCountPeserta = (int) $pesertaAktif;
+                        ->whereNotIn('au.user_id', $committeeUserIds)
+                        ->join('profiles', 'profiles.user_id', '=', 'au.user_id');
+                    $eligiblePesertaQuery = $applyRoomGenderFilter($eligiblePesertaQuery);
+                    $eligibleCountPeserta = (int) $eligiblePesertaQuery->distinct()->count('au.user_id');
                 }
 
                 $getEligibleCountByType = function ($type) use ($eligibleCountPeserta, $eligibleCountAll, $eligibleCountPanitia) {
@@ -7351,6 +7400,7 @@ class ActivityController extends Controller
                                     ->on('r.activity_id', '=', 'a.activity_id');
                             })
                             ->join('users as u', 'u.id', '=', 'a.user_id')
+                            ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
                             ->where('a.activity_id', $activityId)
                             ->where('r.is_active', 1)
                             ->whereNotNull('u.id');
@@ -7364,6 +7414,7 @@ class ActivityController extends Controller
                             }
                         }
                         $assignedQuery = $applyTypeFilterToAssignments($assignedQuery, $type);
+                        $assignedQuery = $applyRoomGenderFilter($assignedQuery);
                         $assignedCount = (int) $assignedQuery->distinct()->count('a.user_id');
                     }
 
@@ -7373,6 +7424,7 @@ class ActivityController extends Controller
                                 ->on('r.activity_id', '=', 'a.activity_id');
                         })
                         ->join('users as u', 'u.id', '=', 'a.user_id')
+                        ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
                         ->where('a.activity_id', $activityId)
                         ->where('r.is_active', 1)
                         ->whereNotNull('u.id');
@@ -7396,6 +7448,7 @@ class ActivityController extends Controller
                             $occupancyByRoomQuery->whereIn('a.user_id', $committeeIdsArray);
                         }
                     }
+                    $occupancyByRoomQuery = $applyRoomGenderFilter($occupancyByRoomQuery);
                     $occupancyByRoomQuery = $occupancyByRoomQuery
                         ->select('a.room_id', \DB::raw('COUNT(DISTINCT a.user_id) AS occupancy'))
                         ->groupBy('a.room_id');
@@ -7535,6 +7588,7 @@ class ActivityController extends Controller
                         $provinceTotals->whereNull('au.deleted_at');
                     }
                     $provinceTotals = $applyTypeFilterToActivityUsers($provinceTotals, $type);
+                    $provinceTotals = $applyRoomGenderFilter($provinceTotals);
                     $provinceTotals = $provinceTotals
                         ->select('provinces.id', 'provinces.name', DB::raw('COUNT(DISTINCT au.user_id) as total'))
                         ->groupBy('provinces.id', 'provinces.name')
@@ -7552,6 +7606,7 @@ class ActivityController extends Controller
                         $regencyTotals->whereNull('au.deleted_at');
                     }
                     $regencyTotals = $applyTypeFilterToActivityUsers($regencyTotals, $type);
+                    $regencyTotals = $applyRoomGenderFilter($regencyTotals);
                     $regencyTotals = $regencyTotals
                         ->select('regencies.id', 'regencies.name', 'provinces.name as province_name', DB::raw('COUNT(DISTINCT au.user_id) as total'))
                         ->groupBy('regencies.id', 'regencies.name', 'provinces.name')
@@ -7570,6 +7625,7 @@ class ActivityController extends Controller
                         $districtTotals->whereNull('au.deleted_at');
                     }
                     $districtTotals = $applyTypeFilterToActivityUsers($districtTotals, $type);
+                    $districtTotals = $applyRoomGenderFilter($districtTotals);
                     $districtTotals = $districtTotals
                         ->select('districts.id', 'districts.name', 'provinces.name as province_name', DB::raw('COUNT(DISTINCT au.user_id) as total'))
                         ->groupBy('districts.id', 'districts.name', 'provinces.name')
@@ -7600,6 +7656,8 @@ class ActivityController extends Controller
                             $provinceAssignedQuery->whereNull('au.deleted_at');
                         }
                         $provinceAssignedQuery = $applyTypeFilterToAssignments($provinceAssignedQuery, $type);
+                        $provinceAssignedQuery = $applyRoomGenderFilter($provinceAssignedQuery);
+                        $provinceAssignedQuery = $applyRoomHotelFilterToRoomJoin($provinceAssignedQuery);
                         $provinceAssigned = $provinceAssignedQuery
                             ->select('provinces.id', 'provinces.name', DB::raw('COUNT(DISTINCT a.user_id) as assigned'))
                             ->groupBy('provinces.id', 'provinces.name')
@@ -7627,6 +7685,8 @@ class ActivityController extends Controller
                             $regencyAssignedQuery->whereNull('au.deleted_at');
                         }
                         $regencyAssignedQuery = $applyTypeFilterToAssignments($regencyAssignedQuery, $type);
+                        $regencyAssignedQuery = $applyRoomGenderFilter($regencyAssignedQuery);
+                        $regencyAssignedQuery = $applyRoomHotelFilterToRoomJoin($regencyAssignedQuery);
                         $regencyAssigned = $regencyAssignedQuery
                             ->select('regencies.id', 'regencies.name', DB::raw('COUNT(DISTINCT a.user_id) as assigned'))
                             ->groupBy('regencies.id', 'regencies.name')
@@ -7654,6 +7714,8 @@ class ActivityController extends Controller
                             $districtAssignedQuery->whereNull('au.deleted_at');
                         }
                         $districtAssignedQuery = $applyTypeFilterToAssignments($districtAssignedQuery, $type);
+                        $districtAssignedQuery = $applyRoomGenderFilter($districtAssignedQuery);
+                        $districtAssignedQuery = $applyRoomHotelFilterToRoomJoin($districtAssignedQuery);
                         $districtAssigned = $districtAssignedQuery
                             ->select('districts.id', 'districts.name', DB::raw('COUNT(DISTINCT a.user_id) as assigned'))
                             ->groupBy('districts.id', 'districts.name')
@@ -7805,6 +7867,8 @@ class ActivityController extends Controller
             'roomByRegionStats',
             'roomStatsByType',
             'roomByRegionStatsByType',
+            'roomGenderFilter',
+            'roomHotelFilter',
             'groupStats',
             'totalChats',
             'totalChatHubungiPanitia',
