@@ -596,13 +596,15 @@ export default function Index({
                         try {
                             const response = await axios.post(route('activity.participants.create-payment', { activityId, userId }), formData, {
                                 headers: {
-                                    'Content-Type': 'multipart/form-data',
                                     'Accept': 'application/json'
                                 }
                             });
                             return response.data;
                         } catch (error) {
-                            const msg = error?.response?.data?.message || 'Gagal mengunggah bukti bayar.';
+                            const msg = error?.response?.data?.message
+                                || error?.response?.data?.error
+                                || error?.message
+                                || 'Gagal mengunggah bukti bayar.';
                             Swal.showValidationMessage(msg);
                         }
                     },
@@ -1489,6 +1491,19 @@ export default function Index({
                                     {[10, 15, 25, 50, 100, 200].map(val => (
                                         <option key={val} value={val}>{val}</option>
                                     ))}
+                                </select>
+                            </div>
+
+                            <div className="relative">
+                                <select
+                                    value={filters.role_filter || ''}
+                                    onChange={(e) => handleFilterChange('role_filter', e.target.value)}
+                                    className="px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer text-sm shadow-sm hover:bg-slate-50 transition-colors"
+                                    title="Filter peserta / panitia"
+                                >
+                                    <option value="">Semua</option>
+                                    <option value="peserta">Peserta</option>
+                                    <option value="panitia">Panitia</option>
                                 </select>
                             </div>
 

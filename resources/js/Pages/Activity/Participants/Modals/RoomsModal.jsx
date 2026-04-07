@@ -91,7 +91,9 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     const [roomSearch, setRoomSearch] = useState('');
     const [roomFilter, setRoomFilter] = useState('all');
     const [roomStatusFilter, setRoomStatusFilter] = useState('active');
+    const [hotelFilter, setHotelFilter] = useState('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
+    const [genderFilter, setGenderFilter] = useState('all');
     const [sortMode, setSortMode] = useState('hotel_then_number');
     const [editingRoomId, setEditingRoomId] = useState(null);
     const [editingCapacity, setEditingCapacity] = useState('');
@@ -345,6 +347,19 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         ? Object.values(roomOccupants).flat()
         : [];
 
+    const hotelOptionsLocal = (() => {
+        const set = new Set();
+        const allHotels = [
+            ...(Array.isArray(hotels) ? hotels : []),
+            ...(Array.isArray(rooms) ? rooms.map(r => r?.hotel_name).filter(Boolean) : []),
+        ];
+        for (const h of allHotels) {
+            const label = (h || '').toString().trim();
+            if (label) set.add(label);
+        }
+        return Array.from(set.values()).sort((a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' }));
+    })();
+
     const provinceOptionsLocal = (() => {
         const map = new Map();
         const add = (key, label) => {
@@ -383,7 +398,29 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         ? normalizeProvinceLabel(provinceKeyToLabel.get(provinceFilter))
         : '';
 
-    const unassignedParticipantsFiltered = provinceFilter === 'all'
+    const normalizeGender = (raw) => {
+        const s = (raw ?? '').toString().trim().toLowerCase();
+        if (!s) return 'unknown';
+        if (['l', 'lk', 'laki', 'laki-laki', 'male', 'm', 'pria', 'cowok'].includes(s)) return 'L';
+        if (['p', 'pr', 'perempuan', 'female', 'f', 'wanita', 'cewek'].includes(s)) return 'P';
+        if (s === '1') return 'L';
+        if (s === '2') return 'P';
+        if (s.startsWith('l')) return 'L';
+        if (s.startsWith('p')) return 'P';
+        return 'unknown';
+    };
+
+    const getParticipantGender = (p) => {
+        return normalizeGender(
+            p?.jenis_kelamin
+            ?? p?.gender
+            ?? p?.sex
+            ?? p?.profile?.jenis_kelamin
+            ?? p?.user?.profile?.jenis_kelamin
+        );
+    };
+
+    const unassignedParticipantsByProvince = provinceFilter === 'all'
         ? unassignedParticipants
         : (Array.isArray(unassignedParticipants)
             ? unassignedParticipants.filter(p => {
@@ -391,6 +428,16 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                 if (k === provinceFilter) return true;
                 if (!selectedProvinceLabelNormalized) return false;
                 return normalizeProvinceLabel(p?.province_label) === selectedProvinceLabelNormalized;
+            })
+            : []);
+
+    const unassignedParticipantsFiltered = genderFilter === 'all'
+        ? unassignedParticipantsByProvince
+        : (Array.isArray(unassignedParticipantsByProvince)
+            ? unassignedParticipantsByProvince.filter(p => {
+                const g = getParticipantGender(p);
+                if (genderFilter === 'unknown') return g === 'unknown';
+                return g === genderFilter;
             })
             : []);
 
@@ -416,12 +463,24 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
         if (roomFilter === 'empty' && !isEmpty) return false;
         if (roomFilter === 'available' && !isAvailable) return false;
+        if (hotelFilter !== 'all') {
+            const hotelNameRaw = (room.hotel_name ?? '').toString().trim();
+            if (hotelNameRaw !== hotelFilter) return false;
+        }
         if (provinceFilter !== 'all') {
             const match = occupants.some(o => {
                 const k = o?.province_key || 'none';
                 if (k === provinceFilter) return true;
                 if (!selectedProvinceLabelNormalized) return false;
                 return normalizeProvinceLabel(o?.province_label) === selectedProvinceLabelNormalized;
+            });
+            if (!match) return false;
+        }
+        if (genderFilter !== 'all') {
+            const match = occupants.some(o => {
+                const g = getParticipantGender(o);
+                if (genderFilter === 'unknown') return g === 'unknown';
+                return g === genderFilter;
             });
             if (!match) return false;
         }
@@ -707,6 +766,20 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                     </select>
                                 </div>
 
+                                <div className="w-[220px] shrink-0">
+                                    <select
+                                        value={hotelFilter}
+                                        onChange={(e) => setHotelFilter(e.target.value)}
+                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                        title="Filter hotel"
+                                    >
+                                        <option value="all">Semua Hotel</option>
+                                        {hotelOptionsLocal.map(h => (
+                                            <option key={h} value={h}>{h}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
                                 <div className="w-[210px] shrink-0">
                                     <select
                                         value={provinceFilter}
@@ -721,13 +794,29 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                     </select>
                                 </div>
 
+                                <div className="w-[190px] shrink-0">
+                                    <select
+                                        value={genderFilter}
+                                        onChange={(e) => setGenderFilter(e.target.value)}
+                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                        title="Filter jenis kelamin"
+                                    >
+                                        <option value="all">Semua JK</option>
+                                        <option value="L">Laki-laki</option>
+                                        <option value="P">Perempuan</option>
+                                        <option value="unknown">Tanpa Data</option>
+                                    </select>
+                                </div>
+
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setSortMode('hotel_then_number');
                                         setRoomStatusFilter('active');
                                         setRoomFilter('all');
+                                        setHotelFilter('all');
                                         setProvinceFilter('all');
+                                        setGenderFilter('all');
                                     }}
                                     className="shrink-0 h-[38px] w-[38px] inline-flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-800"
                                     title="Reset filter"

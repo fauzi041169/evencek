@@ -902,6 +902,16 @@ class ActivityPreparationController extends Controller
             } catch (\Exception $e) {
                 \Log::warning('Failed to load committee IDs', ['error' => $e->getMessage()]);
             }
+            try {
+                $ownerIds = $activity->owners()->pluck('users.id')->toArray();
+                $committeeUserIds = array_values(array_unique(array_merge(
+                    $committeeUserIds,
+                    [$activity->user_id],
+                    $ownerIds
+                )));
+            } catch (\Exception $e) {
+                \Log::warning('Failed to load owner IDs', ['error' => $e->getMessage()]);
+            }
 
             $combinedFilter = request('status_role_filter');
             $roleFilter = null;
@@ -927,8 +937,8 @@ class ActivityPreparationController extends Controller
 
             if ($roleFilter === 'panitia') {
                 $query->whereIn('user_id', $committeeUserIds);
-            } elseif ($roleFilter === 'peserta' || empty($roleFilter)) {
-                // $query->whereNotIn('user_id', $committeeUserIds);
+            } elseif ($roleFilter === 'peserta') {
+                $query->whereNotIn('user_id', $committeeUserIds);
             }
 
             if ($combinedFilter === 'email_unverified') {

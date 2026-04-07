@@ -59,7 +59,6 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
 
         axios.post(route('payments.update-proof', payment.id), formData, {
             headers: {
-                'Content-Type': 'multipart/form-data',
                 'Accept': 'application/json'
             }
         })
@@ -73,10 +72,14 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
             })
             .catch(error => {
                 console.error('Upload failed:', error);
+                const msg = error?.response?.data?.message
+                    || error?.response?.data?.error
+                    || error?.message
+                    || 'Gagal mengunggah bukti pembayaran';
                 Swal.fire({
                     icon: 'error',
                     title: 'Gagal',
-                    text: 'Gagal mengunggah bukti pembayaran'
+                    text: msg
                 });
             })
             .finally(() => {
