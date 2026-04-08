@@ -198,6 +198,7 @@ Route::prefix('payments')->name('payments.')->middleware(['auth'])->controller(P
 
     // Resource-like routes for payments (Edit/Destroy)
     Route::get('/{payment}/edit', 'edit')->name('edit');
+    Route::post('/{payment}/update-proof', 'updateProof')->name('update-proof');
     Route::put('/{payment}/verify', 'verify')->name('verify');
     Route::put('/{payment}', 'update')->name('update');
     Route::delete('/{payment}', 'destroy')->name('destroy');

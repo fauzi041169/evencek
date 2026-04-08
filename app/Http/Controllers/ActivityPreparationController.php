@@ -1330,7 +1330,23 @@ class ActivityPreparationController extends Controller
                         $pageUserIdSet = array_fill_keys(array_map('strval', $pageUserIds), true);
 
                         if (! empty($pageUserIds)) {
-                            $latestPayments = Payment::select('id', 'activity_id', 'user_id', 'payment_method_id', 'midtrans_transaction_id', 'status', 'notes', 'created_at')
+                            $latestPayments = Payment::select(
+                                'id',
+                                'activity_id',
+                                'activity_batch_id',
+                                'user_id',
+                                'payment_method_id',
+                                'amount',
+                                'proof_of_payment',
+                                'sender_name',
+                                'status',
+                                'notes',
+                                'verified_by',
+                                'verified_at',
+                                'midtrans_transaction_id',
+                                'midtrans_snap_token',
+                                'created_at'
+                            )
                                 ->where('activity_id', $activityId)
                                 ->whereIn('user_id', $pageUserIds)
                                 ->orderByDesc('id')
@@ -1344,7 +1360,23 @@ class ActivityPreparationController extends Controller
                                 }
                             }
 
-                            $groupPayments = Payment::select('id', 'activity_id', 'user_id', 'payment_method_id', 'midtrans_transaction_id', 'status', 'notes', 'created_at')
+                            $groupPayments = Payment::select(
+                                'id',
+                                'activity_id',
+                                'activity_batch_id',
+                                'user_id',
+                                'payment_method_id',
+                                'amount',
+                                'proof_of_payment',
+                                'sender_name',
+                                'status',
+                                'notes',
+                                'verified_by',
+                                'verified_at',
+                                'midtrans_transaction_id',
+                                'midtrans_snap_token',
+                                'created_at'
+                            )
                                 ->where('activity_id', $activityId)
                                 ->whereNotNull('notes')
                                 ->where(function ($q) {

@@ -14,7 +14,7 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
     const [rejectReason, setRejectReason] = useState('');
     const [showRejectInput, setShowRejectInput] = useState(false);
     const [localProofUrl, setLocalProofUrl] = useState(null);
-    const [amount, setAmount] = useState(0);
+    const [amount, setAmount] = useState('0');
     const [paymentMethodId, setPaymentMethodId] = useState('');
     const [senderName, setSenderName] = useState('');
     const [isDirty, setIsDirty] = useState(false);
@@ -25,15 +25,23 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
         if (payment) {
             const isGroup = payment.is_group_payment || (payment.group_members && payment.group_members.length > 0);
             const totalMembers = 1 + (payment.group_members?.length || 0);
-            const initialAmount = parseInt(payment.amount) > 0
-                ? parseInt(payment.amount)
-                : (isGroup && activity?.price
-                    ? parseInt(activity.price) * totalMembers
-                    : parseInt(payment.amount));
-            setAmount(initialAmount);
+            const paymentAmount = Number(payment.amount);
+            const activityPrice = Number(activity?.price);
+
+            let initialAmount = 0;
+            if (Number.isFinite(paymentAmount) && paymentAmount > 0) {
+                initialAmount = paymentAmount;
+            } else if (isGroup && Number.isFinite(activityPrice) && activityPrice > 0) {
+                initialAmount = activityPrice * totalMembers;
+            } else if (Number.isFinite(paymentAmount)) {
+                initialAmount = paymentAmount;
+            }
+
+            setAmount(String(initialAmount));
             setPaymentMethodId(payment.payment_method_id || '');
             // Fallback ke nama user jika sender_name kosong
             setSenderName(payment.sender_name || participant?.user?.name || '');
+            setIsDirty(false);
         }
     }, [payment, activity, participant]); // Added participant dependency
 
@@ -92,7 +100,7 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
 
         router.put(route('payments.update', payment.id), {
             notes: notes,
-            amount: amount,
+            amount: amount === '' ? 0 : Number(amount),
             payment_method_id: paymentMethodId,
             sender_name: senderName,
         }, {
@@ -151,7 +159,7 @@ export default function PaymentValidationModal({ show, onClose, payment, partici
         router.put(route('payments.verify', payment.id), {
             status: status,
             notes: finalNotes,
-            amount: amount,
+            amount: amount === '' ? 0 : Number(amount),
             payment_method_id: paymentMethodId,
             sender_name: senderName,
         }, {
