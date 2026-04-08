@@ -23,6 +23,21 @@ function toDateOnly(value) {
     return `${y}-${m}-${day}`;
 }
 
+function normalizeGenderValue(raw) {
+    if (raw == null) return '';
+    const s = String(raw).trim();
+    if (!s) return '';
+    if (/^\s*1\s*$/.test(s)) return 'L';
+    if (/^\s*2\s*$/.test(s)) return 'P';
+    const letters = s.toLowerCase().replace(/[^\p{L}]+/gu, '');
+    if (!letters || letters === 'lp' || letters === 'lakiperempuan' || letters === 'lakiatauperempuan') return '';
+    if (['l', 'lk', 'laki', 'lakilaki', 'pria', 'cowok', 'cowo', 'lelaki', 'male', 'm', 'man', 'ikhwan'].includes(letters)) return 'L';
+    if (['p', 'pr', 'perempuan', 'perempu', 'wanita', 'cewek', 'cewe', 'female', 'f', 'woman', 'w', 'akhwat'].includes(letters)) return 'P';
+    if (letters.includes('laki') || letters.includes('pria') || letters.includes('cowok') || letters.includes('cowo') || letters.includes('lelaki') || letters.includes('male') || letters.includes('man')) return 'L';
+    if (letters.includes('perem') || letters.includes('wanita') || letters.includes('cewek') || letters.includes('cewe') || letters.includes('female') || letters.includes('woman')) return 'P';
+    return '';
+}
+
 export default function ParticipantEditModal({ show, onClose, user, provinces, activity, customKeys = [], customOptions = {}, requiredProfileFields = [] }) {
     // 'user' prop here is likely the 'ActivityUser' object (pivot context) from the parent component
     // we need to extract the actual User model and Profile model from it.
@@ -179,7 +194,7 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                 email: targetUser.email || '',
                 no_hp: targetUser.phone || targetUser.no_hp || targetProfile.no_hp || '',
                 nik: targetUser.nik || targetProfile.nik || '',
-                jenis_kelamin: targetUser.gender || targetUser.jenis_kelamin || targetProfile.jenis_kelamin || '',
+                jenis_kelamin: normalizeGenderValue(targetUser.gender || targetUser.jenis_kelamin || targetProfile.jenis_kelamin || ''),
                 birth_place: targetUser.birth_place || targetProfile.birth_place || '',
                 birth_date: toDateOnly(targetUser.birthday || targetUser.birth_date || targetProfile.birth_date || ''),
                 alamat: targetUser.address || targetUser.alamat || targetProfile.alamat || '',

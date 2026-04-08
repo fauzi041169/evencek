@@ -134,6 +134,22 @@ const isFileValueLink = (value) => {
     return false;
 };
 
+const normalizeGenderValue = (raw) => {
+    if (raw == null) return '';
+    const s = String(raw).trim();
+    if (!s) return '';
+    if (/^\s*1\s*$/.test(s)) return 'L';
+    if (/^\s*2\s*$/.test(s)) return 'P';
+    const lower = s.toLowerCase();
+    const letters = lower.replace(/[^\p{L}]+/gu, '');
+    if (!letters || letters === 'lp' || letters === 'lakiperempuan' || letters === 'lakiatauperempuan') return '';
+    if (['l', 'lk', 'laki', 'lakilaki', 'pria', 'cowok', 'cowo', 'lelaki', 'male', 'm', 'man', 'ikhwan'].includes(letters)) return 'L';
+    if (['p', 'pr', 'perempuan', 'perempu', 'wanita', 'cewek', 'cewe', 'female', 'f', 'woman', 'w', 'akhwat'].includes(letters)) return 'P';
+    if (letters.includes('laki') || letters.includes('pria') || letters.includes('cowok') || letters.includes('cowo') || letters.includes('lelaki') || letters.includes('male') || letters.includes('man')) return 'L';
+    if (letters.includes('perem') || letters.includes('wanita') || letters.includes('cewek') || letters.includes('cewe') || letters.includes('female') || letters.includes('woman')) return 'P';
+    return '';
+};
+
 const getCustomValue = (participant, rawKey) => {
     if (!participant) return '-';
 
@@ -2059,9 +2075,9 @@ export default function Index({
                                             )}
                                             {visibleColumns['col-gender'] && (
                                                 <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
-                                                    {participant.user?.profile?.jenis_kelamin === 'L' ? (
+                                                    {normalizeGenderValue(participant.user?.profile?.jenis_kelamin) === 'L' ? (
                                                         <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">L</span>
-                                                    ) : participant.user?.profile?.jenis_kelamin === 'P' ? (
+                                                    ) : normalizeGenderValue(participant.user?.profile?.jenis_kelamin) === 'P' ? (
                                                         <span className="inline-flex items-center gap-1 bg-pink-50 text-pink-700 px-2 py-0.5 rounded text-xs font-medium">P</span>
                                                     ) : '-'}
                                                 </td>

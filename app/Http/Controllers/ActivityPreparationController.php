@@ -586,7 +586,32 @@ class ActivityPreparationController extends Controller
             if ($val === '__EMPTY__') {
                 $query->whereHas('user.profile', fn ($q) => $q->whereNull('jenis_kelamin')->orWhere('jenis_kelamin', '')->orWhere('jenis_kelamin', '-'));
             } else {
-                $query->whereHas('user.profile', fn ($q) => $q->where('jenis_kelamin', $val));
+                $genderKey = \App\Helpers\GenderHelper::normalize($val);
+                $genderKey = $genderKey ?: strtoupper(trim((string) $val));
+                if (in_array($genderKey, ['L', 'P'], true)) {
+                    $query->whereHas('user.profile', function ($q) use ($genderKey) {
+                        $q->where(function ($sub) use ($genderKey) {
+                            if ($genderKey === 'L') {
+                                $sub->whereRaw("LOWER(TRIM(COALESCE(jenis_kelamin, ''))) IN ('l','lk','laki','lakilaki','pria','cowok','cowo','lelaki','male','m','man')")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%laki%'")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%pria%'")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%cowok%'")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%cowo%'")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%lelaki%'")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%male%'");
+                            } else {
+                                $sub->whereRaw("LOWER(TRIM(COALESCE(jenis_kelamin, ''))) IN ('p','pr','perempuan','perempu','wanita','cewek','cewe','female','f','woman','w')")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%perem%'")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%wanita%'")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%cewek%'")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%cewe%'")
+                                    ->orWhereRaw("LOWER(COALESCE(jenis_kelamin, '')) LIKE '%female%'");
+                            }
+                        });
+                    });
+                } else {
+                    $query->whereHas('user.profile', fn ($q) => $q->where('jenis_kelamin', $val));
+                }
             }
         }
 
@@ -1264,6 +1289,16 @@ class ActivityPreparationController extends Controller
                         'batch',
                         'participantGroup',
                     ]);
+                    $participants->getCollection()->each(function ($p) {
+                        $profile = $p->user?->profile;
+                        if (! $profile) {
+                            return;
+                        }
+                        $normalized = \App\Helpers\GenderHelper::normalize($profile->jenis_kelamin);
+                        if ($normalized) {
+                            $profile->jenis_kelamin = $normalized;
+                        }
+                    });
                     $latestPaymentIndex = [];
                     $groupPaymentIndex = [];
                     try {
@@ -1931,7 +1966,7 @@ class ActivityPreparationController extends Controller
             }
 
             // OPTIMIZED: Cache Filter Options to avoid heavy queries on every request
-            $filterOptionsCacheKey = "activity_participant_filter_options_{$activityId}_v5";
+            $filterOptionsCacheKey = "activity_participant_filter_options_{$activityId}_v6";
             $filterOptions = Cache::remember($filterOptionsCacheKey, 3600, function () use ($activityId, $customKeys) {
                 $options = [];
 
@@ -1954,7 +1989,35 @@ class ActivityPreparationController extends Controller
                 $options['instansi'] = $getProfileFieldOptions('instansi');
                 $options['pekerjaan'] = $getProfileFieldOptions('pekerjaan');
                 $options['jabatan'] = $getProfileFieldOptions('jabatan');
-                $options['jenis_kelamin'] = $getProfileFieldOptions('jenis_kelamin');
+                $rawGenderValues = $getProfileFieldOptions('jenis_kelamin');
+                $genderKeys = [];
+                foreach ($rawGenderValues as $g) {
+                    $k = \App\Helpers\GenderHelper::normalize($g);
+                    if ($k) {
+                        $genderKeys[$k] = true;
+                    }
+                }
+                $orderedKeys = array_values(array_filter(['L', 'P'], fn ($k) => isset($genderKeys[$k])));
+                $genderOptions = array_map(function ($k) {
+                    return [
+                        'value' => $k,
+                        'label' => $k === 'L' ? 'Laki-laki' : 'Perempuan',
+                    ];
+                }, $orderedKeys);
+                $hasEmptyGender = DB::table('activity_users')
+                    ->join('users', 'activity_users.user_id', '=', 'users.id')
+                    ->join('profiles', 'users.id', '=', 'profiles.user_id')
+                    ->where('activity_users.activity_id', $activityId)
+                    ->where(function ($q) {
+                        $q->whereNull('profiles.jenis_kelamin')
+                            ->orWhere('profiles.jenis_kelamin', '')
+                            ->orWhere('profiles.jenis_kelamin', '-');
+                    })
+                    ->exists();
+                if ($hasEmptyGender) {
+                    $genderOptions[] = ['value' => '__EMPTY__', 'label' => 'Tidak diisi'];
+                }
+                $options['jenis_kelamin'] = collect($genderOptions);
                 $options['birth_place'] = $getProfileFieldOptions('birth_place');
                 $options['no_hp'] = $getProfileFieldOptions('no_hp');
                 $options['nik'] = $getProfileFieldOptions('nik');
@@ -3439,7 +3502,8 @@ class ActivityPreparationController extends Controller
 
                 $noHp = $colMap['no_hp'] !== false ? trim((string) ($row[$colMap['no_hp']] ?? '')) : null;
                 $alamat = $colMap['alamat'] !== false ? trim((string) ($row[$colMap['alamat']] ?? '')) : null;
-                $jenisKelamin = $colMap['jenis_kelamin'] !== false ? trim((string) ($row[$colMap['jenis_kelamin']] ?? '')) : null;
+                $jenisKelaminRaw = $colMap['jenis_kelamin'] !== false ? trim((string) ($row[$colMap['jenis_kelamin']] ?? '')) : null;
+                $jenisKelamin = \App\Helpers\GenderHelper::normalize($jenisKelaminRaw);
                 $pekerjaan = $colMap['pekerjaan'] !== false ? trim((string) ($row[$colMap['pekerjaan']] ?? '')) : null;
                 $jabatan = $colMap['jabatan'] !== false ? trim((string) ($row[$colMap['jabatan']] ?? '')) : null;
                 $instansi = $colMap['instansi'] !== false ? trim((string) ($row[$colMap['instansi']] ?? '')) : null;
@@ -7800,8 +7864,28 @@ class ActivityPreparationController extends Controller
             foreach ($participants as $participant) {
                 $profile = $participant->user->profile ?? null;
 
-                // Skip if profile doesn't exist or gender is already filled
-                if (! $profile || (! empty($profile->jenis_kelamin) && $profile->jenis_kelamin !== '-')) {
+                if (! $profile) {
+                    $stats['skipped']++;
+                    continue;
+                }
+
+                $normalizedExisting = \App\Helpers\GenderHelper::normalize($profile->jenis_kelamin);
+                if ($normalizedExisting && $profile->jenis_kelamin !== $normalizedExisting) {
+                    try {
+                        $profile->jenis_kelamin = $normalizedExisting;
+                        $profile->save();
+                        $stats['success']++;
+                    } catch (\Exception $e) {
+                        \Log::error('Error normalizing gender for profile', [
+                            'profile_id' => $profile->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                        $stats['failed']++;
+                    }
+                    continue;
+                }
+
+                if (! empty($profile->jenis_kelamin) && $profile->jenis_kelamin !== '-') {
                     $stats['skipped']++;
 
                     continue;

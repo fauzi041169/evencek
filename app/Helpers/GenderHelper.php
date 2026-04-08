@@ -24,21 +24,49 @@ class GenderHelper
             return null;
         }
 
-        $lower = mb_strtolower($gender);
-        $lower = preg_replace('/[^\p{L}]+/u', '', $lower);
-        $lower = (string) $lower;
+        if (preg_match('/^\s*1\s*$/', $gender)) {
+            return 'L';
+        }
+        if (preg_match('/^\s*2\s*$/', $gender)) {
+            return 'P';
+        }
 
-        if ($lower === '' || $lower === 'lp' || $lower === 'lakiatauperempuan' || $lower === 'lakiperempuan') {
+        $lower = mb_strtolower($gender);
+        $letters = preg_replace('/[^\p{L}]+/u', '', $lower);
+        $letters = (string) $letters;
+
+        if ($letters === '' || $letters === 'lp' || $letters === 'lakiatauperempuan' || $letters === 'lakiperempuan') {
             return null;
         }
 
-        // Normalisasi Laki-laki
-        if (in_array($lower, ['l', 'laki', 'lakilaki', 'pria', 'cowok', 'lelaki', 'man', 'male', 'm', 'lk'], true)) {
+        if (in_array($letters, ['l', 'laki', 'lakilaki', 'pria', 'cowok', 'cowo', 'lelaki', 'lel', 'man', 'male', 'm', 'lk', 'ikhwan'], true)) {
             return 'L';
         }
 
-        // Normalisasi Perempuan
-        if (in_array($lower, ['p', 'perempuan', 'wanita', 'cewek', 'perempu', 'woman', 'female', 'f', 'w', 'pr'], true)) {
+        if (in_array($letters, ['p', 'perempuan', 'wanita', 'cewek', 'cewe', 'perempu', 'woman', 'female', 'f', 'w', 'pr', 'akhwat'], true)) {
+            return 'P';
+        }
+
+        if (
+            str_contains($letters, 'laki') ||
+            str_contains($letters, 'lelaki') ||
+            str_contains($letters, 'pria') ||
+            str_contains($letters, 'cowok') ||
+            str_contains($letters, 'cowo') ||
+            str_contains($letters, 'male') ||
+            str_contains($letters, 'man')
+        ) {
+            return 'L';
+        }
+
+        if (
+            str_contains($letters, 'perem') ||
+            str_contains($letters, 'wanita') ||
+            str_contains($letters, 'cewek') ||
+            str_contains($letters, 'cewe') ||
+            str_contains($letters, 'female') ||
+            str_contains($letters, 'woman')
+        ) {
             return 'P';
         }
 
