@@ -22,11 +22,9 @@ class DistrictSeeder extends Seeder
             ];
 
             foreach ($districts as $district) {
-                District::create([
+                District::firstOrCreate([
                     'regency_id' => $simeulue->id,
                     'name' => $district,
-                    'created_at' => now(),
-                    'updated_at' => now(),
                 ]);
             }
         }

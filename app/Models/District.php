@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class District extends Model
 {
-    // use HasCustomUid;
+    use HasCustomUid;
     public $incrementing = false;
 
     protected $keyType = 'string';

@@ -405,6 +405,23 @@ export default function Index({
     const safeProvinces = provinces || [];
     const safeRegencies = regencies || [];
     const safeDistricts = districts || [];
+    const safeBulkGroupUserIds = React.useMemo(() => {
+        if (Array.isArray(bulkGroupUserIds)) return bulkGroupUserIds;
+        if (!bulkGroupUserIds) return [];
+        if (typeof bulkGroupUserIds === 'string') {
+            return bulkGroupUserIds
+                .split(/[,\s]+/g)
+                .map(s => s.trim())
+                .filter(Boolean);
+        }
+        if (typeof bulkGroupUserIds === 'object') {
+            return Object.values(bulkGroupUserIds)
+                .flat()
+                .map(v => String(v))
+                .filter(Boolean);
+        }
+        return [];
+    }, [bulkGroupUserIds]);
 
     const [search, setSearch] = useState(filters.search || '');
     const [selectedIds, setSelectedIds] = useState([]);
@@ -2271,7 +2288,7 @@ export default function Index({
                                                             (payment.notes && typeof payment.notes === 'object' && (payment.notes.user_ids || payment.notes.bulk_import))
                                                         );
 
-                                                        const isGroup = participant.is_group_registration || (participant.custom_data && participant.custom_data.is_group_registration_flag) || participant.participantGroup || isGroupPayment || (bulkGroupUserIds && (bulkGroupUserIds.includes(String(participant.user_id)) || bulkGroupUserIds.includes(participant.user_id)));
+                                                        const isGroup = participant.is_group_registration || (participant.custom_data && participant.custom_data.is_group_registration_flag) || participant.participantGroup || isGroupPayment || (safeBulkGroupUserIds.length > 0 && (safeBulkGroupUserIds.includes(String(participant.user_id)) || safeBulkGroupUserIds.includes(String(participant.user?.id || ''))));
 
                                                         return (isGroup || participant.activity_participant_group_id) ? (
                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
