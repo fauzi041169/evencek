@@ -21,9 +21,13 @@ export default function RoomSelect({
                 (room.room_number && room.room_number.toLowerCase().includes(search.toLowerCase())) ||
                 (room.hotel_name && room.hotel_name.toLowerCase().includes(search.toLowerCase()));
 
-            return matchesSearch;
+            const occupants = roomOccupants?.[room.id] || [];
+            const isCurrent = currentRoom && currentRoom.id === room.id;
+            const isFull = room.capacity > 0 && occupants.length >= room.capacity;
+
+            return matchesSearch && (!isFull || isCurrent);
         });
-    }, [rooms, search]);
+    }, [rooms, search, roomOccupants, currentRoom]);
 
     const handleSelect = (room, close) => {
         if (currentRoom && currentRoom.id === room.id) {

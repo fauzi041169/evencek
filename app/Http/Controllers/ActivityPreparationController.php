@@ -20,6 +20,7 @@ use App\Models\CardSettings;
 use App\Models\CertificateSettings;
 use App\Models\District;
 use App\Models\Payment;
+use App\Models\PaymentMethod;
 use App\Models\Profile;
 use App\Models\Province;
 use App\Models\RefPosition;
@@ -1348,6 +1349,11 @@ foreach ($participants as $participant) {
                     };
                     $latestPaymentIndex = [];
                     $groupPaymentIndex = [];
+                    $groupPaymentUsersByPaymentId = [];
+                    $groupMembersByGroupId = [];
+                    $noteUsersById = [];
+                    $noteParticipantIdSet = [];
+                    $noteUserIdsByPaymentId = [];
                     try {
                         $decodeNotes = function ($notes) {
                             if (is_array($notes)) {
@@ -1373,7 +1379,11 @@ foreach ($participants as $participant) {
                             return null;
                         };
 
-                        $pageUserIds = $participants->pluck('user_id')->filter()->unique()->values()->all();
+                        $participantsCollectionForPage = $participants instanceof \Illuminate\Pagination\LengthAwarePaginator
+                            ? $participants->getCollection()
+                            : (\is_iterable($participants) ? collect($participants) : collect());
+
+                        $pageUserIds = $participantsCollectionForPage->pluck('user_id')->filter()->unique()->values()->all();
                         $pageUserIdSet = array_fill_keys(array_map('strval', $pageUserIds), true);
 
                         if (! empty($pageUserIds)) {
@@ -1458,6 +1468,7 @@ foreach ($participants as $participant) {
 
                                 $payment->is_group_payment = true;
 
+                                $matched = false;
                                 foreach (array_unique($uids) as $uid) {
                                     $uid = (string) $uid;
                                     if (! isset($pageUserIdSet[$uid])) {
@@ -1467,11 +1478,110 @@ foreach ($participants as $participant) {
                                         continue;
                                     }
                                     $groupPaymentIndex[$uid] = $payment;
+                                    $matched = true;
+                                }
+                                if ($matched) {
+                                    $groupPaymentUsersByPaymentId[(string) $payment->id] = array_values(array_unique(array_map('strval', $uids)));
                                 }
                             }
                         }
                     } catch (\Exception $e) {
                         \Log::warning('Failed to build payment indexes', ['error' => $e->getMessage()]);
+                    }
+
+                    try {
+                        $paymentsForNoteGroups = [];
+                        if (isset($latestPayments) && $latestPayments) {
+                            foreach ($latestPayments as $p) {
+                                if ($p) {
+                                    $paymentsForNoteGroups[(string) $p->id] = $p;
+                                }
+                            }
+                        }
+                        if (isset($groupPaymentIndex) && is_array($groupPaymentIndex)) {
+                            foreach ($groupPaymentIndex as $p) {
+                                if ($p) {
+                                    $paymentsForNoteGroups[(string) $p->id] = $p;
+                                }
+                            }
+                        }
+                        foreach ($paymentsForNoteGroups as $p) {
+                            $decoded = $decodeNotes($p->notes);
+                            if (! is_array($decoded)) {
+                                continue;
+                            }
+                            $uids = [];
+                            if (! empty($decoded['user_ids']) && is_array($decoded['user_ids'])) {
+                                $uids = $decoded['user_ids'];
+                            } elseif (! empty($decoded['bulk_import']) && is_array($decoded['bulk_import']) && ! empty($decoded['bulk_import']['user_ids'])) {
+                                $uids = $decoded['bulk_import']['user_ids'];
+                            }
+                            if (empty($uids)) {
+                                continue;
+                            }
+                            $noteUserIdsByPaymentId[(string) $p->id] = array_values(array_unique(array_map('strval', $uids)));
+                        }
+
+                        $participantsCollectionForGroups = $participants instanceof \Illuminate\Pagination\LengthAwarePaginator
+                            ? $participants->getCollection()
+                            : (\is_iterable($participants) ? collect($participants) : collect());
+
+                        $groupIdsOnPage = $participantsCollectionForGroups->pluck('activity_participant_group_id')->filter()->unique()->values()->all();
+                        if (! empty($groupIdsOnPage)) {
+                            $rows = ActivityUser::where('activity_id', $activityId)
+                                ->whereIn('activity_participant_group_id', $groupIdsOnPage)
+                                ->with('user:id,name,email')
+                                ->get(['activity_participant_group_id', 'user_id']);
+
+                            foreach ($rows as $row) {
+                                if (! $row->user) {
+                                    continue;
+                                }
+                                $gid = (string) $row->activity_participant_group_id;
+                                if (! isset($groupMembersByGroupId[$gid])) {
+                                    $groupMembersByGroupId[$gid] = [];
+                                }
+                                $groupMembersByGroupId[$gid][] = [
+                                    'id' => $row->user_id,
+                                    'name' => $row->user->name ?? '-',
+                                    'email' => $row->user->email ?? '-',
+                                ];
+                            }
+
+                            foreach ($groupMembersByGroupId as $gid => $members) {
+                                $uniq = [];
+                                foreach ($members as $m) {
+                                    $mid = (string) ($m['id'] ?? '');
+                                    if ($mid === '' || isset($uniq[$mid])) {
+                                        continue;
+                                    }
+                                    $uniq[$mid] = $m;
+                                }
+                                $groupMembersByGroupId[$gid] = array_values($uniq);
+                            }
+                        }
+
+                        $noteUserIds = [];
+                        foreach ($noteUserIdsByPaymentId as $uids) {
+                            foreach ($uids as $uid) {
+                                if ($uid !== '' && $uid !== null) {
+                                    $noteUserIds[] = (string) $uid;
+                                }
+                            }
+                        }
+                        $noteUserIds = array_values(array_unique(array_filter($noteUserIds)));
+                        if (! empty($noteUserIds)) {
+                            $noteUsersById = User::whereIn('id', $noteUserIds)->get(['id', 'name', 'email'])->keyBy('id')->all();
+                            $noteParticipantIds = ActivityUser::where('activity_id', $activityId)
+                                ->whereIn('user_id', $noteUserIds)
+                                ->pluck('user_id')
+                                ->map(fn ($v) => (string) $v)
+                                ->values()
+                                ->all();
+                            $noteParticipantIdSet = array_fill_keys($noteParticipantIds, true);
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed to build group members payload', ['error' => $e->getMessage()]);
                     }
                 }
             } catch (\Exception $e) {
@@ -1616,6 +1726,37 @@ foreach ($participants as $participant) {
                         $payment = $groupPaymentIndex[$uid];
                     }
                     $participant->setRelation('payment', $payment);
+                    if ($payment) {
+                        $members = [];
+                        $gid = $participant->activity_participant_group_id ? (string) $participant->activity_participant_group_id : null;
+                        if ($gid && isset($groupMembersByGroupId) && is_array($groupMembersByGroupId) && isset($groupMembersByGroupId[$gid])) {
+                            $members = $groupMembersByGroupId[$gid];
+                        } else {
+                            $pid = (string) $payment->id;
+                            if (isset($noteUserIdsByPaymentId) && is_array($noteUserIdsByPaymentId) && isset($noteUserIdsByPaymentId[$pid]) && ! empty($noteUsersById)) {
+                                foreach ($noteUserIdsByPaymentId[$pid] as $muid) {
+                                    $muidStr = (string) $muid;
+                                    if (! empty($noteParticipantIdSet) && ! isset($noteParticipantIdSet[$muidStr])) {
+                                        continue;
+                                    }
+                                    $u = $noteUsersById[$muidStr] ?? null;
+                                    if (! $u) {
+                                        continue;
+                                    }
+                                    $members[] = [
+                                        'id' => $u->id,
+                                        'name' => $u->name ?? '-',
+                                        'email' => $u->email ?? '-',
+                                    ];
+                                }
+                            }
+                        }
+
+                        if (! empty($members)) {
+                            $payment->is_group_payment = true;
+                            $payment->setAttribute('group_members', $members);
+                        }
+                    }
 
                     // Merge profile additional_data into custom_data for display (e.g. Surat Tugas dari Lengkapi Profil)
                     $existingCustom = $participant->custom_data;
@@ -2299,6 +2440,11 @@ foreach ($participants as $participant) {
                 ['value' => 'kelompok', 'label' => 'Kelompok'],
             ]);
 
+            $paymentMethods = PaymentMethod::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name']);
+
             // NOTE: Manual filtering and manual pagination removed.
             // We now rely on Eloquent filtering (applied before pagination) and standard Pagination.
 
@@ -2465,6 +2611,7 @@ foreach ($participants as $participant) {
                 'districtNameOptions' => $districtNameOptions,
                 'statusOptions' => $statusOptions,
                 'paymentMethodOptions' => $paymentMethodOptions,
+                'paymentMethods' => $paymentMethods,
                 'registrationMethodOptions' => $registrationMethodOptions,
                 'hasUnspecifiedBirthPlace' => $hasUnspecifiedBirthPlace,
                 'hasUnspecifiedBirthYear' => $hasUnspecifiedBirthYear,
@@ -2523,6 +2670,7 @@ foreach ($participants as $participant) {
                 'districtNameOptions' => collect(),
                 'statusOptions' => collect(),
                 'paymentMethodOptions' => collect(),
+                'paymentMethods' => collect(),
                 'registrationMethodOptions' => collect(),
                 'hasUnspecifiedBirthYear' => false,
                 'bulkGroupUserIds' => [],

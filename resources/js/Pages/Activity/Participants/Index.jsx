@@ -377,6 +377,7 @@ export default function Index({
     districtNameOptions,
     statusOptions,
     paymentMethodOptions,
+    paymentMethods = [],
     registrationMethodOptions,
     hpOptions,
     nikOptions,
@@ -2509,7 +2510,7 @@ export default function Index({
                 payment={selectedPaymentParticipant?.payment}
                 participant={selectedPaymentParticipant?.participant}
                 activity={activity}
-                paymentMethods={paymentMethodOptions}
+                paymentMethods={paymentMethods}
             />
 
             <ParticipantEditModal
