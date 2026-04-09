@@ -750,7 +750,7 @@ foreach ($participants as $participant) {
                             }
                         }
                     }
-                    $bulkGroupUserIds = array_unique($bulkGroupUserIds);
+                    $bulkGroupUserIds = array_values(array_unique($bulkGroupUserIds));
                 } catch (\Exception $e) {
                 }
             }
@@ -1243,7 +1243,7 @@ foreach ($participants as $participant) {
                         }
                     }
                 }
-                $bulkGroupUserIds = array_unique($bulkGroupUserIds);
+                $bulkGroupUserIds = array_values(array_unique($bulkGroupUserIds));
             } catch (\Exception $e) {
             }
 
