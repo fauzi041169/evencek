@@ -992,6 +992,7 @@ export default function Show({
                                                 { id: 'contact_person', label: t('activities.narahubung_label'), icon: 'fa-address-book' },
                                                 { id: 'id_card', label: t('activities.id_card'), icon: 'fa-id-card' },
                                                 { id: 'certificate', label: t('activities.certificate'), icon: 'fa-certificate' },
+                                                { id: 'room_hotel', label: t('activities.room_hotel'), icon: 'fa-bed' },
                                             ].map(section => (
                                                 <button
                                                     key={section.id}
@@ -1395,7 +1396,7 @@ export default function Show({
                                             </div>
                                         </div>
 
-                                        {userRoomNumber && (
+                                        {userRoomNumber && isVisible('room_hotel') && (
                                             <div className="flex items-center gap-3 p-2.5 rounded-xl bg-orange-50 border border-orange-100">
                                                 <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
                                                     <i className="fas fa-bed text-sm"></i>

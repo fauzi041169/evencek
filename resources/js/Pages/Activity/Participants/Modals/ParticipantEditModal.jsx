@@ -675,6 +675,40 @@ export default function ParticipantEditModal({ show, onClose, user, provinces, a
                             </div>
                         )}
 
+                        {/* Section: Kelompok Peserta & Metode Daftar */}
+                        {(activityUser?.participantGroup || activityUser?.activity_participant_group_id) && (
+                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl shadow-sm border border-emerald-200 overflow-hidden">
+                                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-3 border-b border-emerald-300 flex items-center gap-3">
+                                    <Users className="w-4 h-4 text-white" />
+                                    <h3 className="font-semibold text-white text-sm uppercase tracking-wider flex items-center gap-1">
+                                        Kelompok Peserta <span className="text-emerald-200 text-xs font-normal">(Metode Kelompok)</span>
+                                    </h3>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/50 backdrop-blur-sm rounded-xl p-6 border border-emerald-100">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-emerald-800 mb-1">Nama Kelompok</label>
+                                            <div className="p-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl text-emerald-900 font-medium">
+                                                {activityUser.participantGroup?.name || 'Kelompok ' + activityUser.activity_participant_group_id || 'N/A'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-emerald-800 mb-1">Jumlah Anggota Kelompok</label>
+                                            <div className="p-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl text-emerald-900 font-medium flex items-center gap-2">
+                                                <Users className="w-5 h-5 text-emerald-500" />
+                                                <span>{activityUser.participantGroup?.participants_count || 0} orang</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-emerald-700 bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                                        <strong>Metode Pendaftaran:</strong> <span className="font-semibold text-emerald-800 bg-white px-2 py-1 rounded-md">Kelompok (Bulk Import)</span>
+                                        <br />
+                                        Pembayaran dilakukan via 1 (satu) transaksi untuk seluruh anggota kelompok.
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Section: Pekerjaan & Instansi */}
                         {(['instansi', 'pekerjaan', 'jabatan'].some(k => isRequired(k))) && (
                             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">

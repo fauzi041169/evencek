@@ -234,12 +234,41 @@ class ActivityPreparationController extends Controller
                 ->unique('user_id')
                 ->values();
 
-            // Map roomAssignment.room to room for frontend compatibility
-            $participants->each(function ($p) {
-                if ($p->roomAssignment && $p->roomAssignment->room) {
-                    $p->setRelation('room', $p->roomAssignment->room);
-                }
-            });
+// Map roomAssignment.room to room for frontend compatibility
+$participants->each(function ($p) {
+    if ($p->roomAssignment && $p->roomAssignment->room) {
+        $p->setRelation('room', $p->roomAssignment->room);
+    }
+});
+
+// **FIX: Enhance group detection for badges**
+// Ensure participantGroup relation is loaded and set group flags on payment
+foreach ($participants as $participant) {
+    // Force load participantGroup if missing (safety)
+    if (! $participant->relationLoaded('participantGroup')) {
+        $participant->load('participantGroup');
+    }
+    
+    // If has group, mark as group regardless of payment
+    if ($participant->participantGroup) {
+        $payment = $participant->payment;
+        if ($payment) {
+            $payment->is_group_payment = true;
+            // Add group members for validation modal
+            $groupMembers = ActivityUser::where('activity_participant_group_id', $participant->activity_participant_group_id)
+                ->where('activity_id', $participant->activity_id)
+                ->with('user:id,name,email')
+                ->limit(50) // Prevent overload
+                ->get()
+                ->pluck('user')
+                ->filter()
+                ->values();
+            $payment->setAttribute('group_members', $groupMembers);
+        }
+        // Also set on participant for badges
+        $participant->setAttribute('is_group_participant', true);
+    }
+}
 
             $owners = $activity->owners ?? collect();
             if ($activity->user) {
@@ -880,7 +909,7 @@ class ActivityPreparationController extends Controller
 
             // Simplified eager loading to avoid issues
             $query = $showDeleted
-                ? ActivityUser::onlyTrashed()->where('activity_id', $activityId)
+                ? ActivityUser::onlyTrashed()->where('activity_id', $activityId)->where('deleted_at', '>=', now()->subDays(10))
                 : ActivityUser::where('activity_id', $activityId);
 
             \Log::info('DEBUG PARTICIPANTS START', [
@@ -1185,40 +1214,41 @@ class ActivityPreparationController extends Controller
             }
 
             $bulkGroupUserIds = [];
-            $registrationMethod = request('registration_method');
-            if ($registrationMethod) {
-                try {
-                    $paymentsWithNotes = Payment::select('id', 'activity_id', 'user_id', 'notes')
-                        ->where('activity_id', $activityId)
-                        ->whereNotNull('notes')
-                        ->where(function ($q) {
-                            $q->where('notes', 'like', '%user_ids%')
-                                ->orWhere('notes', 'like', '%bulk_import%');
-                        })
-                        ->get();
+            try {
+                $paymentsWithNotes = Payment::select('id', 'activity_id', 'user_id', 'notes')
+                    ->where('activity_id', $activityId)
+                    ->whereNotNull('notes')
+                    ->where(function ($q) {
+                        $q->where('notes', 'like', '%user_ids%')
+                            ->orWhere('notes', 'like', '%bulk_import%');
+                    })
+                    ->get();
 
-                    foreach ($paymentsWithNotes as $p) {
-                        $decoded = json_decode($p->notes, true);
-                        if (! $decoded && str_contains($p->notes, '{')) {
-                            $start = strpos($p->notes, '{');
-                            $end = strrpos($p->notes, '}');
-                            if ($start !== false && $end !== false) {
-                                $decoded = json_decode(substr($p->notes, $start, $end - $start + 1), true);
-                            }
+                foreach ($paymentsWithNotes as $p) {
+                    $decoded = json_decode($p->notes, true);
+                    if (! $decoded && str_contains($p->notes, '{')) {
+                        $start = strpos($p->notes, '{');
+                        $end = strrpos($p->notes, '}');
+                        if ($start !== false && $end !== false) {
+                            $decoded = json_decode(substr($p->notes, $start, $end - $start + 1), true);
                         }
+                    }
 
-                        if (is_array($decoded)) {
-                            $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
-                            foreach ($uids as $uid) {
-                                if ($uid) {
-                                    $bulkGroupUserIds[] = (string) $uid;
-                                }
+                    if (is_array($decoded)) {
+                        $uids = $decoded['user_ids'] ?? ($decoded['bulk_import']['user_ids'] ?? []);
+                        foreach ($uids as $uid) {
+                            if ($uid) {
+                                $bulkGroupUserIds[] = (string) $uid;
                             }
                         }
                     }
-                    $bulkGroupUserIds = array_unique($bulkGroupUserIds);
-                } catch (\Exception $e) {
                 }
+                $bulkGroupUserIds = array_unique($bulkGroupUserIds);
+            } catch (\Exception $e) {
+            }
+
+            $registrationMethod = request('registration_method');
+            if ($registrationMethod) {
 
                 if ($registrationMethod === 'kelompok') {
                     $query->where(function ($q) use ($bulkGroupUserIds) {
@@ -1299,6 +1329,23 @@ class ActivityPreparationController extends Controller
                             $profile->jenis_kelamin = $normalized;
                         }
                     });
+
+                    // Dynamic property helpers
+                    $decodeNotes = function ($notes) {
+                        if (! $notes) {
+                            return null;
+                        }
+                        $decoded = json_decode($notes, true);
+                        if (! $decoded && str_contains($notes, '{')) {
+                            $start = strpos($notes, '{');
+                            $end = strrpos($notes, '}');
+                            if ($start !== false && $end !== false) {
+                                $decoded = json_decode(substr($notes, $start, $end - $start + 1), true);
+                            }
+                        }
+
+                        return is_array($decoded) ? $decoded : null;
+                    };
                     $latestPaymentIndex = [];
                     $groupPaymentIndex = [];
                     try {
@@ -1355,6 +1402,13 @@ class ActivityPreparationController extends Controller
 
                             foreach ($latestPayments as $p) {
                                 $uid = (string) $p->user_id;
+
+                                // Mark as group payment if it has collective notes
+                                $decoded = $decodeNotes($p->notes);
+                                if (is_array($decoded) && (isset($decoded['user_ids']) || isset($decoded['bulk_import']))) {
+                                    $p->is_group_payment = true;
+                                }
+
                                 if (! isset($latestPaymentIndex[$uid])) {
                                     $latestPaymentIndex[$uid] = $p;
                                 }
@@ -1676,6 +1730,24 @@ class ActivityPreparationController extends Controller
                         }
                     }
                     $participant->setRelation('room', $room);
+
+                    // Registration Method status flag (calculated here for frontend serialization via custom_data)
+                    $isGroupReg = $participant->activity_participant_group_id !== null || (isset($participant->participantGroup) && $participant->participantGroup);
+                    if (!$isGroupReg && $payment && ($payment->is_group_payment || ($payment->group_members && count($payment->group_members) > 0))) {
+                        $isGroupReg = true;
+                    }
+                    if (!$isGroupReg && is_array($bulkGroupUserIds) && in_array((string)$participant->user_id, $bulkGroupUserIds)) {
+                        $isGroupReg = true;
+                    }
+
+                    // Store in custom_data to ensure serialization
+                    $currentCustom = $participant->custom_data ?? [];
+                    if (is_array($currentCustom)) {
+                        $currentCustom['is_group_registration_flag'] = $isGroupReg;
+                        $participant->setAttribute('custom_data', $currentCustom);
+                    }
+
+                    $participant->setAttribute('is_group_registration', $isGroupReg); // Keep for direct access too
                 }
             }
 

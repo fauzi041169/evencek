@@ -393,7 +393,8 @@ export default function Index({
     totalRegencies = 0,
     totalDistricts = 0,
     unverifiedEmailCount = 0,
-    participationTypes = []
+    participationTypes = [],
+    bulkGroupUserIds = []
 }) {
     const { auth } = usePage().props;
     const currentUser = auth?.user;
@@ -1688,6 +1689,16 @@ export default function Index({
                                 <span className="hidden md:inline">Manajemen Kamar</span>
                             </button>
 
+                            {isAdmin && (
+                                <button
+                                    onClick={toggleShowDeleted}
+                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all shadow-sm ${String(filters.show_deleted) === '1' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'}`}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    <span className="hidden md:inline">{String(filters.show_deleted) === '1' ? 'Tutup Tong Sampah' : 'Lihat Data Terhapus'}</span>
+                                </button>
+                            )}
+
                             <button
                                 onClick={() => setShowImportModals(true)}
                                 className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg active:scale-95"
@@ -2253,11 +2264,16 @@ export default function Index({
                                                         // Only consider the specifically assigned payment for this participant
                                                         // The backend now correctly filters this to be either their individual payment
                                                         // or a group payment ONLY IF they are a member of that group.
-                                                        const isGroupPayment = payment && (payment.is_group_payment || (payment.group_members && payment.group_members.length > 0));
+                                                        const isGroupPayment = payment && (
+                                                            payment.is_group_payment ||
+                                                            (payment.group_members && payment.group_members.length > 0) ||
+                                                            (typeof payment.notes === 'string' && (payment.notes.toLowerCase().includes('user_ids') || payment.notes.toLowerCase().includes('bulk_import'))) ||
+                                                            (payment.notes && typeof payment.notes === 'object' && (payment.notes.user_ids || payment.notes.bulk_import))
+                                                        );
 
-                                                        const isGroup = participant.participantGroup || isGroupPayment;
+                                                        const isGroup = participant.is_group_registration || (participant.custom_data && participant.custom_data.is_group_registration_flag) || participant.participantGroup || isGroupPayment || (bulkGroupUserIds && (bulkGroupUserIds.includes(String(participant.user_id)) || bulkGroupUserIds.includes(participant.user_id)));
 
-                                                        return isGroup ? (
+                                                        return (isGroup || participant.activity_participant_group_id) ? (
                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                                                                 Kelompok
                                                             </span>
