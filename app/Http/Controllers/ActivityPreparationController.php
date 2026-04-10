@@ -1892,13 +1892,17 @@ foreach ($participants as $participant) {
                 }
             }
 
+            $committeeUserIdSet = [];
+            if (isset($committeeUserIds) && is_array($committeeUserIds) && ! empty($committeeUserIds)) {
+                $committeeUserIdSet = array_fill_keys(array_map('strval', $committeeUserIds), true);
+            }
+
             $roomOccupants = [];
             try {
                 $eligibleParticipantIdsQuery = ActivityUser::query()
                     ->from($activityUserTable)
                     ->where('activity_id', $activityId)
                     ->where('status', ActivityUser::STATUS_ACTIVE)
-                    ->whereNotIn('user_id', $committeeUserIds)
                     ->when($hasDeletedAt, function ($q) use ($activityUserTable) {
                         $q->whereNull("{$activityUserTable}.deleted_at");
                     })
@@ -1922,7 +1926,7 @@ foreach ($participants as $participant) {
                 // 2. Load detailed room occupants for eligible participants (matches current batch & active participants)
                 $assignmentsCollection = ActivityHotelRoomAssignment::with([
                     'user:id,name,email',
-                    'user.profile:user_id,province_id,other_province',
+                    'user.profile',
                     'user.profile.province:id,name',
                 ])
                     ->where('activity_id', $activityId)
@@ -1936,6 +1940,7 @@ foreach ($participants as $participant) {
                 foreach ($assignmentsCollection as $assignment) {
                     if ($assignment->room_id && $assignment->user) {
                         $profile = $assignment->user->profile;
+                        $isCommitteeMember = isset($committeeUserIdSet[(string) $assignment->user->id]);
                         $provinceLabel = null;
                         $provinceKey = 'none';
 
@@ -1958,6 +1963,8 @@ foreach ($participants as $participant) {
                             'email' => $assignment->user->email,
                             'province_key' => $provinceKey,
                             'province_label' => $provinceLabel,
+                            'is_committee' => $isCommitteeMember,
+                            'role' => $isCommitteeMember ? 'panitia' : 'peserta',
                         ];
                     }
                 }
@@ -1974,7 +1981,6 @@ foreach ($participants as $participant) {
                     ->from($activityUserTable)
                     ->where('activity_id', $activityId)
                     ->where('status', ActivityUser::STATUS_ACTIVE)
-                    ->whereNotIn('user_id', $committeeUserIds)
                     ->when($hasDeletedAt, function ($q) use ($activityUserTable) {
                         $q->whereNull("{$activityUserTable}.deleted_at");
                     })
@@ -1999,7 +2005,7 @@ foreach ($participants as $participant) {
                 if (! empty($unassignedIds)) {
                     $unassignedParticipants = User::whereIn('id', $unassignedIds)
                         ->with([
-                            'profile:user_id,province_id,other_province',
+                            'profile',
                             'profile.province:id,name',
                         ])
                         ->orderBy('name')
@@ -2028,6 +2034,8 @@ foreach ($participants as $participant) {
                                 'email' => $u->email,
                                 'province_key' => $provinceKey,
                                 'province_label' => $provinceLabel,
+                                'is_committee' => isset($committeeUserIdSet[(string) $u->id]),
+                                'role' => isset($committeeUserIdSet[(string) $u->id]) ? 'panitia' : 'peserta',
                             ];
                         })
                         ->values();
@@ -2683,7 +2691,11 @@ foreach ($participants as $participant) {
 
     public function storeRoom(Request $request, $activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -2741,7 +2753,11 @@ foreach ($participants as $participant) {
 
     public function updateRoom(Request $request, $activityId, $roomId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -2762,7 +2778,11 @@ foreach ($participants as $participant) {
 
     public function destroyRoom($activityId, $roomId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -2777,7 +2797,11 @@ foreach ($participants as $participant) {
 
     public function destroyAllRooms(Request $request, $activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -2800,7 +2824,11 @@ foreach ($participants as $participant) {
 
     public function destroyRoomsBatch(Request $request, $activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -2827,7 +2855,11 @@ foreach ($participants as $participant) {
 
     public function activateRoomsBatch(Request $request, $activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -2848,7 +2880,11 @@ foreach ($participants as $participant) {
 
     public function deactivateRoomsBatch(Request $request, $activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -2872,7 +2908,11 @@ foreach ($participants as $participant) {
      */
     public function toggleRoomStatus($activityId, $roomId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -2893,7 +2933,11 @@ foreach ($participants as $participant) {
      */
     public function importRooms(Request $request, $activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -2992,7 +3036,11 @@ foreach ($participants as $participant) {
      */
     public function downloadRoomsTemplate($activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -3076,7 +3124,11 @@ foreach ($participants as $participant) {
 
     public function assignRoom(Request $request, $activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::where('uid', $activityId)->first();
+        if (! $activity) {
+            $activity = Activity::findOrFail($activityId);
+        }
+        $activityId = $activity->id;
         if (! auth()->user()->isAdmin() && ! auth()->user()->isSuperAdmin() && $activity->user_id !== auth()->id()) {
             if (! $activity->canManageRegistration(auth()->id())) {
                 abort(403);
@@ -3094,7 +3146,13 @@ foreach ($participants as $participant) {
         $enrollment = ActivityUser::where('activity_id', $activityId)
             ->where('user_id', $userId)
             ->first();
-        $batchId = $enrollment ? $enrollment->activity_batch_id : null;
+        if (! $enrollment) {
+            return redirect()->back()->with('error', 'Peserta tidak terdaftar pada aktivitas ini');
+        }
+        if ((string) $enrollment->status !== (string) ActivityUser::STATUS_ACTIVE) {
+            return redirect()->back()->with('error', 'Status peserta harus AKTIF untuk pengisian kamar');
+        }
+        $batchId = $enrollment->activity_batch_id ?: null;
 
         $roomId = $request->room_id ? $request->room_id : null;
         $roomCode = trim((string) $request->room_code);

@@ -30,6 +30,14 @@ const SearchableParticipantSelect = ({ participants, onSelect, placeholder = "+ 
         (p.province_label && p.province_label.toLowerCase().includes(search.toLowerCase()))
     );
 
+    const getRole = (p) => {
+        const r = (p?.role ?? '').toString().trim().toLowerCase();
+        if (r === 'panitia' || r === 'committee') return 'panitia';
+        if (r === 'peserta' || r === 'participant') return 'peserta';
+        if (p?.is_committee === true || p?.is_committee === 1) return 'panitia';
+        return 'peserta';
+    };
+
     return (
         <div className="relative mt-1" ref={wrapperRef}>
             {!isOpen ? (
@@ -62,7 +70,16 @@ const SearchableParticipantSelect = ({ participants, onSelect, placeholder = "+ 
                                     className="px-2 py-1.5 text-xs hover:bg-indigo-50 cursor-pointer truncate"
                                     title={`${p.name} (${p.email || '-'})${p.province_label ? ` - ${p.province_label}` : ''}`}
                                 >
-                                    <div className="font-medium">{p.name}</div>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="font-medium truncate">{p.name}</div>
+                                        <span className={`shrink-0 text-[10px] px-1 rounded border ${
+                                            getRole(p) === 'panitia'
+                                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        }`}>
+                                            {getRole(p) === 'panitia' ? 'Panitia' : 'Peserta'}
+                                        </span>
+                                    </div>
                                     <div className="text-[10px] text-gray-400">
                                         {[p.email, p.province_label].filter(Boolean).join(' • ')}
                                     </div>
@@ -94,6 +111,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
     const [hotelFilter, setHotelFilter] = useState('all');
     const [provinceFilter, setProvinceFilter] = useState('all');
     const [genderFilter, setGenderFilter] = useState('all');
+    const [personRoleFilter, setPersonRoleFilter] = useState('all');
     const [sortMode, setSortMode] = useState('hotel_then_number');
     const [editingRoomId, setEditingRoomId] = useState(null);
     const [editingCapacity, setEditingCapacity] = useState('');
@@ -420,6 +438,14 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
         );
     };
 
+    const getPersonRole = (p) => {
+        const r = (p?.role ?? '').toString().trim().toLowerCase();
+        if (r === 'panitia' || r === 'committee') return 'panitia';
+        if (r === 'peserta' || r === 'participant') return 'peserta';
+        if (p?.is_committee === true || p?.is_committee === 1) return 'panitia';
+        return 'peserta';
+    };
+
     const unassignedParticipantsByProvince = provinceFilter === 'all'
         ? unassignedParticipants
         : (Array.isArray(unassignedParticipants)
@@ -439,6 +465,12 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                 if (genderFilter === 'unknown') return g === 'unknown';
                 return g === genderFilter;
             })
+            : []);
+
+    const unassignedParticipantsFilteredByRole = personRoleFilter === 'all'
+        ? unassignedParticipantsFiltered
+        : (Array.isArray(unassignedParticipantsFiltered)
+            ? unassignedParticipantsFiltered.filter(p => getPersonRole(p) === personRoleFilter)
             : []);
 
     const collator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
@@ -808,6 +840,19 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                     </select>
                                 </div>
 
+                                <div className="w-[170px] shrink-0">
+                                    <select
+                                        value={personRoleFilter}
+                                        onChange={(e) => setPersonRoleFilter(e.target.value)}
+                                        className="rounded border border-gray-300 px-3 py-2 w-full text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                        title="Filter role"
+                                    >
+                                        <option value="all">Semua Role</option>
+                                        <option value="peserta">Peserta</option>
+                                        <option value="panitia">Panitia</option>
+                                    </select>
+                                </div>
+
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -817,6 +862,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                         setHotelFilter('all');
                                         setProvinceFilter('all');
                                         setGenderFilter('all');
+                                        setPersonRoleFilter('all');
                                     }}
                                     className="shrink-0 h-[38px] w-[38px] inline-flex items-center justify-center rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-800"
                                     title="Reset filter"
@@ -872,9 +918,14 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {filteredRooms.length > 0 ? (
                                             filteredRooms.map((room) => {
-                                                const occupants = roomOccupants[room.id] || [];
-                                                const isFull = room.capacity > 0 && occupants.length >= room.capacity;
+                                                const occupantsAll = roomOccupants[room.id] || [];
+                                                const isFull = room.capacity > 0 && occupantsAll.length >= room.capacity;
                                                 const isActive = room.is_active !== false && room.is_active !== 0;
+                                                const occupantsDisplay = personRoleFilter === 'all'
+                                                    ? occupantsAll
+                                                    : occupantsAll.filter(o => getPersonRole(o) === personRoleFilter);
+                                                const panitiaCount = occupantsAll.filter(o => getPersonRole(o) === 'panitia').length;
+                                                const pesertaCount = occupantsAll.length - panitiaCount;
 
                                                 return (
                                                     <tr key={room.id} className="hover:bg-gray-50">
@@ -934,10 +985,19 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                                         </td>
                                                         <td className="px-4 py-2 whitespace-normal min-w-[200px]">
                                                             <div className="flex flex-col gap-1">
-                                                                {occupants.map(occ => (
+                                                                {occupantsDisplay.map(occ => (
                                                                     <div key={occ.id} className="flex justify-between items-center bg-blue-50 px-2 py-1 rounded text-xs border border-blue-100">
                                                                         <div className="min-w-0 flex-1">
-                                                                            <div className="truncate font-medium text-secondary max-w-[150px]" title={`${occ.name}${occ.province_label ? ` - ${occ.province_label}` : ''}`}>{occ.name}</div>
+                                                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                                                <div className="truncate font-medium text-secondary max-w-[150px]" title={`${occ.name}${occ.province_label ? ` - ${occ.province_label}` : ''}`}>{occ.name}</div>
+                                                                                <span className={`shrink-0 text-[10px] px-1 rounded border ${
+                                                                                    getPersonRole(occ) === 'panitia'
+                                                                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                                                }`}>
+                                                                                    {getPersonRole(occ) === 'panitia' ? 'Panitia' : 'Peserta'}
+                                                                                </span>
+                                                                            </div>
                                                                             {occ.province_label && (
                                                                                 <div className="text-[10px] text-gray-500 truncate max-w-[150px]" title={occ.province_label}>
                                                                                     {occ.province_label}
@@ -957,7 +1017,7 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
 
                                                                 {isActive && !isFull && (
                                                                     <SearchableParticipantSelect
-                                                                        participants={unassignedParticipantsFiltered}
+                                                                        participants={unassignedParticipantsFilteredByRole}
                                                                         onSelect={(userId) => handleAssignParticipant(room.id, userId)}
                                                                     />
                                                                 )}
@@ -968,7 +1028,12 @@ export default function RoomsModal({ isOpen, onClose, activity, rooms = [], hote
                                                                 )}
 
                                                                 <div className="text-[10px] text-gray-400 text-right mt-0.5">
-                                                                    {occupants.length} / {room.capacity > 0 ? room.capacity : '∞'}
+                                                                    <div>
+                                                                        {occupantsAll.length} / {room.capacity > 0 ? room.capacity : '∞'}
+                                                                    </div>
+                                                                    <div>
+                                                                        Peserta: {pesertaCount} • Panitia: {panitiaCount}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </td>

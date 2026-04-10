@@ -130,6 +130,13 @@ export default function RoomSelect({
                             {filteredRooms.length > 0 ? (
                                 filteredRooms.map(room => {
                                     const occupants = roomOccupants[room.id] || [];
+                                    const panitiaCount = occupants.filter(o => {
+                                        const r = (o?.role ?? '').toString().trim().toLowerCase();
+                                        if (r === 'panitia' || r === 'committee') return true;
+                                        if (o?.is_committee === true || o?.is_committee === 1) return true;
+                                        return false;
+                                    }).length;
+                                    const pesertaCount = occupants.length - panitiaCount;
                                     const isCurrent = currentRoom && currentRoom.id === room.id;
                                     const isFull = room.capacity > 0 && occupants.length >= room.capacity;
                                     const isActive = room.is_active !== false && room.is_active !== 0;
@@ -163,7 +170,7 @@ export default function RoomSelect({
                                                 </div>
                                                 <div className={`text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap flex-shrink-0 ${
                                                     isFull ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
-                                                }`}>
+                                                }`} title={`Peserta: ${pesertaCount} • Panitia: ${panitiaCount}`}>
                                                     {occupants.length} / {room.capacity > 0 ? room.capacity : '∞'}
                                                 </div>
                                             </div>
