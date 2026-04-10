@@ -1078,6 +1078,24 @@ export default function Dashboard({
         return list.filter((h) => (String(h?.hotel_name || '').trim() || 'Tanpa Hotel') === wanted);
     }, [roomStatsAll, roomHotelNameFilter]);
 
+    const roomHotelOccupancyByType = useMemo(() => {
+        const byType = roomStatsByType && typeof roomStatsByType === 'object' ? roomStatsByType : null;
+        const buildMap = (type) => {
+            const map = new Map();
+            const list = Array.isArray(byType?.[type]?.hotels) ? byType[type].hotels : [];
+            for (const h of list) {
+                const hotelName = String(h?.hotel_name || '').trim() || 'Tanpa Hotel';
+                map.set(hotelName, Number(h?.occupancy || 0));
+            }
+            return map;
+        };
+
+        return {
+            peserta: buildMap('peserta'),
+            panitia: buildMap('panitia'),
+        };
+    }, [roomStatsByType]);
+
     const roomByRegionStatsView = useMemo(() => {
         const byType = roomByRegionStatsByType && typeof roomByRegionStatsByType === 'object' ? roomByRegionStatsByType : null;
         return (byType && byType[roomUserTypeFilter]) ? byType[roomUserTypeFilter] : roomByRegionStats;
@@ -1758,9 +1776,13 @@ export default function Dashboard({
                                                 <tr>
                                                     <th className="px-3 py-2 text-left font-semibold whitespace-nowrap">Hotel</th>
                                                     <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Kamar</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Kapasitas</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Laki-laki</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Perempuan</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Jumlah Panitia</th>
+                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Jumlah Peserta</th>
                                                     <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Terpakai</th>
                                                     <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Kosong</th>
-                                                    <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Kapasitas</th>
                                                     <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Terisi</th>
                                                     <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">Sisa (Slot)</th>
                                                 </tr>
@@ -1777,6 +1799,10 @@ export default function Dashboard({
                                                     const available = hasUnlimited
                                                         ? null
                                                         : (h?.available_capacity != null ? Number(h.available_capacity) : Math.max(0, capacity - occupancy));
+                                                    const panitiaCount = roomHotelOccupancyByType.panitia.get(hotelName) ?? 0;
+                                                    const pesertaCount = roomHotelOccupancyByType.peserta.get(hotelName) ?? 0;
+                                                    const maleCount = Number(h?.male ?? 0);
+                                                    const femaleCount = Number(h?.female ?? 0);
 
                                                     return (
                                                         <tr key={`${hotelName}-${idx}`} className="hover:bg-gray-50">
@@ -1784,9 +1810,13 @@ export default function Dashboard({
                                                                 {hotelName}
                                                             </td>
                                                             <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{rooms.toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{hasUnlimited ? '∞' : capacity.toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{maleCount.toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{femaleCount.toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{Number(panitiaCount).toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{Number(pesertaCount).toLocaleString()}</td>
                                                             <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{usedRooms.toLocaleString()}</td>
                                                             <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{emptyRooms.toLocaleString()}</td>
-                                                            <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{hasUnlimited ? '∞' : capacity.toLocaleString()}</td>
                                                             <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{occupancy.toLocaleString()}</td>
                                                             <td className="px-3 py-2 text-right font-semibold text-gray-700 whitespace-nowrap">{hasUnlimited ? '∞' : (available ?? 0).toLocaleString()}</td>
                                                         </tr>

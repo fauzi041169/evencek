@@ -7469,12 +7469,57 @@ class ActivityController extends Controller
                         ->orderByDesc('occupancy')
                         ->get();
 
+                    $genderCountsByHotel = [];
+                    if (Schema::hasTable('activity_hotel_room_assignments')) {
+                        $hotelExpr = "TRIM(COALESCE(r.hotel_name, ''))";
+                        $genderKeySql = "CASE
+                            WHEN profiles.jenis_kelamin IS NULL OR TRIM(profiles.jenis_kelamin) = '' OR TRIM(profiles.jenis_kelamin) = '-' THEN 'U'
+                            WHEN LOWER(REPLACE(REPLACE(TRIM(profiles.jenis_kelamin), ' ', ''), '-', '')) IN ('l','lakilaki','pria','male','m') THEN 'L'
+                            WHEN LOWER(REPLACE(REPLACE(TRIM(profiles.jenis_kelamin), ' ', ''), '-', '')) IN ('p','perempuan','wanita','female','f') THEN 'P'
+                            ELSE 'U'
+                        END";
+
+                        $genderQuery = \DB::table('activity_hotel_room_assignments as a')
+                            ->join('activity_hotel_rooms as r', function ($join) {
+                                $join->on('r.id', '=', 'a.room_id')
+                                    ->on('r.activity_id', '=', 'a.activity_id');
+                            })
+                            ->join('users as u', 'u.id', '=', 'a.user_id')
+                            ->join('profiles', 'profiles.user_id', '=', 'a.user_id')
+                            ->where('a.activity_id', $activityId)
+                            ->where('r.is_active', 1)
+                            ->whereNotNull('u.id');
+                        if ($activityUsersTableExists) {
+                            $genderQuery->join($tableName.' as au', function ($join) {
+                                $join->on('au.user_id', '=', 'a.user_id')
+                                    ->on('au.activity_id', '=', 'a.activity_id');
+                            })->whereIn('au.status', $roomEligibleStatuses);
+                            if ($activityUsersHasDeletedAt) {
+                                $genderQuery->whereNull('au.deleted_at');
+                            }
+                        }
+                        $genderQuery = $applyTypeFilterToAssignments($genderQuery, $type);
+                        $genderRows = $genderQuery
+                            ->selectRaw("$hotelExpr as hotel_name, $genderKeySql as gender_key, COUNT(DISTINCT a.user_id) as total")
+                            ->groupByRaw("$hotelExpr, gender_key")
+                            ->get();
+                        foreach ($genderRows as $row) {
+                            $hotelName = trim((string) ($row->hotel_name ?? ''));
+                            $hotelName = $hotelName !== '' ? $hotelName : 'Tanpa Hotel';
+                            $genderKey = (string) ($row->gender_key ?? 'U');
+                            if (! isset($genderCountsByHotel[$hotelName])) {
+                                $genderCountsByHotel[$hotelName] = ['L' => 0, 'P' => 0, 'U' => 0];
+                            }
+                            $genderCountsByHotel[$hotelName][$genderKey] = (int) ($row->total ?? 0);
+                        }
+                    }
+
                     $activeCount = $getEligibleCountByType($type);
                     $hotelStats = $roomRows
                         ->groupBy(function ($row) {
                             return trim((string) ($row->hotel_name ?? ''));
                         })
-                        ->map(function ($rows, $hotelName) {
+                        ->map(function ($rows, $hotelName) use ($genderCountsByHotel) {
                             $hotelName = trim((string) $hotelName);
                             $hasUnlimited = $rows->contains(function ($r) {
                                 return (int) ($r->capacity ?? 0) <= 0;
@@ -7515,6 +7560,8 @@ class ActivityController extends Controller
                                 'total_capacity' => $totalCapacity,
                                 'has_unlimited' => $hasUnlimited,
                                 'occupancy' => $occupancy,
+                                'male' => (int) (($genderCountsByHotel[$hotelName !== '' ? $hotelName : 'Tanpa Hotel']['L'] ?? 0)),
+                                'female' => (int) (($genderCountsByHotel[$hotelName !== '' ? $hotelName : 'Tanpa Hotel']['P'] ?? 0)),
                                 'available_capacity' => $hasUnlimited ? null : max(0, $totalCapacity - $occupancy),
                                 'used_rooms' => $usedRooms,
                                 'empty_rooms' => $emptyRooms,
