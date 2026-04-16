@@ -24,12 +24,20 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
     const [isLoading, setIsLoading] = useState(false);
     const [messageInput, setMessageInput] = useState('');
     const [unreadCount, setUnreadCount] = useState(0);
+    const [isPortrait, setIsPortrait] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.matchMedia('(orientation: portrait)').matches;
+    });
     const messagesEndRef = useRef(null);
 
     // Only show for logged in users
     // if (!auth.user) return null;
 
     const isOwner = auth.user && auth.user.id === ownerId;
+
+    if (isPortrait) {
+        return null;
+    }
 
     const fetchUnreadCount = async () => {
         if (!auth.user) return;
@@ -108,6 +116,25 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
         const interval = setInterval(fetchUnreadCount, 30000); // Poll unread count every 30s
         return () => clearInterval(interval);
     }, [activityId]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const mql = window.matchMedia('(orientation: portrait)');
+        const updatePortrait = () => setIsPortrait(mql.matches);
+        updatePortrait();
+        if (mql.addEventListener) {
+            mql.addEventListener('change', updatePortrait);
+        } else {
+            mql.addListener(updatePortrait);
+        }
+        return () => {
+            if (mql.removeEventListener) {
+                mql.removeEventListener('change', updatePortrait);
+            } else {
+                mql.removeListener(updatePortrait);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (isOpen && auth.user) {
@@ -288,8 +315,9 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
             {/* Toggle Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="fixed bottom-6 right-6 z-50 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110 flex items-center justify-center w-14 h-14"
+                className="fixed bottom-32 right-4 md:bottom-6 md:right-6 z-50 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110 flex items-center justify-center w-14 h-14"
                 title="Hubungi Penyelenggara"
+                style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
             >
                 <MessageSquareText className="w-6 h-6" />
                 {unreadCount > 0 && (
@@ -301,7 +329,7 @@ export default function ChatWidget({ activityId, ownerId, ownerName }) {
 
             {/* Chat Widget */}
             {isOpen && (
-                <div className="fixed bottom-24 right-6 z-50 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden h-[500px] max-h-[70vh] animate-fade-in-up">
+                <div className="fixed bottom-32 right-4 md:bottom-24 md:right-6 z-50 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden h-[500px] max-h-[70vh] animate-fade-in-up" style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}>
                     {/* Header */}
                     <div className="bg-indigo-600 p-3 flex justify-between items-center text-white shadow-sm">
                         <div className="flex items-center gap-2">

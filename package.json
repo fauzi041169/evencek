@@ -2,7 +2,8 @@
     "private": true,
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "whatsapp": "cd whatsapp && node server.js"
     },
     "devDependencies": {
         "@inertiajs/react": "^2.3.10",

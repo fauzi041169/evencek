@@ -4,6 +4,7 @@ import AcaraLayout from '@/Layouts/AcaraLayout';
 import DivisionSidebar from './Components/DivisionSidebar';
 import RequirementsManager from './Components/RequirementsManager';
 import CorePreparationSection from './Components/CorePreparationSection';
+import WhatsAppSection from './Components/WhatsAppSection';
 import BlockedRegionsSection from './Components/BlockedRegionsSection';
 import CommitteeSection from './Components/CommitteeSection';
 import GallerySection from './Components/GallerySection';
@@ -95,6 +96,12 @@ export default function PreparationIndex({
                         participationTypes={participationTypes}
                         committeeTypes={committeeTypes}
                         activity={activity}
+                    />
+
+                    {/* WhatsApp Blast Section */}
+                    <WhatsAppSection 
+                        activity={activity} 
+                        participants={participants} 
                     />
 
                     {/* main content sections */}

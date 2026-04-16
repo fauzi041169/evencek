@@ -25,6 +25,10 @@ const FloatingAI = () => {
         { role: 'assistant', content: 'Halo! Saya AI Robot EventCek. Ada yang bisa saya bantu tentang aplikasi ini?' }
     ]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isPortrait, setIsPortrait] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.matchMedia('(orientation: portrait)').matches;
+    });
 
     const chatEndRef = useRef(null);
     const inputRef = useRef(null);
@@ -233,14 +237,37 @@ const FloatingAI = () => {
         window.location.replace('http://localhost:8000');
     };
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const mql = window.matchMedia('(orientation: portrait)');
+        const updatePortrait = () => setIsPortrait(mql.matches);
+        updatePortrait();
+        if (mql.addEventListener) {
+            mql.addEventListener('change', updatePortrait);
+        } else {
+            mql.addListener(updatePortrait);
+        }
+        return () => {
+            if (mql.removeEventListener) {
+                mql.removeEventListener('change', updatePortrait);
+            } else {
+                mql.removeListener(updatePortrait);
+            }
+        };
+    }, []);
+
     handleSubmitMessageRef.current = handleSubmitMessage;
+
+    if (isPortrait) {
+        return null;
+    }
 
     if (!isOpen) {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white transition-all duration-300 hover:scale-110 active:scale-95 z-[9999]"
-                style={{ background: 'linear-gradient(135deg, var(--color-primary, #3b82f6), var(--color-secondary, #d4ff00))', border: '2px solid white' }}
+                className="fixed bottom-32 right-4 md:bottom-6 md:right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white transition-all duration-300 hover:scale-110 active:scale-95 z-[9999]"
+                style={{ background: 'linear-gradient(135deg, var(--color-primary, #3b82f6), var(--color-secondary, #d4ff00))', border: '2px solid white', bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
             >
                 <div className="absolute inset-0 rounded-full bg-white/20 animate-ping"></div>
                 <Bot size={28} />
@@ -249,7 +276,7 @@ const FloatingAI = () => {
     }
 
     return (
-        <div className={`fixed bottom-6 right-6 z-[2147483647] transition-all duration-500 ease-in-out ${isMinimized ? 'w-14 h-14' : 'w-[360px] sm:w-[400px]'}`}>
+        <div className={`fixed bottom-32 right-4 md:bottom-6 md:right-6 z-[2147483647] transition-all duration-500 ease-in-out ${isMinimized ? 'w-14 h-14' : 'w-[360px] sm:w-[400px]'}`} style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}>
             {isMinimized ? (
                 <button onClick={() => setIsMinimized(false)} className="w-14 h-14 bg-gradient-to-br from-primary to-secondary rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110">
                     <Bot size={24} />

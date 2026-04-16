@@ -7,6 +7,7 @@ use App\Exports\GenericArrayExport;
 use App\Helpers\ImageHelper;
 use App\Models\Activity;
 use App\Models\ActivityRecord;
+use App\Models\ActivityCommitteeStructure;
 use App\Models\ActivityUser;
 use App\Models\Attendance;
 use App\Models\Setting;
@@ -95,6 +96,59 @@ class AttendanceController extends Controller
             ->where('activity_id', $activity_id)
             ->where('attendance_id', $attendance_id)
             ->exists();
+    }
+
+    private function isUserRegisteredForActivity($userId, $activityId, Attendance $attendance = null)
+    {
+        $participantQuery = ActivityUser::where('activity_id', $activityId)
+            ->where('user_id', $userId);
+
+        $committeeQuery = ActivityCommitteeStructure::where('activity_id', $activityId)
+            ->where('user_id', $userId);
+
+        if ($attendance && $attendance->activity_batch_id) {
+            $participantQuery->where(function ($query) use ($attendance) {
+                $query->where('activity_batch_id', $attendance->activity_batch_id)
+                    ->orWhereNull('activity_batch_id');
+            });
+
+            $committeeQuery->where(function ($query) use ($attendance) {
+                $query->where('activity_batch_id', $attendance->activity_batch_id)
+                    ->orWhereNull('activity_batch_id');
+            });
+        }
+
+        return $participantQuery->exists() || $committeeQuery->exists();
+    }
+
+    private function isUserRegisteredForActivityInAnyBatch($userId, $activityId)
+    {
+        return ActivityUser::where('activity_id', $activityId)
+                ->where('user_id', $userId)
+                ->exists()
+            || ActivityCommitteeStructure::where('activity_id', $activityId)
+                ->where('user_id', $userId)
+                ->exists();
+    }
+
+    private function resolveScannedUserId($scannedId)
+    {
+        // Prefer ActivityUser ID (participant code) first
+        $activityUser = ActivityUser::find($scannedId);
+        if ($activityUser) {
+            return $activityUser->user_id;
+        }
+
+        // If scanned value is a committee record ID, resolve to the underlying user
+        $committeeRecord = ActivityCommitteeStructure::find($scannedId);
+        if ($committeeRecord && $committeeRecord->user_id) {
+            return $committeeRecord->user_id;
+        }
+
+        // Try matching a direct user ID
+        $user = User::where('id', $scannedId)->first();
+
+        return $user ? $user->id : null;
     }
 
     /**
@@ -281,20 +335,35 @@ class AttendanceController extends Controller
             $activity = $this->authorizeActivityAccess($activity_id);
             $attendance = Attendance::findOrFail($attendance_id);
 
-            // Ambil daftar peserta dari tabel activity_users
-            $query = DB::table('activity_users')
+            // Ambil daftar peserta dari tabel activity_users dan activity_committee_structures
+            $participantQuery = DB::table('activity_users')
                 ->join('users', 'users.id', '=', 'activity_users.user_id')
-                ->where('activity_users.activity_id', $activity_id);
+                ->where('activity_users.activity_id', $activity_id)
+                ->select('users.id', 'users.name', DB::raw("'peserta' as type"));
+
+            $committeeQuery = DB::table('activity_committee_structures')
+                ->join('users', 'users.id', '=', 'activity_committee_structures.user_id')
+                ->where('activity_committee_structures.activity_id', $activity_id)
+                ->select('users.id', 'users.name', DB::raw("'panitia' as type"));
+
             if (Schema::hasColumn('activity_users', 'deleted_at')) {
-                $query->whereNull('activity_users.deleted_at');
+                $participantQuery->whereNull('activity_users.deleted_at');
             }
 
-            // Filter peserta berdasarkan batch jika attendance memiliki batch_id
+            // Filter berdasarkan batch jika attendance memiliki batch_id
             if ($attendance->activity_batch_id) {
-                $query->where('activity_users.activity_batch_id', $attendance->activity_batch_id);
+                $participantQuery->where(function ($query) use ($attendance) {
+                    $query->where('activity_users.activity_batch_id', $attendance->activity_batch_id)
+                        ->orWhereNull('activity_users.activity_batch_id');
+                });
+
+                $committeeQuery->where(function ($query) use ($attendance) {
+                    $query->where('activity_committee_structures.activity_batch_id', $attendance->activity_batch_id)
+                        ->orWhereNull('activity_committee_structures.activity_batch_id');
+                });
             }
 
-            $participants = $query->select('users.id', 'users.name')->get();
+            $participants = $participantQuery->union($committeeQuery)->get();
 
             $isCommittee = $activity->canManageRegistration(auth()->id());
             $activityData = array_merge($activity->toArray(), [
@@ -939,41 +1008,29 @@ class AttendanceController extends Controller
             $this->authorizeActivityAccess($validated['activity_id']);
 
             $scannedId = $validated['scanned_id'];
-            $finalUserId = null;
-
-            // 1. Cek apakah scanned_id adalah ActivityUser ID (Participant ID) - Prioritas Utama
-            $activityUser = ActivityUser::find($scannedId);
-            if ($activityUser) {
-                $finalUserId = $activityUser->user_id;
-            }
-            // 2. Jika bukan ActivityUser ID, cek apakah User ID valid
-            elseif (User::where('id', $scannedId)->exists()) {
-                $finalUserId = $scannedId;
-            }
+            $finalUserId = $this->resolveScannedUserId($scannedId);
 
             if (! $finalUserId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User tidak ditemukan (Invalid ID)',
+                    'message' => 'User tidak ditemukan. Pastikan kode QR/ID benar.',
                 ], 404);
             }
 
             $attendance = Attendance::findOrFail($validated['attendance_id']);
 
-            // Validasi batch: jika attendance terikat batch, pastikan user terdaftar di batch tersebut
+            // Validasi batch: jika attendance terikat batch, pastikan user terdaftar di batch/committee yang sama
             if ($attendance->activity_batch_id) {
-                $isEnrolledInBatch = ActivityUser::where('user_id', $finalUserId)
-                    ->where('activity_id', $validated['activity_id'])
-                    ->where(function ($q) use ($attendance) {
-                        $q->where('activity_batch_id', $attendance->activity_batch_id)
-                            ->orWhereNull('activity_batch_id');
-                    })
-                    ->exists();
+                $isEnrolledInBatch = $this->isUserRegisteredForActivity($finalUserId, $validated['activity_id'], $attendance);
 
                 if (! $isEnrolledInBatch) {
+                    $wrongBatch = $this->isUserRegisteredForActivityInAnyBatch($finalUserId, $validated['activity_id']);
+
                     return response()->json([
                         'success' => false,
-                        'message' => 'Peserta tidak terdaftar pada sesi/batch ini.',
+                        'message' => $wrongBatch
+                            ? 'Peserta terdaftar di batch/sesi yang berbeda.'
+                            : 'Peserta tidak terdaftar pada sesi/batch ini.',
                     ], 400);
                 }
             }
@@ -995,11 +1052,11 @@ class AttendanceController extends Controller
                     'already_scanned' => true,
                     'scanned_at' => $existingAttendance->created_at,
                     'user_name' => $existingUser ? $existingUser->name : 'Peserta',
-                    'user_profile_url' => optional($existingUser->profile)->foto_url,
-                    'user_instansi' => optional($existingUser->profile)->instansi,
-                    'user_province' => optional(optional($existingUser->profile)->province)->name,
+                    'user_profile_url' => optional(optional($existingUser)->profile)->foto_url,
+                    'user_instansi' => optional(optional($existingUser)->profile)->instansi,
+                    'user_province' => optional(optional(optional($existingUser)->profile)->province)->name,
                     'attendance_name' => $attendance->name,
-                    'first_scan_time' => $existingAttendance->created_at->format('H:i'),
+                    'first_scan_time' => $existingAttendance->created_at ? $existingAttendance->created_at->format('H:i') : now()->format('H:i'),
                 ]);
             }
 
@@ -1011,7 +1068,7 @@ class AttendanceController extends Controller
                 'activity_batch_id' => $attendance->activity_batch_id,
                 'attendance_id' => $validated['attendance_id'],
                 'status' => 1,
-                'device_info' => $request->header('User-Agent'),
+                'device_info' => Str::limit($request->header('User-Agent'), 180),
                 'location' => null,
                 'record_type' => 'scan',
                 'description' => 'Scanned via scanner',
@@ -1028,7 +1085,14 @@ class AttendanceController extends Controller
                 'user' => $user,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            Log::error('Error in storeScan:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: '.$e->getMessage(),
@@ -1060,16 +1124,30 @@ class AttendanceController extends Controller
                 'activity_id' => 'required|string',
             ]);
 
-            // Log input data
-            \Log::info('Checking user registration:', $validated);
+            // Resolve scanned value to actual user ID before checking registration
+            $resolvedUserId = $this->resolveScannedUserId($validated['scanned_id']);
 
-            // Cek di tabel activity_users
-            $isRegistered = DB::table('activity_users')
-                ->where([
-                    'user_id' => $validated['scanned_id'],
-                    'activity_id' => $validated['activity_id'],
-                ])
-                ->exists();
+            // Log input data
+            \Log::info('Checking user registration:', array_merge($validated, [
+                'resolved_user_id' => $resolvedUserId,
+            ]));
+
+            // Cek di tabel activity_users dan activity_committee_structures
+            $isRegistered = false;
+            if ($resolvedUserId) {
+                $isRegistered = DB::table('activity_users')
+                    ->where([
+                        'user_id' => $resolvedUserId,
+                        'activity_id' => $validated['activity_id'],
+                    ])
+                    ->exists()
+                    || DB::table('activity_committee_structures')
+                    ->where([
+                        'user_id' => $resolvedUserId,
+                        'activity_id' => $validated['activity_id'],
+                    ])
+                    ->exists();
+            }
 
             // Log hasil pengecekan
             \Log::info('Check result:', [
@@ -1143,19 +1221,11 @@ class AttendanceController extends Controller
             // Validasi batch jika attendance terikat batch
             $attendance = Attendance::find($validated['attendance_id']);
             if ($attendance && $attendance->activity_batch_id) {
-                $isEnrolledInBatch = ActivityUser::where('user_id', $validated['user_id'])
-                    ->where('activity_id', $validated['activity_id'])
-                    ->where(function ($q) use ($attendance) {
-                        $q->where('activity_batch_id', $attendance->activity_batch_id)
-                            ->orWhereNull('activity_batch_id');
-                    })
-                    ->exists();
+                $isEnrolledInBatch = $this->isUserRegisteredForActivity($validated['user_id'], $validated['activity_id'], $attendance);
 
                 if (! $isEnrolledInBatch) {
                     // Cek jika terdaftar di batch lain untuk pesan error yang lebih spesifik
-                    $wrongBatch = ActivityUser::where('user_id', $validated['user_id'])
-                        ->where('activity_id', $validated['activity_id'])
-                        ->exists();
+                    $wrongBatch = $this->isUserRegisteredForActivityInAnyBatch($validated['user_id'], $validated['activity_id']);
 
                     if ($wrongBatch) {
                         return response()->json([
@@ -1260,10 +1330,7 @@ class AttendanceController extends Controller
             // Validasi batch jika attendance terikat batch
             $attendance = Attendance::find($request->attendance_id);
             if ($attendance && $attendance->activity_batch_id) {
-                $isEnrolledInBatch = ActivityUser::where('user_id', $request->user_id)
-                    ->where('activity_id', $request->activity_id)
-                    ->where('activity_batch_id', $attendance->activity_batch_id)
-                    ->exists();
+                $isEnrolledInBatch = $this->isUserRegisteredForActivity($request->user_id, $request->activity_id, $attendance);
 
                 if (! $isEnrolledInBatch) {
                     return response()->json([
@@ -1435,6 +1502,25 @@ class AttendanceController extends Controller
                 ], 400);
             }
 
+            // Validasi pendaftaran peserta atau panitia untuk jenis Manual
+            $isRegistered = $this->isUserRegisteredForActivity($userId, $activityId, $attendance);
+            if (! $isRegistered) {
+                if ($attendance->activity_batch_id) {
+                    $wrongBatch = $this->isUserRegisteredForActivityInAnyBatch($userId, $activityId);
+                    if ($wrongBatch) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Anda terdaftar di batch/sesi yang berbeda',
+                        ], 403);
+                    }
+                }
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda belum terdaftar di kegiatan ini',
+                ], 403);
+            }
+
             // Update atau create record
             if ($status === 1) {
                 // Cek apakah record sudah ada
@@ -1539,10 +1625,6 @@ class AttendanceController extends Controller
             }
 
             // Cek apakah user terdaftar di activity
-            $query = ActivityUser::where('activity_id', $activityId)
-                ->where('user_id', $userId);
-
-            // Fetch attendance details first to check for batch restrictions
             $attendance = Attendance::find($attendanceId);
             if (! $attendance) {
                 return response()->json([
@@ -1551,20 +1633,11 @@ class AttendanceController extends Controller
                 ], 404);
             }
 
-            // If attendance is tied to a specific batch, ensure user is in that batch
-            if ($attendance->activity_batch_id) {
-                $query->where('activity_batch_id', $attendance->activity_batch_id);
-            }
-
-            $isRegistered = $query->exists();
+            $isRegistered = $this->isUserRegisteredForActivity($userId, $activityId, $attendance);
 
             if (! $isRegistered) {
-                // Check if user is registered but in a different batch
                 if ($attendance->activity_batch_id) {
-                    $wrongBatch = ActivityUser::where('activity_id', $activityId)
-                        ->where('user_id', $userId)
-                        ->exists();
-
+                    $wrongBatch = $this->isUserRegisteredForActivityInAnyBatch($userId, $activityId);
                     if ($wrongBatch) {
                         return response()->json([
                             'success' => false,
@@ -1659,22 +1732,11 @@ class AttendanceController extends Controller
             $attendance = Attendance::findOrFail($attendanceId);
 
             // Cek apakah user terdaftar di activity dengan batch yang sesuai
-            $query = ActivityUser::where('activity_id', $activityId)
-                ->where('user_id', $userId);
-
-            if ($attendance->activity_batch_id) {
-                $query->where('activity_batch_id', $attendance->activity_batch_id);
-            }
-
-            $isRegistered = $query->exists();
+            $isRegistered = $this->isUserRegisteredForActivity($userId, $activityId, $attendance);
 
             if (! $isRegistered) {
-                // Check if user is registered but in a different batch
                 if ($attendance->activity_batch_id) {
-                    $wrongBatch = ActivityUser::where('activity_id', $activityId)
-                        ->where('user_id', $userId)
-                        ->exists();
-
+                    $wrongBatch = $this->isUserRegisteredForActivityInAnyBatch($userId, $activityId);
                     if ($wrongBatch) {
                         return response()->json([
                             'success' => false,
