@@ -35,10 +35,12 @@ export default function Detail({
     roomMap,
     provinces,
     registerTarget: registrationTarget, // We will calculate this in controller
-    heroCoverPath, // We will calculate this in controller
+    heroCoverPath,
     heroAnimationStyle,
     buttonText,
     flash,
+    materials = [],
+    materialImages = [],
     contactPersons = []
 }) {
     const { t, i18n } = useTranslation();
@@ -1098,65 +1100,82 @@ export default function Detail({
                                         }}
                                     />
                                 )}
+                                {(() => {
+                                    const imageMaterials = materialImages || (materials || []).filter(m => {
+                                        const type = (m.file_type || '').toLowerCase();
+                                        return ['image', 'photo', 'picture'].includes(type);
+                                    });
+                                    const allGalleryItems = [
+                                        ...(activity.galleries || []).map(g => ({ ...g, is_gallery_model: true })),
+                                        ...imageMaterials.map(m => ({ ...m, is_gallery_model: false }))
+                                    ];
 
-                                {activity.galleries && activity.galleries.length > 0 ? (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {activity.galleries.map((image, index) => (
-                                            <div key={image.id} className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                                <img
-                                                    src={getGalleryImageUrl(image)}
-                                                    alt="Gallery"
-                                                    loading="lazy"
-                                                    className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-105 cursor-zoom-in"
-                                                    onClick={() => {
-                                                        setLightboxIndex(index);
-                                                        setIsLightboxOpen(true);
-                                                    }}
-                                                    onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ACTIVITY_IMAGE; }}
-                                                />
-                                                {canEdit && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            Swal.fire({
-                                                                title: 'Hapus foto ini?',
-                                                                text: "Foto tidak dapat dikembalikan",
-                                                                icon: 'warning',
-                                                                showCancelButton: true,
-                                                                confirmButtonColor: '#d33',
-                                                                cancelButtonColor: '#3085d6',
-                                                                confirmButtonText: 'Ya, Hapus!'
-                                                            }).then((result) => {
-                                                                if (result.isConfirmed) {
-                                                                    const csrf = document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || '';
-                                                                    axios.delete(route('gallery.destroy', { activity: activity.id, gallery: image.id }), {
-                                                                        headers: {
-                                                                            'X-CSRF-TOKEN': csrf,
-                                                                            'Accept': 'application/json'
+                                    if (allGalleryItems.length > 0) {
+                                        return (
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                {allGalleryItems.map((image, index) => (
+                                                    <div key={image.id || index} className="relative group aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                                        <img
+                                                            src={image.is_gallery_model ? getGalleryImageUrl(image) : image.file_path}
+                                                            alt="Gallery"
+                                                            loading="lazy"
+                                                            className="object-cover w-full h-full transform transition-transform duration-300 group-hover:scale-105 cursor-zoom-in"
+                                                            onClick={() => {
+                                                                setLightboxIndex(index);
+                                                                setIsLightboxOpen(true);
+                                                            }}
+                                                            onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_ACTIVITY_IMAGE; }}
+                                                        />
+                                                        {canEdit && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    Swal.fire({
+                                                                        title: 'Hapus foto ini?',
+                                                                        text: "Foto tidak dapat dikembalikan",
+                                                                        icon: 'warning',
+                                                                        showCancelButton: true,
+                                                                        confirmButtonColor: '#d33',
+                                                                        cancelButtonColor: '#3085d6',
+                                                                        confirmButtonText: 'Ya, Hapus!'
+                                                                    }).then((result) => {
+                                                                        if (result.isConfirmed) {
+                                                                            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                                                                            const deleteUrl = image.is_gallery_model 
+                                                                                ? route('gallery.destroy', { activity: activity.id, gallery: image.id })
+                                                                                : route('activity.preparation.materials.destroy', { activity: activity.id, material: image.id || image.uid });
+                                                                            
+                                                                            axios.delete(deleteUrl, {
+                                                                                headers: {
+                                                                                    'X-CSRF-TOKEN': csrf,
+                                                                                    'Accept': 'application/json'
+                                                                                }
+                                                                            }).then(() => {
+                                                                                window.location.reload();
+                                                                            }).catch(() => {
+                                                                                Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus foto' });
+                                                                            });
                                                                         }
-                                                                    }).then(() => {
-                                                                        window.location.reload();
-                                                                    }).catch(() => {
-                                                                        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus foto' });
                                                                     });
-                                                                }
-                                                            });
-                                                        }}
-                                                        className="absolute top-2 right-2 p-2 bg-danger/90 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger shadow-sm"
-                                                        title="Hapus"
-                                                    >
-                                                        <i className="fas fa-trash-alt text-xs"></i>
-                                                    </button>
-                                                )}
+                                                                }}
+                                                                className="absolute top-2 right-2 p-2 bg-danger/90 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger shadow-sm"
+                                                                title="Hapus"
+                                                            >
+                                                                <i className="fas fa-trash-alt text-xs"></i>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                        <p className="text-gray-500">{t('activities.no_gallery')}</p>
-                                    </div>
-                                )}
+                                        );
+                                    }
+                                    return (
+                                        <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                            <p className="text-gray-500">{t('activities.no_gallery')}</p>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         )}
 

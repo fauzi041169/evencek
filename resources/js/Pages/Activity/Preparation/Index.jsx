@@ -22,6 +22,7 @@ export default function PreparationIndex({
     participants,
     rundowns,
     materials,
+    materialImages,
     owners,
     refPositions,
     participationTypes,
@@ -133,7 +134,7 @@ export default function PreparationIndex({
                         <SectionContainer title="Materi & Dokumen" activity={activity}>
                             <MaterialsSection
                                 activity={activity}
-                                materials={materials.filter(m => m.file_type !== 'image')}
+                                materials={materials}
                             />
                         </SectionContainer>
                     </div>
@@ -178,7 +179,7 @@ export default function PreparationIndex({
                         <SectionContainer title="Galeri Foto Kegiatan" activity={activity}>
                             <GallerySection
                                 activity={activity}
-                                materials={materials.filter(m => m.file_type === 'image')}
+                                materials={materialImages || materials.filter(m => m.file_type === 'image')}
                             />
                         </SectionContainer>
                     </div>

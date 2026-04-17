@@ -217,9 +217,12 @@ class ActivityPreparationController extends Controller
                 ->get();
 
             // Get materials for this activity
-            $materials = ActivityMaterial::where('activity_id', $activityIdValue)
+            $allMaterials = ActivityMaterial::where('activity_id', $activityIdValue)
                 ->orderBy('created_at', 'desc')
                 ->get();
+
+            $materials = $allMaterials->filter(fn($m) => ! $m->isImage())->values();
+            $materialImages = $allMaterials->filter(fn($m) => $m->isImage())->values();
 
             // Get enrolled users with profile and province
             $participants = ActivityUser::with([
@@ -345,6 +348,7 @@ foreach ($participants as $participant) {
                 'participants' => $participants,
                 'rundowns' => $rundowns,
                 'materials' => $materials,
+                'materialImages' => $materialImages,
                 'owners' => $owners,
                 'refPositions' => $refPositions,
                 'participationTypes' => $participationTypes,
@@ -6554,16 +6558,20 @@ foreach ($participants as $participant) {
                 $fileSize = $file->getSize();
 
                 $fileType = null;
-                if ($selectedType) {
+                $lowExt = strtolower($extension);
+                $isImage = str_starts_with((string) $mimeType, 'image/') || 
+                          in_array($lowExt, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic', 'heif', 'bmp', 'tiff'], true);
+
+                if ($isImage) {
+                    $fileType = 'image';
+                } elseif ($selectedType && $selectedType !== 'file') {
                     $fileType = $selectedType;
                 } else {
-                    if (str_starts_with((string) $mimeType, 'image/')) {
-                        $fileType = 'image';
-                    } elseif ($mimeType === 'application/pdf' || strtolower($extension) === 'pdf') {
+                    if ($mimeType === 'application/pdf' || $lowExt === 'pdf') {
                         $fileType = 'pdf';
-                    } elseif (in_array(strtolower($extension), ['ppt', 'pptx'], true) || in_array($mimeType, ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'], true)) {
+                    } elseif (in_array($lowExt, ['ppt', 'pptx'], true) || in_array($mimeType, ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'], true)) {
                         $fileType = 'ppt';
-                    } elseif (in_array(strtolower($extension), ['doc', 'docx'], true) || in_array($mimeType, ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'], true)) {
+                    } elseif (in_array($lowExt, ['doc', 'docx'], true) || in_array($mimeType, ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'], true)) {
                         $fileType = 'doc';
                     } elseif (str_starts_with((string) $mimeType, 'audio/')) {
                         $fileType = 'audio';

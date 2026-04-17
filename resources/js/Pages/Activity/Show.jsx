@@ -25,6 +25,7 @@ export default function Show({
     currentStatus,
     canAccessManagement,
     materials,
+    materialImages,
     participants = {},
     roomMap,
     groupMap,
@@ -46,7 +47,7 @@ export default function Show({
     printSettings,
     certificateSetting,
     certificatePrintSettings,
-    requiredProfileLabels, // Added this prop
+    requiredProfileLabels,
     enrollmentData,
     contactPersons = []
 }) {
@@ -1124,72 +1125,80 @@ export default function Show({
                                     </div>
                                 )}
 
-                                {/* Materials Section */}
-                                {isVisible('materials') && materials && materials.length > 0 && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
-                                        <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                            <i className="fas fa-file-alt text-indigo-500 text-sm"></i>
-                                            {t('activities.materi_kegiatan')}
-                                        </h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {materials.map((material) => {
-                                                const isPdf = material.file_type === 'pdf' || (material.file_path && material.file_path.toLowerCase().endsWith('.pdf'));
+                                 {/* Materials Section */}
+                                 {(() => {
+                                     const actualMaterials = (materials || []).filter(m => {
+                                        const type = (m.file_type || '').toLowerCase();
+                                        return !['image', 'photo', 'picture'].includes(type);
+                                    });
+                                     if (!isVisible('materials') || actualMaterials.length === 0) return null;
 
-                                                let iconSrc = '/assets/images/icon/iconpdf.jpg';
-                                                if (material.file_type === 'ppt') iconSrc = '/assets/images/icon/iconppt.jpg';
-                                                else if (material.file_type === 'link' || material.file_type === 'youtube') iconSrc = '/assets/images/icon/iconlink.jpg';
+                                     return (
+                                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-5">
+                                             <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                                 <i className="fas fa-file-alt text-indigo-500 text-sm"></i>
+                                                 {t('activities.materi_kegiatan')}
+                                             </h3>
+                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                 {actualMaterials.map((material) => {
+                                                     const isPdf = material.file_type === 'pdf' || (material.file_path && material.file_path.toLowerCase().endsWith('.pdf'));
 
-                                                return (
-                                                    <div key={material.id} className="border border-gray-100 rounded-xl p-3 hover:shadow-md transition bg-gray-50 flex items-start gap-3">
-                                                        <div className="shrink-0">
-                                                            <img src={iconSrc} alt="Icon" className="w-10 h-10 object-contain" />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <h4 className="text-sm font-bold text-gray-800 truncate mb-0.5">{material.title || material.name}</h4>
-                                                            <p className="text-[10px] text-gray-500 mb-2 line-clamp-1">{material.description || t('activities.no_description')}</p>
+                                                     let iconSrc = '/assets/images/icon/iconpdf.jpg';
+                                                     if (material.file_type === 'ppt') iconSrc = '/assets/images/icon/iconppt.jpg';
+                                                     else if (material.file_type === 'link' || material.file_type === 'youtube') iconSrc = '/assets/images/icon/iconlink.jpg';
 
-                                                            <div className="flex items-center gap-3">
-                                                                {/* PDF Preview Link */}
-                                                                {isPdf && (
-                                                                    <a
-                                                                        href={route('activity.preparation.view-material', { activityId: activity.id, materialId: material.id })}
-                                                                        className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
-                                                                    >
-                                                                        <i className="fas fa-eye mr-1"></i> Preview
-                                                                    </a>
-                                                                )}
+                                                     return (
+                                                         <div key={material.id} className="border border-gray-100 rounded-xl p-3 hover:shadow-md transition bg-gray-50 flex items-start gap-3">
+                                                             <div className="shrink-0">
+                                                                 <img src={iconSrc} alt="Icon" className="w-10 h-10 object-contain" />
+                                                             </div>
+                                                             <div className="flex-1 min-w-0">
+                                                                 <h4 className="text-sm font-bold text-gray-800 truncate mb-0.5">{material.title || material.name}</h4>
+                                                                 <p className="text-[10px] text-gray-500 mb-2 line-clamp-1">{material.description || t('activities.no_description')}</p>
 
-                                                                {/* Download Link (for all files) */}
-                                                                {material.file_type !== 'link' && material.file_type !== 'youtube' && (
-                                                                    <a
-                                                                        href={route('activity.preparation.download-material', { activityId: activity.id, materialId: material.id })}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="inline-flex items-center text-xs font-medium text-gray-600 hover:text-primary"
-                                                                    >
-                                                                        <i className="fas fa-download mr-1"></i> Unduh
-                                                                    </a>
-                                                                )}
+                                                                 <div className="flex items-center gap-3">
+                                                                     {/* PDF Preview Link */}
+                                                                     {isPdf && (
+                                                                         <a
+                                                                             href={route('activity.preparation.view-material', { activityId: activity.id, materialId: material.id })}
+                                                                             className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
+                                                                         >
+                                                                             <i className="fas fa-eye mr-1"></i> Preview
+                                                                         </a>
+                                                                     )}
 
-                                                                {/* External Link */}
-                                                                {(material.file_type === 'link' || material.file_type === 'youtube') && (
-                                                                    <a
-                                                                        href={material.file_path}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
-                                                                    >
-                                                                        <i className="fas fa-external-link-alt mr-1"></i> Buka Link
-                                                                    </a>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
+                                                                     {/* Download Link (for all files) */}
+                                                                     {material.file_type !== 'link' && material.file_type !== 'youtube' && (
+                                                                         <a
+                                                                             href={route('activity.preparation.download-material', { activityId: activity.id, materialId: material.id })}
+                                                                             target="_blank"
+                                                                             rel="noopener noreferrer"
+                                                                             className="inline-flex items-center text-xs font-medium text-gray-600 hover:text-primary"
+                                                                         >
+                                                                             <i className="fas fa-download mr-1"></i> Unduh
+                                                                         </a>
+                                                                     )}
+
+                                                                     {/* External Link */}
+                                                                     {(material.file_type === 'link' || material.file_type === 'youtube') && (
+                                                                         <a
+                                                                             href={material.file_path}
+                                                                             target="_blank"
+                                                                             rel="noopener noreferrer"
+                                                                             className="inline-flex items-center text-xs font-medium text-primary hover:text-primary"
+                                                                         >
+                                                                             <i className="fas fa-external-link-alt mr-1"></i> Buka Link
+                                                                         </a>
+                                                                     )}
+                                                                 </div>
+                                                             </div>
+                                                         </div>
+                                                     );
+                                                 })}
+                                             </div>
+                                         </div>
+                                     );
+                                 })()}
 
                                 {/* Rundown Section */}
                                 {isVisible('rundown') && activity.rundowns && activity.rundowns.length > 0 && (
@@ -1647,28 +1656,44 @@ export default function Show({
                         </div>
 
                         {/* Gallery Section */}
-                        {isVisible('gallery') && activity.galleries && activity.galleries.length > 0 && (
-                            <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <i className="fas fa-images text-indigo-500"></i>
-                                    {t('activities.gallery')}
-                                </h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {Array.isArray(activity.galleries) && activity.galleries.length > 0 ? (
-                                        activity.galleries.map((gallery) => {
-                                            const getGalleryImageUrl = (rec) => {
-                                                if (!rec?.image) return DEFAULT_ACTIVITY_IMAGE;
-                                                const raw = rec.image;
-                                                if (raw.startsWith('http')) return raw;
-                                                const clean = raw.replace(/^activities\/gallery\//, '').replace(/^storage\/activities\/gallery\//, '');
-                                                return clean ? `/storage/activities/gallery/${clean}` : DEFAULT_ACTIVITY_IMAGE;
+                        {(() => {
+                            const imageMaterials = materialImages || (materials || []).filter(m => {
+                                const type = (m.file_type || '').toLowerCase();
+                                return ['image', 'photo', 'picture'].includes(type);
+                            });
+                            const allGalleryItems = [
+                                ...(activity.galleries || []).map(g => ({ ...g, is_gallery_model: true })),
+                                ...imageMaterials.map(m => ({ ...m, is_gallery_model: false }))
+                            ];
+
+                            if (!isVisible('gallery') || allGalleryItems.length === 0) return null;
+
+                            return (
+                                <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        <i className="fas fa-images text-indigo-500"></i>
+                                        {t('activities.gallery')}
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {allGalleryItems.map((item, idx) => {
+                                            const getImageUrl = (rec) => {
+                                                if (rec.is_gallery_model) {
+                                                    if (!rec?.image) return DEFAULT_ACTIVITY_IMAGE;
+                                                    const raw = rec.image;
+                                                    if (raw.startsWith('http')) return raw;
+                                                    const clean = raw.replace(/^activities\/gallery\//, '').replace(/^storage\/activities\/gallery\//, '');
+                                                    return clean ? `/storage/activities/gallery/${clean}` : DEFAULT_ACTIVITY_IMAGE;
+                                                } else {
+                                                    // This is an ActivityMaterial of type image
+                                                    return route('activity.material.serve', { activityId: activity.id, materialId: rec.id });
+                                                }
                                             };
-                                            const gallerySrc = getGalleryImageUrl(gallery);
+                                            const imgSrc = getImageUrl(item);
 
                                             return (
-                                                <div key={gallery.id} className="aspect-video relative group rounded-xl overflow-hidden cursor-pointer shadow-sm">
+                                                <div key={item.is_gallery_model ? `g-${item.id}` : `m-${item.id}`} className="aspect-video relative group rounded-xl overflow-hidden cursor-pointer shadow-sm">
                                                     <img
-                                                        src={gallerySrc}
+                                                        src={imgSrc}
                                                         alt="Galeri"
                                                         loading="lazy"
                                                         className="w-full h-full object-cover transition transform group-hover:scale-110"
@@ -1679,15 +1704,11 @@ export default function Show({
                                                     />
                                                 </div>
                                             );
-                                        })
-                                    ) : (
-                                        <div className="col-span-full text-center py-8 text-gray-500">
-                                            <p>{t('activities.no_gallery')}</p>
-                                        </div>
-                                    )}
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {/* Mobile Comment Section */}
                         <div className="lg:hidden">

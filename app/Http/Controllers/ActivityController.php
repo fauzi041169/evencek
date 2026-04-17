@@ -1113,9 +1113,18 @@ class ActivityController extends Controller
         }
 
         // Get materials uploaded from management page
-        $materials = ActivityMaterial::where('activity_id', $activity->id)
+        $allMaterials = ActivityMaterial::where('activity_id', $activity->id)
             ->orderBy('created_at', 'desc')
             ->get();
+
+        // Categorize materials by type (case-insensitive check)
+        $materials = $allMaterials->filter(function($m) {
+            return !in_array(strtolower($m->file_type), ['image', 'photo', 'picture']);
+        })->values();
+        
+        $materialImages = $allMaterials->filter(function($m) {
+            return in_array(strtolower($m->file_type), ['image', 'photo', 'picture']);
+        })->values();
 
         // Eager load rundown items to display in activity.show
         $activity->load(['rundowns', 'galleries', 'comments.user', 'comments.children.user', 'speakers']);
@@ -1720,6 +1729,7 @@ class ActivityController extends Controller
                 'manualAttendances' => $manualAttendances,
                 'pendingPayment' => $pendingPayment,
                 'materials' => $materials,
+                'materialImages' => $materialImages,
                 'participantLimitInfo' => $participantLimitInfo,
                 'participants' => $participants,
                 'roomMap' => $roomMap,
@@ -3862,7 +3872,20 @@ class ActivityController extends Controller
                 'error' => $e->getMessage(),
             ]);
         }
-        // Hanya tampilkan komentar yang memiliki isi (bukan rating-only)
+        // Get materials uploaded from management page
+        $allMaterials = ActivityMaterial::where('activity_id', $activity->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Categorize materials by type
+        $materials = $allMaterials->filter(function($m) {
+            return !in_array(strtolower($m->file_type), ['image', 'photo', 'picture']);
+        })->values();
+        
+        $materialImages = $allMaterials->filter(function($m) {
+            return in_array(strtolower($m->file_type), ['image', 'photo', 'picture']);
+        })->values();
+
         $activity->load([
             'comments' => function ($q) {
                 $q->whereNotNull('body')
@@ -3871,8 +3894,8 @@ class ActivityController extends Controller
             'comments.user',
             'comments.children.user',
             'galleries',
-            'materials',
         ]);
+        // Note: materialImages and materials will be passed via compact() below
 
         if (config('activity.payment_backfill_enabled', false)) {
             // ... (keep existing payment backfill logic if needed, omitted for brevity but should be kept if critical)
@@ -4574,6 +4597,8 @@ class ActivityController extends Controller
             'provinces',
             'heroCoverPath',
             'registerTarget',
+            'materials',
+            'materialImages',
             'buttonText',
             'showCompletePaymentCTA',
             'completePaymentUrl',
