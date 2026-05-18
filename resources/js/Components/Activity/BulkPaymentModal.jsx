@@ -112,11 +112,9 @@ export default function BulkPaymentModal({ show, onClose, activity, importResult
                     onClose();
                     window.snap.pay(paymentResponse.data.snapToken, {
                         onSuccess: (result) => {
-                            console.log('Payment success:', result);
                             window.location.reload();
                         },
                         onPending: (result) => {
-                            console.log('Payment pending:', result);
                             window.location.reload();
                         },
                         onError: (result) => {
@@ -130,7 +128,6 @@ export default function BulkPaymentModal({ show, onClose, activity, importResult
                             setPaymentMode('selection');
                         },
                         onClose: () => {
-                            console.log('Payment popup closed');
                             setPaymentMode('selection');
                         }
                     });

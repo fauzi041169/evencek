@@ -315,6 +315,15 @@ export default function Edit({
 
         post(route('activity.update', activity.id), {
             forceFormData: true,
+            onError: (errors) => {
+                const errorMessages = Object.values(errors).map(err => `<li>${err}</li>`).join('');
+                Swal.fire({
+                    title: 'Gagal Memperbarui Kegiatan',
+                    html: `Terdapat beberapa kesalahan pengisian form:<br><ul class="text-left mt-2 list-disc list-inside text-sm text-red-600">${errorMessages}</ul>`,
+                    icon: 'error',
+                    confirmButtonColor: '#3085d6'
+                });
+            }
         });
     };
 

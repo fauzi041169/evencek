@@ -15,13 +15,6 @@ class CertificateSettingsController extends Controller
             $certificate_setting = $request->input('certificate_setting');
             $print_settings = $request->input('print_settings');
 
-            // Debug: log data mentah
-            \Log::info('[DEBUG] Data setting sertifikat yang diterima:', [
-                'activity_id' => $activity_id,
-                'activity_batch_id' => $activity_batch_id,
-                'certificate_setting' => $certificate_setting,
-            ]);
-
             if (! $activity_id || ! $certificate_setting) {
                 return response()->json([
                     'success' => false,
@@ -56,7 +49,7 @@ class CertificateSettingsController extends Controller
             try {
                 $certificateSettings->save();
             } catch (\Exception $e) {
-                \Log::error('[DEBUG] Gagal menyimpan sertifikat ke database: '.$e->getMessage());
+                \Log::error('Gagal menyimpan sertifikat ke database: '.$e->getMessage());
 
                 return response()->json([
                     'success' => false,
@@ -83,66 +76,36 @@ class CertificateSettingsController extends Controller
 
     public function uploadBackground(Request $request)
     {
-        try {
-            $request->validate([
-                'background_image' => 'required|image|mimes:jpg,jpeg,png|max:2048',
-            ]);
+        $request->validate([
+            'activity_id' => 'required',
+            'background' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
 
-            $file = $request->file('background_image');
-            if (! $file) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'File tidak ditemukan',
-                ], 400);
-            }
+        $activityId = $request->activity_id;
+        $file = $request->file('background');
+        
+        // Use a more consistent path
+        $filename = time() . '_' . \Illuminate\Support\Str::random(10) . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('certificate-backgrounds/' . $activityId, $filename, 'public');
 
-            // Simpan menggunakan Storage facade
-            $activityId = $request->input('activity_id');
-            $path = ImageHelper::storeCompressedUploadedImage($file, 'certificate-backgrounds/'.($activityId ?: 'default'), 'public', [
-                'max_width' => 2500,
-                'max_height' => 2500,
-                'quality' => 80,
-                'format' => 'webp',
-            ]);
+        $id = \DB::table('certificate_backgrounds')->insertGetId([
+            'activity_id' => $activityId,
+            'filename' => $path,
+            'original_name' => $file->getClientOriginalName(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
-            if (! $path) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'File gagal disimpan ke server',
-                ], 500);
-            }
-
-            try {
-                \DB::table('certificate_backgrounds')->insert([
-                    'activity_id' => $activityId,
-                    'filename' => $path,
-                    'original_name' => basename($file->getClientOriginalName()),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } catch (\Exception $e) {
-                \Log::warning('[CERT BG] Insert DB gagal: '.$e->getMessage());
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Latar sertifikat berhasil diupload',
+        return response()->json([
+            'success' => true,
+            'image' => [
+                'id' => $id,
                 'filename' => $path,
+                'original_name' => $file->getClientOriginalName(),
                 'url' => \Illuminate\Support\Facades\Storage::url($path),
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validasi gagal: '.implode(', ', $e->errors()['background_image'] ?? []),
-            ], 422);
-        } catch (\Exception $e) {
-            \Log::error('[CERTIFICATE UPLOAD] Error: '.$e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan: '.$e->getMessage(),
-            ], 500);
-        }
+                'type' => 'uploaded',
+            ],
+        ]);
     }
 
     public function deleteBackground(Request $request)
@@ -210,9 +173,9 @@ class CertificateSettingsController extends Controller
             $url = '';
             // Handle storage vs legacy path
             if (\Illuminate\Support\Str::startsWith($it->filename, 'certificate-backgrounds/')) {
-                $url = \Illuminate\Support\Facades\Storage::url($it->filename);
+                $url = '/storage/'.$it->filename;
             } else {
-                $url = asset('assets/images/certificate/'.$it->filename);
+                $url = '/assets/images/certificate/'.$it->filename;
             }
 
             $images[] = [
@@ -225,29 +188,22 @@ class CertificateSettingsController extends Controller
         }
 
         // 2. Default Images
-        // Ideally we check a 'defaults' folder.
-        // For certificates, let's assume assets/images/certificate/default or similar.
         $defaultPath = public_path('assets/images/certificate/background/default');
 
-        // Ensure directory exists
         if (file_exists($defaultPath) && is_dir($defaultPath)) {
             $files = scandir($defaultPath);
             foreach ($files as $file) {
-                if ($file === '.' || $file === '..') {
-                    continue;
-                }
+                if ($file === '.' || $file === '..') continue;
 
                 $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                if (! in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) {
-                    continue;
-                }
+                if (! in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) continue;
 
                 $filename = 'background/default/'.$file;
                 $images[] = [
                     'id' => 'default_'.$file,
                     'filename' => $filename,
                     'original_name' => 'Default '.$file,
-                    'url' => asset('assets/images/certificate/'.$filename),
+                    'url' => '/assets/images/certificate/'.$filename,
                     'type' => 'default',
                 ];
             }

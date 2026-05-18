@@ -258,13 +258,6 @@ class PaymentController extends Controller
             // Update activity object with effective price for view display
             $activity->price = $effectivePrice;
 
-            Log::info('DEBUG PAYMENT CREATE', [
-                'activity_id' => $activity->id,
-                'effective_price' => $effectivePrice,
-                'is_less_equal_zero' => ($effectivePrice <= 0),
-                'target_batch_id' => $targetBatchId,
-            ]);
-
             // If price is 0, skip payment and ensure enrollment is active
             if ($effectivePrice <= 0) {
                 // Check/Update Enrollment

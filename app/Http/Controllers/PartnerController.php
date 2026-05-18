@@ -45,13 +45,6 @@ class PartnerController extends Controller
             ]);
             $filename = basename($path);
 
-            // Debugging information
-            Log::info('File Upload Debug:', [
-                'original_name' => $file->getClientOriginalName(),
-                'stored_name' => $filename,
-                'path' => $path,
-            ]);
-
             $validatedData['logo'] = $path;
         }
 

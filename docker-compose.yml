@@ -7,10 +7,10 @@ services:
       - "8002:80"
     environment:
       APP_NAME: IVENHUB
-      APP_ENV: local
-      APP_DEBUG: "true"
-      APP_URL: http://127.0.0.1:8002
-      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8002
+      APP_KEY: base64:fH7R/Wn+P9Q6u+k/8z5J/wX/mN8z5J/wX/mN8z5J/wX=
       LOG_CHANNEL: stderr
       LOG_INGEST_TOKEN: dev-log-token
       DB_CONNECTION: mysql

@@ -16,9 +16,14 @@ export default function WhatsAppSection({ activity, participants = [] }) {
 
     const fetchStatus = async () => {
         try {
-            const res = await axios.get(`${baseUrl}/status`);
-            setStatus(res.data.status);
-            setQrCode(res.data.qr);
+            const response = await fetch(`${baseUrl}/status`);
+            if (response.ok) {
+                const data = await response.json();
+                setStatus(data.status);
+                setQrCode(data.qr);
+            } else {
+                setStatus('error');
+            }
         } catch (err) {
             console.error('Failed to fetch WA status', err);
             setStatus('error');
@@ -35,7 +40,7 @@ export default function WhatsAppSection({ activity, participants = [] }) {
 
     const handleLogout = async () => {
         try {
-            await axios.post(`${baseUrl}/logout`);
+            await fetch(`${baseUrl}/logout`, { method: 'POST' });
             fetchStatus();
             Swal.fire('Berhasil', 'WhatsApp berhasil diputuskan', 'success');
         } catch (err) {
@@ -90,9 +95,13 @@ export default function WhatsAppSection({ activity, participants = [] }) {
                 .replace(/{status}/g, p.status);
 
             try {
-                await axios.post(`${baseUrl}/send`, {
-                    phone: phone,
-                    message: personalizedMsg
+                await fetch(`${baseUrl}/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: phone,
+                        message: personalizedMsg
+                    })
                 });
             } catch (err) {
                 console.error(`Failed to send to ${phone}`, err);

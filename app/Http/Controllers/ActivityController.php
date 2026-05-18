@@ -3079,29 +3079,13 @@ class ActivityController extends Controller
         $userIds = [];
         $activityUserIds = [];
 
-        \Log::info('DELETE DEBUG: Start', [
-            'select_all' => $request->boolean('select_all'),
-            'inputs' => $request->all(),
-            'user_ids_input' => $request->input('user_ids'),
-        ]);
-
         if ($request->boolean('select_all')) {
             $query = $this->buildParticipantQuery($request, $activity, true);
-
-            \Log::info('DELETE DEBUG: Query', [
-                'sql' => $query->toSql(),
-                'bindings' => $query->getBindings(),
-            ]);
 
             $userIds = $query
                 ->pluck('users.id')
                 ->map(fn ($id) => (string) $id)
                 ->toArray();
-
-            \Log::info('DELETE DEBUG: Result', [
-                'count' => count($userIds),
-                'ids_sample' => array_slice($userIds, 0, 10),
-            ]);
         } else {
             // Normalisasi ID yang dikirim dari form (bisa berisi user_id atau activity_user.id)
             $rawIds = array_values(array_filter($request->input('user_ids', []), function ($id) {
@@ -5252,11 +5236,6 @@ class ActivityController extends Controller
 
             if ($batchId) {
                 $participantsQuery->wherePivot('activity_batch_id', $batchId);
-                \Log::info('Activity Search Participants Debug', [
-                    'batchId' => $batchId,
-                    'sql' => $participantsQuery->toSql(),
-                    'bindings' => $participantsQuery->getBindings(),
-                ]);
             }
 
             if ($search) {

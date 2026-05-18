@@ -917,12 +917,6 @@ foreach ($participants as $participant) {
                 ? ActivityUser::onlyTrashed()->where('activity_id', $activityId)->where('deleted_at', '>=', now()->subDays(10))
                 : ActivityUser::where('activity_id', $activityId);
 
-            \Log::info('DEBUG PARTICIPANTS START', [
-                'activity_id' => $activityId,
-                'request_all' => request()->all(),
-                'initial_count' => $query->count(),
-            ]);
-
             // Try to load relationships, but don't fail if they don't exist
             try {
                 $query->with([
@@ -1823,49 +1817,6 @@ foreach ($participants as $participant) {
                         $participant->setAttribute('custom_data', $merged);
                     }
 
-                    // Debug: cek isi database kolom profil (additional_data) dan kolom tambahan kegiatan (custom_data)
-                    if (config('app.debug')) {
-                        try {
-                            $cd = $participant->getAttribute('custom_data');
-                            $cdKeys = is_array($cd) ? array_keys($cd) : [];
-                            $matchKeys = [];
-                            foreach ($cdKeys as $k) {
-                                $kl = strtolower($k);
-                                if ((str_contains($kl, 'surat') && (str_contains($kl, 'tugas') || str_contains($kl, 'penugasan'))) || preg_match('/^st(_|-|\\s)?(tugas|penugasan)?/i', $kl)) {
-                                    $matchKeys[] = $k;
-                                }
-                            }
-                            \Log::info('SURAT_TUGAS_DEBUG', [
-                                'activity_id' => $activityId,
-                                'participant_id' => $participant->id,
-                                'user_id' => $participant->user_id,
-                                'match_keys' => $matchKeys,
-                                'has_custom_data' => is_array($cd),
-                                'has_profile_additional' => is_array($profileAdditional),
-                            ]);
-                            // Debug lengkap: raw DB activity_users.custom_data + profiles.additional_data (maks 5 peserta)
-                            if ($debugParticipantCount < 5) {
-                                $rawCustomFromDb = $participant->getRawOriginal('custom_data');
-                                $rawProfileAdditional = $participant->user && $participant->user->profile
-                                    ? $participant->user->profile->getRawOriginal('additional_data')
-                                    : null;
-                                \Log::debug('DEBUG_PESERTA_DB_KOLOM', [
-                                    'peserta_ke' => $debugParticipantCount + 1,
-                                    'activity_user_id' => $participant->id,
-                                    'user_id' => $participant->user_id,
-                                    'activity_users.custom_data (raw DB)' => $rawCustomFromDb,
-                                    'activity_users.custom_data (decoded)' => $existingCustom,
-                                    'profiles.additional_data (raw DB)' => $rawProfileAdditional,
-                                    'profiles.additional_data (decoded)' => $profileAdditional,
-                                    'custom_data_setelah_merge' => $participant->getAttribute('custom_data'),
-                                ]);
-                                $debugParticipantCount++;
-                            }
-                        } catch (\Throwable $e) {
-                            \Log::warning('DEBUG_PESERTA_DB_KOLOM error', ['message' => $e->getMessage()]);
-                        }
-                    }
-
                     // Room
                     $room = null;
                     if (isset($assignmentsKeyed[$participant->user_id])) {
@@ -2524,36 +2475,10 @@ foreach ($participants as $participant) {
                 ->withCount('participants')
                 ->get();
 
-            // DEBUG CHECK
-            \Log::info('DEBUG FINAL CHECK', [
-                'activity_uid' => $activity->uid,
-                'participants_count' => $participants->count(),
-                'page' => $page ?? 1,
-                'perPage' => $perPage,
-                'items_on_page' => $participants->count(), // Paginator count is count of items on page
-                'total' => $participants->total(),
-                'request' => request()->all(),
-            ]);
-
             // Ensure per_page is in filters for frontend state sync
             $filters = request()->all();
             if (! isset($filters['per_page'])) {
                 $filters['per_page'] = $perPage;
-            }
-
-            // DEBUG: Check specific user data before render
-            if ($participants->isNotEmpty()) {
-                $debugUser = $participants->first(function ($p) {
-                    return $p->user && $p->user->email === 'maderum434@gmail.com';
-                });
-                if ($debugUser) {
-                    \Log::info('DEBUG CONTROLLER RENDER:', [
-                        'user_email' => $debugUser->user->email,
-                        'profile_exists' => (bool) $debugUser->user->profile,
-                        'province_relation' => $debugUser->user->profile ? $debugUser->user->profile->province : 'NO PROFILE',
-                        'regency_relation' => $debugUser->user->profile ? $debugUser->user->profile->regency : 'NO PROFILE',
-                    ]);
-                }
             }
 
             // Count unverified emails
@@ -3395,13 +3320,6 @@ foreach ($participants as $participant) {
             $spreadsheet = IOFactory::load($path);
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray(null, true, true, true); // Keys by column letters
-
-            Log::info('Import Debug', [
-                'path' => $path,
-                'total_rows' => count($rows),
-                'first_row' => $rows[1] ?? [],
-                'second_row' => $rows[2] ?? [],
-            ]);
 
             // Normalize header values
             $normalizeHeader = function ($value) {

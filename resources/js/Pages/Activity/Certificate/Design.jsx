@@ -8,24 +8,31 @@ import { toPng } from 'html-to-image';
 import AcaraLayout from '@/Layouts/AcaraLayout';
 
 export default function Design({ auth, activity, certificateSetting: initialSettings, user, availableColumns = [] }) {
-    // Certificate Settings are usually per activity (or batch), not split by role like ID cards
-    // So we manage a single state object.
-    const [settings, setSettings] = useState(initialSettings || {});
+    const [settings, setSettings] = useState(() => {
+        let parsed = initialSettings || {};
+        if (typeof parsed === 'string') {
+            try {
+                parsed = JSON.parse(parsed);
+                if (typeof parsed === 'string') {
+                    parsed = JSON.parse(parsed);
+                }
+            } catch (e) {
+                console.error('Failed to parse initial settings', e);
+                parsed = {};
+            }
+        }
+        return parsed;
+    });
 
     const [selectedId, setSelectedId] = useState(null);
     const [bgUploading, setBgUploading] = useState(false);
-    const [backgrounds, setBackgrounds] = useState([]); // Store uploaded backgrounds
-    const [isBackgroundsLoaded, setIsBackgroundsLoaded] = useState(false); // Track loading state
-    const [isPreviewOpen, setIsPreviewOpen] = useState(false); // Modal state
-    const [toasts, setToasts] = useState([]); // Toast Notifications
+    const [backgrounds, setBackgrounds] = useState([]); 
+    const [isBackgroundsLoaded, setIsBackgroundsLoaded] = useState(false);
+    const [zoom, setZoom] = useState(0.8);
     const canvasRef = useRef(null);
 
-    // List backgrounds
     const fetchBackgrounds = async () => {
         try {
-            // Reusing ID card endpoint for now or create a new one?
-            // User uploaded 1 image in previous turn which implies they want to see defaults in Certificate too.
-            // We should implement a specific endpoint for certificate backgrounds that includes defaults.
             const res = await axios.get(`/certificate-settings/background/list/${activity.id}`);
             if (res.data.success) {
                 setBackgrounds(res.data.images);
@@ -41,15 +48,6 @@ export default function Design({ auth, activity, certificateSetting: initialSett
         fetchBackgrounds();
     }, [activity.id]);
 
-    useEffect(() => {
-        // Auto-select first default if nothing selected? No, keep it clean.
-    }, [isBackgroundsLoaded]);
-
-    const handleSelect = (id) => {
-        setSelectedId(id);
-    };
-
-    // Toast Helper replaced with Swal
     const showToast = (message, type = 'success') => {
         Swal.fire({
             icon: type,
@@ -62,7 +60,6 @@ export default function Design({ auth, activity, certificateSetting: initialSett
         });
     };
 
-    // Available Fonts
     const availableFonts = [
         { label: 'Default (Sans)', value: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif' },
         { label: 'Serif', value: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif' },
@@ -72,32 +69,38 @@ export default function Design({ auth, activity, certificateSetting: initialSett
         { label: 'Montserrat', value: '"Montserrat", sans-serif' },
         { label: 'Lato', value: '"Lato", sans-serif' },
         { label: 'Poppins', value: '"Poppins", sans-serif' },
-        { label: 'Great Vibes', value: '"Great Vibes", cursive' }, // Popular for certificates
+        { label: 'Great Vibes', value: '"Great Vibes", cursive' },
         { label: 'Pinyon Script', value: '"Pinyon Script", cursive' },
     ];
 
     useEffect(() => {
-        // Load Google Fonts
         const link = document.createElement('link');
         link.href = 'https://fonts.googleapis.com/css2?family=Great+Vibes&family=Pinyon+Script&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;700&family=Open+Sans:wght@300;400;700&family=Poppins:wght@300;400;700&family=Roboto:wght@300;400;700&display=swap';
         link.rel = 'stylesheet';
         document.head.appendChild(link);
     }, []);
 
-    // Initial Defaults if data is empty 
+    const PX_PER_CM = 37.795;
     const defaultSettings = {
-        // A4 Landscape default
-        page: { width_cm: 29.7, height_cm: 21, background: null },
+        page: { 
+            width_cm: 29.7, 
+            height_cm: 21, 
+            background: null,
+            px_per_cm: PX_PER_CM
+        },
     };
 
-    // Ensure settings has all keys
     useEffect(() => {
         if (!settings.page) {
             setSettings(prev => ({ ...defaultSettings, ...prev }));
+        } else if (!settings.page.px_per_cm) {
+            setSettings(prev => ({ 
+                ...prev, 
+                page: { ...prev.page, px_per_cm: PX_PER_CM } 
+            }));
         }
     }, []);
 
-    // Handler when item is moved/resized
     const handleChange = (id, newStyles) => {
         setSettings(prev => ({
             ...prev,
@@ -105,7 +108,6 @@ export default function Design({ auth, activity, certificateSetting: initialSett
         }));
     };
 
-    // Handler Reset Elements
     const handleResetElements = () => {
         Swal.fire({
             title: 'Reset Desain?',
@@ -118,68 +120,126 @@ export default function Design({ auth, activity, certificateSetting: initialSett
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) {
-                setSettings(prev => ({ page: prev.page }));
-                setSelectedId(null);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil',
-                    text: 'Semua elemen berhasil dihapus',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000
+                setSettings({ 
+                    page: { 
+                        ...settings.page,
+                        px_per_cm: PX_PER_CM
+                    } 
                 });
+                setSelectedId(null);
+                showToast('Semua elemen berhasil dihapus');
             }
         });
     };
 
-    // Handler Add Field
     const addField = (type, label, defaultValue = '', dataKey = null) => {
         const id = `field_${Date.now()}`;
         let previewText = defaultValue || label;
-
-        // Custom preview logic based on type if needed
         if (type === 'name') previewText = user.name || 'Nama Peserta';
         if (type === 'certificate_id') previewText = 'NO: 123/SERT/2023';
 
+        const newField = {
+            left: 50, top: 100, size: 24, color: '#000000',
+            text: previewText,
+            fieldType: type,
+            data_key: dataKey || type,
+            fieldLabel: label,
+            weight: 'normal', 
+            visible: true, 
+            align: 'center', 
+            width: 500,
+            height: 40,
+            font: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif'
+        };
+
         setSettings(prev => ({
             ...prev,
-            [id]: {
-                left: 300, top: 300, size: 24, color: '#000000',
-                text: previewText,
-                fieldType: type,
-                data_key: dataKey || type,
-                fieldLabel: label,
-                weight: 'normal', visible: true, align: 'center', width: 400
-            }
+            [id]: newField
         }));
         setSelectedId(id);
     };
 
-    // Handler Upload Background
+    const compressImage = async (file, maxSizeMB = 50) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX_DIMENSION = 4000;
+                    if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                        if (width > height) {
+                            height *= MAX_DIMENSION / width;
+                            width = MAX_DIMENSION;
+                        } else {
+                            width *= MAX_DIMENSION / height;
+                            height = MAX_DIMENSION;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const attemptCompress = (quality) => {
+                        canvas.toBlob((blob) => {
+                            if (!blob) {
+                                reject(new Error('Image compression failed'));
+                                return;
+                            }
+                            if (blob.size <= maxSizeMB * 1024 * 1024 || quality <= 0.1) {
+                                const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now(),
+                                });
+                                resolve(compressedFile);
+                            } else {
+                                attemptCompress(quality - 0.1);
+                            }
+                        }, 'image/jpeg', quality);
+                    };
+                    attemptCompress(0.9);
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
+    };
+
     const handleBgUpload = async (e) => {
         let file = e.target.files[0];
         if (!file) return;
-
         setBgUploading(true);
-
         try {
+            if (file.size > 50 * 1024 * 1024) {
+                Swal.fire({
+                    icon: 'info', title: 'Info', text: 'Ukuran file besar, sedang mengompresi...',
+                    toast: true, position: 'top-end', showConfirmButton: false, timer: 3000
+                });
+                try {
+                    file = await compressImage(file, 49);
+                } catch (compError) {
+                    console.error('Compression failed:', compError);
+                    showToast('Gagal mengompresi gambar', 'error');
+                    setBgUploading(false);
+                    return;
+                }
+            }
             const formData = new FormData();
             formData.append('background_image', file);
             formData.append('activity_id', activity.id);
-
-            const url = `/certificate-settings/background/upload`;
-
-            const res = await axios.post(url, formData, {
+            const res = await axios.post(`/certificate-settings/background/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-
-            // Update settings with new filename (which is a path)
             setSettings(prev => ({
                 ...prev,
                 page: { ...prev.page, background: res.data.filename }
             }));
-            showToast('Background berhasil diubah!');
+            showToast('Background berhasil diunggah!');
+            fetchBackgrounds();
         } catch (error) {
             console.error('Upload error:', error);
             showToast('Gagal upload background', 'error');
@@ -189,13 +249,11 @@ export default function Design({ auth, activity, certificateSetting: initialSett
         }
     };
 
-    // Handler Delete Background
-    const handleDeleteBackground = async () => {
-        if (!settings.page?.background) return;
-        
+    const handleDeleteBackground = async (e, filename) => {
+        e.stopPropagation();
         Swal.fire({
             title: 'Hapus Background?',
-            text: 'Hapus background saat ini?',
+            text: 'Apakah Anda yakin ingin menghapus background ini?',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#E02424',
@@ -206,14 +264,17 @@ export default function Design({ auth, activity, certificateSetting: initialSett
             if (result.isConfirmed) {
                 try {
                     await axios.post('/certificate-settings/background/delete', {
-                        filename: settings.page.background
+                        activity_id: activity.id,
+                        filename: filename
                     });
-
-                    setSettings(prev => ({
-                        ...prev,
-                        page: { ...prev.page, background: null }
-                    }));
+                    if (settings.page?.background === filename) {
+                        setSettings(prev => ({
+                            ...prev,
+                            page: { ...prev.page, background: null }
+                        }));
+                    }
                     showToast('Background berhasil dihapus');
+                    fetchBackgrounds();
                 } catch (error) {
                     console.error('Delete error:', error);
                     showToast('Gagal menghapus background', 'error');
@@ -222,7 +283,6 @@ export default function Design({ auth, activity, certificateSetting: initialSett
         });
     };
 
-    // Save functionality
     const [isSaving, setIsSaving] = useState(false);
     const handleSave = async () => {
         setIsSaving(true);
@@ -240,7 +300,6 @@ export default function Design({ auth, activity, certificateSetting: initialSett
         }
     };
 
-    // Unified Content Resolver
     const getContent = (id, config) => {
         if (config.data_key === 'qr' || id === 'qr' || (id && id.toString().startsWith('qr_'))) {
             return (
@@ -253,19 +312,14 @@ export default function Design({ auth, activity, certificateSetting: initialSett
                 </div>
             );
         }
-
-        // Text content
         if (config.text) return config.text;
         return '';
     };
 
-    // Toggle Field from Checkbox
     const toggleField = (col) => {
         let targetKey = col.key;
         if (col.key === 'qr_code') targetKey = 'qr';
-
         const existingId = Object.keys(settings).find(k => settings[k] && settings[k].data_key === targetKey);
-
         if (existingId) {
             const newS = { ...settings };
             delete newS[existingId];
@@ -276,7 +330,10 @@ export default function Design({ auth, activity, certificateSetting: initialSett
                 const id = `qr_${Date.now()}`;
                 setSettings(prev => ({
                     ...prev,
-                    [id]: { left: 100, top: 500, width: 100, height: 100, visible: true, data_key: 'qr', fieldLabel: col.label }
+                    [id]: { 
+                        left: 100, top: 100, width: 120, height: 120, 
+                        visible: true, data_key: 'qr', fieldLabel: col.label 
+                    }
                 }));
             } else {
                 addField(targetKey, col.label, '', targetKey);
@@ -287,113 +344,118 @@ export default function Design({ auth, activity, certificateSetting: initialSett
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     return (
-        <AcaraLayout auth={auth} activity={activity} title="Desain Sertifikat">
+        <AcaraLayout auth={auth} activity={activity} title="Desain Sertifikat" fluid={true} noPadding={true}>
             <Head title={`Desain Sertifikat - ${activity.name}`} />
 
-            <div className="flex h-[calc(100vh-64px)] overflow-hidden">
-                {/* LEFT SIDEBAR */}
-                <div className="w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-lg">
-                    <div className="p-4 border-b border-gray-100">
-                        <h2 className="text-lg font-bold text-gray-800">Editor Sertifikat</h2>
-                        <div className="mt-2 flex gap-2">
-                            <button onClick={handleSave} disabled={isSaving} className="flex-1 bg-primary text-white py-1.5 rounded text-sm hover:bg-blue-700">
-                                {isSaving ? 'Menyimpan...' : 'Simpan Desain'}
-                            </button>
+            <div className="flex h-[calc(100vh-112px)] w-full overflow-hidden bg-[#f0f2f5]">
+                {/* LEFT SIDEBAR - Fixed Full Left */}
+                <aside className="w-80 h-full bg-white border-r border-gray-200 flex flex-col z-30 shadow-xl flex-shrink-0">
+                    <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+                        <div className="flex items-center justify-between mb-2">
+                            <h2 className="text-lg font-bold text-gray-800">Editor Sertifikat</h2>
+                            <div className="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase">Admin</div>
                         </div>
+                        <button 
+                            onClick={handleSave} 
+                            disabled={isSaving} 
+                            className="w-full bg-primary text-white py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all shadow-sm flex items-center justify-center gap-2"
+                        >
+                            {isSaving ? (
+                                <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</>
+                            ) : (
+                                <><i className="fas fa-save"></i> Simpan Desain</>
+                            )}
+                        </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                        {/* Background Section */}
-                        <div className="space-y-3">
-                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Halaman & Background</h3>
-                            <div className="grid grid-cols-2 gap-3">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-8 custom-scrollbar">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-gray-400">
+                                <i className="fas fa-image text-xs"></i>
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest">Halaman & Background</h3>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
                                 <div>
-                                    <label className="block text-xs text-gray-500 mb-1">Lebar (cm)</label>
+                                    <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Lebar (cm)</label>
                                     <input
                                         type="number" step="0.1"
                                         value={settings.page?.width_cm || 29.7}
                                         onChange={(e) => setSettings(prev => ({ ...prev, page: { ...prev.page, width_cm: parseFloat(e.target.value) } }))}
-                                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-gray-500 mb-1">Tinggi (cm)</label>
+                                    <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Tinggi (cm)</label>
                                     <input
                                         type="number" step="0.1"
                                         value={settings.page?.height_cm || 21}
                                         onChange={(e) => setSettings(prev => ({ ...prev, page: { ...prev.page, height_cm: parseFloat(e.target.value) } }))}
-                                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                                     />
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs text-gray-500 mb-1">Upload Background</label>
+                            <div className="space-y-3">
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Upload Background</label>
                                 <div className="flex items-center gap-2">
-                                    <label className="flex-1 cursor-pointer bg-gray-50 border border-dashed border-gray-300 rounded-lg px-4 py-2 text-center hover:bg-gray-100 transition">
-                                        <span className="text-sm text-gray-600">
-                                            {bgUploading ? 'Uploading...' : 'Pilih Gambar'}
-                                        </span>
+                                    <label className="flex-1 cursor-pointer bg-white border-2 border-dashed border-gray-200 rounded-xl px-4 py-3 text-center hover:border-primary hover:bg-primary/5 transition-all group">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <i className="fas fa-cloud-upload-alt text-gray-300 group-hover:text-primary transition-colors"></i>
+                                            <span className="text-xs font-medium text-gray-500 group-hover:text-primary">
+                                                {bgUploading ? 'Mengunggah...' : 'Pilih File'}
+                                            </span>
+                                        </div>
                                         <input type="file" className="hidden" accept="image/*" onChange={handleBgUpload} disabled={bgUploading} />
                                     </label>
-                                    {settings.page?.background && (
-                                        <button
-                                            onClick={handleDeleteBackground}
-                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                                            title="Hapus Background"
-                                        >
-                                            <i className="fas fa-trash"></i>
-                                        </button>
-                                    )}
                                 </div>
 
                                 {backgrounds.length > 0 && (
-                                    <div className="mt-2">
-                                        <p className="text-xs text-gray-500 mb-1">Background Tersimpan:</p>
-                                        <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto p-1">
-                                            {backgrounds.map(bg => (
-                                                <div
-                                                    key={bg.id}
-                                                    className={`relative cursor-pointer border rounded overflow-hidden group ${settings.page?.background === bg.filename ? 'ring-2 ring-indigo-500' : 'border-gray-200'}`}
-                                                    onClick={() => setSettings(prev => ({ ...prev, page: { ...prev.page, background: bg.filename } }))}
-                                                >
-                                                    <img src={bg.url} alt="bg" className="w-full h-16 object-cover" />
-                                                    {settings.page?.background === bg.filename && (
-                                                        <div className="absolute inset-0 bg-indigo-500 bg-opacity-20 flex items-center justify-center">
-                                                            <i className="fas fa-check text-white drop-shadow-md"></i>
-                                                        </div>
-                                                    )}
-                                                    {bg.type !== 'default' && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                Swal.fire({
-                                                                    title: 'Hapus background ini?',
-                                                                    text: "Apakah Anda yakin ingin menghapus background ini dari daftar?",
-                                                                    icon: 'warning',
-                                                                    showCancelButton: true,
-                                                                    confirmButtonColor: '#d33',
-                                                                    cancelButtonColor: '#3085d6',
-                                                                    confirmButtonText: 'Ya, Hapus!',
-                                                                    cancelButtonText: 'Batal'
-                                                                }).then((result) => {
-                                                                    if (result.isConfirmed) {
-                                                                        // We need a specific delete endpoint for list items if we want to delete from gallery
-                                                                        // reusing delete current for now is tricky if it's not the selected one.
-                                                                        // For now let's skip delete from list or implement handleListDelete later.
-                                                                        // But the User asked for "display default", so let's focus on that.
-                                                                        Swal.fire('Info', 'Fitur hapus dari list belum aktif', 'info');
-                                                                    }
-                                                                });
+                                    <div className="pt-2">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Koleksi</p>
+                                            <span className="text-[10px] text-gray-300">{backgrounds.length} item</span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2 max-h-52 overflow-y-auto p-1 custom-scrollbar">
+                                            {backgrounds.map(bg => {
+                                                const isActive = settings.page?.background === bg.filename;
+                                                return (
+                                                    <div
+                                                        key={bg.id}
+                                                        className={`relative cursor-pointer aspect-[1.414/1] rounded-lg overflow-hidden transition-all duration-300 group ${isActive ? 'ring-2 ring-primary ring-offset-2 shadow-lg scale-[0.98]' : 'hover:scale-105 opacity-70 hover:opacity-100'}`}
+                                                        onClick={() => setSettings(prev => ({ 
+                                                            ...prev, 
+                                                            page: { ...prev.page, background: bg.filename } 
+                                                        }))}
+                                                    >
+                                                        <img 
+                                                            src={bg.url || `/assets/images/certificate/${bg.filename}`} 
+                                                            alt={bg.original_name} 
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                if (!e.target.src.includes('background/default/')) {
+                                                                    e.target.src = `/assets/images/certificate/background/default/${bg.filename.split('/').pop()}`;
+                                                                }
                                                             }}
-                                                            className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            title="Hapus"
-                                                        >
-                                                            <i className="fas fa-times text-xs"></i>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                        />
+                                                        {isActive && (
+                                                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center backdrop-blur-[1px]">
+                                                                <div className="bg-white text-primary rounded-full p-1 shadow-xl">
+                                                                    <i className="fas fa-check text-[10px]"></i>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {bg.type !== 'default' && (
+                                                            <button 
+                                                                onClick={(e) => handleDeleteBackground(e, bg.filename)}
+                                                                className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shadow-lg hover:bg-red-600"
+                                                            >
+                                                                <i className="fas fa-times text-[10px]"></i>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -402,30 +464,32 @@ export default function Design({ auth, activity, certificateSetting: initialSett
 
                         <hr className="border-gray-100" />
 
-                        {/* Elements Dropdown */}
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             <div className="flex justify-between items-center">
-                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tambah Elemen</h3>
-                                <button onClick={handleResetElements} className="text-xs text-red-500 hover:text-red-700">Hapus Semua</button>
+                                <div className="flex items-center gap-2 text-gray-400">
+                                    <i className="fas fa-layer-group text-xs"></i>
+                                    <h3 className="text-[10px] font-bold uppercase tracking-widest">Tambah Elemen</h3>
+                                </div>
+                                <button onClick={handleResetElements} className="text-[10px] font-bold text-red-400 hover:text-red-600 uppercase transition-colors">Reset</button>
                             </div>
 
                             <div className="relative">
                                 <button
                                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                    className="w-full flex justify-between items-center px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm"
+                                    className="w-full flex justify-between items-center px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm text-sm font-medium text-gray-700 hover:border-primary transition-all active:scale-[0.98]"
                                 >
-                                    <span>Pilih Elemen</span>
-                                    <i className={`fas fa-chevron-${isDropdownOpen ? 'up' : 'down'} text-gray-400`}></i>
+                                    <span>Pilih Elemen Database</span>
+                                    <i className={`fas fa-chevron-${isDropdownOpen ? 'up' : 'down'} text-gray-300 transition-transform duration-300`}></i>
                                 </button>
 
                                 {isDropdownOpen && (
-                                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-auto border border-gray-200">
-                                        <div className="px-4 py-2 border-b border-gray-100">
+                                    <div className="absolute z-40 mt-2 w-full bg-white shadow-2xl max-h-64 rounded-xl py-2 overflow-auto border border-gray-100 animate-in fade-in slide-in-from-top-2 duration-200 custom-scrollbar">
+                                        <div className="px-3 pb-2 mb-2 border-b border-gray-50">
                                             <button
                                                 onClick={() => { addField('custom', 'Teks Bebas', 'Teks Baru'); setIsDropdownOpen(false); }}
-                                                className="w-full text-left text-primary hover:text-primary font-medium flex items-center"
+                                                className="w-full text-left px-3 py-2 bg-primary/5 text-primary hover:bg-primary/10 rounded-lg text-xs font-bold flex items-center transition-all"
                                             >
-                                                <i className="fas fa-plus-circle mr-2"></i> Teks Bebas
+                                                <i className="fas fa-plus-circle mr-2 text-sm"></i> Teks Bebas Baru
                                             </button>
                                         </div>
                                         {availableColumns.map(col => {
@@ -433,15 +497,18 @@ export default function Design({ auth, activity, certificateSetting: initialSett
                                             if (col.key === 'qr_code') targetKey = 'qr';
                                             const isChecked = Object.values(settings).some(s => s.data_key === targetKey);
                                             return (
-                                                <div key={col.key} className="px-4 py-2 flex items-center">
+                                                <label key={col.key} className="px-4 py-2.5 flex items-center hover:bg-gray-50 cursor-pointer transition-colors group">
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isChecked ? 'bg-primary border-primary shadow-sm' : 'border-gray-300 bg-white group-hover:border-primary'}`}>
+                                                        {isChecked && <i className="fas fa-check text-[10px] text-white"></i>}
+                                                    </div>
                                                     <input
                                                         type="checkbox"
                                                         checked={isChecked}
                                                         onChange={() => toggleField(col)}
-                                                        className="h-4 w-4 text-primary border-gray-300 rounded"
+                                                        className="hidden"
                                                     />
-                                                    <label className="ml-2 text-sm text-gray-900 cursor-pointer" onClick={() => toggleField(col)}>{col.label}</label>
-                                                </div>
+                                                    <span className={`ml-3 text-xs font-medium transition-colors ${isChecked ? 'text-primary' : 'text-gray-600'}`}>{col.label}</span>
+                                                </label>
                                             )
                                         })}
                                     </div>
@@ -449,113 +516,248 @@ export default function Design({ auth, activity, certificateSetting: initialSett
                             </div>
                         </div>
                     </div>
-                </div>
+                </aside>
 
-                {/* MAIN EDITOR AREA */}
-                <div className="flex-1 bg-gray-100 relative overflow-auto flex items-center justify-center p-10">
-                    <div
-                        className="relative shadow-2xl bg-white transition-all"
-                        style={{
-                            width: `${(settings.page?.width_cm || 29.7) * 37.795}px`,
-                            height: `${(settings.page?.height_cm || 21) * 37.795}px`,
-                            backgroundImage: settings.page?.background ? (
-                                settings.page.background.startsWith('http')
-                                    ? `url("${settings.page.background}")`
-                                    : `url("/storage/${settings.page.background}")`
-                            ) : 'none',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            overflow: 'hidden'
-                        }}
-                        ref={canvasRef}
-                        onClick={() => setSelectedId(null)}
-                    >
-                        {Object.entries(settings).map(([key, config]) => {
-                            if (key === 'page' || (!config.visible)) return null;
-                            return (
-                                <DraggableItem
-                                    key={key}
-                                    id={key}
-                                    data={config}
-                                    isSelected={selectedId === key}
-                                    onSelect={setSelectedId}
-                                    onChange={handleChange}
-                                    isResizable={true}
-                                    parentContainer={canvasRef.current}
-                                >
-                                    {getContent(key, config)}
-                                </DraggableItem>
-                            );
-                        })}
+                {/* MAIN EDITOR AREA - Full Flexible Center */}
+                <main className="flex-1 relative flex flex-col overflow-hidden">
+                    {/* Zoom Toolbar */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl shadow-2xl border border-white/20">
+                        <button onClick={() => setZoom(prev => Math.max(0.1, prev - 0.1))} className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded-xl transition-all" title="Zoom Out">
+                            <i className="fas fa-minus text-xs"></i>
+                        </button>
+                        <div className="px-3 text-xs font-bold text-gray-500 w-16 text-center tabular-nums">
+                            {Math.round(zoom * 100)}%
+                        </div>
+                        <button onClick={() => setZoom(prev => Math.min(2, prev + 0.1))} className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded-xl transition-all" title="Zoom In">
+                            <i className="fas fa-plus text-xs"></i>
+                        </button>
+                        <div className="w-[1px] h-4 bg-gray-200 mx-1"></div>
+                        <button onClick={() => setZoom(0.8)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition-all" title="Reset Zoom">
+                            <i className="fas fa-expand text-xs"></i>
+                        </button>
                     </div>
-                </div>
 
-                {/* RIGHT SIDEBAR */}
-                {selectedId && settings[selectedId] && (
-                    <div className="w-72 bg-white border-l border-gray-200 flex flex-col z-20 shadow-lg p-4 space-y-4">
-                        <div className="flex justify-between items-center text-lg font-bold">
-                            <h2>Properti</h2>
-                            <button onClick={() => setSelectedId(null)}><i className="fas fa-times"></i></button>
+                    {/* Canvas Container */}
+                    <div className="flex-1 overflow-auto custom-scrollbar p-10 flex items-center justify-center bg-[#f3f4f6] relative">
+                        {/* The scaling wrapper */}
+                        <div 
+                            style={{ 
+                                transform: `scale(${zoom})`,
+                                transformOrigin: 'center center',
+                                transition: 'transform 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
+                            }}
+                            className="relative flex-shrink-0"
+                        >
+                            <div
+                                className="relative shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] bg-white"
+                                style={{
+                                    width: `${(settings.page?.width_cm || 29.7) * 37.795}px`,
+                                    height: `${(settings.page?.height_cm || 21) * 37.795}px`,
+                                    backgroundImage: (() => {
+                                        if (!settings.page?.background) return 'none';
+                                        const bg = backgrounds.find(b => b.filename === settings.page.background);
+                                        if (bg) return `url("${bg.url}")`;
+                                        if (settings.page.background.startsWith('certificate-backgrounds/')) return `url("/storage/${settings.page.background}")`;
+                                        if (settings.page.background.startsWith('background/default/')) return `url("/assets/images/certificate/${settings.page.background}")`;
+                                        if (settings.page.background.startsWith('http')) return `url("${settings.page.background}")`;
+                                        if (settings.page.background.match(/^[0-9]+\.(png|jpg|jpeg|webp)$/)) return `url("/assets/images/certificate/background/default/${settings.page.background}")`;
+                                        return `url("/assets/images/certificate/${settings.page.background}")`;
+                                    })(),
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                    overflow: 'hidden'
+                                }}
+                                ref={canvasRef}
+                                onClick={() => setSelectedId(null)}
+                            >
+                                {Object.entries(settings).map(([key, config]) => {
+                                    if (key === 'page' || (!config.visible)) return null;
+                                    return (
+                                        <DraggableItem
+                                            key={key}
+                                            id={key}
+                                            data={config}
+                                            isSelected={selectedId === key}
+                                            onSelect={setSelectedId}
+                                            onChange={handleChange}
+                                            isResizable={true}
+                                            parentContainer={canvasRef.current}
+                                        >
+                                            {getContent(key, config)}
+                                        </DraggableItem>
+                                    );
+                                })}
+                            </div>
                         </div>
+                    </div>
+                </main>
 
-                        {settings[selectedId].text !== undefined && (
-                            <div>
-                                <label className="block text-xs text-gray-500 mb-1">Konten Teks</label>
-                                <textarea rows="2" value={settings[selectedId].text} onChange={e => handleChange(selectedId, { text: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
+                {/* RIGHT SIDEBAR - Fixed Full Right */}
+                <aside className={`h-full bg-white border-l border-gray-200 flex flex-col z-30 shadow-2xl transition-all duration-300 ease-in-out flex-shrink-0 ${selectedId ? 'w-80' : 'w-0 overflow-hidden border-none'}`}>
+                    {selectedId && settings[selectedId] && (
+                        <>
+                            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                        <i className="fas fa-sliders-h text-primary text-xs"></i>
+                                    </div>
+                                    <h3 className="font-bold text-gray-800 text-sm uppercase tracking-tight">Pengaturan Elemen</h3>
+                                </div>
+                                <button onClick={() => setSelectedId(null)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
+                                    <i className="fas fa-times"></i>
+                                </button>
                             </div>
-                        )}
+                            
+                            <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+                                {settings[selectedId].text !== undefined && (
+                                    <div className="space-y-2">
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Teks / Placeholder</label>
+                                        <textarea
+                                            rows="3"
+                                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none"
+                                            value={settings[selectedId].text || ''}
+                                            onChange={(e) => handleChange(selectedId, { text: e.target.value })}
+                                            placeholder="Masukkan teks..."
+                                        />
+                                    </div>
+                                )}
 
-                        {settings[selectedId].font !== undefined && (
-                            <div>
-                                <label className="block text-xs text-gray-500 mb-1">Font</label>
-                                <select value={settings[selectedId].font || 'inherit'} onChange={e => handleChange(selectedId, { font: e.target.value })} className="w-full px-2 py-1.5 border rounded text-sm">
-                                    <option value="inherit">Default</option>
-                                    {availableFonts.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                                </select>
-                            </div>
-                        )}
-                        {/* Size, Color, Align */}
-                        <div className="grid grid-cols-2 gap-2">
-                            <div>
-                                <label className="block text-xs text-gray-500">Ukuran</label>
-                                <input type="number" value={settings[selectedId].size} onChange={e => handleChange(selectedId, { size: parseInt(e.target.value) })} className="w-full border rounded text-sm px-2 py-1" />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-gray-500">Warna</label>
-                                <input type="color" value={settings[selectedId].color} onChange={e => handleChange(selectedId, { color: e.target.value })} className="w-full h-8 border rounded p-0" />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs text-gray-500">Rata Teks</label>
-                            <div className="flex border rounded overflow-hidden">
-                                {['left', 'center', 'right'].map(align => (
-                                    <button key={align} onClick={() => handleChange(selectedId, { align })} className={`flex-1 py-1 ${settings[selectedId].align === align ? 'bg-primary text-white' : 'bg-white'}`}>
-                                        <i className={`fas fa-align-${align}`}></i>
+                                <div className="space-y-3">
+                                    <p className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Geometri (PX)</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-bold text-gray-300 uppercase">X Position</span>
+                                            <input
+                                                type="number"
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                                                value={Math.round(settings[selectedId].left)}
+                                                onChange={(e) => handleChange(selectedId, { left: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-bold text-gray-300 uppercase">Y Position</span>
+                                            <input
+                                                type="number"
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                                                value={Math.round(settings[selectedId].top)}
+                                                onChange={(e) => handleChange(selectedId, { top: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-bold text-gray-300 uppercase">Width</span>
+                                            <input
+                                                type="number"
+                                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                                                value={Math.round(settings[selectedId].width)}
+                                                onChange={(e) => handleChange(selectedId, { width: parseInt(e.target.value) || 0 })}
+                                            />
+                                        </div>
+                                        {settings[selectedId].size !== undefined && (
+                                            <div className="space-y-1">
+                                                <span className="text-[9px] font-bold text-gray-300 uppercase">Font Size</span>
+                                                <input
+                                                    type="number"
+                                                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                                                    value={settings[selectedId].size}
+                                                    onChange={(e) => handleChange(selectedId, { size: parseInt(e.target.value) || 12 })}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {settings[selectedId].font !== undefined && (
+                                    <div className="space-y-4 pt-4 border-t border-gray-100">
+                                        <div className="space-y-2">
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Font Family</label>
+                                            <select
+                                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
+                                                value={settings[selectedId].font || 'ui-sans-serif'}
+                                                onChange={(e) => handleChange(selectedId, { font: e.target.value })}
+                                            >
+                                                <option value="inherit">Default Sans</option>
+                                                {availableFonts.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                                            </select>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Warna</label>
+                                                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl p-1">
+                                                    <input
+                                                        type="color"
+                                                        className="w-8 h-8 border-none bg-transparent cursor-pointer rounded-lg"
+                                                        value={settings[selectedId].color || '#000000'}
+                                                        onChange={(e) => handleChange(selectedId, { color: e.target.value })}
+                                                    />
+                                                    <span className="text-xs font-mono text-gray-500 uppercase">{settings[selectedId].color || '#000000'}</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Alignment</label>
+                                                <div className="flex bg-gray-50 border border-gray-200 rounded-xl p-1">
+                                                    {['left', 'center', 'right'].map(align => (
+                                                        <button
+                                                            key={align}
+                                                            onClick={() => handleChange(selectedId, { align })}
+                                                            className={`flex-1 py-1.5 rounded-lg transition-all ${settings[selectedId].align === align ? 'bg-white shadow-sm text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+                                                        >
+                                                            <i className={`fas fa-align-${align} text-xs`}></i>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                onClick={() => handleChange(selectedId, { weight: settings[selectedId].weight === 'bold' ? 'normal' : 'bold' })}
+                                                className={`py-2.5 rounded-xl border font-bold text-xs transition-all ${settings[selectedId].weight === 'bold' ? 'bg-gray-800 text-white border-gray-800 shadow-lg' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                                            >
+                                                BOLD
+                                            </button>
+                                            <button
+                                                onClick={() => handleChange(selectedId, { italic: settings[selectedId].italic === 'italic' ? 'normal' : 'italic' })}
+                                                className={`py-2.5 rounded-xl border font-italic text-xs transition-all ${settings[selectedId].italic === 'italic' ? 'bg-gray-800 text-white border-gray-800 shadow-lg' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+                                            >
+                                                ITALIC
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="pt-6">
+                                    <button
+                                        onClick={() => {
+                                            const newSettings = { ...settings };
+                                            delete newSettings[selectedId];
+                                            setSettings(newSettings);
+                                            setSelectedId(null);
+                                        }}
+                                        className="w-full py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition-all border border-red-100 flex items-center justify-center gap-2 group"
+                                    >
+                                        <i className="fas fa-trash-alt group-hover:shake"></i> Hapus Elemen Terpilih
                                     </button>
-                                ))}
+                                </div>
                             </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs text-gray-500">Style</label>
-                            <div className="flex gap-2">
-                                <button onClick={() => handleChange(selectedId, { weight: settings[selectedId].weight === 'bold' ? 'normal' : 'bold' })} className={`flex-1 py-1 border rounded ${settings[selectedId].weight === 'bold' ? 'bg-gray-200' : ''}`}>B</button>
-                                <button onClick={() => handleChange(selectedId, { italic: settings[selectedId].italic === 'italic' ? 'normal' : 'italic' })} className={`flex-1 py-1 border rounded ${settings[selectedId].italic === 'italic' ? 'bg-gray-200' : ''}`}>I</button>
-                            </div>
-                        </div>
-
-                        <div className="pt-4 border-t">
-                            <button onClick={() => {
-                                const newS = { ...settings };
-                                delete newS[selectedId];
-                                setSettings(newS);
-                                setSelectedId(null);
-                            }} className="w-full py-2 bg-red-100 text-red-600 rounded text-sm font-bold hover:bg-red-200">
-                                <i className="fas fa-trash mr-2"></i> Hapus Elemen
-                            </button>
-                        </div>
-                    </div>
-                )}
+                        </>
+                    )}
+                </aside>
             </div>
+            
+            <style dangerouslySetInnerHTML={{ __html: `
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+                
+                @keyframes shake {
+                    0%, 100% { transform: rotate(0); }
+                    25% { transform: rotate(-10deg); }
+                    75% { transform: rotate(10deg); }
+                }
+                .group:hover .group-hover\\:shake { animation: shake 0.3s infinite; }
+            `}} />
         </AcaraLayout>
     );
 }

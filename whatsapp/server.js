@@ -49,7 +49,7 @@ async function connectToWhatsApp() {
             connectionStatus = "disconnected";
             qrCodeValue = null;
             
-            console.log("connection closed due to ", lastDisconnect.error, ", reconnecting ", shouldReconnect);
+            // console.log("connection closed due to ", lastDisconnect.error, ", reconnecting ", shouldReconnect);
             
             if (shouldReconnect) {
                 connectToWhatsApp();
@@ -57,7 +57,7 @@ async function connectToWhatsApp() {
         } else if (connection === "open") {
             connectionStatus = "connected";
             qrCodeValue = null;
-            console.log("opened connection");
+            // console.log("opened connection");
         } else if (connection === "connecting") {
             connectionStatus = "connecting";
         }
@@ -95,7 +95,7 @@ app.post("/send", async (req, res) => {
         const sentMsg = await sock.sendMessage(formattedPhone, { text: message });
         res.json({ success: true, data: sentMsg });
     } catch (error) {
-        console.error("Error sending message:", error);
+        // console.error("Error sending message:", error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -122,6 +122,6 @@ app.post("/logout", async (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`WhatsApp service listening at http://localhost:${port}`);
+    // console.log(`WhatsApp service listening at http://localhost:${port}`);
     connectToWhatsApp();
 });

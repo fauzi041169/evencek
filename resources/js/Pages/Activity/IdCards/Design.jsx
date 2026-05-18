@@ -11,8 +11,20 @@ export default function Design({ auth, activity, cardSettings: initialSettings, 
     const [mode, setMode] = useState('participant'); // 'participant' | 'committee'
 
     // State to hold configuration
-    const [pSettings, setPSettings] = useState(initialSettings || {});
-    const [cSettings, setCSettings] = useState(initialCommitteeSettings || {});
+    const [pSettings, setPSettings] = useState(() => {
+        let parsed = initialSettings || {};
+        if (typeof parsed === 'string') {
+            try { parsed = JSON.parse(parsed); if (typeof parsed === 'string') parsed = JSON.parse(parsed); } catch(e) { parsed = {}; }
+        }
+        return parsed;
+    });
+    const [cSettings, setCSettings] = useState(() => {
+        let parsed = initialCommitteeSettings || {};
+        if (typeof parsed === 'string') {
+            try { parsed = JSON.parse(parsed); if (typeof parsed === 'string') parsed = JSON.parse(parsed); } catch(e) { parsed = {}; }
+        }
+        return parsed;
+    });
 
     // Derived state for current view
     const settings = mode === 'participant' ? pSettings : cSettings;

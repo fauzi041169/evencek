@@ -12,3 +12,7 @@ npm-debug.log
 yarn-error.log
 Dockerfile
 docker-compose.yml
+public/hot
+public/storage
+.env
+.env.production

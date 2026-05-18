@@ -18,14 +18,6 @@ class CardSettingsController extends Controller
             $card_setting = $request->input('card_setting');
             $print_settings = $request->input('print_settings');
 
-            // Debug: log data mentah
-            \Log::info('[DEBUG] Data setting yang diterima:', [
-                'activity_id' => $activity_id,
-                'activity_batch_id' => $activity_batch_id,
-                'type' => $type,
-                'card_setting' => $card_setting,
-            ]);
-
             if (! $activity_id || ! $card_setting) {
                 return response()->json([
                     'success' => false,
