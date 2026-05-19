@@ -38,15 +38,26 @@ export default function Scan({ activity, attendance, activity_id, attendance_id,
     }, [manualCode, manualMode]);
 
     const processAttendance = (code) => {
-        if (processing) return;
+        if (processing || !code) return;
 
-        // Extract ID if the code is in V:ActID:UserID format
-        let finalCode = code;
-        if (code.includes(':')) {
-            const parts = code.split(':');
-            // Take the last part which is likely the User ID
-            if (parts.length > 0) {
-                finalCode = parts[parts.length - 1];
+        // Clean up code: trim and handle full URLs if scanned
+        let finalCode = code.trim();
+        if (!finalCode) return;
+        
+        // If it's a URL, try to extract the last segment
+        if (finalCode.startsWith('http')) {
+            try {
+                const url = new URL(finalCode);
+                const pathParts = url.pathname.split('/').filter(p => p);
+                if (pathParts.length > 0) {
+                    // Only take the last part if it doesn't contain colons (which might be our special format)
+                    const lastPart = pathParts[pathParts.length - 1];
+                    if (!lastPart.includes(':')) {
+                        finalCode = lastPart;
+                    }
+                }
+            } catch (e) {
+                // If URL parsing fails, just continue
             }
         }
 

@@ -34,14 +34,9 @@ class SubscriptionController extends Controller
         $disableSslRaw = config('services.midtrans.disable_ssl', false);
         $disableSsl = filter_var($disableSslRaw, FILTER_VALIDATE_BOOLEAN);
 
-        if (empty($serverKey)) {
-            Log::error('Midtrans Server Key is not configured');
-            throw new \Exception('Midtrans Server Key tidak dikonfigurasi. Silakan set MIDTRANS_SERVER_KEY di file .env');
-        }
-
-        if (empty($clientKey)) {
-            Log::error('Midtrans Client Key is not configured');
-            throw new \Exception('Midtrans Client Key tidak dikonfigurasi. Silakan set MIDTRANS_CLIENT_KEY di file .env');
+        if (empty($serverKey) || empty($clientKey)) {
+            Log::warning('Midtrans keys are not configured. Midtrans features will be disabled.');
+            return;
         }
 
         Config::$serverKey = $serverKey;

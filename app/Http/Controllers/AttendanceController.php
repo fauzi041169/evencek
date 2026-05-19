@@ -25,7 +25,11 @@ class AttendanceController extends Controller
 {
     private function authorizeActivityAccess($activityId)
     {
-        $activity = Activity::findOrFail($activityId);
+        $activity = Activity::find($activityId);
+        if (! $activity) {
+            Log::warning('Activity not found in authorizeActivityAccess', ['activity_id' => $activityId]);
+            abort(404, 'Kegiatan tidak ditemukan');
+        }
         $user = auth()->user();
         $isAdmin = $user && ($user->isAdmin() || $user->isSuperAdmin());
         $isOwner = $user && ((int) $activity->user_id === (int) $user->id);
@@ -131,24 +135,84 @@ class AttendanceController extends Controller
                 ->exists();
     }
 
-    private function resolveScannedUserId($scannedId)
+    private function resolveScannedUserId($scannedId, $activityId = null)
     {
-        // Prefer ActivityUser ID (participant code) first
+        Log::info('Resolving scanned ID:', ['scanned_id' => $scannedId, 'activity_id' => $activityId]);
+
+        if (empty($scannedId)) {
+            return null;
+        }
+
+        // Jika yang di-scan adalah ID Kegiatan itu sendiri, ini pasti salah scan
+        if ($activityId && $scannedId === $activityId) {
+            Log::warning('User scanned the activity ID instead of participant ID', ['scanned_id' => $scannedId]);
+            return 'IS_ACTIVITY_ID';
+        }
+
+        $originalScannedId = $scannedId;
+
+        // Handle format V:ActID:UserID or V:ActID:ActivityUserID or MEMBER:UserID:ActivityID
+        if (strpos($scannedId, ':') !== false) {
+            $parts = explode(':', $scannedId);
+            
+            if (count($parts) >= 3 && strtoupper($parts[0]) === 'MEMBER') {
+                // Format: MEMBER:UserID:ActivityID
+                $scannedId = $parts[1];
+                Log::info('Extracted ID from MEMBER format:', ['extracted' => $scannedId]);
+            } else {
+                $scannedId = end($parts);
+                Log::info('Extracted ID from colon format:', ['extracted' => $scannedId]);
+            }
+        }
+
+        // 1. Cek ActivityUser ID (Kode Peserta)
         $activityUser = ActivityUser::find($scannedId);
         if ($activityUser) {
+            Log::info('Found ActivityUser by ID:', ['user_id' => $activityUser->user_id]);
             return $activityUser->user_id;
         }
 
-        // If scanned value is a committee record ID, resolve to the underlying user
+        // 2. Check if scanned value is a certificate_id
+        $activityUserByCert = ActivityUser::where('certificate_id', $originalScannedId)->first();
+        if ($activityUserByCert) {
+            Log::info('Found ActivityUser by certificate_id:', ['user_id' => $activityUserByCert->user_id]);
+            return $activityUserByCert->user_id;
+        }
+
+        // 3. If scanned value is a committee record ID, resolve to the underlying user
         $committeeRecord = ActivityCommitteeStructure::find($scannedId);
         if ($committeeRecord && $committeeRecord->user_id) {
+            Log::info('Found CommitteeRecord:', ['user_id' => $committeeRecord->user_id]);
             return $committeeRecord->user_id;
         }
 
-        // Try matching a direct user ID
-        $user = User::where('id', $scannedId)->first();
+        // 4. Try matching a direct user ID
+        $user = User::find($scannedId);
+        if ($user) {
+            Log::info('Found User by ID:', ['user_id' => $user->id]);
+            return $user->id;
+        }
 
-        return $user ? $user->id : null;
+        // 5. Cek by Email
+        if (filter_var($scannedId, FILTER_VALIDATE_EMAIL)) {
+            $userByEmail = User::where('email', $scannedId)->first();
+            if ($userByEmail) {
+                Log::info('Found User by Email:', ['user_id' => $userByEmail->id]);
+                return $userByEmail->id;
+            }
+        }
+
+        // 6. Cek by No HP (di tabel profiles)
+        $profileByPhone = \App\Models\Profile::where('no_hp', $scannedId)
+            ->orWhere('no_hp', 'like', '%' . $scannedId)
+            ->first();
+        if ($profileByPhone) {
+            Log::info('Found User by Phone:', ['user_id' => $profileByPhone->user_id]);
+            return $profileByPhone->user_id;
+        }
+
+        Log::warning('No user found for scanned ID:', ['scanned_id' => $originalScannedId, 'parsed_id' => $scannedId]);
+        return null;
     }
 
     /**
@@ -998,6 +1062,7 @@ class AttendanceController extends Controller
      */
     public function storeScan(Request $request)
     {
+        Log::info('storeScan payload:', $request->all());
         try {
             $validated = $request->validate([
                 'scanned_id' => 'required',
@@ -1007,17 +1072,30 @@ class AttendanceController extends Controller
             ]);
             $this->authorizeActivityAccess($validated['activity_id']);
 
-            $scannedId = $validated['scanned_id'];
-            $finalUserId = $this->resolveScannedUserId($scannedId);
+            $scannedId = trim($validated['scanned_id']);
+            $finalUserId = $this->resolveScannedUserId($scannedId, $validated['activity_id']);
+
+            if ($finalUserId === 'IS_ACTIVITY_ID') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda memindai Kode Kegiatan. Silakan pindai Kode Peserta Anda yang ada di Kartu atau Sertifikat.',
+                ], 422);
+            }
 
             if (! $finalUserId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'User tidak ditemukan. Pastikan kode QR/ID benar.',
-                ], 404);
+                ], 422); // Gunakan 422 agar tidak membingungkan dengan rute 404
             }
 
-            $attendance = Attendance::findOrFail($validated['attendance_id']);
+            $attendance = Attendance::find($validated['attendance_id']);
+            if (! $attendance) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi absensi tidak ditemukan.',
+                ], 404);
+            }
 
             // Validasi batch: jika attendance terikat batch, pastikan user terdaftar di batch/committee yang sama
             if ($attendance->activity_batch_id) {

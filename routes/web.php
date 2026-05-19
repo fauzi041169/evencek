@@ -270,6 +270,44 @@ Route::get('/profile/photo/{userId}', [ProfileController::class, 'getProfilePhot
 // ============================================================================
 Route::middleware(['auth', 'activity.logger'])->group(function () {
 
+    // Attendance Routes (auth required)
+    Route::prefix('attendance')->name('attendance.')->middleware('auth')->controller(AttendanceController::class)->group(function () {
+        Route::post('/scan/store', 'storeScan')->name('scan.store');
+        Route::post('/store-attendance', 'storeAttendance')->name('store.attendance');
+        Route::post('/check-user', 'checkUser')->name('check.user');
+        Route::post('/check-status', 'checkAttendanceStatus')->name('check.status');
+        Route::get('/management/{activity?}', 'index')->name('management');
+        Route::get('/{activity}/create', 'create')->name('create');
+        Route::get('/download', 'download')->name('download');
+        Route::post('/{activity}/store', 'store')->name('store');
+        Route::post('/{attendance}/toggle-visibility', 'toggleVisibility')->name('toggle.visibility');
+        Route::get('/{activity}/{attendance}/edit', 'edit')->name('edit');
+        Route::put('/{activity}/{attendance}', 'update')->name('update');
+        Route::get('/{activity}/{attendance}/scan', 'scan')->name('scan');
+        Route::get('/results/{attendance}', 'showResults')->name('results');
+        Route::delete('/{attendance}', 'destroy')->name('destroy');
+        Route::get('/check-attendance', 'checkAttendance')->name('check.attendance');
+        Route::get('/check-new/{activity_id}/{attendance_id}', 'checkNewData')->name('check-new');
+        Route::post('/toggle', 'toggleAttendance')->name('toggle');
+        Route::post('/toggle-mandiri', 'toggleMandiri')->name('toggle.mandiri');
+        Route::post('/mark-all-present', 'markAllPresent')->name('mark.all.present');
+        Route::post('/mandiri', 'doMandiriAttendance')->name('mandiri');
+        Route::post('/record-status', 'recordStatus')->name('record.status');
+        Route::get('/last-record', 'lastRecord')->name('last.record');
+        Route::post('/process-scan', 'processQRScan')->name('process.scan');
+        // Scan page backgrounds management
+        Route::post('/scan-backgrounds/upload', 'uploadScanBackground')->name('scan.backgrounds.upload');
+        Route::post('/scan-backgrounds/delete', 'deleteScanBackground')->name('scan.backgrounds.delete');
+    });
+
+    Route::prefix('attendance')
+        ->name('attendance.')
+        ->middleware('auth')
+        ->controller(ActivityScanController::class)
+        ->group(function () {
+            Route::post('/scan/activity-store', 'store')->name('scan.activity.store');
+        });
+
     // Notification Routes
     Route::prefix('notifications')->name('notifications.')->controller(\App\Http\Controllers\NotificationController::class)->group(function () {
         Route::get('/', 'index')->name('index');
@@ -552,44 +590,6 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::put('/{category}', 'update')->name('update');
         Route::delete('/{category}', 'destroy')->name('destroy');
     });
-    // Attendance Routes (auth required)
-    Route::prefix('attendance')->name('attendance.')->middleware('auth')->controller(AttendanceController::class)->group(function () {
-        Route::post('/scan/store', 'storeScan')->name('scan.store');
-        Route::post('/store-attendance', 'storeAttendance')->name('store.attendance');
-        Route::post('/check-user', 'checkUser')->name('check.user');
-        Route::post('/check-status', 'checkAttendanceStatus')->name('check.status');
-        Route::get('/management/{activity?}', 'index')->name('management');
-        Route::get('/{activity}/create', 'create')->name('create');
-        Route::get('/download', 'download')->name('download');
-        Route::post('/{activity}/store', 'store')->name('store');
-        Route::post('/{attendance}/toggle-visibility', 'toggleVisibility')->name('toggle.visibility');
-        Route::get('/{activity}/{attendance}/edit', 'edit')->name('edit');
-        Route::put('/{activity}/{attendance}', 'update')->name('update');
-        Route::get('/{activity}/{attendance}/scan', 'scan')->name('scan');
-        Route::get('/results/{attendance}', 'showResults')->name('results');
-        Route::delete('/{attendance}', 'destroy')->name('destroy');
-        Route::get('/check-attendance', 'checkAttendance')->name('check.attendance');
-        Route::get('/check-new/{activity_id}/{attendance_id}', 'checkNewData')->name('check-new');
-        Route::post('/toggle', 'toggleAttendance')->name('toggle');
-        Route::post('/toggle-mandiri', 'toggleMandiri')->name('toggle.mandiri');
-        Route::post('/mark-all-present', 'markAllPresent')->name('mark.all.present');
-        Route::post('/mandiri', 'doMandiriAttendance')->name('mandiri');
-        Route::post('/record-status', 'recordStatus')->name('record.status');
-        Route::get('/last-record', 'lastRecord')->name('last.record');
-        Route::post('/process-scan', 'processQRScan')->name('process.scan');
-        // Scan page backgrounds management
-        Route::post('/scan-backgrounds/upload', 'uploadScanBackground')->name('scan.backgrounds.upload');
-        Route::post('/scan-backgrounds/delete', 'deleteScanBackground')->name('scan.backgrounds.delete');
-    });
-
-    Route::prefix('attendance')
-        ->name('attendance.')
-        ->middleware('auth')
-        ->controller(ActivityScanController::class)
-        ->group(function () {
-            Route::post('/scan/activity-store', 'store')->name('scan.activity.store');
-        });
-
     // Certificate Settings Routes (mirip CardSettingsController)
     Route::prefix('certificate-settings')->name('certificate-settings.')->controller(\App\Http\Controllers\CertificateSettingsController::class)->group(function () {
         Route::post('/save', 'update')->name('save');
