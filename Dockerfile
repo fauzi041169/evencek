@@ -65,6 +65,14 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 
 RUN a2enmod rewrite headers
 
+# Increase PHP upload limits
+RUN echo "file_uploads = On\n" \
+         "memory_limit = 512M\n" \
+         "upload_max_filesize = 100M\n" \
+         "post_max_size = 100M\n" \
+         "max_execution_time = 600\n" \
+         > /usr/local/etc/php/conf.d/uploads.ini
+
 RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf \
     && sed -ri '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 

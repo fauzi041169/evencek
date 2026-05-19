@@ -22,9 +22,6 @@ class HomeController extends Controller
 {
     public function index(Request $request)
     {
-        $perfStart = microtime(true);
-        $perfSteps = [];
-
         if (! $this->isMysqlReachable()) {
             $heroSlides = [asset('assets/images/hero/defoult.webp')];
             $specialActivities = collect([]);
@@ -42,12 +39,6 @@ class HomeController extends Controller
                 'upcomingActivities' => 0,
             ];
 
-            $serverMs = (int) round((microtime(true) - $perfStart) * 1000);
-            $perfDebug = [
-                'serverMs' => $serverMs,
-                'steps' => $perfSteps,
-            ];
-
             return Inertia::render('Home', [
                 'heroSlides' => $heroSlides,
                 'stats' => $stats,
@@ -55,22 +46,17 @@ class HomeController extends Controller
                 'specialActivities' => $specialActivities,
                 'latestActivities' => $latestActivities,
                 'latestNews' => $latestNews,
-                'perfDebug' => $perfDebug,
             ]);
         }
 
         try {
             // Get activities with private status for the slider (legacy logic kept for fallback)
-            $t0 = microtime(true);
             $specialActivities = Activity::where('status', 'private')
                 ->latest()
                 ->take(3)
                 ->get();
 
-            $perfSteps['special_activities'] = round((microtime(true) - $t0) * 1000);
-
             // Get latest activities for the activities section
-            $t0 = microtime(true);
             $latestActivities = Activity::with('category')
                 ->where('status', 'public')
                 ->latest()
@@ -81,10 +67,8 @@ class HomeController extends Controller
 
                     return $activity;
                 });
-            $perfSteps['latest_activities'] = round((microtime(true) - $t0) * 1000);
 
             // Get latest news
-            $t0 = microtime(true);
             $latestNews = News::with('category')
                 ->where(function ($query) {
                     $query->whereNotNull('published_at')
@@ -99,20 +83,16 @@ class HomeController extends Controller
 
                     return $news;
                 });
-            $perfSteps['latest_news'] = round((microtime(true) - $t0) * 1000);
 
             // Get partner list for homepage section
-            $t0 = microtime(true);
             $partners = Partner::latest()->take(20)->get()
                 ->map(function ($partner) {
                     $partner->logo = ImageHelper::getImageUrl($partner->logo, asset('assets/images/logo.png'));
 
                     return $partner;
                 });
-            $perfSteps['partners'] = round((microtime(true) - $t0) * 1000);
 
             // Get statistics for dashboard
-            $t0 = microtime(true);
             $stats = [
                 'totalActivities' => Activity::count(),
                 'totalParticipants' => ActivityUser::count(),
@@ -123,10 +103,8 @@ class HomeController extends Controller
                 'totalAttendanceRecords' => ActivityRecord::count(),
                 'upcomingActivities' => Activity::where('date', '>=', now())->count(),
             ];
-            $perfSteps['stats'] = round((microtime(true) - $t0) * 1000);
 
             // Prepare Hero Slides
-            $t0 = microtime(true);
             $heroSlides = [];
 
             // Prioritize pinned activities
@@ -218,7 +196,6 @@ class HomeController extends Controller
                     }
                 }
             }
-            $perfSteps['hero_slides'] = round((microtime(true) - $t0) * 1000);
 
         } catch (\Illuminate\Database\QueryException $e) {
             // Jika database tidak tersedia, gunakan data kosong
@@ -256,12 +233,6 @@ class HomeController extends Controller
             ];
         }
 
-        $serverMs = (int) round((microtime(true) - $perfStart) * 1000);
-        $perfDebug = [
-            'serverMs' => $serverMs,
-            'steps' => $perfSteps ?? [],
-        ];
-
         return Inertia::render('Home', [
             'heroSlides' => $heroSlides,
             'stats' => $stats,
@@ -269,7 +240,6 @@ class HomeController extends Controller
             'specialActivities' => $specialActivities,
             'latestActivities' => $latestActivities,
             'latestNews' => $latestNews,
-            'perfDebug' => $perfDebug,
         ]);
     }
 

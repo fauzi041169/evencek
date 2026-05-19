@@ -3,22 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { Head, Link, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
 
-const PERF_STEP_LABELS = {
-    special_activities: 'Aktivitas khusus',
-    latest_activities: 'Aktivitas terbaru',
-    latest_news: 'Berita',
-    partners: 'Mitra',
-    stats: 'Statistik',
-    hero_slides: 'Hero / Slider',
-};
-
-export default function Home({ heroSlides = [], stats = {}, partners = [], specialActivities = [], latestActivities = [], latestNews = [], perfDebug = null }) {
+export default function Home({ heroSlides = [], stats = {}, partners = [], specialActivities = [], latestActivities = [], latestNews = [] }) {
     const { t } = useTranslation();
     const { auth, appSettings } = usePage().props;
     const [currentSlide, setCurrentSlide] = useState(0);
     const mitraSliderRef = useRef(null);
-    const [perfInfo, setPerfInfo] = useState(null);
-    const [perfPanelOpen, setPerfPanelOpen] = useState(true);
 
     // Global Settings Logic
     const heroAnim = appSettings?.hero_animation_style || 'circles';
@@ -101,36 +90,6 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
     const heroDescFonts = ['font-sans'];
     const heroTitleFont = heroTitleFonts[currentSlide % heroTitleFonts.length];
     const heroDescFont = heroDescFonts[currentSlide % heroDescFonts.length];
-
-    // Debug performa: tampilkan hanya saat online dan loading lama
-    useEffect(() => {
-        if (!perfDebug || appSettings?.isLocal) return;
-
-        const serverMs = perfDebug.serverMs ?? 0;
-        const nav = performance.getEntriesByType?.('navigation')?.[0];
-        const clientMs = nav && 'loadEventEnd' in nav && nav.loadEventEnd > 0
-            ? Math.round(nav.loadEventEnd - (nav.fetchStart || nav.requestStart || 0))
-            : 0;
-        const totalMs = clientMs > 0 ? clientMs : serverMs;
-        const SLOW_THRESHOLD_MS = 2500;
-        const isSlow = totalMs >= SLOW_THRESHOLD_MS || serverMs >= 2000;
-
-        if (!isSlow) return;
-
-        const causes = [];
-        if (serverMs >= 1500) causes.push('Server memproses lama (query database / gambar)');
-        if (clientMs > 0 && clientMs - serverMs >= 1500) causes.push('Laten jaringan tinggi atau koneksi tidak stabil');
-        if (clientMs > 0 && clientMs >= 4000) causes.push('Aset (JS/CSS/gambar) berat atau banyak');
-        if (causes.length === 0) causes.push('Beban server atau jaringan sedang tinggi');
-
-        setPerfInfo({
-            serverMs,
-            clientMs: clientMs || null,
-            totalMs,
-            steps: perfDebug.steps || {},
-            causes,
-        });
-    }, [perfDebug, appSettings?.isLocal]);
 
     // Auto-advance hero slides
     useEffect(() => {
@@ -369,62 +328,6 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                     100% { transform: translateY(-10vh) scale(1); opacity: 0; }
                 }
             `}} />
-
-            {/* Debug performa: hanya tampil saat online dan halaman lama loading */}
-            {perfInfo && (
-                <div className="fixed bottom-4 right-4 z-[9999] max-w-sm">
-                    <div className="bg-slate-900/95 text-slate-100 rounded-xl shadow-xl border border-slate-700/50 backdrop-blur overflow-hidden">
-                        <button
-                            type="button"
-                            onClick={() => setPerfPanelOpen((o) => !o)}
-                            className="w-full px-4 py-2.5 flex items-center justify-between gap-2 text-left hover:bg-slate-800/80 transition"
-                        >
-                            <span className="font-medium text-sm flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                                Halaman lambat – debug
-                            </span>
-                            <span className="text-slate-400 text-xs tabular-nums">{perfInfo.totalMs} ms</span>
-                        </button>
-                        {perfPanelOpen && (
-                            <div className="px-4 pb-4 pt-0 space-y-3 text-sm">
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                    <div className="bg-slate-800/60 rounded px-2 py-1.5">
-                                        <span className="text-slate-400">Server</span>
-                                        <div className="font-mono text-amber-300">{perfInfo.serverMs} ms</div>
-                                    </div>
-                                    {perfInfo.clientMs != null && (
-                                        <div className="bg-slate-800/60 rounded px-2 py-1.5">
-                                            <span className="text-slate-400">Total muat</span>
-                                            <div className="font-mono text-amber-300">{perfInfo.clientMs} ms</div>
-                                        </div>
-                                    )}
-                                </div>
-                                {Object.keys(perfInfo.steps).length > 0 && (
-                                    <div>
-                                        <div className="text-slate-400 text-xs mb-1">Per komponen (server):</div>
-                                        <ul className="space-y-0.5 text-xs">
-                                            {Object.entries(perfInfo.steps).map(([key, ms]) => (
-                                                <li key={key} className="flex justify-between gap-2">
-                                                    <span className="text-slate-300">{PERF_STEP_LABELS[key] || key}</span>
-                                                    <span className="font-mono text-amber-300/90">{ms} ms</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                                <div>
-                                    <div className="text-slate-400 text-xs mb-1">Kemungkinan penyebab:</div>
-                                    <ul className="list-disc list-inside space-y-0.5 text-slate-300 text-xs">
-                                        {perfInfo.causes.map((c, i) => (
-                                            <li key={i}>{c}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
 
             <div className="min-h-screen bg-gradient-to-br from-white via-white to-white relative overflow-hidden font-sans">
 

@@ -196,12 +196,15 @@ export default function Detail({
         }
     }, [flash, activity.id, activeBatch]);
 
-    // Handle Show Login Modal from Flash
+    // Handle Show Login Modal from Flash or Query Param
     useEffect(() => {
-        if (flash?.show_login_modal) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const isMasuk = urlParams.get('masuk') === 'true';
+
+        if (flash?.show_login_modal || (isMasuk && !user)) {
             setIsLoginModalOpen(true);
         }
-    }, [flash]);
+    }, [flash, user]);
 
     // Buka modal Lengkapi Data wajib (termasuk foto profil) saat halaman Detail dibuka dan profil belum lengkap
     useEffect(() => {
@@ -1507,6 +1510,7 @@ export default function Detail({
             <LoginModal
                 isOpen={isLoginModalOpen}
                 onClose={() => setIsLoginModalOpen(false)}
+                title={new URLSearchParams(window.location.search).get('masuk') === 'true' ? "Masuk Kegiatan" : "Masuk ke Akun"}
             />
 
             {/* Manual Payment Modal */}

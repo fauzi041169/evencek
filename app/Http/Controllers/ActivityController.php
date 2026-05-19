@@ -1610,7 +1610,7 @@ class ActivityController extends Controller
         $registerTarget = [
             'type' => 'link',
             'url' => route('activity.enroll', $enrollParams),
-            'label' => 'Pendaftaran Kegiatan',
+            'label' => 'Masuk Kegiatan',
         ];
 
         if ($registrationStatus === 0) {
@@ -1619,12 +1619,12 @@ class ActivityController extends Controller
             $registerTarget = ['type' => 'disabled', 'url' => null, 'label' => 'Pendaftaran Ditutup'];
         } else {
             if (! auth()->check()) {
-                $registerTarget = ['type' => 'login_modal', 'url' => '#', 'label' => 'Pendaftaran Kegiatan'];
+                $registerTarget = ['type' => 'login_modal', 'url' => '#', 'label' => 'Masuk Kegiatan'];
             }
         }
 
         if ($registerTarget['type'] !== 'disabled' && auth()->check() && ! empty($missingProfileFields)) {
-            $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $enrollParams), 'label' => 'Pendaftaran Kegiatan'];
+            $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $enrollParams), 'label' => 'Masuk Kegiatan'];
         }
 
         // Client-side awareness for blocked regions (disable CTA early)
@@ -4336,7 +4336,7 @@ class ActivityController extends Controller
         $registerTarget = [
             'type' => 'link',
             'url' => route('activity.enroll', $enrollParams),
-            'label' => 'Pendaftaran Kegiatan',
+            'label' => 'Masuk Kegiatan',
         ];
 
         if ($registrationStatus === 0) {
@@ -4345,12 +4345,12 @@ class ActivityController extends Controller
             $registerTarget = ['type' => 'disabled', 'url' => null, 'label' => 'Pendaftaran Ditutup'];
         } else {
             if (! auth()->check()) {
-                $registerTarget = ['type' => 'login_modal', 'url' => '#', 'label' => 'Pendaftaran Kegiatan'];
+                $registerTarget = ['type' => 'login_modal', 'url' => '#', 'label' => 'Masuk Kegiatan'];
             }
         }
 
         if ($registerTarget['type'] !== 'disabled' && auth()->check() && ! empty($missingProfileFields)) {
-            $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $enrollParams), 'label' => 'Pendaftaran Kegiatan'];
+            $registerTarget = ['type' => 'form', 'url' => route('activity.enroll', $enrollParams), 'label' => 'Masuk Kegiatan'];
         }
 
         // Client-side awareness for blocked regions (disable CTA early)

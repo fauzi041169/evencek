@@ -10,6 +10,7 @@ import CommitteeSection from './Components/CommitteeSection';
 import GallerySection from './Components/GallerySection';
 import MaterialsSection from './Components/MaterialsSection';
 import RundownSection from './Components/RundownSection';
+import ShareLinkSection from './Components/ShareLinkSection';
 import SectionContainer from './Components/SectionContainer';
 import AddDivisionModal from './Modals/AddDivisionModal';
 import AddRequirementModal from './Modals/AddRequirementModal';
@@ -79,6 +80,7 @@ export default function PreparationIndex({
                             <p className="text-xl text-slate-500 font-medium max-w-4xl tracking-tight">
                                 Dashboard pengelolaan operasional, logistik, dan struktur kepanitiaan secara terpadu.
                             </p>
+
                             <div className="flex flex-wrap gap-2 pt-2">
                                 <Link
                                     href={route('activity.participants.index', activity.uid || activity.id)}
@@ -89,6 +91,33 @@ export default function PreparationIndex({
                                 </Link>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Link Berbagi Section - MOVED TO TOP FOR VISIBILITY */}
+                    <div className="bg-yellow-400 p-8 rounded-3xl mb-10 border-4 border-black shadow-[10px_10px_0px_0px_rgba(0,0,0,1)]">
+                        <div className="flex items-center gap-4 mb-4">
+                            <i className="fas fa-bullhorn text-4xl text-black"></i>
+                            <h3 className="text-3xl font-black text-black uppercase italic">Link Berbagi (PENTING)</h3>
+                        </div>
+                        
+                        <div className="bg-white p-6 rounded-2xl border-2 border-black flex flex-col sm:flex-row items-center gap-4">
+                            <div className="flex-1 text-xl font-bold font-mono text-red-600 break-all select-all">
+                                {`${window.location.origin}/activity/${activity.uid || activity.id}/detail?masuk=true`}
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const url = `${window.location.origin}/activity/${activity.uid || activity.id}/detail?masuk=true`;
+                                    navigator.clipboard.writeText(url);
+                                    alert('Link Berhasil Disalin!\n\n' + url);
+                                }}
+                                className="w-full sm:w-auto shrink-0 px-10 py-5 rounded-xl bg-black text-white font-black text-xl hover:bg-slate-800 transition-all active:scale-95"
+                            >
+                                SALIN LINK SEKARANG
+                            </button>
+                        </div>
+                        <p className="mt-4 text-black font-bold">
+                            * Bagikan link di atas kepada peserta. Mereka akan langsung diarahkan ke popup login.
+                        </p>
                     </div>
 
                     {/* combined panels: owners and participation types */}

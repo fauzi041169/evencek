@@ -159,7 +159,7 @@ export default function Design({ auth, activity, certificateSetting: initialSett
         setSelectedId(id);
     };
 
-    const compressImage = async (file, maxSizeMB = 50) => {
+    const compressImage = async (file, maxSizeMB = 2) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -170,7 +170,7 @@ export default function Design({ auth, activity, certificateSetting: initialSett
                     const canvas = document.createElement('canvas');
                     let width = img.width;
                     let height = img.height;
-                    const MAX_DIMENSION = 4000;
+                    const MAX_DIMENSION = 3000; // Standard certificate width is usually around 2000-3000px
                     if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
                         if (width > height) {
                             height *= MAX_DIMENSION / width;
@@ -190,7 +190,7 @@ export default function Design({ auth, activity, certificateSetting: initialSett
                                 reject(new Error('Image compression failed'));
                                 return;
                             }
-                            if (blob.size <= maxSizeMB * 1024 * 1024 || quality <= 0.1) {
+                            if (blob.size <= maxSizeMB * 1024 * 1024 || quality <= 0.3) {
                                 const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
                                     type: 'image/jpeg',
                                     lastModified: Date.now(),
@@ -214,22 +214,21 @@ export default function Design({ auth, activity, certificateSetting: initialSett
         if (!file) return;
         setBgUploading(true);
         try {
-            if (file.size > 50 * 1024 * 1024) {
+            // Compress if file is larger than 2MB
+            if (file.size > 2 * 1024 * 1024) {
                 Swal.fire({
-                    icon: 'info', title: 'Info', text: 'Ukuran file besar, sedang mengompresi...',
+                    icon: 'info', title: 'Info', text: 'Ukuran file besar, sedang mengompresi agar optimal...',
                     toast: true, position: 'top-end', showConfirmButton: false, timer: 3000
                 });
                 try {
-                    file = await compressImage(file, 49);
+                    file = await compressImage(file, 1.8); // Aim for under 1.8MB
                 } catch (compError) {
                     console.error('Compression failed:', compError);
-                    showToast('Gagal mengompresi gambar', 'error');
-                    setBgUploading(false);
-                    return;
+                    // Continue with original file if compression fails
                 }
             }
             const formData = new FormData();
-            formData.append('background_image', file);
+            formData.append('background', file); // Field name changed from background_image to background
             formData.append('activity_id', activity.id);
             const res = await axios.post(`/certificate-settings/background/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
@@ -242,7 +241,8 @@ export default function Design({ auth, activity, certificateSetting: initialSett
             fetchBackgrounds();
         } catch (error) {
             console.error('Upload error:', error);
-            showToast('Gagal upload background', 'error');
+            const message = error.response?.data?.message || 'Gagal upload background. Pastikan file adalah gambar dan ukuran tidak terlalu besar.';
+            showToast(message, 'error');
         } finally {
             setBgUploading(false);
             e.target.value = '';

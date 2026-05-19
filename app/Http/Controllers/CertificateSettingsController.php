@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ImageHelper;
+use App\Models\CertificateBackground;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class CertificateSettingsController extends Controller
 {
@@ -49,7 +53,7 @@ class CertificateSettingsController extends Controller
             try {
                 $certificateSettings->save();
             } catch (\Exception $e) {
-                \Log::error('Gagal menyimpan sertifikat ke database: '.$e->getMessage());
+                Log::error('Gagal menyimpan sertifikat ke database: '.$e->getMessage());
 
                 return response()->json([
                     'success' => false,
@@ -65,7 +69,7 @@ class CertificateSettingsController extends Controller
                 'print_settings' => $certificateSettings->print_settings,
             ]);
         } catch (\Exception $e) {
-            \Log::error('[DEBUG] Exception umum: '.$e->getMessage());
+            Log::error('[DEBUG] Exception umum: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -76,36 +80,109 @@ class CertificateSettingsController extends Controller
 
     public function uploadBackground(Request $request)
     {
-        $request->validate([
-            'activity_id' => 'required',
-            'background' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+        Log::info('[CERT BG UPLOAD] Incoming request', [
+            'all' => $request->all(),
+            'files' => array_keys($request->allFiles()),
+            'has_background' => $request->hasFile('background'),
+            'content_type' => $request->header('Content-Type'),
         ]);
 
-        $activityId = $request->activity_id;
-        $file = $request->file('background');
-        
-        // Use a more consistent path
-        $filename = time() . '_' . \Illuminate\Support\Str::random(10) . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs('certificate-backgrounds/' . $activityId, $filename, 'public');
+        // Fallback for activity_id if passed as activityId or from other fields
+        if (!$request->has('activity_id')) {
+            if ($request->has('activityId')) {
+                $request->merge(['activity_id' => $request->activityId]);
+            } elseif ($request->has('id')) {
+                $request->merge(['activity_id' => $request->id]);
+            }
+        }
 
-        $id = \DB::table('certificate_backgrounds')->insertGetId([
-            'activity_id' => $activityId,
-            'filename' => $path,
-            'original_name' => $file->getClientOriginalName(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            $validator = \Validator::make($request->all(), [
+                'activity_id' => 'required',
+                'background' => 'required|file|max:51200',
+            ], [
+                'activity_id.required' => 'ID Aktivitas wajib diisi.',
+                'background.required' => 'File background wajib diunggah.',
+                'background.file' => 'Input harus berupa file.',
+                'background.max' => 'Ukuran file maksimal 50MB.',
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'image' => [
-                'id' => $id,
+            if ($validator->fails()) {
+                Log::warning('[CERT BG UPLOAD] Validation failed', [
+                    'errors' => $validator->errors()->toArray(),
+                    'request_all' => $request->all(),
+                    'request_files' => array_keys($request->allFiles()),
+                ]);
+
+                $errors = $validator->errors();
+                $firstError = $errors->first();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal: ' . $firstError,
+                    'errors' => $errors,
+                    'debug_request' => [
+                        'has_activity_id' => $request->has('activity_id'),
+                        'has_background' => $request->hasFile('background'),
+                        'activity_id_value' => $request->input('activity_id'),
+                    ]
+                ], 422);
+            }
+
+            $activityId = $request->activity_id;
+            $file = $request->file('background');
+
+            if (! $file || ! $file->isValid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File tidak valid atau gagal diupload.',
+                ], 400);
+            }
+
+            // Use ImageHelper to compress and store
+            $path = ImageHelper::storeCompressedUploadedImage($file, 'certificate-backgrounds/' . $activityId, 'public', [
+                'max_width' => 2500,
+                'max_height' => 2500,
+                'quality' => 85,
+                'format' => 'webp', // WebP is better for background images
+            ]);
+
+            if (! $path) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menyimpan file gambar.',
+                ], 500);
+            }
+
+            $bg = CertificateBackground::create([
+                'activity_id' => $activityId,
                 'filename' => $path,
                 'original_name' => $file->getClientOriginalName(),
-                'url' => \Illuminate\Support\Facades\Storage::url($path),
-                'type' => 'uploaded',
-            ],
-        ]);
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'image' => [
+                    'id' => $bg->id,
+                    'filename' => $path,
+                    'original_name' => $file->getClientOriginalName(),
+                    'url' => Storage::url($path),
+                    'type' => 'uploaded',
+                ],
+                // Backward compatibility
+                'filename' => $path,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[CERT BG UPLOAD] Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'activity_id' => $request->activity_id
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal upload: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function deleteBackground(Request $request)

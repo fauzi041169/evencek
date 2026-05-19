@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useForm } from '@inertiajs/react';
 
-export default function LoginModal({ isOpen, onClose }) {
+export default function LoginModal({ isOpen, onClose, title = "Masuk ke Akun" }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         login: '',
         password: '',
         remember: false,
+        redirect: window.location.href,
     });
 
     const [showPassword, setShowPassword] = useState(false);
@@ -36,7 +37,7 @@ export default function LoginModal({ isOpen, onClose }) {
 
                 <div className="inline-block w-full max-w-[95vw] sm:max-w-md transform overflow-hidden rounded-lg bg-white text-left align-middle shadow-xl transition-all sm:my-8 sm:align-middle relative z-[100000] max-h-[90vh] overflow-y-auto overscroll-contain touch-pan-y">
                     <div className="bg-indigo-600 px-4 py-3 sm:px-6 flex justify-between items-center">
-                        <h3 className="text-lg font-bold text-white" id="login-modal-title">Masuk ke Akun</h3>
+                        <h3 className="text-lg font-bold text-white" id="login-modal-title">{title}</h3>
                         <button onClick={onClose} className="text-indigo-100 hover:text-white focus:outline-none">
                             <i className="fas fa-times text-xl"></i>
                         </button>
