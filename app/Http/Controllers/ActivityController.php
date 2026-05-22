@@ -6519,20 +6519,15 @@ class ActivityController extends Controller
 
             // Prepare assets for React
             $bgFilename = data_get($certificateSetting, 'page.background') ?: data_get($certificateSetting, 'card.background');
-            if (! $bgFilename) {
-                try {
-                    if (Schema::hasColumn('certificate_backgrounds', 'activity_id')) {
-                        $bgFilename = DB::table('certificate_backgrounds')
-                            ->where('activity_id', $activity->id)
-                            ->orderBy('id', 'desc')
-                            ->value('filename');
-                    } else {
-                        $bgFilename = DB::table('certificate_backgrounds')
-                            ->orderBy('id', 'desc')
-                            ->value('filename');
-                    }
-                } catch (\Throwable $e) {
-                    $bgFilename = null;
+            
+            // Force re-fetch from certificate_backgrounds if not in settings or for safety
+            if (Schema::hasColumn('certificate_backgrounds', 'activity_id')) {
+                $latestBg = DB::table('certificate_backgrounds')
+                    ->where('activity_id', $activity->id)
+                    ->orderBy('id', 'desc')
+                    ->first();
+                if ($latestBg) {
+                    $bgFilename = $latestBg->filename;
                 }
             }
 

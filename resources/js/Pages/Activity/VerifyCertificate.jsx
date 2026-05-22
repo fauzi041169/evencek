@@ -39,8 +39,21 @@ export default function VerifyCertificate({
     
     // Page settings - prioritize 'page' then 'card' for legacy support
     const page = cs.page || cs.card || {};
-    const widthCm = parseFloat(page.width_cm) || 29.7;
-    const heightCm = parseFloat(page.height_cm) || 21;
+    
+    // Detect orientation from data if possible, or force landscape if requested
+    let widthCm = parseFloat(page.width_cm);
+    let heightCm = parseFloat(page.height_cm);
+    
+    // If no valid dimension found or it looks like portrait, but we want landscape
+    if (!widthCm || !heightCm) {
+        widthCm = 29.7;
+        heightCm = 21;
+    } else if (heightCm > widthCm) {
+        // Swap if it's portrait but should be landscape
+        const temp = widthCm;
+        widthCm = heightCm;
+        heightCm = temp;
+    }
     
     const pxW = widthCm * PX_PER_CM;
     const pxH = heightCm * PX_PER_CM;
@@ -205,7 +218,15 @@ export default function VerifyCertificate({
                                         {/* Background Layer */}
                                         <div className="absolute inset-0 z-0">
                                             {bgUrl ? (
-                                                <img src={bgUrl} alt="Background" className="w-full h-full" style={{ objectFit: 'fill' }} />
+                                                <img 
+                                                    src={bgUrl} 
+                                                    alt="Background" 
+                                                    className="w-full h-full" 
+                                                    style={{ 
+                                                        objectFit: 'stretch', // Changed from fill to stretch to ensure it fills the landscape area
+                                                        imageRendering: 'auto'
+                                                    }} 
+                                                />
                                             ) : (
                                                 <div className="w-full h-full bg-gray-50 flex items-center justify-center">
                                                     <i className="fas fa-image text-4xl text-gray-200"></i>
