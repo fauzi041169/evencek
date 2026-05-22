@@ -40,20 +40,9 @@ export default function VerifyCertificate({
     // Page settings - prioritize 'page' then 'card' for legacy support
     const page = cs.page || cs.card || {};
     
-    // Detect orientation from data if possible, or force landscape if requested
-    let widthCm = parseFloat(page.width_cm);
-    let heightCm = parseFloat(page.height_cm);
-    
-    // If no valid dimension found or it looks like portrait, but we want landscape
-    if (!widthCm || !heightCm) {
-        widthCm = 29.7;
-        heightCm = 21;
-    } else if (heightCm > widthCm) {
-        // Swap if it's portrait but should be landscape
-        const temp = widthCm;
-        widthCm = heightCm;
-        heightCm = temp;
-    }
+    // Default to A4 Landscape in CM
+    const widthCm = parseFloat(page.width_cm) || 29.7;
+    const heightCm = parseFloat(page.height_cm) || 21;
     
     const pxW = widthCm * PX_PER_CM;
     const pxH = heightCm * PX_PER_CM;
@@ -67,29 +56,28 @@ export default function VerifyCertificate({
                 setContainerWidth(containerRef.current.offsetWidth);
             }
         };
+        // Initial and delay for layout stability
         updateWidth();
+        const timer = setTimeout(updateWidth, 500);
         window.addEventListener('resize', updateWidth);
-        return () => window.removeEventListener('resize', updateWidth);
+        return () => {
+            window.removeEventListener('resize', updateWidth);
+            clearTimeout(timer);
+        };
     }, []);
 
     const scale = containerWidth / pxW;
-    const containerHeight = containerWidth / (widthCm / heightCm);
+    // Important: container height must follow the scale and aspect ratio
+    const containerHeight = pxH * scale;
     
     const displayName = userParticipant?.name || participant?.user?.name || '-';
     const displayEmail = userParticipant?.email || '-';
 
-    // Helper for asset URLs
-    const getAssetUrl = (filename, type = 'certificate') => {
-        if (!filename) return null;
-        if (filename.startsWith('http') || filename.startsWith('data:')) return filename;
-        if (filename.startsWith('certificate-backgrounds/')) return `/storage/${filename}`;
-        if (filename.startsWith('background/default/')) return `/assets/images/certificate/${filename}`;
-        if (filename.match(/^[0-9]+\.(png|jpg|jpeg|webp|gif)$/i)) return `/assets/images/certificate/background/default/${filename}`;
-        return `/assets/images/${type}/${filename}`;
-    };
-
     const getContent = (config) => {
-        if (config.data_key === 'qr' || config.fieldType === 'qr') {
+        if (!config) return null;
+        const fieldType = config.data_key || config.fieldType;
+
+        if (fieldType === 'qr' || fieldType === 'qr_code') {
             return (
                 <div style={{ width: '100%', height: '100%', background: 'white', padding: '2px' }}>
                     <QRCodeSVG
@@ -101,7 +89,7 @@ export default function VerifyCertificate({
             );
         }
 
-        if (config.data_key === 'photo' || config.fieldType === 'photo' || config.data_key === 'foto') {
+        if (fieldType === 'photo' || fieldType === 'foto') {
             return (
                 <div style={{ 
                     width: '100%', 
@@ -115,9 +103,10 @@ export default function VerifyCertificate({
             );
         }
         
-        if (config.data_key === 'name' || config.fieldType === 'name') return displayName;
-        if (config.data_key === 'certificate_id' || config.fieldType === 'certificate_id') return certificateId || '-';
-        if (config.data_key === 'email' || config.fieldType === 'email') return displayEmail;
+        if (fieldType === 'name') return displayName;
+        if (fieldType === 'certificate_id') return certificateId || '-';
+        if (fieldType === 'email') return displayEmail;
+        if (fieldType === 'activity_name') return activity?.name || '-';
         
         return config.text || '';
     };
@@ -275,6 +264,23 @@ export default function VerifyCertificate({
                                         </div>
                                     </div>
                                     
+                                    {debug && (
+                                        <div className="mt-4 p-4 bg-gray-800 text-green-400 text-[10px] font-mono rounded-lg w-full overflow-auto">
+                                            <div className="font-bold border-b border-gray-700 pb-1 mb-2">DEBUG DATA:</div>
+                                            <pre>{JSON.stringify({ 
+                                                page, 
+                                                widthCm, 
+                                                heightCm, 
+                                                pxW, 
+                                                pxH, 
+                                                containerWidth, 
+                                                scale,
+                                                bgUrl: bgUrl?.substring(0, 50) + '...',
+                                                elements_count: Object.keys(cs).length 
+                                            }, null, 2)}</pre>
+                                        </div>
+                                    )}
+
                                     <p className="mt-6 text-sm text-gray-400 italic">
                                         * Tampilan di atas adalah representasi digital dari sertifikat fisik.
                                     </p>
