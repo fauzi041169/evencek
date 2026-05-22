@@ -7,7 +7,7 @@ export default function VerifyCertificate({
     participant, 
     certificateId, 
     isValid, 
-    certificateSetting, 
+    certificateSetting: initialSettings, 
     userParticipant, 
     invalidReason, 
     debug,
@@ -16,15 +16,31 @@ export default function VerifyCertificate({
     photoUrl,
     qrData
 }) {
-    const cs = typeof certificateSetting === 'string' ? JSON.parse(certificateSetting) : (certificateSetting || {});
+    const [cs, setCs] = useState({});
     
+    useEffect(() => {
+        let parsed = initialSettings || {};
+        if (typeof parsed === 'string') {
+            try {
+                parsed = JSON.parse(parsed);
+                if (typeof parsed === 'string') {
+                    parsed = JSON.parse(parsed);
+                }
+            } catch (e) {
+                console.error('Failed to parse certificate settings', e);
+                parsed = {};
+            }
+        }
+        setCs(parsed);
+    }, [initialSettings]);
+
     // Constant from Designer
     const PX_PER_CM = 37.795;
     
-    // Page settings
-    const page = cs.page || {};
-    const widthCm = page.width_cm || 29.7;
-    const heightCm = page.height_cm || 21;
+    // Page settings - prioritize 'page' then 'card' for legacy support
+    const page = cs.page || cs.card || {};
+    const widthCm = parseFloat(page.width_cm) || 29.7;
+    const heightCm = parseFloat(page.height_cm) || 21;
     
     const pxW = widthCm * PX_PER_CM;
     const pxH = heightCm * PX_PER_CM;
@@ -44,9 +60,20 @@ export default function VerifyCertificate({
     }, []);
 
     const scale = containerWidth / pxW;
+    const containerHeight = containerWidth / (widthCm / heightCm);
     
     const displayName = userParticipant?.name || participant?.user?.name || '-';
     const displayEmail = userParticipant?.email || '-';
+
+    // Helper for asset URLs
+    const getAssetUrl = (filename, type = 'certificate') => {
+        if (!filename) return null;
+        if (filename.startsWith('http') || filename.startsWith('data:')) return filename;
+        if (filename.startsWith('certificate-backgrounds/')) return `/storage/${filename}`;
+        if (filename.startsWith('background/default/')) return `/assets/images/certificate/${filename}`;
+        if (filename.match(/^[0-9]+\.(png|jpg|jpeg|webp|gif)$/i)) return `/assets/images/certificate/background/default/${filename}`;
+        return `/assets/images/${type}/${filename}`;
+    };
 
     const getContent = (config) => {
         if (config.data_key === 'qr' || config.fieldType === 'qr') {
@@ -57,6 +84,20 @@ export default function VerifyCertificate({
                         size={config.width || 100}
                         style={{ width: '100%', height: '100%' }}
                     />
+                </div>
+            );
+        }
+
+        if (config.data_key === 'photo' || config.fieldType === 'photo' || config.data_key === 'foto') {
+            return (
+                <div style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    overflow: 'hidden', 
+                    borderRadius: config.radius ? `${config.radius}px` : (config.shape === 'circle' ? '50%' : '0px'),
+                    border: config.border ? `${config.border}px solid ${config.borderColor || '#000'}` : 'none'
+                }}>
+                    <img src={photoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
             );
         }
@@ -158,13 +199,13 @@ export default function VerifyCertificate({
                                          ref={containerRef}
                                          className="relative shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-xl overflow-hidden bg-white border border-gray-100 w-full" 
                                          style={{ 
-                                             aspectRatio: `${widthCm}/${heightCm}`,
+                                             height: `${containerHeight}px`,
                                          }}>
                                         
                                         {/* Background Layer */}
                                         <div className="absolute inset-0 z-0">
                                             {bgUrl ? (
-                                                <img src={bgUrl} alt="Background" className="w-full h-full object-fill" />
+                                                <img src={bgUrl} alt="Background" className="w-full h-full" style={{ objectFit: 'fill' }} />
                                             ) : (
                                                 <div className="w-full h-full bg-gray-50 flex items-center justify-center">
                                                     <i className="fas fa-image text-4xl text-gray-200"></i>
@@ -181,7 +222,7 @@ export default function VerifyCertificate({
                                              }}>
                                              
                                              {Object.entries(cs).map(([key, config]) => {
-                                                 if (key === 'page' || config.visible === false) return null;
+                                                 if (key === 'page' || !config || config.visible === false) return null;
                                                  
                                                  return (
                                                      <div
