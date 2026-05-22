@@ -302,10 +302,12 @@ export default function Design({ auth, activity, certificateSetting: initialSett
 
     const getContent = (id, config) => {
         if (config.data_key === 'qr' || id === 'qr' || (id && id.toString().startsWith('qr_'))) {
+            // Use verification link for QR value preview
+            const verificationUrl = route('activity.verify-certificate', { id: activity.id }) + '?certificate_id=PREVIEW';
             return (
                 <div style={{ width: '100%', height: '100%' }}>
                     <QRCodeSVG
-                        value={`V:${activity.uid || activity.id}:${user.id}`}
+                        value={verificationUrl}
                         size={config.width}
                         style={{ width: '100%', height: '100%' }}
                     />

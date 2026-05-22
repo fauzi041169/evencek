@@ -171,8 +171,8 @@
                                 @php
                                     $dataKey = data_get($config, 'data_key');
                                     $value = '';
-                                    if ($dataKey === 'qr') {
-                                        $qrValue = "V:" . ($activity->uid ?? $activity->id) . ":" . $peserta->user_id;
+                                    if ($dataKey === 'qr' || $dataKey === 'qr_code') {
+                                        $qrValue = route('activity.verify-certificate', ['id' => $activity->id]) . '?certificate_id=' . urlencode((string) ($peserta->certificate_id ?? ''));
                                     } else {
                                         $value = get_cert_data_print($peserta, $dataKey, $activity);
                                         if ($value === null && isset($config['text'])) $value = $config['text'];
@@ -197,7 +197,7 @@
                                     font-style: {{ data_get($config, 'italic', 'normal') }};
                                     text-align: {{ data_get($config, 'align', 'left') }};
                                 ">
-                                    @if($dataKey === 'qr')
+                                    @if($dataKey === 'qr' || $dataKey === 'qr_code')
                                         <div style="width: 100%; height: 100%;">
                                             {!! QrCode::size(500)->format('svg')->generate($qrValue) !!}
                                             <style> .certificate-element svg { width: 100%; height: 100%; } </style>

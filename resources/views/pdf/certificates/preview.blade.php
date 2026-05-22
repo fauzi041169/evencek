@@ -253,8 +253,8 @@
                                     $fieldType = data_get($config, 'fieldType');
                                     $value = '';
                                     
-                                    if ($dataKey === 'qr') {
-                                        $qrValue = "V:" . ($activity->uid ?? $activity->id) . ":" . $peserta->user_id;
+                                    if ($dataKey === 'qr' || $dataKey === 'qr_code') {
+                                        $qrValue = route('activity.verify-certificate', ['id' => $activity->id]) . '?certificate_id=' . urlencode((string) ($peserta->certificate_id ?? ''));
                                         $value = 'QR'; // Placeholder
                                     } else {
                                         $value = get_cert_data($peserta, $dataKey, $activity);
@@ -281,7 +281,7 @@
                                     font-style: {{ data_get($config, 'italic', 'normal') }};
                                     text-align: {{ data_get($config, 'align', 'left') }};
                                 ">
-                                    @if($dataKey === 'qr')
+                                    @if($dataKey === 'qr' || $dataKey === 'qr_code')
                                         <div style="width: 100%; height: 100%;">
                                             {!! QrCode::size(500)->format('svg')->generate($qrValue) !!}
                                             <style>
