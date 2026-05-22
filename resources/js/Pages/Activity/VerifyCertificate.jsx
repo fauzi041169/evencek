@@ -208,11 +208,12 @@ export default function VerifyCertificate({
                                         <div className="absolute inset-0 z-0">
                                             {bgUrl ? (
                                                 <img 
+                                                    key={bgUrl} // Add key to force re-render when URL changes
                                                     src={bgUrl} 
                                                     alt="Background" 
                                                     className="w-full h-full" 
                                                     style={{ 
-                                                        objectFit: 'stretch', // Changed from fill to stretch to ensure it fills the landscape area
+                                                        objectFit: 'fill', // 'fill' will stretch to match container exactly
                                                         imageRendering: 'auto'
                                                     }} 
                                                 />

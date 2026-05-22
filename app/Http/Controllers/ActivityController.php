@@ -6520,25 +6520,42 @@ class ActivityController extends Controller
             // Prepare assets for React
             $bgFilename = data_get($certificateSetting, 'page.background') ?: data_get($certificateSetting, 'card.background');
             
-            // Force re-fetch from certificate_backgrounds if not in settings or for safety
-            if (Schema::hasColumn('certificate_backgrounds', 'activity_id')) {
-                $latestBg = DB::table('certificate_backgrounds')
-                    ->where('activity_id', $activity->id)
-                    ->orderBy('id', 'desc')
-                    ->first();
-                if ($latestBg) {
-                    $bgFilename = $latestBg->filename;
+            // Priority 1: Check if the filename in settings exists in storage
+            $bgUrl = null;
+            if ($bgFilename) {
+                if (Str::startsWith($bgFilename, 'certificate-backgrounds/')) {
+                    if (Storage::disk('public')->exists($bgFilename)) {
+                        $bgUrl = Storage::url($bgFilename);
+                    }
+                } elseif (file_exists(public_path('assets/images/certificate/'.$bgFilename))) {
+                    $bgUrl = asset('assets/images/certificate/'.$bgFilename);
                 }
             }
 
-            $bgUrl = null;
-            if ($bgFilename && file_exists(public_path('assets/images/certificate/'.$bgFilename))) {
-                $bgUrl = asset('assets/images/certificate/'.$bgFilename);
-            } else {
+            // Priority 2: If no valid URL yet, fetch the latest from certificate_backgrounds table
+            if (! $bgUrl && Schema::hasTable('certificate_backgrounds')) {
+                $latestBg = DB::table('certificate_backgrounds')
+                    ->where('activity_id', $activity->id)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                if ($latestBg) {
+                    if (Str::startsWith($latestBg->filename, 'certificate-backgrounds/')) {
+                        $bgUrl = Storage::url($latestBg->filename);
+                    } else {
+                        $bgUrl = asset('assets/images/certificate/'.$latestBg->filename);
+                    }
+                }
+            }
+
+            // Priority 3: Fallback to default backgrounds if still empty
+            if (! $bgUrl) {
                 $defaultDir = public_path('assets/images/certificate/background/default');
-                $files = glob($defaultDir.'/*.{png,jpg,jpeg,gif,webp}', GLOB_BRACE);
-                if ($files && count($files) > 0) {
-                    $bgUrl = asset('assets/images/certificate/background/default/'.basename($files[0]));
+                if (file_exists($defaultDir)) {
+                    $files = glob($defaultDir.'/*.{png,jpg,jpeg,gif,webp}', GLOB_BRACE);
+                    if ($files && count($files) > 0) {
+                        $bgUrl = asset('assets/images/certificate/background/default/'.basename($files[0]));
+                    }
                 }
             }
 
