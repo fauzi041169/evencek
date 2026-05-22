@@ -6518,7 +6518,7 @@ class ActivityController extends Controller
             }
 
             // Prepare assets for React
-            $bgFilename = data_get($certificateSetting, 'card.background');
+            $bgFilename = data_get($certificateSetting, 'page.background') ?: data_get($certificateSetting, 'card.background');
             if (! $bgFilename) {
                 try {
                     if (Schema::hasColumn('certificate_backgrounds', 'activity_id')) {
