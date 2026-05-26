@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
+import Swal from 'sweetalert2';
 import Footer from '../Components/Footer';
 import Alerts from '../Components/Alerts';
 import LoginDropdown from '../Components/LoginDropdown';
 import Modal from '../Components/Modal';
-import FloatingAI from '../Components/FloatingAI';
 
+const FloatingAI = lazy(() => import('../Components/FloatingAI'));
 
 export default function WebLayout({ children, hasHeaderSpacer = true, transparentNavbar = false, noPadding = false, fluid = false }) {
-    const { props, url } = usePage();
+    const { props, url: currentUrl } = usePage();
     const { t: tOrig, i18n } = useTranslation();
     const t = tOrig || ((key) => key); // Fallback to avoid crash
     const { auth, flash, errors, appSettings } = props;
@@ -18,6 +19,18 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
     const [editMode, setEditMode] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
+    const profileMenuRef = useRef(null);
+
+    const pathname = useMemo(() => {
+        const raw = typeof currentUrl === 'string' ? currentUrl : '';
+        return raw.split('?')[0] || '/';
+    }, [currentUrl]);
+
+    const isActivePath = useCallback((href) => {
+        const target = (href || '').split('?')[0] || '/';
+        if (target === '/') return pathname === '/';
+        return pathname === target || pathname.startsWith(`${target}/`);
+    }, [pathname]);
 
     useEffect(() => {
         const storedEditMode = localStorage.getItem('editMode');
@@ -25,18 +38,38 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
             setEditMode(storedEditMode === 'true');
         }
 
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 20);
+        if (!transparentNavbar) return undefined;
+
+        const handleScroll = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
+
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [transparentNavbar]);
+
+    useEffect(() => {
+        if (!isProfileDropdownOpen) return undefined;
+
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') setIsProfileDropdownOpen(false);
         };
 
-        if (transparentNavbar) {
-            window.addEventListener('scroll', handleScroll);
-        }
+        const onPointerDown = (e) => {
+            const el = profileMenuRef.current;
+            if (!el) return;
+            if (!el.contains(e.target)) setIsProfileDropdownOpen(false);
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('touchstart', onPointerDown, { passive: true });
 
         return () => {
-            window.removeEventListener('scroll', handleScroll);
+            document.removeEventListener('keydown', onKeyDown);
+            document.removeEventListener('mousedown', onPointerDown);
+            document.removeEventListener('touchstart', onPointerDown);
         };
-    }, [transparentNavbar]);
+    }, [isProfileDropdownOpen]);
 
     const toggleEditMode = () => {
         const newMode = !editMode;
@@ -49,6 +82,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
 
     const shadeColor = (hex, amt) => {
         try {
+            if (typeof hex !== 'string') return hex;
             let h = hex.replace('#', '');
             if (h.length === 3) h = h.split('').map(x => x + x).join('');
             const num = parseInt(h, 16);
@@ -62,10 +96,6 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
         } catch { return hex; }
     };
     const gradientFrom = (base) => `linear-gradient(180deg, ${shadeColor(base, 18)}, ${shadeColor(base, -6)})`;
-    const primary = settings.colors?.primary || '#7c3aed';
-    const secondary = settings.colors?.secondary || '#db2777';
-    const accent = settings.colors?.accent || '#f59e0b';
-    const neutralBase = settings.colors?.navbar_bg || '#e2e8f0';
     const titleColor =
         settings.colors_text?.color_navbar_title_text
         || settings.colors_text?.color_navbar_brand_text
@@ -73,77 +103,38 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
         || settings.colors?.navbar_title_text
         || settings.colors?.navbar_text
         || '#f8fafc';
-    const titleHoverColor =
-        settings.colors?.color_navbar_title_hover_bg
-        || settings.colors?.color_navbar_link_hover_bg
-        || shadeColor(titleColor, -10);
 
-    const getLogoUrl = (logoPath) => {
-        if (!logoPath) return '/assets/images/logo.png';
-        if (logoPath.startsWith('http')) return logoPath;
-
-        // Remove leading / if any
-        let cleanPath = logoPath.startsWith('/') ? logoPath.substring(1) : logoPath;
-
-        // Handle double storage/ if it somehow got in
-        if (cleanPath.startsWith('storage/storage/')) {
-            cleanPath = cleanPath.substring(8);
-        }
-
-        // Fix for missing storage symlink: map storage/assets to assets
-        if (cleanPath.startsWith('storage/assets/')) {
-            return '/' + cleanPath.replace('storage/', '');
-        }
-
-        // If it starts with storage/, return as is with leading /
-        if (cleanPath.startsWith('storage/')) {
-            return '/' + cleanPath;
-        }
-
-        // If it starts with assets/, return as is with leading /
-        if (cleanPath.startsWith('assets/')) {
-            return '/' + cleanPath;
-        }
-
-        // Default: try storage prefix
-        return '/storage/' + cleanPath;
-    };
-
-    const navClasses = `fixed top-0 left-0 right-0 z-[9999] transition-all duration-300 ${
-        transparentNavbar && !scrolled
-            ? 'bg-transparent py-4'
-            : 'backdrop-blur-md border-b border-gray-200 shadow-sm'
-    }`;
-
-    // Helper untuk warna text navbar
-    const getNavbarTextColor = () => {
-        if (transparentNavbar && !scrolled) return 'text-white hover:bg-white/10 border-white/20';
-        return 'text-navbar-link-text hover:bg-navbar-link-hover-bg border-white/10';
-    };
-
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Global Styles from AppSettings */}
-            <style dangerouslySetInnerHTML={{
-                __html: `
+    const dynamicStyles = useMemo(() => {
+        const colors = settings.colors || {};
+        const colorsText = settings.colors_text || {};
+        return `
                 :root {
-                    --color-primary: ${settings.colors?.primary || '#7c3aed'};
-                    --color-secondary: ${settings.colors?.secondary || '#db2777'};
-                    --color-accent: ${settings.colors?.accent || '#f59e0b'};
-                    --color-navbar-bg: ${settings.colors?.navbar_bg || '#1e293b'};
-                    --color-navbar-text: ${settings.colors?.navbar_text || '#f8fafc'};
-                    --color-navbar-bg-start: ${settings.colors?.color_navbar_bg_start || '#1e293b'};
-                    --color-navbar-bg-end: ${settings.colors?.color_navbar_bg_end || '#0f172a'};
-                    --color-navbar-cap-start: ${settings.colors?.color_navbar_cap_start || '#1f2937'};
-                    --color-navbar-cap-end: ${settings.colors?.color_navbar_cap_end || '#111827'};
-                    --color-navbar-start: ${settings.colors?.color_navbar_start || '#4973ec'};
-                    --color-navbar-end: ${settings.colors?.color_navbar_end || '#6600ff'};
-                    --color-navbar-link-text: ${settings.colors?.color_navbar_link_text || '#f8fafc'};
-                    --color-navbar-link-hover-bg: ${settings.colors?.color_navbar_link_hover_bg || '#db0a99'};
-                    --color-navbar-link-active-card: ${settings.colors?.color_navbar_link_active_card || '#fa9200'};
-                    --color-navbar-link-active-border: ${settings.colors?.color_navbar_link_active_border || '#ffcf66'};
-                    --color-navbar-title: ${titleColor};
-                    --color-navbar-title-hover: ${titleHoverColor};
+                    --color-primary: ${colors.primary || '#7c3aed'};
+                    --color-secondary: ${colors.secondary || '#db2777'};
+                    --color-accent: ${colors.accent || '#f59e0b'};
+                    --color-navbar-bg: ${colors.navbar_bg || '#1e293b'};
+                    --color-navbar-text: ${colors.navbar_text || '#f8fafc'};
+                    --color-navbar-bg-start: ${colors.color_navbar_bg_start || '#1e293b'};
+                    --color-navbar-bg-end: ${colors.color_navbar_bg_end || '#0f172a'};
+                    --color-navbar-cap-start: ${colors.color_navbar_cap_start || '#1f2937'};
+                    --color-navbar-cap-end: ${colors.color_navbar_cap_end || '#111827'};
+                    --color-navbar-start: ${colors.color_navbar_start || '#4973ec'};
+                    --color-navbar-end: ${colors.color_navbar_end || '#6600ff'};
+                    --color-navbar-link-text: ${colors.color_navbar_link_text || '#f8fafc'};
+                    --color-navbar-link-hover-bg: ${colors.color_navbar_link_hover_bg || '#db0a99'};
+                    --color-navbar-link-active-card: ${colors.color_navbar_link_active_card || '#fa9200'};
+                    --color-navbar-link-active-border: ${colors.color_navbar_link_active_border || '#ffcf66'};
+                    --color-navbar-title: ${colorsText.color_navbar_title_text
+                        || colorsText.color_navbar_brand_text
+                        || colors.color_navbar_brand_text
+                        || colors.navbar_title_text
+                        || colors.navbar_text
+                        || '#f8fafc'
+                    };
+                    --color-navbar-title-hover: ${colors.color_navbar_title_hover_bg
+                        || colors.color_navbar_link_hover_bg
+                        || shadeColor(titleColor, -10)
+                    };
                 }
                 .navbar-gradient {
                     background: linear-gradient(to right, var(--color-primary), var(--color-secondary));
@@ -158,14 +149,12 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                 .hover\\:bg-navbar-link-hover-bg:hover { background-color: var(--color-navbar-link-hover-bg) !important; }
                 .navbar-title { color: var(--color-navbar-title); transition: color .2s ease; }
                 .group:hover .navbar-title { color: var(--color-navbar-title-hover); }
-                
-                /* Custom scrollbar */
+
                 ::-webkit-scrollbar { width: 8px; height: 8px; }
                 ::-webkit-scrollbar-track { background: #f1f5f9; }
                 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
                 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-                /* Bottom Nav Animations */
                 .nav-item-active i {
                     animation: nav-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
                 }
@@ -216,9 +205,52 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                 .seg-tab.active{ box-shadow: 0 12px 22px rgba(0,0,0,.24), inset 0 0 0 1px rgba(255,255,255,.25); background: var(--seg-bg-active, var(--seg-bg)); border-color: var(--seg-active-border, var(--seg-border)); }
                 .seg-tab + .seg-tab { margin-left: 0; }
                 .seg-tab:first-child { margin-left: 0; }
+        `;
+    }, [settings, titleColor]);
 
-                /* palette seg-color-* dihapus; warna kini mengikuti appSettings melalui inline style */
-            `}} />
+    const getLogoUrl = (logoPath) => {
+        if (!logoPath) return '/assets/images/logo.png';
+        if (logoPath.startsWith('http')) return logoPath;
+
+        // Remove leading / if any
+        let cleanPath = logoPath.startsWith('/') ? logoPath.substring(1) : logoPath;
+
+        // Handle double storage/ if it somehow got in
+        if (cleanPath.startsWith('storage/storage/')) {
+            cleanPath = cleanPath.substring(8);
+        }
+
+        // Fix for missing storage symlink: map storage/assets to assets
+        if (cleanPath.startsWith('storage/assets/')) {
+            return '/' + cleanPath.replace('storage/', '');
+        }
+
+        // If it starts with storage/, return as is with leading /
+        if (cleanPath.startsWith('storage/')) {
+            return '/' + cleanPath;
+        }
+
+        // If it starts with assets/, return as is with leading /
+        if (cleanPath.startsWith('assets/')) {
+            return '/' + cleanPath;
+        }
+
+        // Default: try storage prefix
+        return '/storage/' + cleanPath;
+    };
+
+    const navClasses = `fixed top-0 left-0 right-0 z-[9999] transition-all duration-300 ${
+        transparentNavbar && !scrolled
+            ? 'bg-transparent py-4'
+            : 'backdrop-blur-md border-b border-gray-200 shadow-sm'
+    }`;
+
+    return (
+        <div className="min-h-screen bg-gray-50">
+            {/* Global Styles from AppSettings */}
+            <style dangerouslySetInnerHTML={{
+                __html: dynamicStyles,
+            }} />
 
             {/* Flash Messages */}
             <div className="fixed top-16 right-4 z-[10000] max-w-sm">
@@ -254,9 +286,8 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                             alt="Logo"
                                             className="h-full w-auto object-contain"
                                             onError={(e) => {
-                                                e.target.onerror = null;
-                                                e.target.style.display = 'none';
-                                                e.target.parentNode.innerHTML = '<i class="fas fa-shield-alt text-xl text-white"></i>';
+                                                e.currentTarget.onerror = null;
+                                                e.currentTarget.src = '/assets/images/logo.png';
                                             }}
                                         />
                                     </div>
@@ -266,7 +297,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                 </Link>
                             </div>
 
-                            <nav className="hidden md:flex items-center gap-2">
+                            <div className="hidden md:flex items-center gap-2" aria-label="Primary">
                                 {[
                                     { name: t('nav.home'), href: '/', icon: 'fa-home' },
                                     { name: t('nav.about'), href: '/about', icon: 'fa-info-circle' },
@@ -274,7 +305,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                     { name: t('nav.activities'), href: '/activity', icon: 'fa-calendar-alt' },
                                     ...(settings.subscription_service_enabled ? [{ name: 'Langganan', href: '/subscriptions/pricing', icon: 'fa-crown' }] : []),
                                 ].map((link) => {
-                                    const isActive = url === link.href || (link.href !== '/' && url.startsWith(link.href));
+                                    const isActive = isActivePath(link.href);
                                     const c = settings.colors || {};
                                     const linkText = c['color_navbar_brand_text'] || c['color_navbar_link_text'] || '#ffffff';
                                     const linkActiveCard = c['color_navbar_link_active_card'] || '#fa9200';
@@ -311,7 +342,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                         </Link>
                                     );
                                 })}
-                            </nav>
+                            </div>
                         </div>
 
                         {/* Right Side */}
@@ -335,11 +366,14 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                 <div className="flex items-center gap-3">
                                     <div
                                         className="relative"
+                                        ref={profileMenuRef}
                                         onMouseEnter={() => setIsProfileDropdownOpen(true)}
                                         onMouseLeave={() => setIsProfileDropdownOpen(false)}
                                     >
                                         <button
                                             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                                            aria-expanded={isProfileDropdownOpen}
+                                            aria-haspopup="menu"
                                             className="flex items-center focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded-full p-0.5 transition-transform duration-200 hover:scale-105"
                                         >
                                             <img
@@ -461,7 +495,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                                                         }
                                                                         localStorage.clear();
                                                                         sessionStorage.clear();
-                                                                        window.location.reload(true);
+                                                                window.location.reload();
                                                                     }
                                                                 });
                                                             }}
@@ -538,16 +572,16 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                             key={link.name}
                                             href={link.href}
                                             onClick={() => setIsMobileMenuOpen(false)}
-                                            className={`flex items-center p-3.5 rounded-[1.25rem] transition-all duration-300 group border-2 ${url === link.href ? 'bg-white border-primary/20 shadow-xl shadow-primary/5' : 'bg-white/50 border-transparent hover:bg-white hover:border-gray-200 hover:shadow-lg'}`}
+                                            className={`flex items-center p-3.5 rounded-[1.25rem] transition-all duration-300 group border-2 ${isActivePath(link.href) ? 'bg-white border-primary/20 shadow-xl shadow-primary/5' : 'bg-white/50 border-transparent hover:bg-white hover:border-gray-200 hover:shadow-lg'}`}
                                         >
                                             <div className={`w-11 h-11 flex items-center justify-center rounded-2xl ${link.color} font-bold transition-all duration-300 shadow-lg group-hover:scale-110 group-hover:rotate-3`}>
                                                 <i className={`fas ${link.icon} text-lg`}></i>
                                             </div>
                                             <div className="ml-4">
-                                                <span className={`block font-black text-sm transition-colors ${url === link.href ? 'text-primary' : 'text-gray-600 group-hover:text-gray-900'}`}>{link.name}</span>
-                                                {url === link.href && <span className="text-[10px] font-bold text-primary/60 uppercase">Sedang Dibuka</span>}
+                                                <span className={`block font-black text-sm transition-colors ${isActivePath(link.href) ? 'text-primary' : 'text-gray-600 group-hover:text-gray-900'}`}>{link.name}</span>
+                                                {isActivePath(link.href) && <span className="text-[10px] font-bold text-primary/60 uppercase">Sedang Dibuka</span>}
                                             </div>
-                                            <i className={`fas fa-chevron-right ml-auto text-xs transition-transform duration-300 ${url === link.href ? 'text-primary' : 'text-gray-300 group-hover:translate-x-1'}`}></i>
+                                            <i className={`fas fa-chevron-right ml-auto text-xs transition-transform duration-300 ${isActivePath(link.href) ? 'text-primary' : 'text-gray-300 group-hover:translate-x-1'}`}></i>
                                         </Link>
                                     ))}
                                 </div>
@@ -620,14 +654,14 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
 
                     {/* Left Group */}
                     <div className="flex w-2/5 justify-around items-center">
-                        <Link href="/about" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url.startsWith('/about') ? 'text-primary' : 'text-gray-400'}`}>
-                            <div className={`p-2 rounded-xl transition-all ${url.startsWith('/about') ? 'bg-primary/10' : ''}`}>
+                        <Link href="/about" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isActivePath('/about') ? 'text-primary' : 'text-gray-400'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${isActivePath('/about') ? 'bg-primary/10' : ''}`}>
                                 <i className="fas fa-info-circle text-lg"></i>
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-tighter">About</span>
                         </Link>
-                        <Link href="/news" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url.startsWith('/news') ? 'text-primary' : 'text-gray-400'}`}>
-                            <div className={`p-2 rounded-xl transition-all ${url.startsWith('/news') ? 'bg-primary/10' : ''}`}>
+                        <Link href="/news" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isActivePath('/news') ? 'text-primary' : 'text-gray-400'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${isActivePath('/news') ? 'bg-primary/10' : ''}`}>
                                 <i className="fas fa-newspaper text-lg"></i>
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-tighter">News</span>
@@ -640,30 +674,30 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                             <Link
                                 href="/"
                                 className={`w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-xl transition-all duration-500 transform active:scale-90
-                                    ${url === '/'
+                                    ${isActivePath('/')
                                         ? 'bg-primary text-white scale-110 rotate-[360deg] shadow-primary/30'
                                         : 'bg-white text-gray-500 hover:text-primary'
                                     }
                                 `}
                             >
                                 <i className="fas fa-home text-2xl mb-0.5"></i>
-                                <span className={`text-[9px] font-black uppercase tracking-widest ${url === '/' ? 'text-white' : 'text-gray-400'}`}>Home</span>
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${isActivePath('/') ? 'text-white' : 'text-gray-400'}`}>Home</span>
                             </Link>
                         </div>
                     </div>
 
                     {/* Right Group */}
                     <div className="flex w-2/5 justify-around items-center">
-                        <Link href="/activity" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url.startsWith('/activity') ? 'text-primary' : 'text-gray-400'}`}>
-                            <div className={`p-2 rounded-xl transition-all ${url.startsWith('/activity') ? 'bg-primary/10' : ''}`}>
+                        <Link href="/activity" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isActivePath('/activity') ? 'text-primary' : 'text-gray-400'}`}>
+                            <div className={`p-2 rounded-xl transition-all ${isActivePath('/activity') ? 'bg-primary/10' : ''}`}>
                                 <i className="fas fa-calendar-alt text-lg"></i>
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-tighter">Activity</span>
                         </Link>
 
                         {auth && auth.user ? (
-                            <Link href="/dashboard" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url.startsWith('/dashboard') || url.startsWith('/profile') ? 'text-primary' : 'text-gray-400'}`}>
-                                <div className={`w-9 h-9 rounded-xl overflow-hidden border-2 transition-all ${url.startsWith('/dashboard') || url.startsWith('/profile') ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200'}`}>
+                            <Link href="/dashboard" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isActivePath('/dashboard') || isActivePath('/profile') ? 'text-primary' : 'text-gray-400'}`}>
+                                <div className={`w-9 h-9 rounded-xl overflow-hidden border-2 transition-all ${isActivePath('/dashboard') || isActivePath('/profile') ? 'border-primary ring-2 ring-primary/20' : 'border-gray-200'}`}>
                                     <img
                                         src={auth.user.profile_photo_url || '/assets/images/profilefoto/default-profile.png'}
                                         alt="Profile"
@@ -674,8 +708,8 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                 <span className="text-[10px] font-bold uppercase tracking-tighter">Account</span>
                             </Link>
                         ) : (
-                            <Link href="/login" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${url === '/login' ? 'text-primary' : 'text-gray-400'}`}>
-                                <div className={`p-2 rounded-xl transition-all ${url === '/login' ? 'bg-primary/10' : ''}`}>
+                            <Link href="/login" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isActivePath('/login') ? 'text-primary' : 'text-gray-400'}`}>
+                                <div className={`p-2 rounded-xl transition-all ${isActivePath('/login') ? 'bg-primary/10' : ''}`}>
                                     <i className="fas fa-user-circle text-lg"></i>
                                 </div>
                                 <span className="text-[10px] font-bold uppercase tracking-tighter">Login</span>
@@ -687,7 +721,9 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                 <div className="h-safe bg-white"></div>
             </div>
             {/* Floating AI Robot */}
-            <FloatingAI />
+            <Suspense fallback={null}>
+                <FloatingAI />
+            </Suspense>
         </div>
     );
 }
