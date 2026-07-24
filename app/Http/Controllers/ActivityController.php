@@ -5240,16 +5240,14 @@ class ActivityController extends Controller
 
             if ($search) {
                 $participantsQuery->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
+                    $q->where('name', 'like', '%'.$search.'%')
                         ->orWhereHas('profile', function ($qq) use ($search) {
-                            $qq->where('province_id', 'like', "%{$search}%")
-                                ->orWhere('instansi', 'like', "%{$search}%")
+                            $qq->where('instansi', 'like', '%'.$search.'%')
                                 ->orWhereHas('province', function ($qqq) use ($search) {
-                                    $qqq->where('name', 'like', "%{$search}%");
+                                    $qqq->where('name', 'like', '%'.$search.'%');
                                 })
                                 ->orWhereHas('regency', function ($qqq) use ($search) {
-                                    $qqq->where('name', 'like', "%{$search}%");
+                                    $qqq->where('name', 'like', '%'.$search.'%');
                                 });
                         });
                 });
@@ -5293,7 +5291,7 @@ class ActivityController extends Controller
         } catch (\Throwable $e) {
             \Log::error('Error in searchParticipants: '.$e->getMessage());
 
-            return response()->json(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()], 500);
+            return response()->json(['error' => 'Terjadi kesalahan saat mencari peserta'], 500);
         }
     }
 

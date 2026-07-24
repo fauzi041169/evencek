@@ -36,7 +36,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY resources ./resources
-COPY vite.config.js tailwind.config.cjs postcss.config.cjs postcss.config.mjs ./
+COPY vite.config.js tailwind.config.cjs postcss.config.cjs ./
 RUN mkdir -p public && npm run build
 
 FROM php:8.2-apache-bookworm

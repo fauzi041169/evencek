@@ -6,7 +6,6 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 
 class UserSeeder extends Seeder
 {
@@ -30,10 +29,8 @@ class UserSeeder extends Seeder
 
     public function run()
     {
-        Schema::disableForeignKeyConstraints();
-        // Clear existing users
+        // Clear existing users (FK dikelola oleh DatabaseSeeder)
         User::truncate();
-        Schema::enableForeignKeyConstraints();
 
         // Super Admin
         User::create([

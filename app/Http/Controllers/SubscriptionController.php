@@ -49,19 +49,17 @@ class SubscriptionController extends Controller
             CURLOPT_HTTPHEADER => [],
         ];
 
-        if (app()->environment('local') || config('app.debug') || ! $isProduction) {
+        $allowInsecureSsl = app()->environment('local')
+            && ! $isProduction
+            && (bool) $disableSsl;
+
+        if ($allowInsecureSsl) {
             Config::$curlOptions[CURLOPT_SSL_VERIFYPEER] = false;
             Config::$curlOptions[CURLOPT_SSL_VERIFYHOST] = false;
-        }
 
-        if ($disableSsl) {
-            Config::$curlOptions[CURLOPT_SSL_VERIFYPEER] = false;
-            Config::$curlOptions[CURLOPT_SSL_VERIFYHOST] = false;
-
-            Log::warning('Midtrans SSL verification disabled via config (subscription)', [
-                'is_production' => $isProduction,
-                'environment' => app()->environment(),
-            ]);
+            Log::warning('Midtrans SSL verification disabled (local only, subscription)');
+        } elseif ($disableSsl && $isProduction) {
+            Log::error('Refusing Midtrans SSL disable in production (subscription)');
         }
 
         Log::info('Midtrans configured for subscription', [
@@ -408,24 +406,32 @@ class SubscriptionController extends Controller
 
             Log::info('Subscription notification received', ['notification' => $notification]);
 
+            // Validasi signature wajib — tanpa signature_key payload ditolak
             $signatureKey = $notification['signature_key'] ?? null;
-            if ($signatureKey) {
-                $serverKey = config('services.midtrans.server_key');
-                $computedSignature = hash('sha512',
-                    ($notification['order_id'] ?? '').
-                    ($notification['status_code'] ?? '').
-                    ($notification['gross_amount'] ?? '').
-                    $serverKey
-                );
-                if (! hash_equals($computedSignature, (string) $signatureKey)) {
-                    Log::warning('Midtrans signature mismatch', [
-                        'order_id' => $notification['order_id'] ?? null,
-                        'status_code' => $notification['status_code'] ?? null,
-                        'gross_amount' => $notification['gross_amount'] ?? null,
-                    ]);
+            $serverKey = config('services.midtrans.server_key');
+            if (! $signatureKey || ! $serverKey) {
+                Log::warning('Subscription Midtrans notification rejected: missing signature or server key', [
+                    'order_id' => $notification['order_id'] ?? null,
+                    'has_signature' => (bool) $signatureKey,
+                ]);
 
-                    return response()->json(['status' => 'error', 'message' => 'Invalid signature'], 403);
-                }
+                return response()->json(['status' => 'error', 'message' => 'Invalid signature'], 403);
+            }
+
+            $computedSignature = hash('sha512',
+                ($notification['order_id'] ?? '').
+                ($notification['status_code'] ?? '').
+                ($notification['gross_amount'] ?? '').
+                $serverKey
+            );
+            if (! hash_equals($computedSignature, (string) $signatureKey)) {
+                Log::warning('Midtrans signature mismatch', [
+                    'order_id' => $notification['order_id'] ?? null,
+                    'status_code' => $notification['status_code'] ?? null,
+                    'gross_amount' => $notification['gross_amount'] ?? null,
+                ]);
+
+                return response()->json(['status' => 'error', 'message' => 'Invalid signature'], 403);
             }
 
             $orderId = $notification['order_id'] ?? null;
@@ -452,7 +458,7 @@ class SubscriptionController extends Controller
 
             $subscription->loadMissing('plan');
             $expectedAmount = (int) ($subscription->plan->price ?? 0);
-            if ($grossAmount !== null && (int) $grossAmount > $expectedAmount) {
+            if ($grossAmount === null || (int) $grossAmount !== $expectedAmount) {
                 Log::error('Amount mismatch', [
                     'expected' => $expectedAmount,
                     'received' => $grossAmount,
@@ -463,27 +469,26 @@ class SubscriptionController extends Controller
 
             DB::beginTransaction();
 
-            // Update subscription based on transaction status
-            if ($transactionStatus == 'settlement' || $transactionStatus == 'capture') {
-                if ($fraudStatus == 'accept') {
-                    $subscription->status = 'active';
-                    $subscription->start_date = now();
-                    $subscription->end_date = now()->addMonth();
-                    $subscription->next_billing_date = now()->addMonth();
+            $shouldActivate = $transactionStatus === 'settlement'
+                || ($transactionStatus === 'capture' && in_array($fraudStatus, [null, 'accept'], true));
 
-                    // Update user subscription
-                    $user = $subscription->user;
-                    if ($user) {
-                        $user->subscription_id = $subscription->id;
-                        $user->promoteToCreatorIfEligible();
-                        $user->save();
-                    }
+            if ($shouldActivate) {
+                $subscription->status = 'active';
+                $subscription->start_date = now();
+                $subscription->end_date = now()->addMonth();
+                $subscription->next_billing_date = now()->addMonth();
 
-                    Log::info('Subscription activated', [
-                        'subscription_id' => $subscription->id,
-                        'user_id' => $subscription->user_id,
-                    ]);
+                $user = $subscription->user;
+                if ($user) {
+                    $user->subscription_id = $subscription->id;
+                    $user->promoteToCreatorIfEligible();
+                    $user->save();
                 }
+
+                Log::info('Subscription activated', [
+                    'subscription_id' => $subscription->id,
+                    'user_id' => $subscription->user_id,
+                ]);
             } elseif ($transactionStatus == 'cancel' || $transactionStatus == 'deny' || $transactionStatus == 'expire') {
                 $subscription->status = 'cancelled';
             }
@@ -915,15 +920,21 @@ class SubscriptionController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        if ($subscription->isExpired()) {
-            $subscription->renew();
-
-            return redirect()->route('subscriptions.manage')
-                ->with('success', 'Langganan berhasil diperpanjang.');
+        if (! $subscription->isExpired()) {
+            return redirect()->route('subscriptions.my')
+                ->with('error', 'Langganan belum kedaluwarsa.');
         }
 
-        return redirect()->route('subscriptions.manage')
-            ->with('error', 'Langganan belum kedaluwarsa.');
+        // Perpanjangan harus lewat pembayaran, bukan aktivasi gratis
+        $subscription->loadMissing('plan');
+        $planSlug = $subscription->plan->slug ?? null;
+        if (! $planSlug) {
+            return redirect()->route('subscriptions.pricing')
+                ->with('error', 'Paket langganan tidak ditemukan. Silakan pilih paket baru.');
+        }
+
+        return redirect()->route('subscriptions.pricing')
+            ->with('info', 'Silakan lakukan pembayaran untuk memperpanjang langganan paket '.$subscription->plan->name.'.');
     }
 
     /**

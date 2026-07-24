@@ -79,7 +79,6 @@ class Kernel extends HttpKernel
         'maintenance' => \App\Http\Middleware\MaintenanceMode::class,
         'activity.logger' => \App\Http\Middleware\ActivityLogger::class,
         'role' => \App\Http\Middleware\Role::class,
-        'checkrole' => \App\Http\Middleware\CheckRole::class,
         'track.activity.access' => \App\Http\Middleware\TrackActivityAccess::class,
         'log.token' => \App\Http\Middleware\VerifyLogIngestToken::class,
     ];

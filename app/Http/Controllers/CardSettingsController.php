@@ -2,10 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Activity;
 use Illuminate\Http\Request;
 
 class CardSettingsController extends Controller
 {
+    private function assertCanManageCards($activityId): Activity
+    {
+        $user = auth()->user();
+        if (! $user) {
+            abort(403, 'Unauthorized');
+        }
+
+        $activity = Activity::find($activityId);
+        if (! $activity || ! $activity->canAccessPrinting($user, 'cards')) {
+            abort(403, 'Anda tidak memiliki akses untuk mengatur kartu kegiatan ini');
+        }
+
+        return $activity;
+    }
+
     public function update(Request $request, $activityId = null)
     {
         try {
@@ -24,13 +40,15 @@ class CardSettingsController extends Controller
                     'message' => 'activity_id dan card_setting wajib diisi',
                 ], 400);
             }
+
+            $this->assertCanManageCards($activity_id);
+
             // Pastikan card_setting bisa di-decode ke array
             $decoded = json_decode($card_setting, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Format card_setting tidak valid JSON: '.json_last_error_msg(),
-                    'raw' => $card_setting,
                 ], 400);
             }
             $cardSettings = \App\Models\CardSettings::firstOrNew([
@@ -54,11 +72,11 @@ class CardSettingsController extends Controller
             try {
                 $cardSettings->save();
             } catch (\Exception $e) {
-                \Log::error('[DEBUG] Gagal menyimpan ke database: '.$e->getMessage());
+                \Log::error('Gagal menyimpan card settings: '.$e->getMessage());
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal menyimpan ke database: '.$e->getMessage(),
+                    'message' => 'Gagal menyimpan ke database',
                 ], 500);
             }
 
@@ -69,12 +87,14 @@ class CardSettingsController extends Controller
                 'card_setting' => $cardSettings->card_setting,
                 'print_settings' => $cardSettings->print_settings,
             ]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            \Log::error('Exception umum: '.$e->getMessage());
+            \Log::error('Exception card settings: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: '.$e->getMessage(),
+                'message' => 'Terjadi kesalahan internal',
             ], 500);
         }
     }

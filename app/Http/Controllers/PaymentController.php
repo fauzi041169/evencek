@@ -3563,8 +3563,8 @@ class PaymentController extends Controller
                 ->with('error', 'Silakan login untuk melihat detail penarikan.');
         }
 
-        // Izinkan admin/superadmin, creator, atau pemilik pengajuan melihat detail
-        if (! ($user->isAdmin() || $user->isSuperAdmin() || $user->isCreator() || $user->id === $withdrawal->user_id)) {
+        // Hanya admin/superadmin atau pemilik pengajuan yang boleh melihat detail
+        if (! ($user->isAdmin() || $user->isSuperAdmin() || (int) $user->id === (int) $withdrawal->user_id)) {
             return redirect()->route('payments.admin.withdraw.history')
                 ->with('error', 'Anda tidak memiliki akses ke detail penarikan ini');
         }
@@ -4691,6 +4691,17 @@ class PaymentController extends Controller
 
     public function edit(Payment $payment)
     {
+        $payment->load('activity');
+
+        $canEdit = auth()->user()->hasPermission('view_payments')
+            || (auth()->user()->hasPermission('view_payments_own_activity')
+                && $payment->activity
+                && $payment->activity->canManageRegistration(auth()->id()));
+
+        if (! $canEdit) {
+            abort(403, 'Anda tidak memiliki akses untuk mengedit pembayaran ini');
+        }
+
         return Inertia::render('Payments/Edit', [
             'payment' => $payment,
         ]);
@@ -4698,6 +4709,17 @@ class PaymentController extends Controller
 
     public function destroy(Payment $payment)
     {
+        $payment->load('activity');
+
+        $canDelete = auth()->user()->hasPermission('view_payments')
+            || (auth()->user()->hasPermission('view_payments_own_activity')
+                && $payment->activity
+                && $payment->activity->canManageRegistration(auth()->id()));
+
+        if (! $canDelete) {
+            abort(403, 'Anda tidak memiliki akses untuk menghapus pembayaran ini');
+        }
+
         $payment->delete();
 
         return redirect()->back()->with('success', 'Pembayaran berhasil dihapus.');

@@ -12,6 +12,8 @@ node_modules/
 .env
 .env.backup
 .env.production
+whatsapp/auth_info_baileys/
+whatsapp/auth_sessions/
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml

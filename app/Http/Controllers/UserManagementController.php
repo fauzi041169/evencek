@@ -213,6 +213,22 @@ class UserManagementController extends Controller
             'role' => 'required|in:guest,user,creator,admin,superadmin',
         ]);
 
+        // Hanya superadmin yang boleh menaikkan role ke superadmin
+        if ($request->role === 'superadmin' && ! auth()->user()->isSuperAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya superadmin yang dapat menetapkan role superadmin',
+            ], 403);
+        }
+
+        // Admin biasa tidak boleh mengubah role user yang sudah superadmin
+        if ($user->isSuperAdmin() && ! auth()->user()->isSuperAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak dapat mengubah role superadmin',
+            ], 403);
+        }
+
         try {
             DB::beginTransaction();
 

@@ -49,10 +49,9 @@ class ProfileController extends Controller
 
             $auth = auth()->user();
             $isSelf = auth()->check() && auth()->id() === $user->id;
-            $isStaff = $auth && (
+            $isAdminStaff = $auth && (
                 (method_exists($auth, 'isAdmin') && $auth->isAdmin()) ||
-                (method_exists($auth, 'isSuperAdmin') && $auth->isSuperAdmin()) ||
-                (method_exists($auth, 'isCreator') && $auth->isCreator())
+                (method_exists($auth, 'isSuperAdmin') && $auth->isSuperAdmin())
             );
             // Izinkan panitia/owner acara tempat target user terdaftar melihat profil peserta
             $isCommitteeOfParticipant = false;
@@ -67,7 +66,7 @@ class ProfileController extends Controller
                     ->exists();
             }
 
-            if (! auth()->check() || (! $isSelf && ! $isStaff && ! $isCommitteeOfParticipant)) {
+            if (! auth()->check() || (! $isSelf && ! $isAdminStaff && ! $isCommitteeOfParticipant)) {
                 abort(403, 'Unauthorized action.');
             }
         } else {
@@ -94,11 +93,10 @@ class ProfileController extends Controller
     {
         $user = User::with('profile')->findOrFail($id);
 
-        // Perbaiki otorisasi: izinkan admin, superadmin, dan creator mengedit profil siapa pun
+        // Hanya diri sendiri, admin, atau superadmin yang boleh membuka form edit
         if (! auth()->check() || (auth()->id() !== $user->id &&
             ! (method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin()) &&
-            ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin()) &&
-            ! (method_exists(auth()->user(), 'isCreator') && auth()->user()->isCreator())
+            ! (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin())
         )) {
             abort(403, 'Unauthorized action.');
         }
@@ -132,10 +130,9 @@ class ProfileController extends Controller
 
         $auth = auth()->user();
         $isSelf = auth()->check() && auth()->id() === $user->id;
-        $isStaff = $auth && (
+        $isAdminStaff = $auth && (
             (method_exists($auth, 'isAdmin') && $auth->isAdmin()) ||
-            (method_exists($auth, 'isSuperAdmin') && $auth->isSuperAdmin()) ||
-            (method_exists($auth, 'isCreator') && $auth->isCreator())
+            (method_exists($auth, 'isSuperAdmin') && $auth->isSuperAdmin())
         );
         $isCommitteeOfParticipant = false;
         if ($auth && ! $isSelf) {
@@ -149,12 +146,12 @@ class ProfileController extends Controller
                 ->exists();
         }
 
-        if (! auth()->check() || (! $isSelf && ! $isStaff && ! $isCommitteeOfParticipant)) {
+        if (! auth()->check() || (! $isSelf && ! $isAdminStaff && ! $isCommitteeOfParticipant)) {
             abort(403, 'Unauthorized action.');
         }
 
         // Edit Profil Peserta: isi sebagian / edit sebagian, tanpa isian wajib
-        $isParticipantEdit = ! $isSelf && ($isStaff || $isCommitteeOfParticipant);
+        $isParticipantEdit = ! $isSelf && ($isAdminStaff || $isCommitteeOfParticipant);
 
         try {
             // Sanitize region inputs to ensures they are null if empty/invalid string
@@ -1387,8 +1384,9 @@ class ProfileController extends Controller
                 'new_password' => ['required', 'min:8', 'confirmed'],
             ]);
         } else {
-            // Ganti password sendiri tanpa current_password
+            // Ganti password sendiri wajib verifikasi password lama
             $request->validate([
+                'current_password' => ['required', 'current_password'],
                 'new_password' => ['required', 'min:8', 'confirmed'],
             ]);
         }

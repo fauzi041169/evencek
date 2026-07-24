@@ -43,8 +43,8 @@ class CreateAuditUser extends Command
                 'name' => $name,
                 'email' => $email,
                 'password' => Hash::make($password),
-                'email_verified_at' => now(),
             ]);
+            $user->forceFill(['email_verified_at' => now()])->save();
             $this->info("Created user: {$email}");
         }
 

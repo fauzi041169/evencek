@@ -119,19 +119,20 @@ class MidtransPaymentController extends Controller
             CURLOPT_HTTPHEADER => [],
         ];
 
-        if (app()->environment('local') || config('app.debug') || ! $isProduction) {
+        // Never disable SSL verification in production. Only allow in local when explicitly configured.
+        $allowInsecureSsl = app()->environment('local')
+            && ! $isProduction
+            && (bool) $disableSsl;
+
+        if ($allowInsecureSsl) {
             Config::$curlOptions[CURLOPT_SSL_VERIFYPEER] = false;
             Config::$curlOptions[CURLOPT_SSL_VERIFYHOST] = false;
-        }
 
-        if ($disableSsl) {
-            Config::$curlOptions[CURLOPT_SSL_VERIFYPEER] = false;
-            Config::$curlOptions[CURLOPT_SSL_VERIFYHOST] = false;
-
-            Log::warning('Midtrans SSL verification disabled via config', [
-                'is_production' => $isProduction,
+            Log::warning('Midtrans SSL verification disabled (local only)', [
                 'environment' => app()->environment(),
             ]);
+        } elseif ($disableSsl && $isProduction) {
+            Log::error('Refusing Midtrans SSL disable in production');
         }
 
         Log::info('Midtrans configured', [
@@ -780,25 +781,32 @@ class MidtransPaymentController extends Controller
 
             Log::info('Midtrans notification received', ['notification' => $notification]);
 
-            // Validasi signature untuk memastikan request berasal dari Midtrans
+            // Validasi signature wajib — tanpa signature_key payload ditolak
             $signatureKey = $notification['signature_key'] ?? null;
-            if ($signatureKey) {
-                $serverKey = config('services.midtrans.server_key');
-                $computedSignature = hash('sha512',
-                    ($notification['order_id'] ?? '').
-                    ($notification['status_code'] ?? '').
-                    ($notification['gross_amount'] ?? '').
-                    $serverKey
-                );
-                if (! hash_equals($computedSignature, (string) $signatureKey)) {
-                    \Log::warning('Midtrans signature mismatch', [
-                        'order_id' => $notification['order_id'] ?? null,
-                        'status_code' => $notification['status_code'] ?? null,
-                        'gross_amount' => $notification['gross_amount'] ?? null,
-                    ]);
+            $serverKey = config('services.midtrans.server_key');
+            if (! $signatureKey || ! $serverKey) {
+                Log::warning('Midtrans notification rejected: missing signature or server key', [
+                    'order_id' => $notification['order_id'] ?? null,
+                    'has_signature' => (bool) $signatureKey,
+                ]);
 
-                    return response()->json(['status' => 'error', 'message' => 'Invalid signature'], 403);
-                }
+                return response()->json(['status' => 'error', 'message' => 'Invalid signature'], 403);
+            }
+
+            $computedSignature = hash('sha512',
+                ($notification['order_id'] ?? '').
+                ($notification['status_code'] ?? '').
+                ($notification['gross_amount'] ?? '').
+                $serverKey
+            );
+            if (! hash_equals($computedSignature, (string) $signatureKey)) {
+                Log::warning('Midtrans signature mismatch', [
+                    'order_id' => $notification['order_id'] ?? null,
+                    'status_code' => $notification['status_code'] ?? null,
+                    'gross_amount' => $notification['gross_amount'] ?? null,
+                ]);
+
+                return response()->json(['status' => 'error', 'message' => 'Invalid signature'], 403);
             }
 
             $orderId = $notification['order_id'] ?? null;

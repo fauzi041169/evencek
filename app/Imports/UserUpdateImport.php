@@ -136,8 +136,10 @@ class UserUpdateImport implements ToCollection, WithHeadingRow
                     'name' => $userData['name'] ?? 'User Import',
                     'email' => $email,
                     'password' => $userData['password'] ?? Hash::make('12345678'),
-                    'role' => $userData['role'] ?? 'user',
                 ]);
+                $user->forceFill([
+                    'role' => $userData['role'] ?? 'user',
+                ])->save();
             }
 
             // 4. Process Profile

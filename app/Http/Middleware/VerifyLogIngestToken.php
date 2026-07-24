@@ -14,6 +14,7 @@ class VerifyLogIngestToken
         $user = Auth::guard('sanctum')->user();
         if ($user) {
             $request->setUserResolver(fn () => $user);
+            $request->attributes->set('log_auth', 'user');
 
             return $next($request);
         }
@@ -22,6 +23,8 @@ class VerifyLogIngestToken
         $providedToken = (string) $request->header('X-Log-Token');
 
         if ($configuredToken !== '' && $providedToken !== '' && hash_equals($configuredToken, $providedToken)) {
+            $request->attributes->set('log_auth', 'token');
+
             return $next($request);
         }
 

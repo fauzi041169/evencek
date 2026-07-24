@@ -14,6 +14,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
     const { t: tOrig, i18n } = useTranslation();
     const t = tOrig || ((key) => key); // Fallback to avoid crash
     const { auth, flash, errors, appSettings } = props;
+    const settings = appSettings || {};
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
@@ -23,14 +24,93 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
 
     const pathname = useMemo(() => {
         const raw = typeof currentUrl === 'string' ? currentUrl : '';
-        return raw.split('?')[0] || '/';
+        return raw.split('?')[0]?.split('#')[0] || '/';
     }, [currentUrl]);
 
+    const isHomePage = pathname === '/' || pathname === '';
+
+    const [activeSection, setActiveSection] = useState('home');
+
+    const primaryNavLinks = useMemo(() => ([
+        { name: t('nav.home'), href: '/#home', section: 'home', pagePath: '/', icon: 'fa-home' },
+        { name: t('nav.about'), href: '/#about', section: 'about', pagePath: '/about', icon: 'fa-info-circle' },
+        { name: t('nav.news'), href: '/#news', section: 'news', pagePath: '/news', icon: 'fa-newspaper' },
+        { name: t('nav.activities'), href: '/#kegiatan', section: 'kegiatan', pagePath: '/activity', icon: 'fa-calendar-alt' },
+        ...(settings.subscription_service_enabled ? [{ name: 'Langganan', href: '/subscriptions/pricing', section: null, pagePath: '/subscriptions/pricing', icon: 'fa-crown' }] : []),
+    ]), [t, settings.subscription_service_enabled]);
+
     const isActivePath = useCallback((href) => {
-        const target = (href || '').split('?')[0] || '/';
-        if (target === '/') return pathname === '/';
+        const target = (href || '').split('?')[0]?.split('#')[0] || '/';
+        if (target === '/') return isHomePage;
         return pathname === target || pathname.startsWith(`${target}/`);
-    }, [pathname]);
+    }, [pathname, isHomePage]);
+
+    const isNavActive = useCallback((link) => {
+        if (!link) return false;
+        if (link.section && isHomePage) {
+            return activeSection === link.section;
+        }
+        if (link.pagePath) {
+            return isActivePath(link.pagePath);
+        }
+        return isActivePath(link.href);
+    }, [activeSection, isHomePage, isActivePath]);
+
+    const scrollToSection = useCallback((sectionId) => {
+        if (sectionId === 'home') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.history.replaceState(null, '', '/');
+            setActiveSection('home');
+            return;
+        }
+        const el = document.getElementById(sectionId);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            window.history.replaceState(null, '', `/#${sectionId}`);
+            setActiveSection(sectionId);
+        }
+    }, []);
+
+    const handlePrimaryNavClick = useCallback((e, link) => {
+        if (!link?.section) return;
+        if (isHomePage) {
+            e.preventDefault();
+            scrollToSection(link.section);
+            setIsMobileMenuOpen(false);
+            return;
+        }
+        // Remember target section when navigating from another page (Inertia may drop hash)
+        try {
+            sessionStorage.setItem('homeScrollSection', link.section);
+        } catch { /* ignore */ }
+        setIsMobileMenuOpen(false);
+    }, [isHomePage, scrollToSection]);
+
+    useEffect(() => {
+        if (!isHomePage) return undefined;
+
+        const sectionIds = ['home', 'about', 'news', 'kegiatan'];
+        const elements = sectionIds
+            .map((id) => document.getElementById(id))
+            .filter(Boolean);
+
+        if (!elements.length) return undefined;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const visible = entries
+                    .filter((entry) => entry.isIntersecting)
+                    .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+                if (visible[0]?.target?.id) {
+                    setActiveSection(visible[0].target.id);
+                }
+            },
+            { rootMargin: '-30% 0px -55% 0px', threshold: [0.1, 0.25, 0.5] }
+        );
+
+        elements.forEach((el) => observer.observe(el));
+        return () => observer.disconnect();
+    }, [isHomePage, children]);
 
     useEffect(() => {
         const storedEditMode = localStorage.getItem('editMode');
@@ -77,8 +157,6 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
         localStorage.setItem('editMode', String(newMode));
         window.dispatchEvent(new Event('editModeChanged'));
     };
-
-    const settings = appSettings || {};
 
     const shadeColor = (hex, amt) => {
         try {
@@ -241,8 +319,8 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
 
     const navClasses = `fixed top-0 left-0 right-0 z-[9999] transition-all duration-300 ${
         transparentNavbar && !scrolled
-            ? 'bg-transparent py-4'
-            : 'backdrop-blur-md border-b border-gray-200 shadow-sm'
+            ? 'bg-[#060b26]/55 backdrop-blur-xl py-3 rounded-b-3xl border-b border-white/5'
+            : 'backdrop-blur-xl shadow-lg border-b border-white/10'
     }`;
 
     return (
@@ -262,102 +340,76 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                 id="mainNavbar"
                 className={navClasses}
                 style={transparentNavbar && !scrolled ? undefined : {
-                    background: `linear-gradient(to right, ${settings.colors?.color_navbar_bg_start || '#1e293b'}, ${settings.colors?.color_navbar_bg_end || '#0f172a'})`
+                    background: 'linear-gradient(to right, #060b26, #0a1435)'
                 }}
             >
                 <div className="w-full px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-16">
-                        {/* Left Side */}
-                        <div className="flex items-center flex-1 min-w-0">
-                            {/* Mobile Menu Button - HIDDEN because using Bottom Nav */}
-                            <button
-                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className="hidden md:hidden mr-3 p-2 text-white hover:bg-white/10 rounded-full focus:outline-none transition-colors"
-                            >
-                                <i className="fas fa-bars"></i>
-                            </button>
+                    <div className="relative flex items-center justify-between h-16 gap-3">
+                        {/* Logo */}
+                        <div className="flex items-center flex-shrink-0 z-10">
+                            <Link href="/" className="flex items-center space-x-3 group">
+                                <div className="flex items-center justify-center h-10 transition-transform group-hover:scale-105">
+                                    <img
+                                        src={getLogoUrl(settings.app_logo)}
+                                        alt="Logo"
+                                        className="h-full w-auto object-contain"
+                                        onError={(e) => {
+                                            e.currentTarget.onerror = null;
+                                            e.currentTarget.src = '/assets/images/logo.png';
+                                        }}
+                                    />
+                                </div>
+                                <span
+                                    className="font-extrabold text-lg tracking-[0.08em] uppercase hidden sm:inline text-white"
+                                    style={{ fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif" }}
+                                >
+                                    {settings.app_name || 'ADZKIATEKNO'}
+                                </span>
+                            </Link>
+                        </div>
 
-                            {/* Logo */}
-                            <div className="flex-shrink-0 flex items-center mr-8">
-                                <Link href="/" className="flex items-center space-x-3 group">
-                                    <div className="flex items-center justify-center h-10 transition-transform group-hover:scale-105">
-                                        <img
-                                            src={getLogoUrl(settings.app_logo)}
-                                            alt="Logo"
-                                            className="h-full w-auto object-contain"
-                                            onError={(e) => {
-                                                e.currentTarget.onerror = null;
-                                                e.currentTarget.src = '/assets/images/logo.png';
-                                            }}
-                                        />
-                                    </div>
-                                    <span className="font-bold text-xl tracking-wide uppercase hidden sm:inline navbar-title transition-colors">
-                                        {settings.app_name || 'EVENTCEK'}
-                                    </span>
-                                </Link>
-                            </div>
+                        <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-1 lg:gap-2" aria-label="Primary">
+                            {primaryNavLinks.map((link) => {
+                                const isActive = isNavActive(link);
 
-                            <div className="hidden md:flex items-center gap-2" aria-label="Primary">
-                                {[
-                                    { name: t('nav.home'), href: '/', icon: 'fa-home' },
-                                    { name: t('nav.about'), href: '/about', icon: 'fa-info-circle' },
-                                    { name: t('nav.news'), href: '/news', icon: 'fa-newspaper' },
-                                    { name: t('nav.activities'), href: '/activity', icon: 'fa-calendar-alt' },
-                                    ...(settings.subscription_service_enabled ? [{ name: 'Langganan', href: '/subscriptions/pricing', icon: 'fa-crown' }] : []),
-                                ].map((link) => {
-                                    const isActive = isActivePath(link.href);
-                                    const c = settings.colors || {};
-                                    const linkText = c['color_navbar_brand_text'] || c['color_navbar_link_text'] || '#ffffff';
-                                    const linkActiveCard = c['color_navbar_link_active_card'] || '#fa9200';
-                                    const linkActiveBorder = c['color_navbar_link_active_border'] || '#ffcf66';
-                                    const isTransparent = transparentNavbar && !scrolled;
-                                    const baseTextClass = isTransparent ? 'text-white/90 hover:text-white' : 'text-navbar-link-text';
-                                    const hoverClass = isTransparent ? 'hover:bg-white/10' : 'hover:bg-white/5';
-                                    const bgStyle = isActive
-                                        ? {
-                                            background: gradientFrom(linkActiveCard),
-                                            borderColor: linkActiveBorder,
-                                            color: linkText,
-                                        }
-                                        : {
-                                            borderColor: isTransparent ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.10)',
-                                        };
-
-                                    return (
-                                        <Link
-                                            key={link.href}
-                                            href={link.href}
+                                return (
+                                    <Link
+                                        key={link.href}
+                                        href={link.href}
+                                        onClick={(e) => handlePrimaryNavClick(e, link)}
+                                        className={[
+                                            'group relative inline-flex items-center gap-2 px-3 lg:px-4 py-2 text-sm font-semibold tracking-tight transition-colors duration-200',
+                                            isActive ? 'text-[#f9b846]' : 'text-white/75 hover:text-white',
+                                        ].join(' ')}
+                                    >
+                                        <i className={`fas ${link.icon} text-[13px]`}></i>
+                                        <span>{link.name}</span>
+                                        <span
                                             className={[
-                                                'group inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 border',
-                                                baseTextClass,
-                                                !isActive ? hoverClass : '',
-                                                isActive ? 'shadow-sm' : '',
+                                                'pointer-events-none absolute left-3 right-3 -bottom-0.5 h-0.5 rounded-full transition-all duration-300',
+                                                isActive ? 'bg-[#f9b846] opacity-100' : 'bg-[#f9b846] opacity-0 group-hover:opacity-40',
                                             ].join(' ')}
-                                            style={bgStyle}
-                                        >
-                                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/10 border border-white/10">
-                                                <i className={`fas ${link.icon}`}></i>
-                                            </span>
-                                            <span className="tracking-tight">{link.name}</span>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
+                                        />
+                                    </Link>
+                                );
+                            })}
                         </div>
 
                         {/* Right Side */}
-                        <div className="flex items-center space-x-2 lg:space-x-3 flex-shrink-0">
+                        <div className="flex items-center space-x-2 lg:space-x-3 flex-shrink-0 z-10">
                             {/* Language Switcher Desktop */}
-                            <div className="hidden md:flex items-center mr-2">
+                            <div className="hidden md:flex items-center gap-2 mr-1 text-sm font-semibold text-white/80">
+                                <i className="fas fa-globe text-[13px] text-white/70"></i>
                                 <button
                                     onClick={() => i18n.changeLanguage('id')}
-                                    className={`px-2 py-1 text-xs font-bold rounded-l-md border border-r-0 border-white/30 transition-colors ${i18n.language === 'id' ? 'bg-white text-primary' : 'bg-transparent text-white hover:bg-white/10'}`}
+                                    className={`transition-colors ${i18n.language?.startsWith('id') ? 'text-white' : 'text-white/40 hover:text-white/70'}`}
                                 >
                                     ID
                                 </button>
+                                <span className="text-white/35">|</span>
                                 <button
                                     onClick={() => i18n.changeLanguage('en')}
-                                    className={`px-2 py-1 text-xs font-bold rounded-r-md border border-white/30 transition-colors ${i18n.language === 'en' ? 'bg-white text-primary' : 'bg-transparent text-white hover:bg-white/10'}`}
+                                    className={`transition-colors ${i18n.language?.startsWith('en') ? 'text-white' : 'text-white/40 hover:text-white/70'}`}
                                 >
                                     EN
                                 </button>
@@ -417,7 +469,7 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                                         </div>
 
                                                         {/* Mode Edit Toggle in Header: hanya untuk superadmin */}
-                                                        {(auth?.user?.role === 'superadmin' || auth?.user?.is_super_admin) && (
+                                                        {(auth?.user?.role === 'superadmin' || auth?.user?.is_super_admin || auth?.user?.role === 'admin') && (
                                                             <button
                                                                 onClick={toggleEditMode}
                                                                 className={`
@@ -563,25 +615,25 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                                 {/* Navigation Links */}
                                 <div className="grid gap-2">
                                     {[
-                                        { name: t('nav.home'), href: '/', icon: 'fa-home', color: 'text-blue-500 bg-blue-50 shadow-blue-100/50' },
-                                        { name: t('nav.about'), href: '/about', icon: 'fa-info-circle', color: 'text-indigo-500 bg-indigo-50 shadow-indigo-100/50' },
-                                        { name: t('nav.news'), href: '/news', icon: 'fa-newspaper', color: 'text-purple-500 bg-purple-50 shadow-purple-100/50' },
-                                        { name: t('nav.activities'), href: '/activity', icon: 'fa-calendar-day', color: 'text-pink-500 bg-pink-50 shadow-pink-100/50' },
+                                        { name: t('nav.home'), href: '/#home', section: 'home', pagePath: '/', icon: 'fa-home', color: 'text-blue-500 bg-blue-50 shadow-blue-100/50' },
+                                        { name: t('nav.about'), href: '/#about', section: 'about', pagePath: '/about', icon: 'fa-info-circle', color: 'text-indigo-500 bg-indigo-50 shadow-indigo-100/50' },
+                                        { name: t('nav.news'), href: '/#news', section: 'news', pagePath: '/news', icon: 'fa-newspaper', color: 'text-purple-500 bg-purple-50 shadow-purple-100/50' },
+                                        { name: t('nav.activities'), href: '/#kegiatan', section: 'kegiatan', pagePath: '/activity', icon: 'fa-calendar-day', color: 'text-pink-500 bg-pink-50 shadow-pink-100/50' },
                                     ].map((link) => (
                                         <Link
                                             key={link.name}
                                             href={link.href}
-                                            onClick={() => setIsMobileMenuOpen(false)}
-                                            className={`flex items-center p-3.5 rounded-[1.25rem] transition-all duration-300 group border-2 ${isActivePath(link.href) ? 'bg-white border-primary/20 shadow-xl shadow-primary/5' : 'bg-white/50 border-transparent hover:bg-white hover:border-gray-200 hover:shadow-lg'}`}
+                                            onClick={(e) => handlePrimaryNavClick(e, link)}
+                                            className={`flex items-center p-3.5 rounded-[1.25rem] transition-all duration-300 group border-2 ${isNavActive(link) ? 'bg-white border-primary/20 shadow-xl shadow-primary/5' : 'bg-white/50 border-transparent hover:bg-white hover:border-gray-200 hover:shadow-lg'}`}
                                         >
                                             <div className={`w-11 h-11 flex items-center justify-center rounded-2xl ${link.color} font-bold transition-all duration-300 shadow-lg group-hover:scale-110 group-hover:rotate-3`}>
                                                 <i className={`fas ${link.icon} text-lg`}></i>
                                             </div>
                                             <div className="ml-4">
-                                                <span className={`block font-black text-sm transition-colors ${isActivePath(link.href) ? 'text-primary' : 'text-gray-600 group-hover:text-gray-900'}`}>{link.name}</span>
-                                                {isActivePath(link.href) && <span className="text-[10px] font-bold text-primary/60 uppercase">Sedang Dibuka</span>}
+                                                <span className={`block font-black text-sm transition-colors ${isNavActive(link) ? 'text-primary' : 'text-gray-600 group-hover:text-gray-900'}`}>{link.name}</span>
+                                                {isNavActive(link) && <span className="text-[10px] font-bold text-primary/60 uppercase">Sedang Dibuka</span>}
                                             </div>
-                                            <i className={`fas fa-chevron-right ml-auto text-xs transition-transform duration-300 ${isActivePath(link.href) ? 'text-primary' : 'text-gray-300 group-hover:translate-x-1'}`}></i>
+                                            <i className={`fas fa-chevron-right ml-auto text-xs transition-transform duration-300 ${isNavActive(link) ? 'text-primary' : 'text-gray-300 group-hover:translate-x-1'}`}></i>
                                         </Link>
                                     ))}
                                 </div>
@@ -654,14 +706,22 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
 
                     {/* Left Group */}
                     <div className="flex w-2/5 justify-around items-center">
-                        <Link href="/about" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isActivePath('/about') ? 'text-primary' : 'text-gray-400'}`}>
-                            <div className={`p-2 rounded-xl transition-all ${isActivePath('/about') ? 'bg-primary/10' : ''}`}>
+                        <Link
+                            href="/#about"
+                            onClick={(e) => handlePrimaryNavClick(e, { section: 'about', href: '/#about' })}
+                            className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isNavActive({ section: 'about', pagePath: '/about' }) ? 'text-primary' : 'text-gray-400'}`}
+                        >
+                            <div className={`p-2 rounded-xl transition-all ${isNavActive({ section: 'about', pagePath: '/about' }) ? 'bg-primary/10' : ''}`}>
                                 <i className="fas fa-info-circle text-lg"></i>
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-tighter">About</span>
                         </Link>
-                        <Link href="/news" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isActivePath('/news') ? 'text-primary' : 'text-gray-400'}`}>
-                            <div className={`p-2 rounded-xl transition-all ${isActivePath('/news') ? 'bg-primary/10' : ''}`}>
+                        <Link
+                            href="/#news"
+                            onClick={(e) => handlePrimaryNavClick(e, { section: 'news', href: '/#news' })}
+                            className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isNavActive({ section: 'news', pagePath: '/news' }) ? 'text-primary' : 'text-gray-400'}`}
+                        >
+                            <div className={`p-2 rounded-xl transition-all ${isNavActive({ section: 'news', pagePath: '/news' }) ? 'bg-primary/10' : ''}`}>
                                 <i className="fas fa-newspaper text-lg"></i>
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-tighter">News</span>
@@ -672,24 +732,29 @@ export default function WebLayout({ children, hasHeaderSpacer = true, transparen
                     <div className="relative w-1/5 flex justify-center">
                         <div className="absolute -top-10 w-20 h-20 bg-gray-50/50 backdrop-blur-sm rounded-full flex items-center justify-center pt-2">
                             <Link
-                                href="/"
+                                href="/#home"
+                                onClick={(e) => handlePrimaryNavClick(e, { section: 'home', href: '/#home' })}
                                 className={`w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-xl transition-all duration-500 transform active:scale-90
-                                    ${isActivePath('/')
+                                    ${isNavActive({ section: 'home', pagePath: '/' })
                                         ? 'bg-primary text-white scale-110 rotate-[360deg] shadow-primary/30'
                                         : 'bg-white text-gray-500 hover:text-primary'
                                     }
                                 `}
                             >
                                 <i className="fas fa-home text-2xl mb-0.5"></i>
-                                <span className={`text-[9px] font-black uppercase tracking-widest ${isActivePath('/') ? 'text-white' : 'text-gray-400'}`}>Home</span>
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${isNavActive({ section: 'home', pagePath: '/' }) ? 'text-white' : 'text-gray-400'}`}>Home</span>
                             </Link>
                         </div>
                     </div>
 
                     {/* Right Group */}
                     <div className="flex w-2/5 justify-around items-center">
-                        <Link href="/activity" className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isActivePath('/activity') ? 'text-primary' : 'text-gray-400'}`}>
-                            <div className={`p-2 rounded-xl transition-all ${isActivePath('/activity') ? 'bg-primary/10' : ''}`}>
+                        <Link
+                            href="/#kegiatan"
+                            onClick={(e) => handlePrimaryNavClick(e, { section: 'kegiatan', href: '/#kegiatan' })}
+                            className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${isNavActive({ section: 'kegiatan', pagePath: '/activity' }) ? 'text-primary' : 'text-gray-400'}`}
+                        >
+                            <div className={`p-2 rounded-xl transition-all ${isNavActive({ section: 'kegiatan', pagePath: '/activity' }) ? 'bg-primary/10' : ''}`}>
                                 <i className="fas fa-calendar-alt text-lg"></i>
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-tighter">Activity</span>

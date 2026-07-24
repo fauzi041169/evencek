@@ -9,8 +9,28 @@ use Illuminate\Http\Request;
 
 class ClientLogController extends Controller
 {
+    private function assertCanReadLogs(Request $request): void
+    {
+        $authVia = $request->attributes->get('log_auth');
+
+        // Ingest token may read logs (ops tooling). Sanctum users must be admin/superadmin.
+        if ($authVia === 'token') {
+            return;
+        }
+
+        $user = $request->user();
+        if ($user && (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()
+            || method_exists($user, 'isAdmin') && $user->isAdmin())) {
+            return;
+        }
+
+        abort(403, 'Unauthorized');
+    }
+
     public function index(Request $request)
     {
+        $this->assertCanReadLogs($request);
+
         $data = $request->validate([
             'level' => ['nullable', 'string', 'max:16'],
             'source' => ['nullable', 'string', 'max:32'],
@@ -62,6 +82,8 @@ class ClientLogController extends Controller
 
     public function stream(Request $request)
     {
+        $this->assertCanReadLogs($request);
+
         $data = $request->validate([
             'last_id' => ['nullable', 'integer', 'min:0'],
             'level' => ['nullable', 'string', 'max:16'],

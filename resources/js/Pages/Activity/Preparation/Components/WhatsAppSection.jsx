@@ -10,15 +10,14 @@ export default function WhatsAppSection({ activity, participants = [] }) {
     const [sending, setSending] = useState(false);
     const [progress, setProgress] = useState({ current: 0, total: 0 });
     const [selectedRecipientType, setSelectedRecipientType] = useState('all'); // all, active, pending
-    
-    const port = 3001;
-    const baseUrl = `http://${window.location.hostname}:${port}`;
+
+    const basePath = `/activity/${activity.id}/preparation/whatsapp`;
 
     const fetchStatus = async () => {
         try {
-            const response = await fetch(`${baseUrl}/status`);
-            if (response.ok) {
-                const data = await response.json();
+            const response = await axios.get(`${basePath}/status`);
+            if (response.status === 200) {
+                const data = response.data;
                 setStatus(data.status);
                 setQrCode(data.qr);
             } else {
@@ -36,11 +35,11 @@ export default function WhatsAppSection({ activity, participants = [] }) {
         fetchStatus();
         const interval = setInterval(fetchStatus, 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [activity.id]);
 
     const handleLogout = async () => {
         try {
-            await fetch(`${baseUrl}/logout`, { method: 'POST' });
+            await axios.post(`${basePath}/logout`);
             fetchStatus();
             Swal.fire('Berhasil', 'WhatsApp berhasil diputuskan', 'success');
         } catch (err) {
@@ -95,13 +94,9 @@ export default function WhatsAppSection({ activity, participants = [] }) {
                 .replace(/{status}/g, p.status);
 
             try {
-                await fetch(`${baseUrl}/send`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phone: phone,
-                        message: personalizedMsg
-                    })
+                await axios.post(`${basePath}/send`, {
+                    phone: phone,
+                    message: personalizedMsg
                 });
             } catch (err) {
                 console.error(`Failed to send to ${phone}`, err);

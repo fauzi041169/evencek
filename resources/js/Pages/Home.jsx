@@ -1,17 +1,159 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import WebLayout from '@/Layouts/WebLayout';
+import EditableText from '@/Components/EditableText';
+import Swal from 'sweetalert2';
 
 export default function Home({ heroSlides = [], stats = {}, partners = [], specialActivities = [], latestActivities = [], latestNews = [] }) {
     const { t } = useTranslation();
     const { auth, appSettings } = usePage().props;
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [editMode, setEditMode] = useState(false);
+    const [saving, setSaving] = useState(false);
     const mitraSliderRef = useRef(null);
+    const bgInputRef = useRef(null);
+    const rightImageInputRef = useRef(null);
+    const layerSaveTimer = useRef(null);
+
+    const canEdit = !!(auth?.user && (auth.user.role === 'superadmin' || auth.user.is_super_admin || auth.user.role === 'admin'));
+
+    const heroBg1 = appSettings?.hero_background_1 || null;
+    const rightImage = appSettings?.hero_slide3_right_image || '/assets/images/hero/tablet.png';
+
+    const parseLayer = (settings) => ({
+        overlay: Math.min(0.95, Math.max(0, parseFloat(settings?.home_hero_overlay ?? '0.45') || 0.45)),
+        bgOpacity: Math.min(1, Math.max(0.05, parseFloat(settings?.home_hero_bg_opacity ?? '0.75') || 0.75)),
+        brightness: Math.min(1.6, Math.max(0.4, parseFloat(settings?.home_hero_bg_brightness ?? '1') || 1)),
+    });
+
+    const [heroCopy, setHeroCopy] = useState({
+        badge: appSettings?.home_hero_badge || t('home.badge'),
+        titleBefore: appSettings?.home_hero_title_before || t('home.hero_title_before'),
+        titleAccent: appSettings?.home_hero_title_accent || t('home.hero_title_accent'),
+        titleAfter: appSettings?.home_hero_title_after || t('home.hero_title_after'),
+        desc: appSettings?.home_hero_desc || t('home.hero_desc'),
+        ctaPrimary: appSettings?.home_hero_cta_primary || t('home.start_managing'),
+        ctaSecondary: appSettings?.home_hero_cta_secondary || t('home.explore_features'),
+    });
+    const [heroLayer, setHeroLayer] = useState(() => parseLayer(appSettings));
+
+    useEffect(() => {
+        setHeroCopy({
+            badge: appSettings?.home_hero_badge || t('home.badge'),
+            titleBefore: appSettings?.home_hero_title_before || t('home.hero_title_before'),
+            titleAccent: appSettings?.home_hero_title_accent || t('home.hero_title_accent'),
+            titleAfter: appSettings?.home_hero_title_after || t('home.hero_title_after'),
+            desc: appSettings?.home_hero_desc || t('home.hero_desc'),
+            ctaPrimary: appSettings?.home_hero_cta_primary || t('home.start_managing'),
+            ctaSecondary: appSettings?.home_hero_cta_secondary || t('home.explore_features'),
+        });
+        setHeroLayer(parseLayer(appSettings));
+    }, [appSettings, t]);
+
+    useEffect(() => {
+        const sync = () => setEditMode(localStorage.getItem('editMode') === 'true' && canEdit);
+        sync();
+        window.addEventListener('editModeChanged', sync);
+        return () => {
+            window.removeEventListener('editModeChanged', sync);
+            if (layerSaveTimer.current) clearTimeout(layerSaveTimer.current);
+        };
+    }, [canEdit]);
+
+    useEffect(() => {
+        const scrollToHash = () => {
+            let hash = (window.location.hash || '').replace('#', '');
+            try {
+                const stored = sessionStorage.getItem('homeScrollSection');
+                if (stored) {
+                    hash = stored;
+                    sessionStorage.removeItem('homeScrollSection');
+                    if (stored === 'home') {
+                        window.history.replaceState(null, '', '/');
+                    } else {
+                        window.history.replaceState(null, '', `/#${stored}`);
+                    }
+                }
+            } catch { /* ignore */ }
+
+            if (!hash || hash === 'home') {
+                if (hash === 'home') window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+            const el = document.getElementById(hash);
+            if (!el) return;
+            window.setTimeout(() => {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        };
+
+        scrollToHash();
+        window.addEventListener('hashchange', scrollToHash);
+        return () => window.removeEventListener('hashchange', scrollToHash);
+    }, []);
+
+    const stripHtml = (value) => (value || '').replace(/<[^>]*>/g, '').trim();
+
+    const formatHomeDate = (value) => {
+        if (!value) return '';
+        try {
+            return new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        } catch {
+            return '';
+        }
+    };
+
+    const saveHeroField = (key, value) => {
+        if (!canEdit) return;
+        setSaving(true);
+        router.post(route('settings.update'), { [key]: value }, {
+            forceFormData: true,
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                setSaving(false);
+            },
+            onError: () => {
+                setSaving(false);
+                Swal.fire('Gagal', 'Tidak bisa menyimpan perubahan.', 'error');
+            },
+        });
+    };
+
+    const updateHeroLayer = (key, settingKey, value) => {
+        if (!canEdit) return;
+        const next = { ...heroLayer, [key]: value };
+        setHeroLayer(next);
+        if (layerSaveTimer.current) clearTimeout(layerSaveTimer.current);
+        layerSaveTimer.current = setTimeout(() => {
+            saveHeroField(settingKey, String(Math.round(value * 100) / 100));
+        }, 350);
+    };
+
+    const uploadHeroImage = (field, file) => {
+        if (!canEdit || !file) return;
+        if (!file.type?.startsWith('image/')) {
+            Swal.fire('Format tidak valid', 'Unggah file gambar (jpg/png/webp).', 'warning');
+            return;
+        }
+        setSaving(true);
+        router.post(route('settings.update'), { [field]: file }, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                setSaving(false);
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Gambar diperbarui', showConfirmButton: false, timer: 1600 });
+            },
+            onError: () => {
+                setSaving(false);
+                Swal.fire('Gagal', 'Upload gambar gagal.', 'error');
+            },
+        });
+    };
 
     // Global Settings Logic
     const heroAnim = appSettings?.hero_animation_style || 'circles';
-    const heroBg1 = appSettings?.hero_background_1 || null;
     const heroBg2 = appSettings?.hero_background_2 || null;
     const heroBg3 = appSettings?.hero_background_3 || null;
     const accent = appSettings?.colors?.warning || appSettings?.colors?.accent || '#f59e0b';
@@ -274,10 +416,10 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 .hero-content{will-change:transform,opacity;transition:transform .4s ease,opacity .4s ease}
                 .hero-title{will-change:transform,opacity;transition:transform .4s ease,opacity .4s ease}
                 .cta-primary{transition:transform .2s ease,box-shadow .2s ease,filter .2s ease}
-                .cta-primary:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 12px 24px rgba(124,58,237,.35);filter:saturate(1.15)}
+                .cta-primary:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 14px 28px rgba(249,184,70,.4);filter:saturate(1.1)}
                 .cta-primary:hover i{transform:translateX(2px);animation:ctaIconNudge .4s ease}
                 .cta-secondary{transition:transform .2s ease,box-shadow .2s ease}
-                .cta-secondary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(255,255,255,.25)}
+                .cta-secondary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(255,255,255,.18)}
                 .cta-secondary:hover i{transform:scale(1.05);animation:ctaIconPulse .5s ease}
                 .cta-tertiary{transition:transform .2s ease,box-shadow .2s ease}
                 .cta-tertiary:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(255,255,255,.2)}
@@ -285,8 +427,8 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 .cta-shimmer{position:relative;overflow:hidden}
                 .cta-shimmer::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.35) 50%,rgba(255,255,255,0) 100%);transform:translateX(-100%);opacity:0;pointer-events:none}
                 .cta-shimmer:hover::after{animation:ctaShimmer .9s ease;opacity:1}
-                .cta-primary:focus-visible{outline:none;transform:translateY(-2px) scale(1.02);box-shadow:0 0 0 3px rgba(124,58,237,.55),0 12px 24px rgba(124,58,237,.35)}
-                .cta-secondary:focus-visible{outline:none;transform:translateY(-2px);box-shadow:0 0 0 3px rgba(255,255,255,.45),0 10px 20px rgba(255,255,255,.25)}
+                .cta-primary:focus-visible{outline:none;transform:translateY(-2px) scale(1.02);box-shadow:0 0 0 3px rgba(249,184,70,.45),0 14px 28px rgba(249,184,70,.35)}
+                .cta-secondary:focus-visible{outline:none;transform:translateY(-2px);box-shadow:0 0 0 3px rgba(255,255,255,.35),0 10px 20px rgba(255,255,255,.18)}
                 .cta-tertiary:focus-visible{outline:none;transform:translateY(-2px);box-shadow:0 0 0 3px rgba(255,255,255,.35),0 10px 20px rgba(255,255,255,.2)}
                 @keyframes ctaIconNudge{0%{transform:translateX(0)}50%{transform:translateX(3px)}100%{transform:translateX(0)}}
                 @keyframes ctaIconPulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
@@ -329,276 +471,487 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
                 }
             `}} />
 
-            <div className="min-h-screen bg-gradient-to-br from-white via-white to-white relative overflow-hidden font-sans">
-
-                {/* Hero Section - full layar 100% viewport */}
-                <section className="relative min-h-screen h-screen flex items-center overflow-hidden">
-                    {/* Dynamic Animations based on Settings */}
-                    {(heroAnim === 'circles' || heroAnim === 'blob' || !heroAnim) && (
-                        <>
+            <div
+                className="min-h-screen relative overflow-hidden"
+                style={{ fontFamily: "'Plus Jakarta Sans', 'Outfit', sans-serif" }}
+            >
+                {/* Hero Section — full first viewport (100dvh) */}
+                <section id="home" className={`relative h-[100dvh] min-h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden bg-[#060b26] scroll-mt-16 ${editMode ? 'ring-2 ring-inset ring-amber-400/40' : ''}`}>
+                    {/* Atmosphere + optional custom background */}
+                    <div className="pointer-events-none absolute inset-0">
+                        {heroBg1 && (
                             <div
-                                className="absolute top-[-10%] right-[-5%] w-96 h-96 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob z-10 pointer-events-none"
-                                style={{ backgroundColor: hexToRgba(appSettings?.colors?.primary, 0.2) }}
-                            ></div>
-                            <div
-                                className="absolute bottom-[-10%] left-[-5%] w-96 h-96 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000 z-10 pointer-events-none"
-                                style={{ backgroundColor: hexToRgba(appSettings?.colors?.secondary, 0.2) }}
-                            ></div>
-                        </>
-                    )}
-
-                    {heroAnim === 'rain' && (
-                        <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
-                            {[...Array(30)].map((_, i) => (
-                                <div key={i} className="rain-line" style={{
-                                    left: `${Math.random() * 100}%`,
-                                    animationDelay: `${Math.random()}s`,
-                                    animationDuration: `${0.5 + Math.random()}s`,
-                                    opacity: 0.3 + Math.random() * 0.5
-                                }}></div>
-                            ))}
-                        </div>
-                    )}
-
-                    {heroAnim === 'particles' && (
-                        <div className="absolute inset-0 z-10 overflow-hidden opacity-40 pointer-events-none">
-                            {[...Array(30)].map((_, i) => (
-                                <div key={i} className="particle-dot" style={{
-                                    left: `${Math.random() * 100}%`,
-                                    width: `${2 + Math.random() * 4}px`,
-                                    height: `${2 + Math.random() * 4}px`,
-                                    animationDelay: `${Math.random() * 5}s`,
-                                    animationDuration: `${5 + Math.random() * 10}s`,
-                                    opacity: 0.2 + Math.random() * 0.6
-                                }}></div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Background Slider (slide left) */}
-                    <div className="absolute inset-0 z-0 overflow-hidden">
+                                className="absolute inset-0 bg-cover bg-center transition-[opacity,filter] duration-200"
+                                style={{
+                                    backgroundImage: `url('${heroBg1}')`,
+                                    opacity: heroLayer.bgOpacity,
+                                    filter: `brightness(${heroLayer.brightness})`,
+                                }}
+                            />
+                        )}
                         <div
-                            className="w-full h-full flex transition-transform duration-700 ease-in-out"
-                            style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-                        >
-                            {processedSlides.map((slide, index) => (
-                                <div key={index} className="w-full h-full flex-none relative">
-                                    <div
-                                        className="absolute inset-0 bg-cover bg-center"
-                                        style={{ backgroundImage: `url('${slide.image}')` }}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-indigo-950/70 to-slate-900/90"></div>
-                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent opacity-70"></div>
-                                </div>
-                            ))}
-                        </div>
+                            className="absolute inset-0 transition-opacity duration-200"
+                            style={{ backgroundColor: `rgba(6, 11, 38, ${heroLayer.overlay})` }}
+                        />
+                        <div className="absolute inset-0 opacity-[0.18]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(148,163,255,0.55) 1px, transparent 0)', backgroundSize: '28px 28px' }} />
+                        <div className="absolute -top-24 left-1/4 w-[42rem] h-[42rem] rounded-full blur-3xl opacity-40" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.35), transparent 65%)' }} />
+                        <div className="absolute top-1/3 right-0 w-[36rem] h-[36rem] rounded-full blur-3xl opacity-35" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.35), transparent 65%)' }} />
+                        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#060b26] to-transparent" />
                     </div>
 
-                    {/* Content */}
-                    <div className={`relative z-10 w-full ${currentSlide % 3 === 2 ? 'max-w-none mx-0 px-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'} pt-16 sm:pt-24 lg:pt-32 pb-0 sm:pb-10 flex flex-col ${currentSlide % 3 === 2 ? 'items-center' : currentStyle.container} justify-center min-h-full`}>
-                        <div className={`${currentSlide % 3 === 2 ? 'max-w-none mx-0' : 'max-w-6xl mx-auto'} ${currentSlide % 3 === 2 ? '' : currentStyle.text}`}>
-                            <div id="heroContent" className="relative z-10">
-                                {currentSlide % 3 === 1 ? (
-                                    <>
-                                        <div className="flex flex-wrap items-center gap-2 mb-6">
-                                            <span
-                                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md"
-                                            >
-                                                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                                                {t('home.trusted')}
-                                            </span>
-                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md">
-                                                <i className="fas fa-shield-alt text-blue-300"></i>
-                                                {t('home.secure_data')}
-                                            </span>
-                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md">
-                                                <i className="fas fa-bolt text-amber-300"></i>
-                                                {t('home.real_time')}
-                                            </span>
-                                        </div>
-                                        <h1 className={`text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight mb-6 ${heroTitleFont}`}>
-                                            <span className="text-white">{heroTitle}</span>
-                                        </h1>
-                                        <p className={`text-lg sm:text-xl md:text-2xl text-white/90 mb-8 leading-relaxed max-w-2xl ${currentStyle.descMargin} ${heroDescFont}`}>
-                                            {heroDesc}
-                                        </p>
-                                        <div className={`flex flex-wrap gap-4 ${currentStyle.cta}`}>
-                                            <Link
-                                                href={heroLink}
-                                                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-white text-slate-900 font-semibold text-base sm:text-lg shadow-sm hover:shadow-md transition-all"
-                                            >
-                                                <i className="fas fa-rocket"></i>
-                                                {heroLinkText}
-                                            </Link>
-                                            <a
-                                                href="#fitur"
-                                                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl border border-white/20 bg-white/5 text-white font-semibold text-base sm:text-lg hover:bg-white/10 transition-all backdrop-blur-md"
-                                            >
-                                                <i className="fas fa-play-circle"></i>
-                                                {t('home.explore_features')}
-                                            </a>
-                                        </div>
-                                        <div className="absolute inset-0 pointer-events-none"></div>
-                                    </>
-                                ) : currentSlide % 3 === 2 ? (
-                                    <>
-                                        <div className="relative w-full max-w-none mx-0 min-h-full">
-                                            <div className="relative z-10 grid grid-cols-12 gap-6 sm:gap-10 px-4 sm:px-8 lg:px-12 py-8 sm:py-12">
-                                                <div className="col-span-12 lg:col-span-7">
-                                                    <div className="inline-flex items-center px-4 py-2 rounded-full bg-black/40 text-white border border-white/10 mb-6">
-                                                        <i className="fas fa-star mr-2" style={{ color: appSettings?.colors?.secondary || '#3b82f6' }}></i>
-                                                        <span className="font-semibold">{t('home.featured')}</span>
-                                                    </div>
-                                                    <h1 className={`text-5xl sm:text-6xl md:text-7xl font-bold text-white tracking-tight mb-5 ${heroTitleFont}`}>{heroTitle}</h1>
-                                                    <p className={`text-lg sm:text-xl md:text-2xl text-white/90 leading-relaxed mb-8 max-w-2xl ${heroDescFont}`}>{heroDesc}</p>
-                                                    <div className="flex flex-wrap gap-4 justify-start">
-                                                        <Link href={heroLink} className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-slate-900 font-semibold shadow-sm hover:shadow-md transition-all">
-                                                            <i className="fas fa-rocket"></i>
-                                                            {heroLinkText}
-                                                        </Link>
-                                                        <a href="#video" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold shadow-sm hover:shadow-md transition-all" style={{ backgroundColor: accent, color: '#1f2937' }}>
-                                                            <i className="fas fa-play-circle"></i>
-                                                            {t('home.watch_video')}
-                                                        </a>
-                                                    </div>
-                                                    <div className="mt-8 grid grid-cols-2 gap-6 max-w-lg">
-                                                        <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-white">
-                                                            <div className="text-3xl font-extrabold">99.9%</div>
-                                                            <div className="text-xs sm:text-sm text-white/80">{t('home.uptime')}</div>
-                                                        </div>
-                                                        <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-white">
-                                                            <div className="text-3xl font-extrabold">24/7</div>
-                                                            <div className="text-xs sm:text-sm text-white/80">{t('home.support')}</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="col-span-12 lg:col-span-5">
-                                                    <div className="relative w-full h-[320px] sm:h-[380px] lg:h-[460px] rounded-2xl overflow-hidden border border-white/10 shadow-xl bg-white/5">
-                                                        {appSettings?.hero_slide3_right_image && (
-                                                            <img
-                                                                src={getStorageUrl(appSettings?.hero_slide3_right_image)}
-                                                                alt="Preview"
-                                                                className="absolute inset-0 w-full h-full object-cover"
-                                                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                                            />
-                                                        )}
-                                                        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/60 via-slate-800/40 to-black/20"></div>
-                                                        <div className="absolute -right-12 -top-12 w-[420px] h-[420px] rounded-full" style={{ background: `radial-gradient(circle, ${hexToRgba(accent, 0.25)} 0%, transparent 60%)` }}></div>
-                                                        {/* badges removed */}
-                                                        <div className="absolute bottom-4 right-4 px-4 py-2 rounded-full bg-white/20 text-white backdrop-blur-md border border-white/20">
-                                                            <span className="text-xs sm:text-sm font-semibold">{t('home.live')}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="relative mb-6 flex flex-wrap justify-center items-center gap-2">
-                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md">
-                                                <span
-                                                    className="w-2.5 h-2.5 rounded-full"
-                                                    style={{
-                                                        background: `linear-gradient(135deg, ${appSettings?.colors?.primary || '#7c3aed'}, ${appSettings?.colors?.secondary || '#db2777'})`,
-                                                    }}
-                                                ></span>
-                                                {t('nav.home')}
-                                            </span>
-                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md">
-                                                <i className="fas fa-calendar-check text-white/80"></i>
-                                                {t('activities.latest_activities')}
-                                            </span>
-                                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-white text-xs font-bold border border-white/10 bg-black/30 backdrop-blur-md">
-                                                <i className="fas fa-newspaper text-white/80"></i>
-                                                {t('nav.news')}
-                                            </span>
-                                        </div>
-                                        <h1 className={`relative text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight mb-8 ${heroTitleFont}`}>
-                                            <span className="text-white">{heroTitle}</span>
-                                        </h1>
-                                        <p className={`relative text-lg sm:text-xl md:text-2xl text-white/90 mb-10 leading-relaxed max-w-3xl ${currentStyle.descMargin} ${heroDescFont}`}>
-                                            {heroDesc}
-                                        </p>
-                                        <div className={`relative flex flex-wrap gap-5 ${currentStyle.cta}`}>
-                                            <Link href={heroLink}
-                                                className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-white text-slate-900 font-semibold text-lg shadow-sm hover:shadow-md transition-all"
-                                            >
-                                                <i className="fas fa-rocket text-indigo-600"></i>
-                                                {heroLinkText}
-                                            </Link>
-                                            <a href="#fitur"
-                                                className="group inline-flex items-center gap-3 px-8 py-4 rounded-xl border border-white/20 bg-white/5 text-white backdrop-blur-md hover:bg-white/10 font-semibold text-lg transition-all"
-                                            >
-                                                <i className="fas fa-layer-group"></i>
-                                                {t('home.explore_features')}
-                                            </a>
-                                        </div>
-                                        <div className="mt-16 flex flex-wrap justify-center items-center gap-4 sm:gap-8">
-                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-lg bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-semibold">
-                                                <i className="fas fa-check-circle text-emerald-400 text-lg"></i>
-                                                <span>{t('home.trusted')}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-lg bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-semibold">
-                                                <i className="fas fa-shield-alt text-blue-400 text-lg"></i>
-                                                <span>{t('home.secure_data')}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-lg bg-white/5 backdrop-blur-md border border-white/10 text-white/90 text-sm font-semibold">
-                                                <i className="fas fa-bolt text-amber-400 text-lg"></i>
-                                                <span>{t('home.real_time')}</span>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
+                    {editMode && (
+                        <div className="fixed left-3 sm:left-4 top-20 sm:top-24 z-[40] w-[min(17.5rem,calc(100vw-1.5rem))] max-h-[calc(100dvh-6.5rem)] overflow-y-auto rounded-2xl border border-amber-300/40 bg-slate-950/95 backdrop-blur-md shadow-2xl shadow-black/40 p-3 pointer-events-auto">
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-amber-300">
+                                    Pengaturan Hero
+                                </p>
+                                <div className="flex items-center gap-1.5">
+                                    {saving && (
+                                        <span className="text-[10px] text-amber-200/90">Menyimpan…</span>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            localStorage.setItem('editMode', 'false');
+                                            window.dispatchEvent(new Event('editModeChanged'));
+                                        }}
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/90 hover:bg-rose-500 text-white text-[10px] font-bold"
+                                        title="Stop mode edit"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                        Stop
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => bgInputRef.current?.click()}
+                                disabled={saving}
+                                className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-amber-400 text-slate-900 text-xs font-bold shadow-lg hover:bg-amber-300 disabled:opacity-60 mb-3"
+                            >
+                                <i className="fas fa-image"></i>
+                                Ganti Background
+                            </button>
+                            <input
+                                ref={bgInputRef}
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/jpg"
+                                className="hidden"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    e.target.value = '';
+                                    uploadHeroImage('hero_background_1', file);
+                                }}
+                            />
+
+                            <div className="space-y-3">
+                                <label className="block">
+                                    <div className="flex items-center justify-between text-[11px] text-slate-200 mb-1">
+                                        <span>Kecerahan latar</span>
+                                        <span className="tabular-nums text-amber-200">{Math.round(heroLayer.brightness * 100)}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="40"
+                                        max="160"
+                                        step="5"
+                                        value={Math.round(heroLayer.brightness * 100)}
+                                        onChange={(e) => updateHeroLayer('brightness', 'home_hero_bg_brightness', Number(e.target.value) / 100)}
+                                        className="w-full accent-amber-400"
+                                    />
+                                    <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                                        <span>Gelapkan</span>
+                                        <span>Cerahkan</span>
+                                    </div>
+                                </label>
+
+                                <label className="block">
+                                    <div className="flex items-center justify-between text-[11px] text-slate-200 mb-1">
+                                        <span>Kejelasan background</span>
+                                        <span className="tabular-nums text-amber-200">{Math.round(heroLayer.bgOpacity * 100)}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="5"
+                                        max="100"
+                                        step="5"
+                                        value={Math.round(heroLayer.bgOpacity * 100)}
+                                        onChange={(e) => updateHeroLayer('bgOpacity', 'home_hero_bg_opacity', Number(e.target.value) / 100)}
+                                        className="w-full accent-amber-400"
+                                    />
+                                    <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                                        <span>Samarkan</span>
+                                        <span>Jelas</span>
+                                    </div>
+                                </label>
+
+                                <label className="block">
+                                    <div className="flex items-center justify-between text-[11px] text-slate-200 mb-1">
+                                        <span>Transparansi overlay</span>
+                                        <span className="tabular-nums text-amber-200">{Math.round((1 - heroLayer.overlay) * 100)}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="5"
+                                        max="100"
+                                        step="5"
+                                        value={Math.round((1 - heroLayer.overlay) * 100)}
+                                        onChange={(e) => updateHeroLayer('overlay', 'home_hero_overlay', 1 - (Number(e.target.value) / 100))}
+                                        className="w-full accent-amber-400"
+                                    />
+                                    <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                                        <span>Lebih gelap</span>
+                                        <span>Lebih transparan</span>
+                                    </div>
+                                </label>
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Slider Indicators */}
-                    <div className="absolute bottom-10 right-10 flex gap-3 z-20">
-                        {processedSlides.map((_, i) => (
-                            <button
-                                key={i}
-                                onClick={() => setCurrentSlide(i)}
-                                className={`h-1.5 rounded-full transition-all duration-500 ${i === currentSlide ? 'w-10 bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'w-2 bg-white/20 hover:bg-white/40'}`}
-                                aria-label={`Go to slide ${i + 1}`}
-                            />
-                        ))}
-                    </div>
-                </section>
+                    <div className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-[4.75rem] sm:pt-[5.25rem] pb-4 sm:pb-5 flex flex-col min-h-0">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-center flex-1 min-h-0">
+                            {/* Copy */}
+                            <div className="lg:col-span-6 flex flex-col justify-center min-h-0">
+                                <div className="inline-flex self-start items-center gap-2 px-3.5 py-1 rounded-full border border-[#f9b846]/55 bg-[#f9b846]/10 text-[#f9b846] text-[11px] sm:text-xs font-semibold mb-3 sm:mb-4 shadow-[0_0_24px_rgba(249,184,70,0.15)]">
+                                    <i className="fas fa-star text-[10px]"></i>
+                                    <EditableText
+                                        tagName="span"
+                                        isEditing={editMode}
+                                        value={heroCopy.badge}
+                                        placeholder="Badge hero"
+                                        onChange={(v) => {
+                                            setHeroCopy((s) => ({ ...s, badge: v }));
+                                            saveHeroField('home_hero_badge', v);
+                                        }}
+                                    />
+                                </div>
 
-                {/* Statistics Section */}
-                <section id="stats" className="py-10 sm:py-14 bg-white relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-[0.08]">
-                        <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, #3b82f6 1px, transparent 0)', backgroundSize: '36px 36px' }}></div>
-                    </div>
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6" data-stagger="stats" data-countup-group="true">
-                            <StatCard
+                                <h1
+                                    id="heroTitle"
+                                    className="font-extrabold tracking-tight text-white leading-[1.08] mb-3 sm:mb-4"
+                                    style={{
+                                        fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif",
+                                        fontSize: 'clamp(1.75rem, 2.1vw + 1.1rem, 3.5rem)',
+                                    }}
+                                >
+                                    <EditableText
+                                        tagName="span"
+                                        isEditing={editMode}
+                                        value={heroCopy.titleBefore}
+                                        placeholder="Judul sebelum"
+                                        className="inline"
+                                        onChange={(v) => {
+                                            setHeroCopy((s) => ({ ...s, titleBefore: v }));
+                                            saveHeroField('home_hero_title_before', v);
+                                        }}
+                                    />{' '}
+                                    <EditableText
+                                        tagName="span"
+                                        isEditing={editMode}
+                                        value={heroCopy.titleAccent}
+                                        placeholder="Aksen"
+                                        className="inline bg-gradient-to-r from-[#38bdf8] via-[#818cf8] to-[#c084fc] bg-clip-text text-transparent"
+                                        onChange={(v) => {
+                                            setHeroCopy((s) => ({ ...s, titleAccent: v }));
+                                            saveHeroField('home_hero_title_accent', v);
+                                        }}
+                                    />{' '}
+                                    <EditableText
+                                        tagName="span"
+                                        isEditing={editMode}
+                                        value={heroCopy.titleAfter}
+                                        placeholder="Judul setelah"
+                                        className="inline"
+                                        onChange={(v) => {
+                                            setHeroCopy((s) => ({ ...s, titleAfter: v }));
+                                            saveHeroField('home_hero_title_after', v);
+                                        }}
+                                    />
+                                </h1>
+
+                                <EditableText
+                                    tagName="p"
+                                    isEditing={editMode}
+                                    value={heroCopy.desc}
+                                    placeholder="Deskripsi hero"
+                                    className="text-white/75 leading-relaxed max-w-xl mb-4 sm:mb-5 block"
+                                    style={{ fontSize: 'clamp(0.875rem, 0.35vw + 0.75rem, 1.05rem)' }}
+                                    onChange={(v) => {
+                                        setHeroCopy((s) => ({ ...s, desc: v }));
+                                        saveHeroField('home_hero_desc', v);
+                                    }}
+                                />
+
+                                <div className="flex flex-wrap gap-2.5 sm:gap-3">
+                                    <Link
+                                        href={editMode ? '#' : route('activity.index')}
+                                        onClick={(e) => { if (editMode) e.preventDefault(); }}
+                                        className="cta-primary cta-shimmer inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-[#1a1205] font-bold text-sm shadow-[0_12px_30px_rgba(249,184,70,0.35)]"
+                                        style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 45%, #ea580c 100%)' }}
+                                    >
+                                        <i className="fas fa-rocket"></i>
+                                        <EditableText
+                                            tagName="span"
+                                            isEditing={editMode}
+                                            value={heroCopy.ctaPrimary}
+                                            placeholder="CTA utama"
+                                            onChange={(v) => {
+                                                setHeroCopy((s) => ({ ...s, ctaPrimary: v }));
+                                                saveHeroField('home_hero_cta_primary', v);
+                                            }}
+                                        />
+                                    </Link>
+                                    <a
+                                        href={editMode ? '#' : '#fitur'}
+                                        onClick={(e) => { if (editMode) e.preventDefault(); }}
+                                        className="cta-secondary inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl border border-white/25 bg-white/5 text-white font-semibold text-sm backdrop-blur-md hover:bg-white/10"
+                                    >
+                                        <i className="fas fa-layer-group"></i>
+                                        <EditableText
+                                            tagName="span"
+                                            isEditing={editMode}
+                                            value={heroCopy.ctaSecondary}
+                                            placeholder="CTA sekunder"
+                                            onChange={(v) => {
+                                                setHeroCopy((s) => ({ ...s, ctaSecondary: v }));
+                                                saveHeroField('home_hero_cta_secondary', v);
+                                            }}
+                                        />
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* Visual */}
+                            <div className="lg:col-span-6 relative hidden sm:flex items-center justify-center min-h-0 h-full">
+                                <div className="absolute inset-0 rounded-full blur-3xl opacity-50" style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.35), transparent 60%)' }} />
+                                <div className={`relative z-10 ${editMode ? 'outline-dashed outline-2 outline-amber-400/70 rounded-2xl p-1' : ''}`}>
+                                    <img
+                                        src={rightImage}
+                                        alt="Digital event management"
+                                        className="w-auto max-w-full object-contain drop-shadow-[0_30px_60px_rgba(56,189,248,0.25)]"
+                                        style={{ maxHeight: 'min(46vh, 420px)' }}
+                                        onError={(e) => { e.currentTarget.src = '/assets/images/hero/tablet.png'; }}
+                                    />
+                                    {editMode && (
+                                        <button
+                                            type="button"
+                                            onClick={() => rightImageInputRef.current?.click()}
+                                            disabled={saving}
+                                            className="absolute bottom-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-400 text-slate-900 text-xs font-bold shadow-lg hover:bg-amber-300 disabled:opacity-60"
+                                        >
+                                            <i className="fas fa-camera"></i>
+                                            Ganti Gambar
+                                        </button>
+                                    )}
+                                    <input
+                                        ref={rightImageInputRef}
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp,image/jpg"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            e.target.value = '';
+                                            uploadHeroImage('hero_slide3_right_image', file);
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Statistics — pinned to bottom of first viewport */}
+                        <div id="stats" className="mt-3 sm:mt-4 grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-3 flex-shrink-0" data-countup-group="true">
+                            <HeroStatCard
                                 icon="fas fa-users"
                                 fromColor="#7c3aed"
                                 toColor="#3b82f6"
                                 count={stats.totalUsers || 0}
                                 label={t('home.total_users')}
-                                className="reveal-left"
                             />
-                            <StatCard
+                            <HeroStatCard
                                 icon="fas fa-calendar-check"
                                 fromColor="#3b82f6"
                                 toColor="#7c3aed"
                                 count={stats.totalActivities || 0}
                                 label={t('home.total_activities')}
-                                className="reveal-right"
                             />
-                            <StatCard
+                            <HeroStatCard
                                 icon="fas fa-user-tie"
                                 fromColor="#7c3aed"
                                 toColor="#3b82f6"
                                 count={stats.totalCreators || 0}
                                 label={t('home.total_creators')}
-                                className="reveal"
                             />
                         </div>
+                    </div>
+                </section>
+
+                {/* About — one-page preview */}
+                <section id="about" className="py-12 sm:py-16 bg-white relative scroll-mt-20">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+                            <div className="reveal">
+                                <div className="inline-flex items-center px-4 py-2 rounded-full bg-[#7c3aed]/10 border border-[#7c3aed]/20 text-[#7c3aed] text-xs font-bold tracking-wide mb-4">
+                                    {t('home.section_about_badge')}
+                                </div>
+                                <h2 className="text-3xl sm:text-4xl font-black text-gray-900 mb-4 leading-tight">
+                                    {t('home.section_about_title')}
+                                </h2>
+                                <p className="text-base sm:text-lg text-gray-600 leading-relaxed mb-6">
+                                    {t('home.section_about_desc')}
+                                </p>
+                                <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                                    {[
+                                        { icon: 'fas fa-shield-alt', title: t('about.feature_security_title'), desc: t('about.feature_security_desc') },
+                                        { icon: 'fas fa-rocket', title: t('about.feature_performance_title'), desc: t('about.feature_performance_desc') },
+                                    ].map((item) => (
+                                        <div key={item.title} className="rounded-2xl border border-gray-100 bg-gray-50/80 p-4">
+                                            <div className="w-10 h-10 rounded-xl bg-[#7c3aed]/10 text-[#7c3aed] flex items-center justify-center mb-3">
+                                                <i className={item.icon}></i>
+                                            </div>
+                                            <h3 className="font-bold text-gray-900 text-sm mb-1">{item.title}</h3>
+                                            <p className="text-xs text-gray-500 line-clamp-2">{item.desc}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <Link
+                                    href="/about"
+                                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#7c3aed] hover:bg-[#6d28d9] text-white text-sm font-bold shadow-lg shadow-[#7c3aed]/25 transition-all"
+                                >
+                                    {t('home.read_more')}
+                                    <i className="fas fa-arrow-right text-xs"></i>
+                                </Link>
+                            </div>
+                            <div className="relative reveal-right">
+                                <img
+                                    src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-1.2.1&auto=format&fit=crop&w=900&q=80"
+                                    alt="About"
+                                    className="rounded-3xl shadow-2xl w-full object-cover h-[280px] sm:h-[380px]"
+                                    loading="lazy"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* News — one-page preview */}
+                <section id="news" className="py-12 sm:py-16 bg-slate-50 relative scroll-mt-20">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 reveal">
+                            <div>
+                                <div className="inline-flex items-center px-4 py-2 rounded-full bg-[#3b82f6]/10 border border-[#3b82f6]/20 text-[#2563eb] text-xs font-bold tracking-wide mb-3">
+                                    {t('home.section_news_badge')}
+                                </div>
+                                <h2 className="text-3xl sm:text-4xl font-black text-gray-900">{t('home.section_news_title')}</h2>
+                                <p className="text-gray-600 mt-2 max-w-xl">{t('home.section_news_desc')}</p>
+                            </div>
+                            <Link href="/news" className="inline-flex items-center gap-2 text-sm font-bold text-[#7c3aed] hover:text-[#6d28d9]">
+                                {t('home.view_all_news')}
+                                <i className="fas fa-arrow-right text-xs"></i>
+                            </Link>
+                        </div>
+
+                        {latestNews && latestNews.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                                {latestNews.slice(0, 4).map((news) => (
+                                    <article key={news.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all group flex flex-col">
+                                        <Link href={route('news.show', news.slug)} className="block aspect-video overflow-hidden bg-gray-100">
+                                            <img
+                                                src={news.image || '/assets/images/hero/default.webp'}
+                                                alt={news.title}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                loading="lazy"
+                                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/images/hero/default.webp'; }}
+                                            />
+                                        </Link>
+                                        <div className="p-4 flex flex-col flex-1">
+                                            <p className="text-[11px] text-gray-500 mb-2">
+                                                <i className="far fa-calendar-alt mr-1.5"></i>
+                                                {formatHomeDate(news.published_at || news.created_at)}
+                                            </p>
+                                            <Link href={route('news.show', news.slug)}>
+                                                <h3 className="font-bold text-gray-900 line-clamp-2 group-hover:text-[#7c3aed] transition-colors mb-2">
+                                                    {news.title}
+                                                </h3>
+                                            </Link>
+                                            <p className="text-sm text-gray-600 line-clamp-2 mb-4 flex-1">
+                                                {news.excerpt || `${stripHtml(news.content).slice(0, 100)}…`}
+                                            </p>
+                                            <Link href={route('news.show', news.slug)} className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#7c3aed]">
+                                                {t('home.read_more')}
+                                                <i className="fas fa-arrow-right text-[10px]"></i>
+                                            </Link>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-center text-gray-500 py-10">{t('home.no_news')}</p>
+                        )}
+                    </div>
+                </section>
+
+                {/* Kegiatan — one-page preview */}
+                <section id="kegiatan" className="py-12 sm:py-16 bg-white relative scroll-mt-20">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 reveal">
+                            <div>
+                                <div className="inline-flex items-center px-4 py-2 rounded-full bg-[#db2777]/10 border border-[#db2777]/20 text-[#db2777] text-xs font-bold tracking-wide mb-3">
+                                    {t('home.section_activities_badge')}
+                                </div>
+                                <h2 className="text-3xl sm:text-4xl font-black text-gray-900">{t('home.section_activities_title')}</h2>
+                                <p className="text-gray-600 mt-2 max-w-xl">{t('home.section_activities_desc')}</p>
+                            </div>
+                            <Link href="/activity" className="inline-flex items-center gap-2 text-sm font-bold text-[#7c3aed] hover:text-[#6d28d9]">
+                                {t('home.view_all_activities')}
+                                <i className="fas fa-arrow-right text-xs"></i>
+                            </Link>
+                        </div>
+
+                        {latestActivities && latestActivities.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {latestActivities.slice(0, 6).map((activity) => (
+                                    <article key={activity.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all group flex flex-col">
+                                        <Link href={route('activity.detail', activity.id)} className="block aspect-video overflow-hidden bg-gray-100">
+                                            <img
+                                                src={activity.image || '/assets/images/hero/default.webp'}
+                                                alt={activity.name}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                loading="lazy"
+                                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/assets/images/hero/default.webp'; }}
+                                            />
+                                        </Link>
+                                        <div className="p-5 flex flex-col flex-1">
+                                            <div className="flex items-center gap-2 text-[11px] text-gray-500 mb-2">
+                                                {activity.category?.name && (
+                                                    <span className="px-2 py-0.5 rounded-full bg-gray-100 font-semibold text-gray-700">
+                                                        {activity.category.name}
+                                                    </span>
+                                                )}
+                                                <span>
+                                                    <i className="far fa-calendar-alt mr-1"></i>
+                                                    {formatHomeDate(activity.date)}
+                                                </span>
+                                            </div>
+                                            <Link href={route('activity.detail', activity.id)}>
+                                                <h3 className="font-bold text-gray-900 line-clamp-2 group-hover:text-[#7c3aed] transition-colors mb-2">
+                                                    {activity.name}
+                                                </h3>
+                                            </Link>
+                                            <p className="text-sm text-gray-600 line-clamp-2 mb-4 flex-1">
+                                                {stripHtml(activity.description).slice(0, 120) || '—'}
+                                            </p>
+                                            <Link href={route('activity.detail', activity.id)} className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#7c3aed]">
+                                                {t('home.read_more')}
+                                                <i className="fas fa-arrow-right text-[10px]"></i>
+                                            </Link>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-center text-gray-500 py-10">{t('home.no_activities')}</p>
+                        )}
                     </div>
                 </section>
 
@@ -744,23 +1097,27 @@ export default function Home({ heroSlides = [], stats = {}, partners = [], speci
 
 // Sub-components for cleaner code
 
-function StatCard({ icon, fromColor, toColor, count, label, className }) {
+function HeroStatCard({ icon, fromColor, toColor, count, label }) {
     return (
-        <div className={`group bg-gradient-to-br from-white to-indigo-50 rounded-3xl p-5 sm:p-6 border-2 border-gray-200 hover:border-[#7c3aed] transition-all duration-500 transform hover:-translate-y-1 shadow-lg hover:shadow-xl ${className}`}>
-            <div className="flex items-center gap-4">
+        <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 bg-white/[0.08] backdrop-blur-xl px-3.5 sm:px-4 py-3 sm:py-3.5 shadow-[0_10px_40px_rgba(0,0,0,0.25)]">
+            <div className="flex items-center gap-3 sm:gap-4">
                 <div
-                    className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl text-white"
+                    className="inline-flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-white flex-shrink-0 shadow-lg"
                     style={{ background: `linear-gradient(135deg, ${fromColor}, ${toColor})` }}
                 >
-                    <i className={`${icon} text-2xl`}></i>
+                    <i className={`${icon} text-lg`}></i>
                 </div>
-                <div>
-                    <div className="text-3xl sm:text-4xl font-black text-gray-900">
+                <div className="min-w-0">
+                    <div className="text-2xl sm:text-3xl font-extrabold text-white leading-none">
                         <CountUp end={count} />
                     </div>
-                    <div className="text-sm font-semibold text-gray-600">{label}</div>
+                    <div className="text-xs sm:text-sm font-semibold text-white/65 mt-1 truncate">{label}</div>
                 </div>
             </div>
+            <div
+                className="absolute inset-x-0 bottom-0 h-[3px]"
+                style={{ background: `linear-gradient(to right, ${fromColor}, ${toColor})` }}
+            />
         </div>
     );
 }

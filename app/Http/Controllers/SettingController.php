@@ -189,6 +189,16 @@ class SettingController extends Controller
             'hero_slide3_right_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'navbar_opacity' => 'nullable|numeric|min:0|max:1',
             'hero_animation_style' => 'nullable|string|in:circles,rain,waves,particles,parallax,clean',
+            'home_hero_badge' => 'nullable|string|max:120',
+            'home_hero_title_before' => 'nullable|string|max:120',
+            'home_hero_title_accent' => 'nullable|string|max:80',
+            'home_hero_title_after' => 'nullable|string|max:120',
+            'home_hero_desc' => 'nullable|string|max:1000',
+            'home_hero_cta_primary' => 'nullable|string|max:80',
+            'home_hero_cta_secondary' => 'nullable|string|max:80',
+            'home_hero_overlay' => 'nullable|numeric|min:0|max:0.95',
+            'home_hero_bg_opacity' => 'nullable|numeric|min:0.05|max:1',
+            'home_hero_bg_brightness' => 'nullable|numeric|min:0.4|max:1.6',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -231,6 +241,35 @@ class SettingController extends Controller
                     $style = 'circles';
                 }
                 Setting::set('hero_animation_style', $style, 'string', 'general', 'Model animasi hero');
+            }
+
+            $heroTextFields = [
+                'home_hero_badge' => 'Badge hero beranda',
+                'home_hero_title_before' => 'Judul hero sebelum aksen',
+                'home_hero_title_accent' => 'Judul hero aksen',
+                'home_hero_title_after' => 'Judul hero setelah aksen',
+                'home_hero_desc' => 'Deskripsi hero beranda',
+                'home_hero_cta_primary' => 'Teks CTA primer hero',
+                'home_hero_cta_secondary' => 'Teks CTA sekunder hero',
+            ];
+            foreach ($heroTextFields as $key => $label) {
+                if ($request->exists($key)) {
+                    $value = trim((string) $request->input($key, ''));
+                    Setting::set($key, $value, 'string', 'home_hero', $label);
+                }
+            }
+
+            if ($request->exists('home_hero_overlay')) {
+                $overlay = min(0.95, max(0.0, (float) $request->input('home_hero_overlay')));
+                Setting::set('home_hero_overlay', (string) round($overlay, 2), 'string', 'home_hero', 'Opasitas overlay gelap hero');
+            }
+            if ($request->exists('home_hero_bg_opacity')) {
+                $bgOpacity = min(1.0, max(0.05, (float) $request->input('home_hero_bg_opacity')));
+                Setting::set('home_hero_bg_opacity', (string) round($bgOpacity, 2), 'string', 'home_hero', 'Opasitas gambar background hero');
+            }
+            if ($request->exists('home_hero_bg_brightness')) {
+                $brightness = min(1.6, max(0.4, (float) $request->input('home_hero_bg_brightness')));
+                Setting::set('home_hero_bg_brightness', (string) round($brightness, 2), 'string', 'home_hero', 'Kecerahan gambar background hero');
             }
 
             // Handle logo upload
@@ -323,7 +362,7 @@ class SettingController extends Controller
             $this->regenerateColorCSS();
         }
 
-        return redirect()->route('settings.index')
+        return redirect()->back()
             ->with('success', 'Pengaturan berhasil diperbarui!');
     }
 

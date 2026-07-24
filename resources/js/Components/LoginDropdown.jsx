@@ -106,14 +106,13 @@ export default function LoginDropdown() {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 onMouseEnter={() => setIsOpen(true)}
-                className="flex items-center focus:outline-none transition-all duration-300 hover:scale-110 hover:drop-shadow-lg"
+                aria-label="Login"
+                className="relative flex items-center justify-center w-10 h-10 rounded-full border border-white/25 bg-white/10 text-white hover:bg-white/15 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#f9b846]/60"
             >
-
-                <img
-                    src="/assets/images/icon/login.png"
-                    alt="Login"
-                    className="h-10 w-auto"
-                />
+                <i className="fas fa-user text-sm"></i>
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#f9b846] text-[#0a1024] shadow-md">
+                    <i className="fas fa-lock text-[8px]"></i>
+                </span>
             </button>
 
             {isOpen && (

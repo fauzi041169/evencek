@@ -59,6 +59,11 @@ return [
         'sender_name' => env('WHATSAPP_SENDER_NAME', env('APP_NAME', 'IVEN-HUB')),
     ],
 
+    'whatsapp_baileys' => [
+        'url' => env('WHATSAPP_BAILEYS_URL', 'http://127.0.0.1:3001'),
+        'token' => env('WHATSAPP_BAILEYS_TOKEN', env('WHATSAPP_TOKEN')),
+    ],
+
     'ai_gender' => [
         'enabled' => env('AI_GENDER_ENABLED', false),
         'key' => env('AI_GENDER_API_KEY'),

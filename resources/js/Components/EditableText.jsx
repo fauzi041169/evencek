@@ -1,26 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export default function EditableText({ 
-    value, 
-    onChange, 
-    isEditing, 
-    className = "", 
-    tagName = "div", 
-    placeholder = "Type here...",
-    ...props 
+export default function EditableText({
+    value,
+    onChange,
+    isEditing,
+    className = '',
+    tagName = 'div',
+    placeholder = 'Ketik di sini...',
+    ...props
 }) {
     const Tag = tagName;
-    const [localValue, setLocalValue] = useState(value);
+    const [localValue, setLocalValue] = useState(value ?? '');
     const elementRef = useRef(null);
 
     useEffect(() => {
-        setLocalValue(value);
-    }, [value]);
+        setLocalValue(value ?? '');
+        if (elementRef.current && isEditing && elementRef.current.innerText !== (value ?? '')) {
+            elementRef.current.innerText = value ?? '';
+        }
+    }, [value, isEditing]);
 
     const handleBlur = (e) => {
-        const newValue = e.currentTarget.innerText;
+        const newValue = (e.currentTarget.innerText || '').trim();
         setLocalValue(newValue);
-        if (onChange && newValue !== value) {
+        if (onChange && newValue !== (value ?? '').trim()) {
             onChange(newValue);
         }
     };
@@ -32,18 +35,15 @@ export default function EditableText({
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={handleBlur}
-                className={`${className} outline-dashed outline-2 outline-amber-500/50 hover:outline-amber-500 p-1 rounded transition-all min-w-[1em] empty:before:content-[attr(data-placeholder)] cursor-text`}
+                className={`${className} outline-dashed outline-2 outline-amber-400/70 hover:outline-amber-400 rounded px-1 transition-all min-w-[1em] empty:before:content-[attr(data-placeholder)] empty:before:text-white/40 cursor-text relative z-20`}
                 data-placeholder={placeholder}
                 {...props}
             >
-                {value}
+                {localValue}
             </Tag>
         );
     }
 
-    // When not editing, render normally but handle HTML entities safely if needed
-    // For now, we assume simple text. If value contains HTML, we might need dangerouslySetInnerHTML
-    // But typically for this use case, text is text.
     return (
         <Tag className={className} {...props}>
             {value}

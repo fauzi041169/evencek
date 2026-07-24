@@ -3,14 +3,31 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ImageHelper;
+use App\Models\Activity;
 use App\Models\CertificateBackground;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class CertificateSettingsController extends Controller
 {
+    private function assertCanManageCertificates($activityId): Activity
+    {
+        $user = auth()->user();
+        if (! $user) {
+            abort(403, 'Unauthorized');
+        }
+
+        $activity = Activity::find($activityId);
+        if (! $activity || ! $activity->canAccessPrinting($user, 'certificates')) {
+            abort(403, 'Anda tidak memiliki akses untuk mengatur sertifikat kegiatan ini');
+        }
+
+        return $activity;
+    }
+
     public function update(Request $request, $activityId = null)
     {
         try {
@@ -25,13 +42,14 @@ class CertificateSettingsController extends Controller
                     'message' => 'activity_id dan certificate_setting wajib diisi',
                 ], 400);
             }
-            // Pastikan certificate_setting bisa di-decode ke array
+
+            $this->assertCanManageCertificates($activity_id);
+
             $decoded = json_decode($certificate_setting, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Format certificate_setting tidak valid JSON: '.json_last_error_msg(),
-                    'raw' => $certificate_setting,
                 ], 400);
             }
             $certificateSettings = \App\Models\CertificateSettings::firstOrNew([
@@ -57,7 +75,7 @@ class CertificateSettingsController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Gagal menyimpan ke database: '.$e->getMessage(),
+                    'message' => 'Gagal menyimpan ke database',
                 ], 500);
             }
 
@@ -68,8 +86,10 @@ class CertificateSettingsController extends Controller
                 'certificate_setting' => $certificateSettings->certificate_setting,
                 'print_settings' => $certificateSettings->print_settings,
             ]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            Log::error('[DEBUG] Exception umum: '.$e->getMessage());
+            Log::error('Exception certificate settings: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -80,15 +100,7 @@ class CertificateSettingsController extends Controller
 
     public function uploadBackground(Request $request)
     {
-        Log::info('[CERT BG UPLOAD] Incoming request', [
-            'all' => $request->all(),
-            'files' => array_keys($request->allFiles()),
-            'has_background' => $request->hasFile('background'),
-            'content_type' => $request->header('Content-Type'),
-        ]);
-
-        // Fallback for activity_id if passed as activityId or from other fields
-        if (!$request->has('activity_id')) {
+        if (! $request->has('activity_id')) {
             if ($request->has('activityId')) {
                 $request->merge(['activity_id' => $request->activityId]);
             } elseif ($request->has('id')) {
@@ -98,8 +110,8 @@ class CertificateSettingsController extends Controller
 
         try {
             $validator = \Validator::make($request->all(), [
-                'activity_id' => 'required',
-                'background' => 'required|file|max:51200',
+                'activity_id' => 'required|exists:activities,id',
+                'background' => 'required|file|image|mimes:jpeg,png,jpg,webp|max:51200',
             ], [
                 'activity_id.required' => 'ID Aktivitas wajib diisi.',
                 'background.required' => 'File background wajib diunggah.',
@@ -108,28 +120,16 @@ class CertificateSettingsController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::warning('[CERT BG UPLOAD] Validation failed', [
-                    'errors' => $validator->errors()->toArray(),
-                    'request_all' => $request->all(),
-                    'request_files' => array_keys($request->allFiles()),
-                ]);
-
-                $errors = $validator->errors();
-                $firstError = $errors->first();
-
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validasi gagal: ' . $firstError,
-                    'errors' => $errors,
-                    'debug_request' => [
-                        'has_activity_id' => $request->has('activity_id'),
-                        'has_background' => $request->hasFile('background'),
-                        'activity_id_value' => $request->input('activity_id'),
-                    ]
+                    'message' => 'Validasi gagal: '.$validator->errors()->first(),
+                    'errors' => $validator->errors(),
                 ], 422);
             }
 
             $activityId = $request->activity_id;
+            $this->assertCanManageCertificates($activityId);
+
             $file = $request->file('background');
 
             if (! $file || ! $file->isValid()) {
@@ -139,12 +139,11 @@ class CertificateSettingsController extends Controller
                 ], 400);
             }
 
-            // Use ImageHelper to compress and store
-            $path = ImageHelper::storeCompressedUploadedImage($file, 'certificate-backgrounds/' . $activityId, 'public', [
+            $path = ImageHelper::storeCompressedUploadedImage($file, 'certificate-backgrounds/'.$activityId, 'public', [
                 'max_width' => 2500,
                 'max_height' => 2500,
                 'quality' => 85,
-                'format' => 'webp', // WebP is better for background images
+                'format' => 'webp',
             ]);
 
             if (! $path) {
@@ -169,18 +168,18 @@ class CertificateSettingsController extends Controller
                     'url' => Storage::url($path),
                     'type' => 'uploaded',
                 ],
-                // Backward compatibility
                 'filename' => $path,
             ]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            throw $e;
         } catch (\Exception $e) {
-            Log::error('[CERT BG UPLOAD] Error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-                'activity_id' => $request->activity_id
+            Log::error('[CERT BG UPLOAD] Error: '.$e->getMessage(), [
+                'activity_id' => $request->activity_id,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal upload: ' . $e->getMessage(),
+                'message' => 'Gagal upload background.',
             ], 500);
         }
     }
@@ -188,16 +187,61 @@ class CertificateSettingsController extends Controller
     public function deleteBackground(Request $request)
     {
         $request->validate([
-            'filename' => 'required|string',
+            'filename' => 'required|string|max:500',
+            'activity_id' => 'nullable|exists:activities,id',
         ]);
 
-        $filename = ltrim($request->input('filename'), '/');
+        $filename = ltrim((string) $request->input('filename'), '/');
+        $filename = str_replace('\\', '/', $filename);
 
-        $existsInStorage = \Illuminate\Support\Facades\Storage::disk('public')->exists($filename);
-        $legacyPath = public_path('assets/images/certificate/'.$filename);
-        $existsInLegacy = file_exists($legacyPath);
+        // Prevent path traversal outside certificate asset folders
+        if (
+            str_contains($filename, '..')
+            || (! Str::startsWith($filename, 'certificate-backgrounds/')
+                && ! Str::startsWith($filename, 'background/default/')
+                && ! Str::startsWith($filename, 'assets/images/certificate/'))
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Path file tidak diizinkan',
+            ], 403);
+        }
 
-        if (! $existsInStorage && ! $existsInLegacy) {
+        $bg = CertificateBackground::where('filename', $filename)->first();
+        $activityId = $request->input('activity_id') ?: ($bg->activity_id ?? null);
+
+        if (! $activityId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'activity_id wajib diisi',
+            ], 400);
+        }
+
+        $this->assertCanManageCertificates($activityId);
+
+        if ($bg && (string) $bg->activity_id !== (string) $activityId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        // Do not allow deleting shared default templates
+        if (Str::startsWith($filename, 'background/default/')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Background default tidak dapat dihapus',
+            ], 403);
+        }
+
+        $existsInStorage = Storage::disk('public')->exists($filename);
+        $legacyRelative = Str::startsWith($filename, 'assets/images/certificate/')
+            ? substr($filename, strlen('assets/images/certificate/'))
+            : $filename;
+        $legacyPath = public_path('assets/images/certificate/'.$legacyRelative);
+        $existsInLegacy = is_file($legacyPath);
+
+        if (! $existsInStorage && ! $existsInLegacy && ! $bg) {
             return response()->json([
                 'success' => false,
                 'message' => 'File tidak ditemukan',
@@ -206,21 +250,24 @@ class CertificateSettingsController extends Controller
 
         try {
             if ($existsInStorage) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($filename);
+                Storage::disk('public')->delete($filename);
             } elseif ($existsInLegacy) {
                 unlink($legacyPath);
             }
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus file: '.$e->getMessage(),
+                'message' => 'Gagal menghapus file',
             ], 500);
         }
 
         try {
-            \DB::table('certificate_backgrounds')->where('filename', $filename)->delete();
+            DB::table('certificate_backgrounds')
+                ->where('filename', $filename)
+                ->where('activity_id', $activityId)
+                ->delete();
         } catch (\Exception $e) {
-            \Log::warning('[CERT BG] Delete DB gagal: '.$e->getMessage());
+            Log::warning('[CERT BG] Delete DB gagal: '.$e->getMessage());
         }
 
         return response()->json([
@@ -231,25 +278,18 @@ class CertificateSettingsController extends Controller
 
     public function getBackgroundImages(Request $request, $activityId)
     {
-        if (! auth()->check()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized',
-            ], 403);
-        }
+        $this->assertCanManageCertificates($activityId);
 
-        $items = \DB::table('certificate_backgrounds')
+        $items = DB::table('certificate_backgrounds')
             ->where('activity_id', $activityId)
             ->orderBy('created_at', 'desc')
             ->get(['id', 'filename', 'original_name']);
 
         $images = [];
 
-        // 1. Uploaded Images
         foreach ($items as $it) {
             $url = '';
-            // Handle storage vs legacy path
-            if (\Illuminate\Support\Str::startsWith($it->filename, 'certificate-backgrounds/')) {
+            if (Str::startsWith($it->filename, 'certificate-backgrounds/')) {
                 $url = '/storage/'.$it->filename;
             } else {
                 $url = '/assets/images/certificate/'.$it->filename;
@@ -264,16 +304,19 @@ class CertificateSettingsController extends Controller
             ];
         }
 
-        // 2. Default Images
         $defaultPath = public_path('assets/images/certificate/background/default');
 
         if (file_exists($defaultPath) && is_dir($defaultPath)) {
             $files = scandir($defaultPath);
             foreach ($files as $file) {
-                if ($file === '.' || $file === '..') continue;
+                if ($file === '.' || $file === '..') {
+                    continue;
+                }
 
                 $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                if (! in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) continue;
+                if (! in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) {
+                    continue;
+                }
 
                 $filename = 'background/default/'.$file;
                 $images[] = [

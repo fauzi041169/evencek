@@ -122,7 +122,7 @@ export default function ScanUniversal() {
                                 <div className={`mt-4 p-4 rounded-lg border-l-4 ${getAlertClass()}`}>
                                     <div className="flex items-center">
                                         <i className={`fas ${getIcon()} mr-2`}></i>
-                                        <span dangerouslySetInnerHTML={{ __html: scanResult.message }}></span>
+                                        <span>{scanResult.message}</span>
                                     </div>
                                 </div>
                             </div>

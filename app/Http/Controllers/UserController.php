@@ -291,8 +291,8 @@ class UserController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => bcrypt($data['password']),
-            'role' => 'user',
         ]);
+        $user->forceFill(['role' => 'user'])->save();
 
         return redirect()->route('users.index')->with('success', 'User created successfully.');
     }

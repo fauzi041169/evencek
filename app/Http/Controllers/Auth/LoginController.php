@@ -303,11 +303,13 @@ class LoginController extends Controller
                     'email' => $email,
                     'google_id' => $googleId,
                     'avatar' => $googleUser->getAvatar(),
-                    'password' => Hash::make(uniqid().time()), // password random yang lebih unik
-                    'role' => 'user',
-                    'email_verified_at' => now(), // Email sudah diverifikasi oleh Google
-                    'email_verification_token' => null, // Tidak perlu token karena sudah verified
+                    'password' => Hash::make(uniqid().time()),
                 ]);
+                $user->forceFill([
+                    'role' => 'user',
+                    'email_verified_at' => now(),
+                    'email_verification_token' => null,
+                ])->save();
 
                 // Buat profile kosong jika belum ada
                 $user->load('profile');

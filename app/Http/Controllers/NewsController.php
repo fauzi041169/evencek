@@ -23,6 +23,23 @@ class NewsController extends Controller
         $this->middleware('auth')->except(['index', 'show', 'list', 'search', 'category']);
     }
 
+    private function userCanManageNews($user, News $news): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            return true;
+        }
+
+        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
+            return true;
+        }
+
+        return (string) $news->author_id === (string) $user->id;
+    }
+
     public function index()
     {
         $queryText = request('query');
@@ -398,9 +415,9 @@ class NewsController extends Controller
         try {
             $news = News::findOrFail($id);
 
-            // Check if creator can only edit their own news
-            if (! auth()->user()->isSuperAdmin() && auth()->user()->isCreator() && $news->author_id !== auth()->id()) {
-                abort(403, 'Anda hanya dapat mengedit berita yang Anda buat sendiri.');
+            // Author, admin, or superadmin only
+            if (! $this->userCanManageNews(auth()->user(), $news)) {
+                abort(403, 'Anda tidak memiliki akses untuk mengedit berita ini.');
             }
 
             \Log::info('News found:', $news->toArray());
@@ -427,10 +444,9 @@ class NewsController extends Controller
     public function update(Request $request, News $news)
     {
         try {
-            // Check if creator can only update their own news
-            if (! auth()->user()->isSuperAdmin() && auth()->user()->isCreator() && $news->author_id !== auth()->id()) {
+            if (! $this->userCanManageNews(auth()->user(), $news)) {
                 return redirect()->route('news.list')
-                    ->with('error', 'Anda hanya dapat mengedit berita yang Anda buat sendiri.');
+                    ->with('error', 'Anda tidak memiliki akses untuk mengedit berita ini.');
             }
 
             $validator = Validator::make($request->all(), [
@@ -489,10 +505,9 @@ class NewsController extends Controller
     public function destroy(News $news)
     {
         try {
-            // Check if creator can only delete their own news
-            if (! auth()->user()->isSuperAdmin() && auth()->user()->isCreator() && $news->author_id !== auth()->id()) {
-                return redirect()->route('news.list')
-                    ->with('error', 'Anda hanya dapat menghapus berita yang Anda buat sendiri.');
+            if (! $this->userCanManageNews(auth()->user(), $news)) {
+                return redirect()->back()
+                    ->with('error', 'Anda tidak memiliki akses untuk menghapus berita ini.');
             }
 
             // Hapus gambar jika ada

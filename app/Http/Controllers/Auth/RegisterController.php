@@ -154,10 +154,12 @@ class RegisterController extends Controller
                 'name' => $validatedData['name'],
                 'email' => $validatedData['email'],
                 'password' => $validatedData['password'],
-                'role' => $role, // Pastikan role disimpan eksplisit
-                'email_verification_token' => $emailVerificationToken,
-                'email_verified_at' => null, // Belum diverifikasi
             ]);
+            $user->forceFill([
+                'role' => $role,
+                'email_verification_token' => $emailVerificationToken,
+                'email_verified_at' => null,
+            ])->save();
 
             $userId = $user->id;
 
@@ -244,8 +246,8 @@ class RegisterController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
-            'role' => 'user', // default role
         ]);
+        $user->forceFill(['role' => 'user'])->save();
 
         // Buat profile kosong
         $user->profile()->create([]);

@@ -13,19 +13,30 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Disable foreign key checks
+        // Matikan FK selama truncate/seed agar tidak bentrok antar tabel terkait
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
-        // Hanya truncate tabel yang ada
         $tables = [
+            'activity_users',
             'activities',
             'news',
             'categories',
-            'locations',
+            'districts',
+            'regencies',
             'provinces',
-            'regions',
             'profiles',
             'users',
+            'role_permissions',
+            'payment_methods',
+            'payment_channels',
+            'partners',
+            'pengurus',
+            'financial_settings',
+            'activity_contents',
+            'galleries',
+            'subscription_plans',
+            'subscriptions',
+            'maintenance_settings',
         ];
 
         foreach ($tables as $table) {
@@ -34,38 +45,33 @@ class DatabaseSeeder extends Seeder
             }
         }
 
+        // RegionSeeder sudah mengisi provinces/regencies/districts lengkap dari API.
+        // Jangan panggil ProvinceSeeder/RegencySeeder/DistrictSeeder/LocationSeeder
+        // karena mereka truncate/duplikasi dan memicu error FK.
         $seeders = [
             UserSeeder::class,
             RolePermissionSeeder::class,
             CategorySeeder::class,
             NewsSeeder::class,
-        ];
-
-        if (env('SEED_DEMO_ACTIVITIES', false)) {
-            $seeders[] = ActivitySeeder::class;
-        }
-
-        $seeders = array_merge($seeders, [
             ProfileSeeder::class,
             RegionSeeder::class,
-            ProvinceSeeder::class,
-            RegencySeeder::class,
-            DistrictSeeder::class,
-            LocationSeeder::class,
             PengurusSeeder::class,
             PaymentMethodSeeder::class,
             PartnerSeeder::class,
-            MitraSeeder::class,
             PaymentChannelSeeder::class,
             FinancialSettingSeeder::class,
             ActivityContentSeeder::class,
             GallerySeeder::class,
             SubscriptionPlanSeeder::class,
-        ]);
+            MaintenanceSettingSeeder::class,
+        ];
+
+        if (env('SEED_DEMO_ACTIVITIES', true)) {
+            array_splice($seeders, 4, 0, [ActivitySeeder::class]);
+        }
 
         $this->call($seeders);
 
-        // Enable foreign key checks
         DB::statement('SET FOREIGN_KEY_CHECKS=1');
     }
 }

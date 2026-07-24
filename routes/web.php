@@ -56,11 +56,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Public Routes
-Route::get('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout.get');
 Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout'); // Keep POST for standard compatibility
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::post('/ai/chat', [App\Http\Controllers\AIController::class, 'chat'])->name('ai.chat');
+Route::post('/ai/chat', [App\Http\Controllers\AIController::class, 'chat'])->name('ai.chat')->middleware('throttle:20,1');
 
 // Fix for 404 on /login - redirect to home with login modal
 Route::get('/login', function () {
@@ -77,8 +76,10 @@ Route::prefix('subscriptions')->name('subscriptions.')->controller(SubscriptionC
     Route::get('/pricing', 'index')->name('pricing');
     Route::post('/subscribe', 'subscribe')->name('subscribe')->middleware('auth');
 
-    // Payment callback (public)
-    Route::post('/payment/notification', 'handleNotification')->name('payment.notification');
+    // Payment callback (public) — Midtrans tidak kirim CSRF token
+    Route::post('/payment/notification', 'handleNotification')
+        ->name('payment.notification')
+        ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
     // Payment process pages
     Route::get('/payment/finish', 'finish')->name('finish');
@@ -183,7 +184,7 @@ Route::prefix('payments')->name('payments.')->middleware(['auth'])->controller(P
     Route::get('/ledger/pdf', 'downloadFinancialLedgerPdf')->name('ledger.pdf');
     Route::get('/creator-finance', 'creatorFinance')->name('creator.finance')->middleware('role:creator,admin,superadmin');
     Route::get('/creator-finance/pdf', 'downloadCreatorFinancePdf')->name('creator.finance.pdf')->middleware('role:creator,admin,superadmin');
-    Route::post('/channels/sync', 'syncChannels')->name('channels.sync'); // Added sync route
+    Route::post('/channels/sync', 'syncChannels')->name('channels.sync')->middleware('role:admin,superadmin');
 
     // Rule Routes
     Route::post('/rules/vouchers', 'financialRulesCreateVoucher')->name('rules.vouchers.create');
@@ -213,7 +214,7 @@ Route::get('/activity/{activityId}/materials/{materialId}/serve', [ActivityPrepa
 Route::prefix('activity')->name('activity.')->controller(ActivityController::class)->group(function () {
     Route::get('/', 'index')->name('index');
     // Specific routes must be defined before wildcard routes to avoid conflicts
-    Route::get('/participants/search', 'searchParticipants')->name('participants.search');
+    Route::get('/participants/search', 'searchParticipants')->name('participants.search')->middleware(['auth', 'throttle:60,1']);
     // Protected routes that need to be defined before wildcard
     Route::get('/list', [ActivityController::class, 'list'])->name('list')->middleware(['auth', 'role:creator,admin,superadmin']);
     Route::get('/search', [ActivityController::class, 'search'])->name('search')->middleware('auth');
@@ -423,6 +424,11 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
         Route::post('/committee', 'storeCommittee')->name('store-committee');
         Route::put('/committee-voucher-update', 'updateCommitteeVoucher')->name('committee-voucher.update');
 
+        // WhatsApp Baileys proxy (auth + ownership checked in controller)
+        Route::get('/whatsapp/status', [\App\Http\Controllers\WhatsAppBaileysController::class, 'status'])->name('whatsapp.status');
+        Route::post('/whatsapp/send', [\App\Http\Controllers\WhatsAppBaileysController::class, 'send'])->name('whatsapp.send')->middleware('throttle:30,1');
+        Route::post('/whatsapp/logout', [\App\Http\Controllers\WhatsAppBaileysController::class, 'logout'])->name('whatsapp.logout');
+
         // Vouchers
         Route::post('/vouchers', 'storeVoucher')->name('vouchers.store');
         Route::put('/vouchers/{voucherId}', 'updateVoucher')->name('vouchers.update');
@@ -532,7 +538,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     });
 
     // Partner Management Routes
-    Route::prefix('partners')->name('partners.')->controller(PartnerController::class)->group(function () {
+    Route::prefix('partners')->name('partners.')->controller(PartnerController::class)->middleware('role:admin,superadmin')->group(function () {
         Route::get('/list', 'list')->name('list');
         Route::get('/create', 'create')->name('create');
         Route::post('/', 'store')->name('store');
@@ -584,14 +590,14 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     });
 
     // Category Routes
-    Route::prefix('kategori')->name('kategori.')->controller(CategoryController::class)->group(function () {
+    Route::prefix('kategori')->name('kategori.')->controller(CategoryController::class)->middleware('role:admin,superadmin')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::post('/store', 'store')->name('store');
         Route::put('/{category}', 'update')->name('update');
         Route::delete('/{category}', 'destroy')->name('destroy');
     });
     // Certificate Settings Routes (mirip CardSettingsController)
-    Route::prefix('certificate-settings')->name('certificate-settings.')->controller(\App\Http\Controllers\CertificateSettingsController::class)->group(function () {
+    Route::prefix('certificate-settings')->name('certificate-settings.')->controller(\App\Http\Controllers\CertificateSettingsController::class)->middleware('throttle:30,1')->group(function () {
         Route::post('/save', 'update')->name('save');
         Route::post('/background/upload', 'uploadBackground')->name('background.upload');
         Route::post('/background/delete', 'deleteBackground')->name('background.delete');
@@ -599,7 +605,7 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     });
 
     // Pengurus Routes
-    Route::prefix('pengurus')->name('pengurus.')->controller(PengurusController::class)->group(function () {
+    Route::prefix('pengurus')->name('pengurus.')->controller(PengurusController::class)->middleware('role:admin,superadmin')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/create', 'create')->name('create');
         Route::post('/store', 'store')->name('store');
@@ -655,9 +661,9 @@ Route::middleware(['auth', 'activity.logger'])->group(function () {
     });
 
     // Settings Routes
-    Route::post('/card-settings/save', [CardSettingsController::class, 'update'])->name('card-settings.save.legacy');
-    Route::post('/card-settings/upload-background', [IdCardBackgroundController::class, 'upload'])->name('card-settings.upload-background.legacy');
-    Route::prefix('settings')->name('settings.')->group(function () {
+    Route::post('/card-settings/save', [CardSettingsController::class, 'update'])->name('card-settings.save.legacy')->middleware('throttle:30,1');
+    Route::post('/card-settings/upload-background', [IdCardBackgroundController::class, 'upload'])->name('card-settings.upload-background.legacy')->middleware('throttle:20,1');
+    Route::prefix('settings')->name('settings.')->middleware('role:admin,superadmin')->group(function () {
         Route::get('/', [SettingController::class, 'index'])->name('index');
         Route::post('/', [SettingController::class, 'update'])->name('update');
         Route::post('/card-settings/save', [CardSettingsController::class, 'update'])->name('card-settings.save');
